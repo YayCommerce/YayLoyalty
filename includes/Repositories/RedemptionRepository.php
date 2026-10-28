@@ -53,8 +53,10 @@ final class RedemptionRepository extends AbstractRepository {
     }
 
     /**
-     * Every redemption on an order, oldest first. A plain read: the caller
-     * takes only ids and user ids from it, then lock()s each row.
+     * Every redemption on an order, oldest first. A plain read: Reversal
+     * takes only ids and user ids from it, then lock()s each row;
+     * CommitWriter matches rows to the order's coupon codes under the
+     * customer lock.
      *
      * @return Redemption[]
      */

@@ -259,7 +259,7 @@ function RewardEditorLayout({
         >
           <div className="flex flex-col items-start gap-5 lg:flex-row">
             <div className="min-w-0 flex-1">
-              <RewardEditorSections type={type} />
+              <RewardEditorSections type={type} couponCode={reward?.coupon_code} />
             </div>
 
             <RewardEditorActions

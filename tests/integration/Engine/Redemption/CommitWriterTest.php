@@ -15,16 +15,19 @@ use YayLoyalty\Utils\Dates;
 /** CommitWriter: the redemption row, the ledger row and the order meta land together, once, or not at all. */
 final class CommitWriterTest extends IntegrationTestCase {
 
+    /** reward()'s coupon code: the slider's line on every order here. */
+    private const SLIDER_CODE = 'yayloyalty-slider00';
+
     /** The seeded slider reward: 100 points per currency unit, minimum 100, step 100. */
     private function reward( array $config = [] ): Reward {
         $now = Dates::now();
 
-        return new Reward( 9, 'Cart discount', 'cart-discount', RewardType::FLEXIBLE_DISCOUNT, Status::ACTIVE, 0, null, array_merge( Reward::default_config( RewardType::FLEXIBLE_DISCOUNT ), $config ), [], null, null, true, null, null, $now, $now );
+        return new Reward( 9, 'Cart discount', 'cart-discount', RewardType::FLEXIBLE_DISCOUNT, Status::ACTIVE, 0, null, array_merge( Reward::default_config( RewardType::FLEXIBLE_DISCOUNT ), $config ), [], null, null, true, null, null, $now, $now, null, self::SLIDER_CODE );
     }
 
     public function test_one_order_writes_the_redemption_row_the_ledger_row_and_the_order_meta(): void {
         $this->ledger_service()->earn( $this->earn_draft( 7, 100, 1000 ) );
-        $order = $this->order_with_points_discount( 7, 20.0, 5.0 );
+        $order = $this->order_with_points_discount( 7, 20.0, 5.0, self::SLIDER_CODE );
 
         $outcome = $this->commit_writer()->commit( $order, $this->reward() );
 
@@ -38,7 +41,7 @@ final class CommitWriterTest extends IntegrationTestCase {
         $this->assertSame( 500, (int) $rows[0]['points'] );
         $this->assertSame( 5.0, (float) $rows[0]['value'] );
         $this->assertSame( $order->get_id(), (int) $rows[0]['order_id'] );
-        $this->assertSame( 'yayloyalty-redeem', $rows[0]['coupon_code'] );
+        $this->assertSame( self::SLIDER_CODE, $rows[0]['coupon_code'] );
         $this->assertSame( 0, (int) $rows[0]['restored_points'] );
 
         $ledger = $this->ledger_rows( 7 )[1];
@@ -53,7 +56,7 @@ final class CommitWriterTest extends IntegrationTestCase {
     /** Auto max is a cart-time request: the commit debits the line it finds, never the most the balance could take. */
     public function test_an_auto_max_order_debits_exactly_its_line(): void {
         $this->ledger_service()->earn( $this->earn_draft( 7, 100, 1000 ) );
-        $order = $this->order_with_points_discount( 7, 20.0, 5.0 );
+        $order = $this->order_with_points_discount( 7, 20.0, 5.0, self::SLIDER_CODE );
 
         $outcome = $this->commit_writer()->commit( $order, $this->reward( [ 'redemption_mode' => Reward::REDEMPTION_MODE_AUTO_MAX ] ) );
 
@@ -64,7 +67,7 @@ final class CommitWriterTest extends IntegrationTestCase {
 
     public function test_a_second_commit_writes_nothing(): void {
         $this->ledger_service()->earn( $this->earn_draft( 7, 100, 1000 ) );
-        $order = $this->order_with_points_discount( 7, 20.0, 5.0 );
+        $order = $this->order_with_points_discount( 7, 20.0, 5.0, self::SLIDER_CODE );
 
         $this->commit_writer()->commit( $order, $this->reward() );
         $second = $this->commit_writer()->commit( $order, $this->reward() );
@@ -77,7 +80,7 @@ final class CommitWriterTest extends IntegrationTestCase {
 
     public function test_a_balance_that_dropped_fails_with_nothing_written(): void {
         $this->ledger_service()->earn( $this->earn_draft( 7, 100, 300 ) );
-        $order = $this->order_with_points_discount( 7, 20.0, 5.0 );
+        $order = $this->order_with_points_discount( 7, 20.0, 5.0, self::SLIDER_CODE );
 
         $outcome = $this->commit_writer()->commit( $order, $this->reward() );
 
@@ -104,15 +107,15 @@ final class CommitWriterTest extends IntegrationTestCase {
             ]
         );
         $lines = [
-            'yayloyalty-reward-' . $a->get_id() => $a_discount,
-            'yayloyalty-reward-' . $b->get_id() => 10.0,
+            $a->get_coupon_code() => $a_discount,
+            $b->get_coupon_code() => 10.0,
         ];
 
         return [
             $this->order_with_reward_lines( 7, 100.0, $lines ),
             [
-                'yayloyalty-reward-' . $a->get_id() => $a,
-                'yayloyalty-reward-' . $b->get_id() => $b,
+                $a->get_coupon_code() => $a,
+                $b->get_coupon_code() => $b,
             ],
         ];
     }
@@ -167,7 +170,7 @@ final class CommitWriterTest extends IntegrationTestCase {
     public function test_a_partial_value_line_debits_the_full_cost_and_stores_the_line_value(): void {
         $this->ledger_service()->earn( $this->earn_draft( 7, 100, 9850 ) );
         $a     = $this->pro_reward( RewardType::FIXED_COUPON, 500, [ 'amount' => 5 ] );
-        $code  = 'yayloyalty-reward-' . $a->get_id();
+        $code  = $a->get_coupon_code();
         $order = $this->order_with_reward_lines( 7, 100.0, [ $code => 3.0 ] );
 
         $this->commit_writer()->commit_rewards( $order, [ $code => $a ] );
@@ -187,9 +190,9 @@ final class CommitWriterTest extends IntegrationTestCase {
         list( , $rewards ) = $this->order_with_a_and_b();
         list( $a, $b )     = array_keys( $rewards );
         $lines             = [
-            $a                  => 5.0,
-            $b                  => 10.0,
-            'yayloyalty-redeem' => 5.0,
+            $a                => 5.0,
+            $b                => 10.0,
+            self::SLIDER_CODE => 5.0,
         ];
 
         return [ $this->order_with_reward_lines( 7, 100.0, $lines ), $rewards ];
@@ -208,7 +211,7 @@ final class CommitWriterTest extends IntegrationTestCase {
         $rows = $this->redemption_rows( 7 );
         $this->assertSame( [ 500, 1500, 500 ], array_map( 'intval', array_column( $rows, 'points' ) ) );
         $this->assertSame( [ 5.0, 10.0, 5.0 ], array_map( 'floatval', array_column( $rows, 'value' ) ) );
-        $this->assertSame( 'yayloyalty-redeem', $rows[2]['coupon_code'] );
+        $this->assertSame( self::SLIDER_CODE, $rows[2]['coupon_code'] );
         $keys = array_column( array_slice( $this->ledger_rows( 7 ), 1 ), 'idempotency_key' );
         $this->assertSame(
             [

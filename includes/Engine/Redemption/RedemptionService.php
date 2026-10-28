@@ -68,6 +68,9 @@ final class RedemptionService {
     /** @var array<int, Reward|null> Rewards read by id this request; null for an id with no row. */
     private array $reward_cache = [];
 
+    /** @var array<string, Reward|null> Rewards read by coupon code this request; null for a code with no row. */
+    private array $code_cache = [];
+
     /** quote_rewards()'s last answer, and the picked ids, shopper, cart and merchant coupons it was computed for. */
     private array $rewards_quoted = [];
 
@@ -220,14 +223,47 @@ final class RedemptionService {
         if ( ! $this->is_reward_read ) {
             $this->quoted_reward  = $this->flexible_reward();
             $this->is_reward_read = true;
+            $this->remember( $this->quoted_reward );
         }
 
         return $this->quoted_reward;
     }
 
+    /** Whether $reward is the slider's: the built-in `flexible_discount` reward, not a catalog one. */
+    public static function is_slider( ?Reward $reward ): bool {
+        return null !== $reward && RewardType::FLEXIBLE_DISCOUNT === $reward->get_type();
+    }
+
+    /** The slider's coupon code: the flexible reward's stored code, '' when that reward is missing. */
+    public function slider_code(): string {
+        $reward = $this->quoted_reward();
+
+        return null === $reward ? '' : $reward->get_coupon_code();
+    }
+
     /** Whether a reward's quote puts a line on the cart: allowed, with a value. */
     public static function applies( Result $quote ): bool {
         return $quote->is_allowed() && $quote->get_value() > 0;
+    }
+
+    /**
+     * The catalog rewards whose coupon is on the cart, keyed by code in the order the cart holds them. Codes of a
+     * missing reward, and the slider's, are left out.
+     *
+     * @return array<string, Reward>
+     */
+    public function applied_rewards( \WC_Cart $cart ): array {
+        $rewards = [];
+
+        foreach ( $cart->get_applied_coupons() as $code ) {
+            $reward = $this->reward_for_code( (string) $code );
+
+            if ( null !== $reward && ! self::is_slider( $reward ) ) {
+                $rewards[ (string) $code ] = $reward;
+            }
+        }
+
+        return $rewards;
     }
 
     /**
@@ -237,11 +273,11 @@ final class RedemptionService {
      * @return array<int, int>
      */
     public function applied_reward_costs( \WC_Cart $cart, ?int $user_id ): array {
-        $on_cart = CouponProvider::applied_reward_ids( $cart );
+        $on_cart = array_map( 'strval', $cart->get_applied_coupons() );
         $costs   = [];
 
         foreach ( $this->quote_rewards( $cart, $user_id ) as $reward_id => $row ) {
-            if ( null !== $row['reward'] && in_array( (int) $reward_id, $on_cart, true ) ) {
+            if ( null !== $row['reward'] && in_array( $row['reward']->get_coupon_code(), $on_cart, true ) ) {
                 $costs[ $reward_id ] = (int) $row['reward']->get_cost_points();
             }
         }
@@ -361,11 +397,21 @@ final class RedemptionService {
         return $options;
     }
 
-    /** The reward a `yayloyalty-reward-{id}` code names, read once per request; null for any other code or a missing row. */
+    /**
+     * The reward whose stored coupon code is $code, read once per request; null for a code that is not a loyalty
+     * code (without a query) or a missing row.
+     */
     public function reward_for_code( string $code ): ?Reward {
-        $reward_id = CouponProvider::reward_id_of( $code );
+        if ( ! EarnContext::is_loyalty_code( $code ) ) {
+            return null;
+        }
 
-        return null === $reward_id ? null : $this->find_reward( $reward_id );
+        if ( ! array_key_exists( $code, $this->code_cache ) ) {
+            $this->remember( $this->rewards->find_by_coupon_code( $code ) );
+            $this->code_cache[ $code ] = $this->code_cache[ $code ] ?? null;
+        }
+
+        return $this->code_cache[ $code ];
     }
 
     /**
@@ -381,12 +427,12 @@ final class RedemptionService {
             return null;
         }
 
-        return RewardCoupons::data( null === $cart ? $props : RewardCoupons::capped( (int) $reward->get_id(), $props, $cart ) );
+        return RewardCoupons::data( null === $cart ? $props : RewardCoupons::capped( $reward->get_coupon_code(), $props, $cart ) );
     }
 
     /** Whether the card may offer the reward: live now, not the slider's, and spent as a coupon by a registered handler. */
     public function is_reward_offered( Reward $reward ): bool {
-        return RewardType::FLEXIBLE_DISCOUNT !== $reward->get_type()
+        return ! self::is_slider( $reward )
             && $reward->is_live_at( Dates::now() )
             && null !== $this->coupon_props_of( $reward );
     }
@@ -539,21 +585,27 @@ final class RedemptionService {
      */
     public function commit( \WC_Order $order ): Outcome {
         $codes        = array_map( 'strval', $order->get_coupon_codes() );
-        $has_slider   = in_array( CouponProvider::CODE, $codes, true );
-        $reward_codes = array_values(
-            array_filter(
-                $codes,
-                static function ( string $code ): bool {
-                    return null !== CouponProvider::reward_id_of( $code );
-                }
-            )
-        );
+        $has_slider   = false;
+        $reward_codes = [];
+
+        foreach ( $codes as $code ) {
+            if ( ! EarnContext::is_loyalty_code( $code ) ) {
+                continue;
+            }
+
+            if ( self::is_slider( $this->reward_for_code( $code ) ) ) {
+                $has_slider = true;
+            } else {
+                $reward_codes[] = $code;
+            }
+        }
 
         if ( ! $has_slider && [] === $reward_codes ) {
             return Outcome::skipped( self::REASON_NO_INTENT );
         }
 
         if ( $has_slider ) {
+            // Read fresh: quote()'s copy may predate a merchant's edit in this request.
             $reward = $this->flexible_reward();
 
             if ( null === $reward ) {
@@ -635,10 +687,19 @@ final class RedemptionService {
     /** The reward by id, read once per request. */
     private function find_reward( int $reward_id ): ?Reward {
         if ( ! array_key_exists( $reward_id, $this->reward_cache ) ) {
-            $this->reward_cache[ $reward_id ] = $this->rewards->find_reward( $reward_id );
+            $this->remember( $this->rewards->find_reward( $reward_id ) );
+            $this->reward_cache[ $reward_id ] = $this->reward_cache[ $reward_id ] ?? null;
         }
 
         return $this->reward_cache[ $reward_id ];
+    }
+
+    /** Files a reward read by id, by code or by slug under both its id and its code, so no path reads it again. */
+    private function remember( ?Reward $reward ): void {
+        if ( null !== $reward ) {
+            $this->reward_cache[ (int) $reward->get_id() ]  = $reward;
+            $this->code_cache[ $reward->get_coupon_code() ] = $reward;
+        }
     }
 
     /**

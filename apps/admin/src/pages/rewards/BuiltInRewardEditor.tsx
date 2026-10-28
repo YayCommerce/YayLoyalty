@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UpgradeToProBanner } from '@/components/pro/UpgradeToPro';
 import { FlexibleDiscountConfig, FlexibleDiscountFields } from './FlexibleDiscountFields';
+import { rewardCouponCodeCopy } from './reward-coupon-code.copy';
 
 /**
  * Lite's Rewards screen: the built-in flexible-discount reward edited in
@@ -111,6 +112,7 @@ function BuiltInRewardCard({ reward }: { reward: Reward }) {
     name !== baseline.name || status !== baseline.status || JSON.stringify(config) !== JSON.stringify(baseline.config);
 
   const value = config as unknown as FlexibleDiscountConfig;
+  const couponCode = rewardCouponCodeCopy();
 
   function update(next: Partial<FlexibleDiscountConfig>) {
     setConfig({ ...config, ...next });
@@ -161,6 +163,9 @@ function BuiltInRewardCard({ reward }: { reward: Reward }) {
           value={name}
           onChange={(event) => setName(event.target.value)}
         />
+      </ConfigField>
+      <ConfigField label={couponCode.label} description={couponCode.description}>
+        <Input aria-label={couponCode.label} value={reward.coupon_code} readOnly className="font-mono" />
       </ConfigField>
       <FlexibleDiscountFields value={value} onChange={update} />
     </BuiltInConfigCard>

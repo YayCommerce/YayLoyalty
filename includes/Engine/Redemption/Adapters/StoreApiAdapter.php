@@ -3,7 +3,6 @@ namespace YayLoyalty\Engine\Redemption\Adapters;
 
 use Automattic\WooCommerce\StoreApi\Exceptions\RouteException;
 use Automattic\WooCommerce\StoreApi\Schemas\V1\CartSchema;
-use YayLoyalty\Engine\Redemption\CouponProvider;
 use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Redemption\SessionIntent;
 use YayLoyalty\Engine\Storefront\RedeemCard;
@@ -135,17 +134,10 @@ final class StoreApiAdapter {
     private function applied_rewards( \WC_Cart $cart, int $decimals ): array {
         $rewards = [];
 
-        foreach ( CouponProvider::applied_reward_ids( $cart ) as $reward_id ) {
-            $code   = CouponProvider::reward_code( $reward_id );
-            $reward = $this->service->reward_for_code( $code );
-
-            if ( null === $reward ) {
-                continue;
-            }
-
+        foreach ( $this->service->applied_rewards( $cart ) as $code => $reward ) {
             $rewards[] = [
                 'id'     => (int) $reward->get_id(),
-                'code'   => (string) $code,
+                'code'   => $code,
                 'label'  => $reward->get_name(),
                 'points' => (int) $reward->get_cost_points(),
                 'value'  => wc_format_decimal( $cart->get_coupon_discount_amount( $code, ! wc_prices_include_tax() ), $decimals ),

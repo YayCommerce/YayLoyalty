@@ -85,6 +85,9 @@ class Reward extends AbstractModel {
     /** @var string|null */
     private $archived_at;
 
+    /** @var string `yayloyalty-` plus 8 characters, set once by RewardRepository::insert(); '' until then. */
+    private $coupon_code;
+
     public function __construct(
         ?int $id,
         string $name,
@@ -102,7 +105,8 @@ class Reward extends AbstractModel {
         ?int $updated_by = null,
         string $created_at = '',
         string $updated_at = '',
-        ?string $archived_at = null
+        ?string $archived_at = null,
+        ?string $coupon_code = null
     ) {
         $this->id          = $id;
         $this->name        = $name;
@@ -121,6 +125,7 @@ class Reward extends AbstractModel {
         $this->created_at  = $created_at;
         $this->updated_at  = $updated_at;
         $this->archived_at = $archived_at;
+        $this->coupon_code = (string) $coupon_code;
     }
 
     public static function from_row( array $row ): self {
@@ -141,7 +146,8 @@ class Reward extends AbstractModel {
             self::cast_int( $row['updated_by'] ?? null ),
             (string) ( $row['created_at'] ?? '' ),
             (string) ( $row['updated_at'] ?? '' ),
-            self::cast_datetime( $row['archived_at'] ?? null )
+            self::cast_datetime( $row['archived_at'] ?? null ),
+            null === ( $row['coupon_code'] ?? null ) ? null : (string) $row['coupon_code']
         );
     }
 
@@ -163,16 +169,17 @@ class Reward extends AbstractModel {
             'created_at'  => $this->created_at,
             'updated_at'  => $this->updated_at,
             'archived_at' => $this->archived_at,
+            'coupon_code' => '' === $this->coupon_code ? null : $this->coupon_code,
         ];
     }
 
     public function get_format(): array {
-        return [ '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%s' ];
+        return [ '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%s', '%s' ];
     }
 
     /** Columns no update may change. */
     protected static function immutable_columns(): array {
-        return [ 'slug', 'type', 'created_at', 'created_by', 'is_builtin' ];
+        return [ 'slug', 'coupon_code', 'type', 'created_at', 'created_by', 'is_builtin' ];
     }
 
     public function to_array(): array {
@@ -180,6 +187,7 @@ class Reward extends AbstractModel {
             'id'          => $this->id,
             'name'        => $this->name,
             'slug'        => $this->slug,
+            'coupon_code' => $this->coupon_code,
             'type'        => $this->type,
             'status'      => $this->status,
             'sort_order'  => $this->sort_order,
@@ -430,6 +438,11 @@ class Reward extends AbstractModel {
         return $this->slug;
     }
 
+    /** The reward's virtual coupon code; '' only before its row is inserted. */
+    public function get_coupon_code(): string {
+        return $this->coupon_code;
+    }
+
     public function get_type(): string {
         return $this->type;
     }
@@ -485,6 +498,11 @@ class Reward extends AbstractModel {
 
     public function is_archived(): bool {
         return Status::ARCHIVED === $this->status;
+    }
+
+    /** Only RewardRepository::insert() calls this: the column is immutable once written. */
+    public function set_coupon_code( string $coupon_code ): void {
+        $this->coupon_code = $coupon_code;
     }
 
     public function set_name( string $name ): void {

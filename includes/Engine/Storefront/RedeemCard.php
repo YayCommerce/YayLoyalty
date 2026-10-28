@@ -114,7 +114,7 @@ final class RedeemCard {
      * (redeem-blocks.js). The script is handed the Store API names it reads and posts to, the coupon's code and
      * the label its totals row reads on the blocks, so none of them is written a second time in JS.
      *
-     * @param Reward|null $reward The live flexible reward, whose name the totals row reads; null for the fallback.
+     * @param Reward|null $reward The live flexible reward, whose code and name the totals row reads; null for the fallback.
      */
     public static function enqueue_block_assets( ?Reward $reward = null ): void {
         self::enqueue_assets();
@@ -132,7 +132,7 @@ final class RedeemCard {
                 [
                     'namespace' => StoreApiAdapter::EXT_NAMESPACE,
                     'callback'  => StoreApiAdapter::CALLBACK,
-                    'code'      => CouponProvider::CODE,
+                    'code'      => null === $reward ? '' : $reward->get_coupon_code(),
                     'label'     => CouponProvider::display_label( $reward ),
                 ]
             ) . ';',

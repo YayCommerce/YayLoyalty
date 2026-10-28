@@ -19,12 +19,13 @@ final class OrderReversalListenerTest extends IntegrationTestCase {
 
     /** An order that earned 1000 points for user 7 and then spent 500 of them on itself. */
     private function order_that_earned_and_redeemed(): \WC_Order {
-        $order = $this->order_with_points_discount( 7, 20.0, 5.0 );
+        $reward = $this->seeded_reward();
+        $order  = $this->order_with_points_discount( 7, 20.0, 5.0, $reward->get_coupon_code() );
         $order->set_total( 15.0 );
         $order->save();
 
         $this->ledger_service()->earn( $this->earn_draft( 7, $order->get_id(), 1000 ) );
-        $this->commit_writer()->commit( $order, $this->seeded_reward() );
+        $this->commit_writer()->commit( $order, $reward );
 
         return $order;
     }
