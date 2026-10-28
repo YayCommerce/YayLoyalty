@@ -214,7 +214,7 @@ class Reward extends AbstractModel {
      * Per-type config schema, key => spec: what `config` may hold and what config_is_valid() checks.
      * Lite declares flexible_discount. Pro types add theirs through the filter.
      * Spec types: bool, string, int|number|nullable_int|nullable_number [min, max], enum|enum_list [values],
-     * currency, product. `required => true` makes a key mandatory. `exclusive_min` is a strict lower
+     * currency, product, and limit (null, or a whole number from 1). `required => true` makes a key mandatory. `exclusive_min` is a strict lower
      * bound: a nullable cap uses it at 0, so null is no cap and a set cap is above 0.
      *
      * @return array<string, array<string, array<string, mixed>>>
@@ -234,10 +234,8 @@ class Reward extends AbstractModel {
                     'type' => 'int',
                     'min'  => 0,
                 ],
-                'max_points_per_order'     => [
-                    'type'          => 'nullable_number',
-                    'exclusive_min' => 0,
-                ],
+                // Points, so whole: null is no cap, as the purchase campaign's own cap.
+                'max_points_per_order'     => [ 'type' => 'limit' ],
                 'max_percent_of_subtotal'  => [
                     'type' => 'nullable_number',
                     'min'  => 0,

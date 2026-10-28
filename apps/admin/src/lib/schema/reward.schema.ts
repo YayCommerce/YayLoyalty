@@ -142,6 +142,8 @@ const moneySchema = z.number().min(0).nullable();
 /** A cap: null is no cap, and a set cap is above 0 (the PHP spec's `exclusive_min: 0`). */
 const moneyCapSchema = z.number().positive().nullable();
 const couponExpiryDaysSchema = z.number().int().min(1).nullable();
+/** Mirrors ConfigSpec's `limit`: null is no cap, and a set cap is a whole number of points from 1. */
+const pointsCapSchema = z.number().int().min(1).nullable();
 
 /** Mirrors Reward::REDEMPTION_MODE_*, the source of truth. How a shopper spends points on the flexible discount. */
 export const REDEMPTION_MODES = ['auto_max', 'free_input'] as const;
@@ -163,7 +165,7 @@ export const REWARD_CONFIG_SCHEMAS = {
       currency: z.string(),
       points_per_currency_unit: z.number().positive(),
       min_points: z.number().int().min(0),
-      max_points_per_order: moneyCapSchema,
+      max_points_per_order: pointsCapSchema,
       max_percent_of_subtotal: moneySchema,
       increment: z.number().int().min(1),
       show_on: z.array(z.enum(['cart', 'checkout'])),
