@@ -19,7 +19,7 @@ abstract class LoyaltyEmailShortcodes extends BaseShortcode {
         'customer_name' => 'greeting_name',
     ];
 
-    /** Values that are already escaped HTML. */
+    /** Values that are already escaped HTML, shared by every loyalty email. A subclass adds its own. */
     protected const HTML_KEYS = [ 'balance_value', 'balance_value_text' ];
 
     /** @var array<string, mixed>|null */
@@ -40,6 +40,30 @@ abstract class LoyaltyEmailShortcodes extends BaseShortcode {
     /** @return array<string, string> Every shortcode's editor description: the shared customer_name, then the email's own. */
     private function all_descriptions(): array {
         return [ 'customer_name' => __( 'Customer Name', 'yayloyalty' ) ] + $this->descriptions();
+    }
+
+    /**
+     * Editor labels for the shortcodes several loyalty emails share, in the order $keys gives, so each email
+     * places them in its own list.
+     *
+     * @return array<string, string>
+     */
+    protected static function shared_descriptions( string ...$keys ): array {
+        $labels = [
+            'points_label'       => __( 'Points Label', 'yayloyalty' ),
+            'balance'            => __( 'Balance', 'yayloyalty' ),
+            'balance_points'     => __( 'Balance With Label', 'yayloyalty' ),
+            'balance_value'      => __( 'Balance Value', 'yayloyalty' ),
+            'balance_value_text' => __( 'Balance Value Message', 'yayloyalty' ),
+            'order_number'       => __( 'Order Number', 'yayloyalty' ),
+        ];
+        $picked = [];
+
+        foreach ( $keys as $key ) {
+            $picked[ $key ] = $labels[ $key ];
+        }
+
+        return $picked;
     }
 
     /** A shortcode's name: 'customer_name' → 'yaymail_yayloyalty_customer_name'. */
@@ -82,16 +106,17 @@ abstract class LoyaltyEmailShortcodes extends BaseShortcode {
             return '';
         }
 
-        if ( 'points_url' === $key ) {
+        if ( str_ends_with( $key, '_url' ) ) {
             return esc_url( $values[ $value_key ] );
         }
 
-        return in_array( $key, static::HTML_KEYS, true ) ? $values[ $value_key ] : esc_html( $values[ $value_key ] );
+        return in_array( $key, array_merge( static::HTML_KEYS, self::HTML_KEYS ), true ) ? $values[ $value_key ] : esc_html( $values[ $value_key ] );
     }
 
     /**
      * The values of what is being sent, or of the sample for YayMail's editor, preview and
-     * test send, which render with `is_sample` or an order.
+     * test send, which render with `is_sample` or an order of YayMail's own. An email's template
+     * args may carry its own `order`, so only an order other than that one means a sample.
      *
      * @param mixed $render_data The body passes the WooCommerce template args and the subject passes the email; both include `email`.
      */
@@ -103,13 +128,14 @@ abstract class LoyaltyEmailShortcodes extends BaseShortcode {
             return [];
         }
 
-        if ( ! empty( $render_data['is_sample'] ) || ! empty( $render_data['order'] ) ) {
+        $email  = $render_data['email'] ?? null;
+        $values = $email instanceof LoyaltyEmail && $email->id === $root_email->id ? $email->get_template_values() : [];
+
+        if ( ! empty( $render_data['is_sample'] ) || ( ! empty( $render_data['order'] ) && ( $values['order'] ?? null ) !== $render_data['order'] ) ) {
             return $this->sample_values( $root_email );
         }
 
-        $email = $render_data['email'] ?? null;
-
-        return $email instanceof LoyaltyEmail && $email->id === $root_email->id ? $email->get_template_values() : [];
+        return $values;
     }
 
     private function sample_values( LoyaltyEmail $root_email ): array {

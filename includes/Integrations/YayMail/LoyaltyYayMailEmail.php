@@ -93,6 +93,7 @@ abstract class LoyaltyYayMailEmail extends BaseEmail {
                 '{points_label}' => LoyaltyEmailShortcodes::tag( 'points_label' ),
                 '{balance}'      => LoyaltyEmailShortcodes::tag( 'balance' ),
                 '{expiry_date}'  => LoyaltyEmailShortcodes::tag( 'expiry_date' ),
+                '{order_number}' => LoyaltyEmailShortcodes::tag( 'order_number' ),
                 '{site_title}'   => '[yaymail_site_name]',
             ]
         );

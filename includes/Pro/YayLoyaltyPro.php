@@ -18,6 +18,7 @@ use YayLoyalty\Pro\Controllers\DashboardProRestController;
 use YayLoyalty\Pro\Controllers\StoreLedgerRestController;
 use YayLoyalty\Pro\Emails\ProEmails;
 use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
+use YayLoyalty\Pro\Integrations\YayMail\ProYayMail;
 use YayLoyalty\Pro\Repositories\CampaignPerformanceRepository;
 use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
 use YayLoyalty\Pro\Repositories\StoreLedgerRepository;
@@ -91,6 +92,10 @@ final class YayLoyaltyPro {
         add_filter( 'yayloyalty_localize_admin_data', [ self::class, 'add_segments' ] );
         add_filter( 'woocommerce_email_classes', [ ProEmails::class, 'add_classes' ] );
         add_filter( 'woocommerce_email_groups', [ ProEmails::class, 'add_groups' ] );
+        add_filter( 'woocommerce_email_actions', [ ProEmails::class, 'add_email_actions' ] );
+        add_action( 'yayloyalty_points_redeemed', [ ProEmails::class, 'relay_redemption' ] );
+        add_action( 'yayloyalty_yaymail_register_emails', [ ProYayMail::class, 'register_emails' ] );
+        add_action( 'yayloyalty_yaymail_register_shortcodes', [ ProYayMail::class, 'register_shortcodes' ] );
 
         $daily_limit = new DailyEarningLimit( new LedgerRepository() );
         add_filter( EarningService::AWARD_POINTS_FILTER, [ $daily_limit, 'clamp' ], 10, 3 );

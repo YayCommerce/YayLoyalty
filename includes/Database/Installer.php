@@ -175,6 +175,8 @@ final class Installer {
         self::drop_index_if_exists( 'ledger', 'idx_user_history' );
         self::drop_index_if_exists( 'ledger', 'idx_user_type' );
         self::rename_customer_meta_key( 'account_created', ActivityEvent::MEMBERSHIP_STARTED );
+        // The settings of the removed Coupon issued email.
+        delete_option( 'woocommerce_yayloyalty_coupon_issued_settings' );
 
         /** Fires after the tables are created or updated, and before the version stamp. */
         do_action( 'yayloyalty_run_migrations' );

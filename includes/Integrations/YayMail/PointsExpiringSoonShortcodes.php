@@ -30,9 +30,9 @@ class PointsExpiringSoonShortcodes extends LoyaltyEmailShortcodes {
 
     protected function descriptions(): array {
         return [
-            'expiring_points'   => __( 'Points Expiring Message', 'yayloyalty' ),
-            'points'            => __( 'Points Expiring', 'yayloyalty' ),
-            'points_label'      => __( 'Points Label', 'yayloyalty' ),
+            'expiring_points' => __( 'Points Expiring Message', 'yayloyalty' ),
+            'points'          => __( 'Points Expiring', 'yayloyalty' ),
+        ] + self::shared_descriptions( 'points_label' ) + [
             'expiry_date'       => __( 'Expiry Date', 'yayloyalty' ),
             'points_value'      => __( 'Points Value', 'yayloyalty' ),
             'points_value_text' => __( 'Points Value Message', 'yayloyalty' ),
