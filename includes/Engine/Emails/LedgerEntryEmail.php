@@ -7,7 +7,7 @@ use YayLoyalty\Repositories\LedgerRepository;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Base for loyalty emails about one ledger row, which their email action passes as its id. */
+/** Base for loyalty emails about one ledger row, whose id their email action or QueuedEmails passes. */
 abstract class LedgerEntryEmail extends LoyaltyEmail {
 
     /** @var LedgerEntry|null The row $values were built for. */

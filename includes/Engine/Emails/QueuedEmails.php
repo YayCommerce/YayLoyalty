@@ -2,6 +2,7 @@
 namespace YayLoyalty\Engine\Emails;
 
 use YayLoyalty\Engine\Expiry\ExpiryRunner;
+use YayLoyalty\Helpers\EmailsHelper;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
@@ -67,10 +68,10 @@ final class QueuedEmails {
      * @param array<int, scalar> $args The email's trigger() arguments.
      */
     public function handle( string $email_id, array $args, int $attempt ): void {
-        $email = WC()->mailer()->get_emails()[ $email_id ] ?? null;
+        $email = EmailsHelper::registered_emails()[ $email_id ] ?? null;
 
         // Not registered (expiry turned off since it was queued): skipped.
-        if ( ! $email instanceof LoyaltyEmail ) {
+        if ( null === $email ) {
             return;
         }
 

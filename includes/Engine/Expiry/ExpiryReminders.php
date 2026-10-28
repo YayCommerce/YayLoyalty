@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * The expiry job's reminder step: claims each due Points expiring soon reminder, then relays it to the
  * email. Inactivity mode announces each customer's date once (customers.reminder_for), batch mode each
- * lot once (lots.reminded_at), several lots due together in one email. Claim-then-send makes a reminder at-most-once: a failed send is dropped, never doubled. Nothing
+ * lot once (lots.reminded_at), several lots due together in one email. Claim-then-send makes a reminder at-most-once per claim: a failed send is retried by QueuedEmails, never doubled. Nothing
  * is claimed while expiry is off, the stored dates are stale or the email is switched off, so turning
  * the email on later still reaches customers inside their window.
  */

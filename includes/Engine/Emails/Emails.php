@@ -22,6 +22,12 @@ class Emails {
     /** The email action a manual adjustment is relayed on, when its admin asked to notify. Its only argument is the ledger row id. */
     public const POINTS_ADJUSTED_ACTION = 'yayloyalty_points_adjusted_email';
 
+    /** The Points expired email's id. Here, not only on the email class, so the expiry job can queue it before WC_Email loads. */
+    public const POINTS_EXPIRED_EMAIL_ID = 'yayloyalty_points_expired';
+
+    /** The Points expiring soon email's id, here for the same reason. */
+    public const POINTS_EXPIRING_SOON_EMAIL_ID = 'yayloyalty_points_expiring_soon';
+
     /** Fired after the transport accepted an expiry reminder, for the activity log. Args: user id, points, expires_at, window days. */
     public const POINTS_EXPIRING_SOON_SENT_ACTION = 'yayloyalty_points_expiring_soon_email_sent';
 
@@ -87,9 +93,7 @@ class Emails {
      * for each row it wrote.
      */
     public static function relay_expiry( LedgerEntry $entry ): void {
-        // Naming an email class loads WC_Email's subclass, so WooCommerce's mailer must have loaded WC_Email first.
-        WC()->mailer();
-        QueuedEmails::enqueue( PointsExpiredEmail::ID, [ (int) $entry->get_id() ] );
+        QueuedEmails::enqueue( self::POINTS_EXPIRED_EMAIL_ID, [ (int) $entry->get_id() ] );
     }
 
     /**
@@ -98,9 +102,7 @@ class Emails {
      * the lots, so a later send could not recompute them.
      */
     public static function relay_expiring_soon( int $user_id, int $points, string $expires_at, bool $is_single_date ): void {
-        // As in relay_expiry().
-        WC()->mailer();
-        QueuedEmails::enqueue( PointsExpiringSoonEmail::ID, [ $user_id, $points, $expires_at, $is_single_date ] );
+        QueuedEmails::enqueue( self::POINTS_EXPIRING_SOON_EMAIL_ID, [ $user_id, $points, $expires_at, $is_single_date ] );
     }
 
     /**

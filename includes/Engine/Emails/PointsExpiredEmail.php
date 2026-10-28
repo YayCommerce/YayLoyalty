@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
 /** The points-expired email, queued once per EXPIRE row the expiry job writes and sent by QueuedEmails, within the weekly cap. */
 class PointsExpiredEmail extends LedgerEntryEmail {
 
-    public const ID = 'yayloyalty_points_expired';
+    public const ID = Emails::POINTS_EXPIRED_EMAIL_ID;
 
     public function __construct() {
         $this->id          = self::ID;

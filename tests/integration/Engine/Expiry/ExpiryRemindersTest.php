@@ -26,47 +26,21 @@ final class ExpiryRemindersTest extends IntegrationTestCase {
     /** @var string The pinned `expiry.mode`. */
     private $mode = ExpiryMode::INACTIVITY;
 
-    /** @var PointsExpiringSoonEmail|null The email this test added to the mailer, if the mailer lacked it. */
-    private $added_email;
-
     protected function setUp(): void {
         parent::setUp();
 
         $this->require_woocommerce();
-
-        // The fixture switches every WooCommerce email off and fails every send; this test sends this one email.
-        remove_filter( 'woocommerce_email_enabled_' . PointsExpiringSoonEmail::ID, '__return_false' );
-        add_filter( 'woocommerce_email_enabled_' . PointsExpiringSoonEmail::ID, '__return_true' );
-        remove_filter( 'pre_wp_mail', '__return_false' );
-        add_filter( 'pre_wp_mail', [ $this, 'capture_mail' ], 10, 2 );
+        $this->send_emails_for_real( [ $this, 'capture_mail' ], PointsExpiringSoonEmail::class );
         add_filter( 'pre_option_' . SettingsHelper::OPTION_SETTINGS, [ $this, 'pinned_settings' ] );
-
-        // The mailer is built once per process, so it lacks this email when it was built while the site had expiry off.
-        $mailer = WC()->mailer();
-
-        if ( ! isset( $mailer->emails[ PointsExpiringSoonEmail::ID ] ) ) {
-            $this->added_email                             = new PointsExpiringSoonEmail();
-            $mailer->emails[ PointsExpiringSoonEmail::ID ] = $this->added_email;
-        }
     }
 
     protected function tearDown(): void {
-        remove_filter( 'pre_wp_mail', [ $this, 'capture_mail' ], 10 );
         remove_filter( 'pre_option_' . SettingsHelper::OPTION_SETTINGS, [ $this, 'pinned_settings' ] );
         remove_filter( 'woocommerce_email_enabled_' . PointsExpiringSoonEmail::ID, '__return_false' );
-        remove_filter( 'woocommerce_email_enabled_' . PointsExpiringSoonEmail::ID, '__return_true' );
         remove_filter( 'yayloyalty_expiry_modes', [ $this, 'add_batch_mode' ] );
         delete_option( ExpiryRunner::OPTION_APPLIED );
         as_unschedule_all_actions( QueuedEmails::HOOK );
         delete_option( QueuedEmails::OPTION_NEXT_SLOT );
-
-        if ( $this->added_email ) {
-            unset( WC()->mailer()->emails[ PointsExpiringSoonEmail::ID ] );
-            $this->added_email = null;
-        }
-
-        // cleanup_orders() removes the fixture's short-circuit, which setUp() already took off.
-        add_filter( 'pre_wp_mail', '__return_false' );
         $this->cleanup_orders();
 
         parent::tearDown();

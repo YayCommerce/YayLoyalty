@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
  */
 class PointsExpiringSoonEmail extends LoyaltyEmail {
 
-    public const ID = 'yayloyalty_points_expiring_soon';
+    public const ID = Emails::POINTS_EXPIRING_SOON_EMAIL_ID;
 
     protected $is_capped = false;
 

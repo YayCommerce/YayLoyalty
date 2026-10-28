@@ -43,7 +43,7 @@ abstract class IntegrationTestCase extends TestCase {
         ( new CampaignRepository() )->flush_cache();
 
         // Action Scheduler object-caches group ids; after the truncate they point at no group, and queries by group miss.
-        if ( class_exists( \ActionScheduler::class ) && method_exists( \ActionScheduler::store(), 'flush_caches' ) ) {
+        if ( class_exists( \ActionScheduler::class ) ) {
             \ActionScheduler::store()->flush_caches();
         }
     }

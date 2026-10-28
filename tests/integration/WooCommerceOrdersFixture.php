@@ -35,6 +35,15 @@ trait WooCommerceOrdersFixture {
     /** @var array<string, mixed>|null Settings pin_settings() serves in place of the site's own. */
     private $fixture_settings = null;
 
+    /** @var callable|null The pre_wp_mail capture send_emails_for_real() installed. */
+    private $fixture_capture = null;
+
+    /** @var string[] Ids of the emails send_emails_for_real() switched on. */
+    private $fixture_real_emails = [];
+
+    /** @var string[] Ids of the emails send_emails_for_real() added to the mailer, because the mailer lacked them. */
+    private $fixture_added_emails = [];
+
     /** @var array<int, array{0: string, 1: callable, 2: int, 3: int}> Hook, callback, priority and arguments that detach_yaymail() removed. */
     private $detached_yaymail = [];
 
@@ -115,6 +124,35 @@ trait WooCommerceOrdersFixture {
         }
 
         $this->detached_yaymail = [];
+    }
+
+    /**
+     * Lets these emails send through WooCommerce's mailer until cleanup_orders(), with $capture on pre_wp_mail
+     * in place of the fixture's failing short-circuit. Adds any email the mailer lacks: the mailer is built once
+     * per process, so it misses the expiry emails when it was built while the site had expiry off.
+     *
+     * @param callable $capture       A pre_wp_mail filter taking ( $result, $atts ).
+     * @param string   ...$email_classes LoyaltyEmail subclasses, each with an ID constant.
+     */
+    private function send_emails_for_real( callable $capture, string ...$email_classes ): void {
+        remove_filter( 'pre_wp_mail', '__return_false' );
+        add_filter( 'pre_wp_mail', $capture, 10, 2 );
+        $this->fixture_capture = $capture;
+
+        $mailer = WC()->mailer();
+
+        foreach ( $email_classes as $email_class ) {
+            $email_id = $email_class::ID;
+
+            remove_filter( 'woocommerce_email_enabled_' . $email_id, '__return_false' );
+            add_filter( 'woocommerce_email_enabled_' . $email_id, '__return_true' );
+            $this->fixture_real_emails[] = $email_id;
+
+            if ( ! isset( $mailer->emails[ $email_id ] ) ) {
+                $mailer->emails[ $email_id ]  = new $email_class();
+                $this->fixture_added_emails[] = $email_id;
+            }
+        }
     }
 
     /** @return string[] */
@@ -381,6 +419,22 @@ trait WooCommerceOrdersFixture {
         remove_filter( 'pre_wp_mail', '__return_false' );
         remove_filter( 'pre_option_' . SettingsHelper::OPTION_SETTINGS, [ $this, 'fixture_settings' ] );
         $this->fixture_settings = null;
+
+        if ( $this->fixture_capture ) {
+            remove_filter( 'pre_wp_mail', $this->fixture_capture, 10 );
+            $this->fixture_capture = null;
+        }
+
+        foreach ( $this->fixture_real_emails as $email_id ) {
+            remove_filter( 'woocommerce_email_enabled_' . $email_id, '__return_true' );
+        }
+
+        foreach ( $this->fixture_added_emails as $email_id ) {
+            unset( WC()->mailer()->emails[ $email_id ] );
+        }
+
+        $this->fixture_real_emails  = [];
+        $this->fixture_added_emails = [];
 
         foreach ( $this->woocommerce_email_ids() as $email_id ) {
             remove_filter( 'woocommerce_email_enabled_' . $email_id, '__return_false' );

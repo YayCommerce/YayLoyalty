@@ -8,7 +8,6 @@ use YayLoyalty\Engine\Emails\QueuedEmails;
 use YayLoyalty\Engine\Expiry\ExpiryPolicy;
 use YayLoyalty\Engine\Expiry\ExpiryRunner;
 use YayLoyalty\Enums\ExpiryMode;
-use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
 use YayLoyalty\Tests\Integration\WooCommerceOrdersFixture;
@@ -25,57 +24,18 @@ final class QueuedEmailsTest extends IntegrationTestCase {
     /** @var bool What the stand-in transport reports for each send. */
     private $mail_result = true;
 
-    /** @var int|null The pinned `emails.throttle_per_week`. */
-    private $throttle = null;
-
-    /** @var array<string, \WC_Email> Emails this test added to the mailer, if the mailer lacked them. */
-    private $added_emails = [];
-
     protected function setUp(): void {
         parent::setUp();
 
         $this->require_woocommerce();
-
-        // The fixture switches every WooCommerce email off and fails every send; this test sends the two expiry emails.
-        foreach ( [ PointsExpiringSoonEmail::ID, PointsExpiredEmail::ID ] as $email_id ) {
-            remove_filter( 'woocommerce_email_enabled_' . $email_id, '__return_false' );
-            add_filter( 'woocommerce_email_enabled_' . $email_id, '__return_true' );
-        }
-
-        remove_filter( 'pre_wp_mail', '__return_false' );
-        add_filter( 'pre_wp_mail', [ $this, 'capture_mail' ], 10, 2 );
-        add_filter( 'pre_option_' . SettingsHelper::OPTION_SETTINGS, [ $this, 'pinned_settings' ] );
-
-        // The mailer is built once per process, so it lacks these emails when it was built while the site had expiry off.
-        $mailer = WC()->mailer();
-
-        foreach ( [ new PointsExpiringSoonEmail(), new PointsExpiredEmail() ] as $email ) {
-            if ( ! isset( $mailer->emails[ $email->id ] ) ) {
-                $this->added_emails[ $email->id ] = $email;
-                $mailer->emails[ $email->id ]     = $email;
-            }
-        }
+        $this->send_emails_for_real( [ $this, 'capture_mail' ], PointsExpiringSoonEmail::class, PointsExpiredEmail::class );
+        $this->pin_expiry_settings( null );
     }
 
     protected function tearDown(): void {
-        remove_filter( 'pre_wp_mail', [ $this, 'capture_mail' ], 10 );
-        remove_filter( 'pre_option_' . SettingsHelper::OPTION_SETTINGS, [ $this, 'pinned_settings' ] );
-
-        foreach ( [ PointsExpiringSoonEmail::ID, PointsExpiredEmail::ID ] as $email_id ) {
-            remove_filter( 'woocommerce_email_enabled_' . $email_id, '__return_true' );
-        }
-
-        foreach ( array_keys( $this->added_emails ) as $email_id ) {
-            unset( WC()->mailer()->emails[ $email_id ] );
-        }
-
-        $this->added_emails = [];
         as_unschedule_all_actions( QueuedEmails::HOOK );
         delete_option( QueuedEmails::OPTION_NEXT_SLOT );
         delete_option( ExpiryRunner::OPTION_APPLIED );
-
-        // cleanup_orders() removes the fixture's short-circuit, which setUp() already took off.
-        add_filter( 'pre_wp_mail', '__return_false' );
         $this->cleanup_orders();
 
         parent::tearDown();
@@ -93,21 +53,35 @@ final class QueuedEmailsTest extends IntegrationTestCase {
         return $this->mail_result;
     }
 
-    /** @return array<string, mixed> */
-    public function pinned_settings(): array {
-        return [
-            'schema_version'        => SettingsHelper::SCHEMA_VERSION,
-            'points_label_singular' => 'Point',
-            'points_label_plural'   => 'Points',
-            'emails'                => [ 'throttle_per_week' => $this->throttle ],
-            'expiry'                => [
-                'enabled'         => true,
-                'mode'            => ExpiryMode::INACTIVITY,
-                'inactivity_days' => 365,
-                'batch_months'    => 12,
-                'reminder_days'   => 30,
+    /** Pins expiry on in inactivity mode, with $throttle as `emails.throttle_per_week`. cleanup_orders() unpins it. */
+    private function pin_expiry_settings( ?int $throttle ): void {
+        $this->pin_settings(
+            [
+                'points_label_singular' => 'Point',
+                'points_label_plural'   => 'Points',
+                'emails'                => [ 'throttle_per_week' => $throttle ],
+                'expiry'                => [
+                    'enabled'         => true,
+                    'mode'            => ExpiryMode::INACTIVITY,
+                    'inactivity_days' => 365,
+                    'batch_months'    => 12,
+                    'reminder_days'   => 30,
+                ],
+            ]
+        );
+    }
+
+    /** When the queue next sends attempt $attempt of $email_id with $args; 0 when it is not scheduled. */
+    private static function scheduled_at( string $email_id, array $args, int $attempt ): int {
+        return (int) as_next_scheduled_action(
+            QueuedEmails::HOOK,
+            [
+                'email'   => $email_id,
+                'args'    => $args,
+                'attempt' => $attempt,
             ],
-        ];
+            ExpiryRunner::GROUP
+        );
     }
 
     public function test_queued_emails_take_slots_15_seconds_apart(): void {
@@ -119,15 +93,7 @@ final class QueuedEmailsTest extends IntegrationTestCase {
 
         $slots = array_map(
             static function ( int $entry_id ): int {
-                return (int) as_next_scheduled_action(
-                    QueuedEmails::HOOK,
-                    [
-                        'email'   => PointsExpiredEmail::ID,
-                        'args'    => [ $entry_id ],
-                        'attempt' => 1,
-                    ],
-                    ExpiryRunner::GROUP
-                );
+                return self::scheduled_at( PointsExpiredEmail::ID, [ $entry_id ], 1 );
             },
             [ 101, 102, 103 ]
         );
@@ -146,17 +112,8 @@ final class QueuedEmailsTest extends IntegrationTestCase {
 
         ( new QueuedEmails() )->handle( PointsExpiringSoonEmail::ID, $args, 1 );
 
-        $retry = as_next_scheduled_action(
-            QueuedEmails::HOOK,
-            [
-                'email'   => PointsExpiringSoonEmail::ID,
-                'args'    => $args,
-                'attempt' => 2,
-            ],
-            ExpiryRunner::GROUP
-        );
         $this->assertCount( 1, $this->sent );
-        $this->assertGreaterThanOrEqual( $before + 300, (int) $retry );
+        $this->assertGreaterThanOrEqual( $before + 300, self::scheduled_at( PointsExpiringSoonEmail::ID, $args, 2 ) );
 
         as_unschedule_all_actions( QueuedEmails::HOOK );
         ( new QueuedEmails() )->handle( PointsExpiringSoonEmail::ID, $args, 4 );
@@ -165,8 +122,8 @@ final class QueuedEmailsTest extends IntegrationTestCase {
     }
 
     public function test_a_cap_skipped_send_is_not_retried(): void {
-        $this->throttle = 1;
-        $user_id        = $this->customer_with_email();
+        $this->pin_expiry_settings( 1 );
+        $user_id = $this->customer_with_email();
         $this->ledger_service()->earn( $this->earn_draft( $user_id, 1, 300 ) );
         update_option( ExpiryRunner::OPTION_APPLIED, ExpiryPolicy::current()->signature(), false );
         ( new CustomerRepository() )->set_expires_at( $user_id, Dates::offset( -DAY_IN_SECONDS ) );
