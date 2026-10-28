@@ -97,10 +97,13 @@ function CouponsDisabledNotice() {
 
 function BuiltInRewardCard({ reward }: { reward: Reward }) {
   const [expanded, setExpanded] = useState(true);
+  // What was last saved: the response, not the list refetch, so Save changes disables as the save lands.
+  const [baseline, setBaseline] = useState({ status: reward.status, config: reward.config });
   const [status, setStatus] = useState(reward.status);
   const [config, setConfig] = useState(reward.config);
   const mutation = useUpdateRewardMutation(reward.id);
   const isOn = status === 'active';
+  const isDirty = status !== baseline.status || JSON.stringify(config) !== JSON.stringify(baseline.config);
 
   const value = config as unknown as FlexibleDiscountConfig;
 
@@ -109,13 +112,16 @@ function BuiltInRewardCard({ reward }: { reward: Reward }) {
   }
 
   function reset() {
-    setStatus(reward.status);
-    setConfig(reward.config);
+    setStatus(baseline.status);
+    setConfig(baseline.config);
   }
 
   async function save() {
     try {
-      await mutation.mutateAsync({ status, config });
+      const saved = await mutation.mutateAsync({ status, config });
+      setBaseline({ status: saved.status, config: saved.config });
+      setStatus(saved.status);
+      setConfig(saved.config);
       toast.success(__('Reward saved.', 'yayloyalty'));
     } catch (error) {
       await toastApiError(error, __('Could not save the reward.', 'yayloyalty'));
@@ -133,6 +139,7 @@ function BuiltInRewardCard({ reward }: { reward: Reward }) {
       onToggleExpanded={() => setExpanded((current) => !current)}
       onSave={save}
       onCancel={reset}
+      isDirty={isDirty}
       saving={mutation.isPending}
       updatedAt={reward.updated_at}
     >
