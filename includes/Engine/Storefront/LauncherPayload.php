@@ -103,20 +103,21 @@ final class LauncherPayload {
         $estimate = null !== $engine && null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate() : null;
 
         return [
-            'hide_mobile'  => ! empty( $design['visibility']['hide_on_mobile'] ),
-            'earn'         => $rules['earn'],
-            'purchase_min' => $rules['purchase_min'],
-            'redeem'       => $redeem,
-            'offers'       => self::redeem_offers( $now ),
-            'member'       => null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward ),
-            'left_today'   => $left_today,
-            'estimate'     => $estimate,
+            'hide_mobile'       => ! empty( $design['visibility']['hide_on_mobile'] ),
+            'earn'              => $rules['earn'],
+            'purchase_min'      => $rules['purchase_min'],
+            'purchase_rounding' => $rules['purchase_rounding'],
+            'redeem'            => $redeem,
+            'offers'            => self::redeem_offers( $now ),
+            'member'            => null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward ),
+            'left_today'        => $left_today,
+            'estimate'          => $estimate,
             // What the estimate takes off an order, as checkout would grant it: null below the minimum.
-            'estimate_off' => null === $estimate || null === $redeem ? null : self::worth( $reward, $estimate ),
-            'register'     => $register,
-            'account_url'  => (string) wc_get_page_permalink( 'myaccount' ),
-            'history_url'  => AccountRewards::history_url(),
-            'checkout_url' => (string) wc_get_checkout_url(),
+            'estimate_off'      => null === $estimate || null === $redeem ? null : self::worth( $reward, $estimate ),
+            'register'          => $register,
+            'account_url'       => (string) wc_get_page_permalink( 'myaccount' ),
+            'history_url'       => AccountRewards::history_url(),
+            'checkout_url'      => (string) wc_get_checkout_url(),
         ];
     }
 

@@ -51,6 +51,8 @@ export function rateFromSpend(spend: number, points: number): number | null {
 const WHOLE_EPSILON = 1e-9;
 
 /**
+ * Mirrors PointsMath::whole_pair(), the source of truth, plus the exact rate when no pair is whole: the admin
+ * edits the rate, so it never shows the storefront's rounded fallback (PointsMath::rate_pair()).
  * The "spend X to receive Y" pair a stored rate reads as: 0.5 → 2 → 1, 0.75 → 4 → 3, 3 → 1 → 3.
  * Only the rate is stored, so 6 → 3 comes back as 2 → 1, the same rate.
  */
