@@ -143,23 +143,40 @@ const moneySchema = z.number().min(0).nullable();
 const moneyCapSchema = z.number().positive().nullable();
 const couponExpiryDaysSchema = z.number().int().min(1).nullable();
 
+/** Mirrors Reward::REDEMPTION_MODE_*, the source of truth. How a shopper spends points on the flexible discount. */
+export const REDEMPTION_MODES = ['auto_max', 'free_input'] as const;
+
+export type RedemptionMode = (typeof REDEMPTION_MODES)[number];
+
+/** Mirrors Reward::config_conflict()'s message, the source of truth. */
+export const MIN_BELOW_INCREMENT_MESSAGE = () =>
+  __('Minimum points must be at least the redemption increment.', 'yayloyalty');
+
 /**
  * Mirrors Reward::config_schema() (flexible_discount) and
  * YayLoyaltyPro::add_reward_config_schema() (the four Pro types), the source of truth.
  * Its bounds give form feedback before the request; the PHP specs decide what is stored.
  */
 export const REWARD_CONFIG_SCHEMAS = {
-  flexible_discount: z.object({
-    currency: z.string(),
-    points_per_currency_unit: z.number().positive(),
-    min_points: z.number().int().min(0),
-    max_points_per_order: moneyCapSchema,
-    max_percent_of_subtotal: moneySchema,
-    increment: z.number().int().min(1),
-    show_on: z.array(z.enum(['cart', 'checkout'])),
-    refund_policy: z.enum(['proportional', 'full', 'none']),
-    max_total: moneyCapSchema,
-  }),
+  flexible_discount: z
+    .object({
+      currency: z.string(),
+      points_per_currency_unit: z.number().positive(),
+      min_points: z.number().int().min(0),
+      max_points_per_order: moneyCapSchema,
+      max_percent_of_subtotal: moneySchema,
+      increment: z.number().int().min(1),
+      show_on: z.array(z.enum(['cart', 'checkout'])),
+      refund_policy: z.enum(['proportional', 'full', 'none']),
+      // A row saved before the key existed reads as free input, as Clamp::is_auto_max() does.
+      redemption_mode: z.enum(REDEMPTION_MODES).default('free_input'),
+      max_total: moneyCapSchema,
+    })
+    // Mirrors Reward::config_conflict().
+    .refine((config) => config.min_points >= config.increment, {
+      message: MIN_BELOW_INCREMENT_MESSAGE(),
+      path: ['min_points'],
+    }),
   fixed_coupon: z.object({
     currency: z.string(),
     amount: z.number().min(0.01, __('The discount must be more than zero.', 'yayloyalty')),

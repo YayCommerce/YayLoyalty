@@ -185,6 +185,12 @@ final class ClampTest extends TestCase {
         $this->assertSame( 0.66, $result->get_value() );
     }
 
+    /** USD over a VND base at 25,000 ₫ = $1: 100 points per ₫ is 25,000 points per cent, so a step of 100 buys nothing. */
+    public function test_the_effective_step_buys_whole_coins(): void {
+        $this->assertSame( 25000, Clamp::effective_step( $this->reward(), 2, 1 / 25000 ) );
+        $this->assertSame( 100, Clamp::effective_step( $this->reward(), 2 ) );
+    }
+
     public function test_a_reward_without_a_rate_is_denied(): void {
         $result = Clamp::apply( $this->reward( [ 'points_per_currency_unit' => 0 ] ), 500, 1000, null, 'USD', 2 );
 

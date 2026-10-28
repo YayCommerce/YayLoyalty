@@ -283,7 +283,7 @@
   color: var(--yayloyalty-redeem-muted);
 }
 
-/* The Points discount row's body: limits at both ends, the range full width, then the field and the preview. */
+/* The Points discount row's body: limits at both ends, then the field and the preview; or, in auto max, one line. */
 
 .yayloyalty-redeem .yayloyalty-redeem__body {
   display: flex;
@@ -303,67 +303,6 @@
   gap: 8px;
   font-size: 11px;
   color: var(--yayloyalty-redeem-muted);
-}
-
-/*
- * Drawn, not the browser's: a 4px track filled with the accent up to a solid round thumb. WebKit has no fill
- * pseudo-element, so the template and redeem.js set --yayloyalty-redeem-fill on the range; Firefox uses
- * ::-moz-range-progress.
- */
-.yayloyalty-redeem .yayloyalty-redeem__range {
-  -webkit-appearance: none;
-  appearance: none;
-  display: block;
-  width: 100%;
-  height: 16px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  cursor: pointer;
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__range::-webkit-slider-runnable-track {
-  height: 4px;
-  border-radius: 999px;
-  background: linear-gradient(
-    to right,
-    var(--yayloyalty-redeem-accent) var(--yayloyalty-redeem-fill, 0%),
-    var(--yayloyalty-redeem-track) var(--yayloyalty-redeem-fill, 0%)
-  );
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__range::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  margin-top: -6px;
-  border: 0;
-  border-radius: 50%;
-  background: var(--yayloyalty-redeem-accent);
-  box-shadow: none;
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__range::-moz-range-track {
-  height: 4px;
-  border-radius: 999px;
-  background: var(--yayloyalty-redeem-track);
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__range::-moz-range-progress {
-  height: 4px;
-  border-radius: 999px;
-  background: var(--yayloyalty-redeem-accent);
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__range::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  border: 0;
-  border-radius: 50%;
-  background: var(--yayloyalty-redeem-accent);
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__controls {
@@ -389,6 +328,13 @@
   color: var(--yayloyalty-redeem-text);
 }
 
+.yayloyalty-redeem .yayloyalty-redeem__auto {
+  margin: 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--yayloyalty-redeem-muted);
+}
+
 .yayloyalty-redeem .yayloyalty-redeem__off {
   flex-shrink: 0;
   font-size: 12px;
@@ -397,9 +343,37 @@
   color: var(--yayloyalty-redeem-muted);
 }
 
+/*
+ * The points row's notes take the amber notice's box (below): neutral for rounding to the step, amber for a limit
+ * that lowered the amount, red below the minimum, where nothing is sent until it is fixed.
+ */
 .yayloyalty-redeem .yayloyalty-redeem__note {
+  margin: 0;
+  padding: 8px 12px;
+  border: 0;
+  border-left: 1.5px solid var(--yayloyalty-redeem-muted);
+  border-radius: var(--yayloyalty-redeem-radius);
+  /* The chip's fill: the ticked row behind it is already the surface colour. */
+  background: var(--yayloyalty-redeem-chip);
   font-size: 12px;
+  line-height: 1.5;
   color: var(--yayloyalty-redeem-text);
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__note--warning {
+  border-left-color: currentColor;
+  background: var(--yayloyalty-warning-bg);
+  color: var(--yayloyalty-warning);
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__note--error {
+  border-left-color: currentColor;
+  background: var(--yayloyalty-redeem-error-bg);
+  color: var(--yayloyalty-redeem-error);
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__note[hidden] {
+  display: none;
 }
 
 /*
@@ -585,9 +559,9 @@
   outline-offset: 2px;
 }
 
-/* The checkbox and the range draw no focus ring, theirs or a theme's: the design has none. */
-.yayloyalty-redeem :is(.yayloyalty-redeem__check, .yayloyalty-redeem__range):focus,
-.yayloyalty-redeem :is(.yayloyalty-redeem__check, .yayloyalty-redeem__range):focus-visible {
+/* The checkbox draws no focus ring, its own or a theme's: the design has none. */
+.yayloyalty-redeem .yayloyalty-redeem__check:focus,
+.yayloyalty-redeem .yayloyalty-redeem__check:focus-visible {
   outline: none;
   box-shadow: none;
 }

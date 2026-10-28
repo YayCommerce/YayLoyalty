@@ -149,12 +149,21 @@ final class RedemptionService {
      *
      * Postconditions: Result::denied( REASON_NO_REWARD ) when no flexible
      * reward is seeded; otherwise the Quoter's answer for
-     * SessionIntent::get() — a gate reason, or Clamp's quote with
+     * SessionIntent::get(), or for everything (as ceiling()) when the reward
+     * is auto max and the intent is positive — a gate reason, or Clamp's quote with
      * get_points() ≤ every ceiling and get_bound_by() naming the one that
      * bit. Nothing in the session changes.
      */
     public function quote( \WC_Cart $cart, ?int $user_id ): Result {
-        return $this->quote_for( $cart, $user_id, $this->intent->get() );
+        $requested = $this->intent->get();
+        $reward    = $this->quoted_reward();
+
+        // Auto max is decided here, at cart time, never in Clamp: the commit re-quotes the order line's own points.
+        if ( $requested > 0 && null !== $reward && Clamp::is_auto_max( $reward ) ) {
+            $requested = PHP_INT_MAX;
+        }
+
+        return $this->quote_for( $cart, $user_id, $requested );
     }
 
     /**

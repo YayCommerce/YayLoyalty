@@ -5,7 +5,7 @@ import { parseWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import { MoneyInput, PointsInput } from '@/components/ui/custom/amount-inputs';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
-import { valueOfPoints, type WizardStepProps } from './setup-wizard.form';
+import { DEFAULT_REDEMPTION_INCREMENT, valueOfPoints, type WizardStepProps } from './setup-wizard.form';
 import { WizardPreview, WizardSection, WizardStepHeading } from './WizardStepParts';
 
 /** Step 3 (artboard 1c): the built-in cart discount's rate and limits. */
@@ -58,7 +58,9 @@ export function SpendPointsStep({ form }: WizardStepProps) {
               <Controller
                 control={form.control}
                 name="minPoints"
-                render={({ field }) => <PointsInput value={field.value} min={0} onValueChange={field.onChange} />}
+                render={({ field }) => (
+                  <PointsInput value={field.value} min={DEFAULT_REDEMPTION_INCREMENT} onValueChange={field.onChange} />
+                )}
               />
               <span className="text-muted-foreground text-xs">
                 = {parseWPCurrency(valueOfPoints(worth, minPoints))}

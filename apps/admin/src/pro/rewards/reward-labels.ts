@@ -96,7 +96,7 @@ export function templateDescription(type: CatalogRewardType): string {
 /** The line under a reward's name: what redeeming it does, derived from type and config — there is no stored description column. */
 export function rewardSubtitle(reward: Reward): string {
   if (reward.type === 'flexible_discount') {
-    return flexibleDiscountSubtitle();
+    return flexibleDiscountSubtitle(reward.config);
   }
 
   if (reward.type === 'free_product') {

@@ -212,7 +212,7 @@ test.describe('reward redemptions', () => {
     await pointsDiscountBox(shopperPage).check();
 
     await expect(blockDiscounts(shopperPage)).toContainText('Points discount');
-    await expect(card(shopperPage)).toContainText('Max 7,850 Points');
+    await expect(card(shopperPage)).toContainText('Use up to 7,850 Points');
   });
 
   test('rewards beyond the balance cannot be ticked', async ({ api, customer, shopperPage }) => {

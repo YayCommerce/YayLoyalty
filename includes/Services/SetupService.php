@@ -82,6 +82,12 @@ final class SetupService {
             return __( 'One of the redemption values is not a valid number.', 'yayloyalty' );
         }
 
+        $conflict = Reward::config_conflict( RewardType::FLEXIBLE_DISCOUNT, $configs['discount'] );
+
+        if ( null !== $conflict ) {
+            return $conflict;
+        }
+
         if ( ! sanitize_hex_color( (string) ( $input['brand_color'] ?? '' ) ) ) {
             return __( 'The brand colour must be a hex colour such as #3858e9.', 'yayloyalty' );
         }

@@ -16,10 +16,10 @@ use YayLoyalty\Utils\Dates;
 final class CommitWriterTest extends IntegrationTestCase {
 
     /** The seeded slider reward: 100 points per currency unit, minimum 100, step 100. */
-    private function reward(): Reward {
+    private function reward( array $config = [] ): Reward {
         $now = Dates::now();
 
-        return new Reward( 9, 'Cart discount', 'cart-discount', RewardType::FLEXIBLE_DISCOUNT, Status::ACTIVE, 0, null, Reward::default_config( RewardType::FLEXIBLE_DISCOUNT ), [], null, null, true, null, null, $now, $now );
+        return new Reward( 9, 'Cart discount', 'cart-discount', RewardType::FLEXIBLE_DISCOUNT, Status::ACTIVE, 0, null, array_merge( Reward::default_config( RewardType::FLEXIBLE_DISCOUNT ), $config ), [], null, null, true, null, null, $now, $now );
     }
 
     public function test_one_order_writes_the_redemption_row_the_ledger_row_and_the_order_meta(): void {
@@ -48,6 +48,18 @@ final class CommitWriterTest extends IntegrationTestCase {
         $saved = wc_get_order( $order->get_id() );
         $this->assertSame( 500, (int) $saved->get_meta( CommitWriter::META_POINTS ) );
         $this->assertSame( 5.0, (float) $saved->get_meta( CommitWriter::META_VALUE ) );
+    }
+
+    /** Auto max is a cart-time request: the commit debits the line it finds, never the most the balance could take. */
+    public function test_an_auto_max_order_debits_exactly_its_line(): void {
+        $this->ledger_service()->earn( $this->earn_draft( 7, 100, 1000 ) );
+        $order = $this->order_with_points_discount( 7, 20.0, 5.0 );
+
+        $outcome = $this->commit_writer()->commit( $order, $this->reward( [ 'redemption_mode' => Reward::REDEMPTION_MODE_AUTO_MAX ] ) );
+
+        $this->assertSame( Outcome::REDEEMED, $outcome->get_status() );
+        $this->assertSame( [ 1000, -500 ], $this->ledger_points( 7 ) );
+        $this->assertSame( 500, (int) $this->customer_row( 7 )['balance'] );
     }
 
     public function test_a_second_commit_writes_nothing(): void {
