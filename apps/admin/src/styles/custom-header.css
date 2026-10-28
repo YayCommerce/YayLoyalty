@@ -10,7 +10,8 @@
 
   #wpbody-content {
     anchor-name: --yay-ui-anchor;
-    padding: 0;
+    /* Keep core's 30px bottom: #wpfooter is absolutely positioned over it. */
+    padding: 0 0 30px;
   }
 
   @supports (anchor-name: --yay-ui-anchor) {
@@ -24,5 +25,3 @@
     }
   }
 }
-
-

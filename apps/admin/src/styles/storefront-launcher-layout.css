@@ -127,7 +127,7 @@
   z-index: 99992;
   width: 400px;
   max-height: min(700px, calc(100vh - 2 * var(--yl-offset)));
-  border-radius: 14px;
+  border-radius: var(--radius);
   overflow: hidden;
   opacity: 0;
   transform: translateY(var(--yl-closed-shift));
@@ -187,7 +187,7 @@
     left: 0;
     width: 100%;
     max-height: calc(100dvh - 140px);
-    border-radius: 14px 14px 0 0;
+    border-radius: var(--radius) var(--radius) 0 0;
     opacity: 1;
     transform: translateY(100%);
     transition: transform 0.25s ease;
