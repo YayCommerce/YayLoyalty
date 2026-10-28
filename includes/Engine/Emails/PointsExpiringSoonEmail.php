@@ -8,7 +8,8 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The points-expiring-soon email, sent once per reminder the expiry job claims (Engine\Expiry\ExpiryReminders).
+ * The points-expiring-soon email, queued once per reminder the expiry job claims (Engine\Expiry\ExpiryReminders)
+ * and sent by QueuedEmails.
  * Uncapped: it is the one email that can still save a balance, so the weekly cap never stops it, though it counts.
  */
 class PointsExpiringSoonEmail extends LoyaltyEmail {
@@ -31,8 +32,6 @@ class PointsExpiringSoonEmail extends LoyaltyEmail {
             '{points_label}' => '',
             '{expiry_date}'  => '',
         ];
-
-        add_action( Emails::POINTS_EXPIRING_SOON_ACTION . '_notification', [ $this, 'trigger' ], 10, 4 );
 
         parent::__construct();
     }

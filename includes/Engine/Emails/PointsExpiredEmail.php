@@ -8,7 +8,7 @@ use YayLoyalty\Models\LedgerEntry;
 
 defined( 'ABSPATH' ) || exit;
 
-/** The points-expired email, sent once per EXPIRE row the expiry job writes, within the weekly cap. Off by default. */
+/** The points-expired email, queued once per EXPIRE row the expiry job writes and sent by QueuedEmails, within the weekly cap. */
 class PointsExpiredEmail extends LedgerEntryEmail {
 
     public const ID = 'yayloyalty_points_expired';
@@ -24,8 +24,6 @@ class PointsExpiredEmail extends LedgerEntryEmail {
             '{points_label}' => '',
             '{balance}'      => '',
         ];
-
-        add_action( Emails::POINTS_EXPIRED_ACTION . '_notification', [ $this, 'trigger' ] );
 
         parent::__construct();
     }

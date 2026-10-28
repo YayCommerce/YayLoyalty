@@ -1,8 +1,8 @@
 <?php
 namespace YayLoyalty\Tests\Integration\Engine\Expiry;
 
-use YayLoyalty\Engine\Emails\Emails;
 use YayLoyalty\Engine\Emails\PointsExpiringSoonEmail;
+use YayLoyalty\Engine\Emails\QueuedEmails;
 use YayLoyalty\Engine\Expiry\ExpiryPolicy;
 use YayLoyalty\Engine\Expiry\ExpiryReminders;
 use YayLoyalty\Engine\Expiry\ExpiryRunner;
@@ -57,10 +57,11 @@ final class ExpiryRemindersTest extends IntegrationTestCase {
         remove_filter( 'woocommerce_email_enabled_' . PointsExpiringSoonEmail::ID, '__return_true' );
         remove_filter( 'yayloyalty_expiry_modes', [ $this, 'add_batch_mode' ] );
         delete_option( ExpiryRunner::OPTION_APPLIED );
+        as_unschedule_all_actions( QueuedEmails::HOOK );
+        delete_option( QueuedEmails::OPTION_NEXT_SLOT );
 
         if ( $this->added_email ) {
             unset( WC()->mailer()->emails[ PointsExpiringSoonEmail::ID ] );
-            remove_action( Emails::POINTS_EXPIRING_SOON_ACTION . '_notification', [ $this->added_email, 'trigger' ], 10 );
             $this->added_email = null;
         }
 
@@ -103,8 +104,8 @@ final class ExpiryRemindersTest extends IntegrationTestCase {
     public function test_inactivity_reminds_once_inside_the_window(): void {
         $user_id = $this->customer_due_in( 10 );
 
-        ( new ExpiryRunner() )->run();
-        ( new ExpiryRunner() )->run();
+        $this->run_expiry();
+        $this->run_expiry();
 
         $row = $this->customer_row( $user_id );
 
@@ -117,7 +118,7 @@ final class ExpiryRemindersTest extends IntegrationTestCase {
     public function test_a_date_outside_the_window_is_not_reminded(): void {
         $this->customer_due_in( 31 );
 
-        ( new ExpiryRunner() )->run();
+        $this->run_expiry();
 
         $this->assertCount( 0, $this->sent );
     }
@@ -127,7 +128,7 @@ final class ExpiryRemindersTest extends IntegrationTestCase {
         // The last reminder announced a date that activity has since moved.
         $this->set_reminder_for( $user_id, Dates::offset( -355 * DAY_IN_SECONDS ) );
 
-        ( new ExpiryRunner() )->run();
+        $this->run_expiry();
 
         $this->assertCount( 1, $this->sent );
     }
@@ -137,7 +138,7 @@ final class ExpiryRemindersTest extends IntegrationTestCase {
         // Announced already, however far ahead: lowering reminder_days must not re-announce it.
         $this->set_reminder_for( $user_id, (string) $this->customer_row( $user_id )['expires_at'] );
 
-        ( new ExpiryRunner() )->run();
+        $this->run_expiry();
 
         $this->assertCount( 0, $this->sent );
     }
@@ -146,7 +147,7 @@ final class ExpiryRemindersTest extends IntegrationTestCase {
         $user_id = $this->customer_due_in( 10 );
 
         add_filter( 'woocommerce_email_enabled_' . PointsExpiringSoonEmail::ID, '__return_false' );
-        ( new ExpiryRunner() )->run();
+        $this->run_expiry();
         remove_filter( 'woocommerce_email_enabled_' . PointsExpiringSoonEmail::ID, '__return_false' );
         $this->assertNull( $this->customer_row( $user_id )['reminder_sent_at'] );
 
@@ -154,6 +155,12 @@ final class ExpiryRemindersTest extends IntegrationTestCase {
         ( new ExpiryReminders( new CustomerRepository(), new LotRepository() ) )->run( ExpiryPolicy::current(), Dates::now() );
         $this->assertNull( $this->customer_row( $user_id )['reminder_sent_at'] );
         $this->assertCount( 0, $this->sent );
+    }
+
+    /** One expiry job run, then every email it queued. */
+    private function run_expiry(): void {
+        ( new ExpiryRunner() )->run();
+        $this->run_queued_emails();
     }
 
     /**
@@ -169,8 +176,8 @@ final class ExpiryRemindersTest extends IntegrationTestCase {
     public function test_batch_reminds_due_lots_once_with_their_sum_and_first_date(): void {
         $lots = $this->customer_with_lots( [ 5, 20, 200 ] );
 
-        ( new ExpiryRunner() )->run();
-        ( new ExpiryRunner() )->run();
+        $this->run_expiry();
+        $this->run_expiry();
 
         $this->assertCount( 1, $this->sent );
         $this->assertStringContainsString( '200 Points', (string) $this->sent[0]['message'] );
@@ -182,10 +189,10 @@ final class ExpiryRemindersTest extends IntegrationTestCase {
 
     public function test_a_lot_entering_the_window_later_gets_its_own_reminder(): void {
         $lots = $this->customer_with_lots( [ 5, 200 ] );
-        ( new ExpiryRunner() )->run();
+        $this->run_expiry();
 
         $this->set_lot_expires_at( $lots[1], Dates::offset( 25 * DAY_IN_SECONDS ) );
-        ( new ExpiryRunner() )->run();
+        $this->run_expiry();
 
         $this->assertCount( 2, $this->sent );
         $this->assertStringContainsString( '100 Points', (string) $this->sent[1]['message'] );
@@ -194,7 +201,7 @@ final class ExpiryRemindersTest extends IntegrationTestCase {
 
     public function test_a_restamp_that_moves_a_lot_clears_its_reminder(): void {
         $lots = $this->customer_with_lots( [ 5 ] );
-        ( new ExpiryRunner() )->run();
+        $this->run_expiry();
         $this->assertNotNull( $this->lot_row( $lots[0] )['reminded_at'] );
 
         ( new LotRepository() )->restamp_open_expiry( 12, ExpiryPolicy::grace_floor( Dates::now() ), false );
