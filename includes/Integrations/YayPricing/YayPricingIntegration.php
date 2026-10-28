@@ -6,8 +6,8 @@ use YayLoyalty\Utils\SingletonTrait;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Lets merchants base YayPricing rules on loyalty activity: points earned and spent, lifetime and this
- * month. The condition classes extend YayPricing's own, so they are first named inside YayPricing's
+ * Lets merchants base YayPricing rules on loyalty activity: a loyalty reward on the cart, and points earned
+ * and spent, lifetime and this month. The condition classes extend YayPricing's own, so they are first named inside YayPricing's
  * yaydp_register_conditions hook: autoloading them earlier, or without YayPricing, is a fatal.
  */
 class YayPricingIntegration {
@@ -23,6 +23,7 @@ class YayPricingIntegration {
         }
 
         add_action( 'yaydp_register_conditions', [ $this, 'register_conditions' ] );
+        ( new LoyaltyCouponRerun() )->register();
     }
 
     /** YayPricing's main file defines YAYDP_VERSION before YayLoyalty boots. */
@@ -34,6 +35,7 @@ class YayPricingIntegration {
     public function register_conditions( $registry ): void {
         $totals = new CustomerPointsTotals();
 
+        $registry->register( new RewardAppliedCondition() );
         $registry->register( new PointsTotalCondition( 'yayloyalty_points_earned', CustomerPointsTotals::EARNED, $totals ) );
         $registry->register( new PointsTotalCondition( 'yayloyalty_points_spent', CustomerPointsTotals::SPENT, $totals ) );
         $registry->register( new PointsTotalCondition( 'yayloyalty_points_earned_this_month', CustomerPointsTotals::EARNED_MONTH, $totals ) );
