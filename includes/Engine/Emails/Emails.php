@@ -37,6 +37,7 @@ class Emails {
         add_filter( 'woocommerce_email_actions', [ $this, 'add_email_actions' ] );
         add_action( EarningService::AWARDED_ACTION, [ $this, 'relay_award' ] );
         add_filter( 'woocommerce_prepare_email_for_preview', [ $this, 'prepare_preview' ] );
+        ( new QueuedEmails() )->register();
     }
 
     /**

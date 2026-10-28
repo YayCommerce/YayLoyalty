@@ -3,6 +3,7 @@ namespace YayLoyalty\Tests\Integration;
 
 use PHPUnit\Framework\TestCase;
 use YayLoyalty\Engine\Earning\IdempotencyKey;
+use YayLoyalty\Engine\Emails\QueuedEmails;
 use YayLoyalty\Engine\Redemption\CommitWriter;
 use YayLoyalty\Engine\Redemption\Quoter;
 use YayLoyalty\Engine\Rewards\ContextFactory;
@@ -40,6 +41,11 @@ abstract class IntegrationTestCase extends TestCase {
 
         // The campaign list is object-cached; a truncated table would still be served from the previous test.
         ( new CampaignRepository() )->flush_cache();
+
+        // Action Scheduler object-caches group ids; after the truncate they point at no group, and queries by group miss.
+        if ( class_exists( \ActionScheduler::class ) && method_exists( \ActionScheduler::store(), 'flush_caches' ) ) {
+            \ActionScheduler::store()->flush_caches();
+        }
     }
 
     protected function ledger_service(): LedgerService {
@@ -263,6 +269,21 @@ abstract class IntegrationTestCase extends TestCase {
         }
 
         return rest_do_request( $request );
+    }
+
+    /** Runs every pending queued email, due or not, until none is left, so a retry it schedules runs too. */
+    protected function run_queued_emails(): void {
+        $query = [
+            'hook'     => QueuedEmails::HOOK,
+            'status'   => \ActionScheduler_Store::STATUS_PENDING,
+            'per_page' => -1,
+        ];
+
+        for ( $ids = as_get_scheduled_actions( $query, 'ids' ); [] !== $ids; $ids = as_get_scheduled_actions( $query, 'ids' ) ) {
+            foreach ( $ids as $action_id ) {
+                \ActionScheduler_QueueRunner::instance()->process_action( (int) $action_id );
+            }
+        }
     }
 
     protected function act_as_admin(): void {
