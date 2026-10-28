@@ -45,12 +45,25 @@ class PointsExpiringSoonEmail extends LoyaltyEmail {
         return __( 'Your {points_label} expire soon', 'yayloyalty' );
     }
 
-    /** Mails the reminder the expiry job claimed, and announces an accepted send for the activity log. */
-    public function trigger( int $user_id, int $points, string $expires_at, bool $is_single_date ): void {
+    /**
+     * Mails the reminder the expiry job claimed, and announces an accepted send for the activity log.
+     *
+     * @return string One of the SEND_* results; SEND_SKIPPED once the date has passed or the customer is gone.
+     */
+    public function trigger( int $user_id, int $points, string $expires_at, bool $is_single_date ): string {
+        // A queued reminder can come due after its date: the points it announces are already gone.
+        if ( strcmp( $expires_at, Dates::now() ) <= 0 ) {
+            return self::SEND_SKIPPED;
+        }
+
         $user = get_userdata( $user_id );
 
+        if ( ! $user ) {
+            return self::SEND_SKIPPED;
+        }
+
         // is_enabled()'s filter receives the customer.
-        $sent = $user && $this->send_prepared(
+        $result = $this->send_prepared(
             $user_id,
             $user,
             function () use ( $user_id, $points, $expires_at, $is_single_date ): void {
@@ -58,7 +71,7 @@ class PointsExpiringSoonEmail extends LoyaltyEmail {
             }
         );
 
-        if ( $sent ) {
+        if ( self::SEND_SENT === $result ) {
             /**
              * Fires once the transport accepted an expiry reminder. CustomerActivityListener logs it.
              *
@@ -69,6 +82,8 @@ class PointsExpiringSoonEmail extends LoyaltyEmail {
              */
             do_action( Emails::POINTS_EXPIRING_SOON_SENT_ACTION, $user_id, $points, $expires_at, ExpiryPolicy::current()->reminder_days() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
         }
+
+        return $result;
     }
 
     /** Previews have no real reminder, so they show a made-up one, greeting whoever is looking. */

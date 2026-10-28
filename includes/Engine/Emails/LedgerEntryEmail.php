@@ -16,16 +16,20 @@ abstract class LedgerEntryEmail extends LoyaltyEmail {
     /** @var array<string, mixed> */
     private $values = [];
 
-    /** Mails the row's customer, within the weekly cap, when this email accepts the row. */
-    public function trigger( int $entry_id ): void {
+    /**
+     * Mails the row's customer, within the weekly cap, when this email accepts the row.
+     *
+     * @return string One of the SEND_* results; SEND_SKIPPED for a missing or refused row.
+     */
+    public function trigger( int $entry_id ): string {
         $entry = ( new LedgerRepository() )->find( $entry_id );
 
         if ( ! $entry instanceof LedgerEntry || ! $this->accepts( $entry ) ) {
-            return;
+            return self::SEND_SKIPPED;
         }
 
         // is_enabled()'s filter receives $this->object, which must be this row.
-        $this->send_prepared(
+        return $this->send_prepared(
             $entry->get_user_id(),
             $entry,
             function () use ( $entry ): void {

@@ -14,6 +14,15 @@ defined( 'ABSPATH' ) || exit;
  */
 abstract class LoyaltyEmail extends \WC_Email {
 
+    /** Send result: the transport accepted the email. */
+    public const SEND_SENT = 'sent';
+
+    /** Send result: nothing was sent on purpose (email off, no customer or address, weekly cap, row refused). */
+    public const SEND_SKIPPED = 'skipped';
+
+    /** Send result: the transport refused the email. */
+    public const SEND_FAILED = 'failed';
+
     /** Whether a new store sends this email. After that, the merchant's choice in WooCommerce decides. */
     protected $is_enabled_by_default = true;
 
@@ -103,19 +112,19 @@ abstract class LoyaltyEmail extends \WC_Email {
      *
      * @param mixed    $subject What this email is about, set as $this->object.
      * @param callable $prepare Fills placeholders and template values; runs in the customer's locale.
-     * @return bool Whether the transport accepted the send.
+     * @return string One of the SEND_* results. A throwing transport propagates.
      */
-    protected function send_prepared( int $user_id, $subject, callable $prepare ): bool {
+    protected function send_prepared( int $user_id, $subject, callable $prepare ): string {
         $this->object = $subject;
 
         if ( ! $this->is_enabled() ) {
-            return false;
+            return self::SEND_SKIPPED;
         }
 
         $user = get_userdata( $user_id );
 
         if ( ! $user ) {
-            return false;
+            return self::SEND_SKIPPED;
         }
 
         // Before the placeholders: the default point labels are translated strings.
@@ -125,7 +134,7 @@ abstract class LoyaltyEmail extends \WC_Email {
             $prepare();
             $this->recipient = $user->user_email;
 
-            return $this->get_recipient() ? $this->send_to_customer( $user_id ) : false;
+            return $this->get_recipient() ? $this->send_to_customer( $user_id ) : self::SEND_SKIPPED;
         } finally {
             // A throwing mail transport must not leave the rest of the request in the customer's locale.
             $this->restore_locale();
@@ -136,20 +145,20 @@ abstract class LoyaltyEmail extends \WC_Email {
      * Sends this email to its customer, within the weekly cap (EmailThrottle) unless the email is uncapped.
      * Only a send the transport accepts counts against the cap.
      *
-     * @return bool Whether the transport accepted the send.
+     * @return string SEND_SKIPPED when the cap stops it, else whether the transport accepted it. A throwing transport propagates.
      */
-    protected function send_to_customer( int $user_id ): bool {
+    protected function send_to_customer( int $user_id ): string {
         if ( $this->is_capped && ! EmailThrottle::allows( $user_id ) ) {
-            return false;
+            return self::SEND_SKIPPED;
         }
 
-        $sent = (bool) $this->send( $this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments() );
-
-        if ( $sent ) {
-            EmailThrottle::record( $user_id );
+        if ( ! $this->send( $this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments() ) ) {
+            return self::SEND_FAILED;
         }
 
-        return $sent;
+        EmailThrottle::record( $user_id );
+
+        return self::SEND_SENT;
     }
 
     /** The variables every loyalty template receives, named as WooCommerce's own templates name them. */
