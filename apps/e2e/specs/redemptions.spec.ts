@@ -177,7 +177,7 @@ test('the card offers no more than the balance and the cart allow', async ({ pag
     await pointsDiscountBox(shopperPage).check();
 
     await expect(blockDiscounts(shopperPage)).toContainText('Points discount');
-    await expect(card(shopperPage)).toContainText('Max 2,000 Points');
+    await expect(card(shopperPage)).toContainText('Use up to 2,000 Points');
     await expect(pointsField(shopperPage)).toHaveValue('2000');
   });
 });

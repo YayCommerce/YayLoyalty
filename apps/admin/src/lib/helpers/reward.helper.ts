@@ -10,7 +10,9 @@ export function numberConfig(config: Reward['config'], key: string): number | nu
   return typeof value === 'number' ? value : null;
 }
 
-/** The built-in slider's subtitle. */
-export function flexibleDiscountSubtitle(): string {
-  return __('The customer chooses how many points to use at checkout', 'yayloyalty');
+/** The built-in slider's subtitle, by its redemption mode; a row without one reads as free input. */
+export function flexibleDiscountSubtitle(config: Reward['config']): string {
+  return config.redemption_mode === 'auto_max'
+    ? __('The most points the order allows are applied at checkout', 'yayloyalty')
+    : __('The customer chooses how many points to use at checkout', 'yayloyalty');
 }

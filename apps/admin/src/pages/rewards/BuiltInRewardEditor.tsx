@@ -131,7 +131,7 @@ function BuiltInRewardCard({ reward }: { reward: Reward }) {
   return (
     <BuiltInConfigCard
       name={reward.name}
-      subtitle={flexibleDiscountSubtitle()}
+      subtitle={flexibleDiscountSubtitle(baseline.config)}
       isOn={isOn}
       onToggle={(checked) => setStatus(checked ? 'active' : 'paused')}
       toggleLoading={mutation.isPending}

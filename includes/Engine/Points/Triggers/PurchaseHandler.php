@@ -51,7 +51,7 @@ final class PurchaseHandler implements TriggerHandler {
     public function compute_points( Campaign $campaign, Context $ctx ): Breakdown {
         $config   = $campaign->get_config();
         $base     = $this->base_calculator->compute( $campaign, $ctx );
-        $rounding = (string) ( $config['rounding'] ?? PointsMath::ROUND_DOWN );
+        $rounding = self::rounding( $config );
         $rate     = self::rate_of( $config );
 
         $raw    = $base * $rate;
@@ -86,6 +86,15 @@ final class PurchaseHandler implements TriggerHandler {
 
     public function source(): string {
         return LedgerSource::ORDER;
+    }
+
+    /**
+     * How this config rounds an order's raw points: PointsMath::ROUND_DOWN, ROUND_NEAREST or ROUND_UP.
+     *
+     * @param array<string, mixed> $config
+     */
+    public static function rounding( array $config ): string {
+        return (string) ( $config['rounding'] ?? PointsMath::ROUND_DOWN );
     }
 
     /**

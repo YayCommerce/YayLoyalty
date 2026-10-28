@@ -8,10 +8,13 @@ import { ReactNode } from 'react';
 export function ConfigField({
   label,
   description,
+  error,
   children,
 }: {
   label: string;
   description?: string;
+  /** Shown in place of the description while the value can't be saved. */
+  error?: string;
   children: ReactNode;
 }) {
   return (
@@ -19,7 +22,11 @@ export function ConfigField({
       <span className="pt-2 text-sm font-medium">{label}</span>
       <div className="flex flex-col gap-1.5">
         {children}
-        {description && <p className="text-muted-foreground text-xs">{description}</p>}
+        {error ? (
+          <p className="text-destructive text-xs">{error}</p>
+        ) : (
+          description && <p className="text-muted-foreground text-xs">{description}</p>
+        )}
       </div>
     </div>
   );

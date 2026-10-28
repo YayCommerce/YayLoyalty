@@ -1,16 +1,18 @@
 /**
  * The points card's behaviour: one checkbox list, in one of two modes the page decides (`data-mode`).
  *
- * - Cart mode applies as it changes. Ticking the Points discount row opens its slider and applies the most it
- *   can take; unticking sends 0. A release, a changed field or Enter applies the points once, DEBOUNCE_MS after the
- *   last of them. Ticking a reward row sends every ticked reward id.
+ * - Cart mode applies as it changes. Ticking the Points discount row opens it and applies the most it can take
+ *   (`data-max`); unticking sends 0. A changed field or Enter applies the points once, DEBOUNCE_MS after the last
+ *   of them. Ticking a reward row sends every ticked reward id.
  * - Checkout mode (inside the classic checkout form or the Checkout block) holds every change as a draft: the
  *   card opens collapsed to its summary while something is applied, Change opens the list, and Update sends the
  *   points and the reward ids in one request, or just collapses when nothing changed.
  *
- * In both, the slider and the number field are one control, the discount beside them is previewed as either
- * moves, and the unaffordable reward rows follow the ticks. The preview is arithmetic only; the server's answer
- * replaces the card.
+ * In both, the discount beside the points field is previewed as it changes, and the unaffordable reward rows follow
+ * the ticks. The preview is arithmetic only; the server's answer replaces the card. The field takes whole points
+ * only. Leaving it (or Enter) rounds an amount down to the step or the max and says so; an amount below the
+ * minimum stays as typed, shows an error and is never sent. An auto-max row has no field: a tick asks for
+ * everything and the server applies the most the cart allows.
  *
  * Plain script, no build step. Markup and data come from includes/Engine/Storefront/templates/redeem-card.php.
  * Listeners are delegated from the document, because the classic checkout replaces the card's DOM on
@@ -19,14 +21,24 @@
 (function () {
   "use strict";
 
-  /** How long the slider waits after the last change before it applies. */
+  /** How long the points field waits after the last change before it applies. */
   var DEBOUNCE_MS = 200;
 
   /** Where the card holds a draft instead of applying at once: the classic checkout form and the Checkout block. */
   var CHECKOUT_SELECTOR = "form.checkout, .wp-block-woocommerce-checkout";
 
-  /** Each card's pending slider request, so a release that fires both `change` and Enter sends once. */
+  /** Each card's pending points request, so a field that fires both `change` and Enter sends once. */
   var pending = new WeakMap();
+
+  /** Keys a whole number of points never needs; type="number" would take them. */
+  var NON_DIGIT_KEYS = [".", ",", "e", "E", "+", "-"];
+
+  /** The field's attribute holding the message for each readField() issue, printed by the template. */
+  var NOTE_ATTRS = {
+    max: "data-max-note",
+    step: "data-step-note",
+    min: "data-min-error",
+  };
 
   function rootOf(element) {
     return element.closest("[data-yl-redeem]");
@@ -75,30 +87,49 @@
     return parseFloat(element.getAttribute(name)) || 0;
   }
 
-  /** A typed number as the slider would take it: inside min…max, on a multiple of the step. */
-  function clamp(range, raw) {
-    var min = numberAttr(range, "min");
-    var max = numberAttr(range, "max");
-    var step = numberAttr(range, "step") || 1;
-    var points = Math.floor(Number(raw));
+  /**
+   * The typed number as the field takes it: whole points on a multiple of the step, at most the max. `issue` names
+   * what changed it ("max", "step"), or is "min" when it is below the minimum: then points is null, because an
+   * amount below the minimum is never raised to it.
+   */
+  function readField(field) {
+    var min = numberAttr(field, "min");
+    var max = numberAttr(field, "max");
+    var step = numberAttr(field, "step") || 1;
+    var typed = Number(field.value);
+    var whole = Math.floor(typed);
 
-    if (!isFinite(points)) {
-      return min;
+    if (field.value === "" || !isFinite(whole) || whole < min) {
+      return { points: null, issue: "min" };
     }
-    points = Math.min(max, points);
-    points -= points % step;
+    if (whole > max) {
+      return { points: max, issue: "max" };
+    }
 
-    return Math.max(min, points);
+    var points = whole - (whole % step);
+
+    return { points: points, issue: points !== typed ? "step" : "" };
   }
 
-  /** Fills the range's track up to its thumb: WebKit has no fill of its own, so redeem.css reads this variable. */
-  function paintRange(range) {
-    var min = numberAttr(range, "min");
-    var max = numberAttr(range, "max");
-    var fill =
-      max > min ? ((Number(range.value) - min) / (max - min)) * 100 : 100;
+  /**
+   * Shows the field's message for an issue, or hides it for none: "min" reads as an error, "max" as a limit, "step"
+   * as neutral. While it shows, the server's note hides: that one is about the amount last sent.
+   */
+  function showNote(root, field, issue) {
+    var note = root.querySelector("[data-yl-field-note]");
+    var serverNote = root.querySelector("[data-yl-server-note]");
+    var text = issue ? field.getAttribute(NOTE_ATTRS[issue]) || "" : "";
 
-    range.style.setProperty("--yayloyalty-redeem-fill", fill + "%");
+    if (serverNote && text !== "") {
+      serverNote.hidden = true;
+    }
+    if (!note) {
+      return;
+    }
+    note.textContent = text;
+    note.hidden = text === "";
+    note.classList.toggle("yayloyalty-redeem__note--error", issue === "min");
+    note.classList.toggle("yayloyalty-redeem__note--warning", issue === "max");
   }
 
   /** Whole digits grouped in threes with the store's thousand separator, read from `data-thousand-sep`. */
@@ -250,27 +281,26 @@
   }
 
   /**
-   * The typed number as the slider takes it: moves the slider and the preview, and rewrites the field
-   * when asked. Returns the points, or null on a card without the form.
+   * The typed number as the field takes it, previewed. On a commit (the field left, or Enter) the field is
+   * rewritten and its message says why; while typing nothing is rewritten or said. Returns the points, or null
+   * on a card without the field or below the minimum.
    */
-  function sync(root, rewriteField) {
-    var range = root.querySelector("[data-yl-range]");
+  function sync(root, isCommit) {
     var field = root.querySelector("[data-yl-points]");
 
-    if (!range || !field) {
+    if (!field) {
       return null;
     }
 
-    var points = clamp(range, field.value);
+    var read = readField(field);
 
-    range.value = String(points);
-    paintRange(range);
-    if (rewriteField) {
-      field.value = String(points);
+    if (isCommit && read.points !== null) {
+      field.value = String(read.points);
     }
-    showOff(root, points);
+    showNote(root, field, isCommit ? read.issue : "");
+    showOff(root, read.points || 0);
 
-    return points;
+    return read.points;
   }
 
   /** Applies the points once, DEBOUNCE_MS after the last call for this card. */
@@ -288,13 +318,20 @@
     );
   }
 
-  /** The typed points, clamped and written back, then applied once; nothing for a disabled field. */
+  /**
+   * The typed points, written back as the field takes them, then applied once; nothing for a disabled field or
+   * below the minimum. It sends the whole number typed, not the one written back: the server clamps it the same
+   * way, and its card keeps the note naming the limit that bit, where the field's own note goes with the old card.
+   */
   function schedulePoints(root) {
     var field = root.querySelector("[data-yl-points]");
+    var typed = field ? Math.floor(Number(field.value)) : 0;
     var points = field && !field.disabled ? sync(root, true) : null;
 
     if (points !== null) {
-      schedule(root, points);
+      schedule(root, Math.max(points, typed));
+    } else {
+      window.clearTimeout(pending.get(root));
     }
   }
 
@@ -333,17 +370,30 @@
     });
   }
 
-  /** The typed points as the slider takes them; null on a card without the field, or while it is disabled. */
+  /** The typed points as the field takes them; null on a card without the field, while it is disabled, or below the minimum. */
   function typedPoints(root) {
-    var range = root.querySelector("[data-yl-range]");
     var field = root.querySelector("[data-yl-points]");
 
-    return range && field && !field.disabled ? clamp(range, field.value) : null;
+    return field && !field.disabled ? readField(field).points : null;
+  }
+
+  /** Whether the ticked row's field holds less than the minimum: checkout's Update waits until it is fixed. */
+  function isBelowMin(root) {
+    var toggle = root.querySelector("[data-yl-slider-toggle]");
+    var field = root.querySelector("[data-yl-points]");
+
+    return Boolean(
+      toggle &&
+      toggle.checked &&
+      field &&
+      !field.disabled &&
+      readField(field).issue === "min",
+    );
   }
 
   /**
    * What Update sends. A ticked row whose field is disabled (the rewards leave it nothing) keeps the shopper's
-   * request, so an untouched row is not lowered to its minimum.
+   * request, so an untouched row is not lowered to its minimum. A row without a field (auto max) asks for its max.
    */
   function draftOf(root) {
     var toggle = root.querySelector("[data-yl-slider-toggle]");
@@ -351,7 +401,11 @@
     var points = 0;
 
     if (toggle && toggle.checked) {
-      points = typed !== null ? typed : numberAttr(toggle, "data-requested");
+      points =
+        typed !== null
+          ? typed
+          : numberAttr(toggle, "data-requested") ||
+            numberAttr(toggle, "data-max");
     }
 
     return { points: points, rewards: tickedIds(root) };
@@ -382,12 +436,17 @@
     );
   }
 
-  /** Update stays off while nothing is applied and nothing changed: there is nothing to send or collapse. */
+  /**
+   * Update stays off while nothing is applied and nothing changed (there is nothing to send or collapse), and while
+   * the field is below the minimum.
+   */
   function refreshUpdate(root) {
     var update = root.querySelector("[data-yl-update]");
 
     if (update) {
-      update.disabled = !root.hasAttribute("data-applied") && !isChanged(root);
+      update.disabled =
+        isBelowMin(root) ||
+        (!root.hasAttribute("data-applied") && !isChanged(root));
     }
   }
 
@@ -404,15 +463,19 @@
     }
   }
 
-  // The card can sit inside the checkout form: Enter applies the points and must never place the order.
+  // The field takes whole points only. The card can sit inside the checkout form: Enter applies the points and
+  // must never place the order.
   document.addEventListener("keydown", function (event) {
     var target = event.target;
 
-    if (
-      event.key !== "Enter" ||
-      !(target instanceof Element) ||
-      !target.matches("[data-yl-points]")
-    ) {
+    if (!(target instanceof Element) || !target.matches("[data-yl-points]")) {
+      return;
+    }
+    if (NON_DIGIT_KEYS.indexOf(event.key) !== -1) {
+      event.preventDefault();
+      return;
+    }
+    if (event.key !== "Enter") {
       return;
     }
     event.preventDefault();
@@ -438,12 +501,8 @@
       return;
     }
 
-    if (target.matches("[data-yl-range]")) {
-      root.querySelector("[data-yl-points]").value = target.value;
-      paintRange(target);
-      showOff(root, Number(target.value));
-    } else if (target.matches("[data-yl-points]")) {
-      // The field keeps what was typed until it is left; the slider and the preview follow the clamped number.
+    if (target.matches("[data-yl-points]")) {
+      // The field keeps what was typed until it is left; the preview follows what it would take.
       sync(root, false);
     } else {
       return;
@@ -465,7 +524,6 @@
 
     if (target.matches("[data-yl-slider-toggle]")) {
       var body = root.querySelector("[data-yl-slider-body]");
-      var field = root.querySelector("[data-yl-points]");
 
       if (body) {
         body.hidden = !target.checked;
@@ -478,13 +536,13 @@
         return;
       }
       window.clearTimeout(pending.get(root));
-      send(root, { points: target.checked && field ? Number(field.max) : 0 });
-    } else if (target.matches("[data-yl-range], [data-yl-points]")) {
+      send(root, {
+        points: target.checked ? numberAttr(target, "data-max") : 0,
+      });
+    } else if (target.matches("[data-yl-points]")) {
       if (isDraft) {
         sync(root, true);
         refreshUpdate(root);
-      } else if (target.matches("[data-yl-range]")) {
-        schedule(root, Number(target.value));
       } else {
         schedulePoints(root);
       }
@@ -510,6 +568,8 @@
 
     if (button.matches("[data-yl-change]")) {
       setExpanded(root, true);
+    } else if (isBelowMin(root)) {
+      sync(root, true);
     } else if (isChanged(root)) {
       // The answered card has no data-expanded: it opens collapsed while something is applied.
       send(root, draftOf(root));

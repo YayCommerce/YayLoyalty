@@ -85,7 +85,8 @@ function RewardEditorForm({ reward }: { reward: Reward }) {
         return false;
       }
     },
-    { listPath: '/rewards', onInvalid: toastInvalidFields },
+    // Saving an existing reward stays on it; only a new one goes back to the list.
+    { listPath: null, onInvalid: toastInvalidFields },
   );
 
   function leaveAfterArchiveOrDelete() {

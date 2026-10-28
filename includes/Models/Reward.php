@@ -24,6 +24,10 @@ class Reward extends AbstractModel {
     public const REFUND_POLICY_FULL         = 'full';
     public const REFUND_POLICY_NONE         = 'none';
 
+    /** How the shopper spends points on a flexible discount: `config.redemption_mode`. A missing key reads as free input. */
+    public const REDEMPTION_MODE_AUTO_MAX   = 'auto_max';
+    public const REDEMPTION_MODE_FREE_INPUT = 'free_input';
+
     /** A `product` value is first an id: a whole number of at least 1. */
     private const POSITIVE_INT_SPEC = [
         'type' => 'int',
@@ -210,7 +214,7 @@ class Reward extends AbstractModel {
      * Per-type config schema, key => spec: what `config` may hold and what config_is_valid() checks.
      * Lite declares flexible_discount. Pro types add theirs through the filter.
      * Spec types: bool, string, int|number|nullable_int|nullable_number [min, max], enum|enum_list [values],
-     * currency, product. `required => true` makes a key mandatory. `exclusive_min` is a strict lower
+     * currency, product, and limit (null, or a whole number from 1). `required => true` makes a key mandatory. `exclusive_min` is a strict lower
      * bound: a nullable cap uses it at 0, so null is no cap and a set cap is above 0.
      *
      * @return array<string, array<string, array<string, mixed>>>
@@ -230,10 +234,8 @@ class Reward extends AbstractModel {
                     'type' => 'int',
                     'min'  => 0,
                 ],
-                'max_points_per_order'     => [
-                    'type'          => 'nullable_number',
-                    'exclusive_min' => 0,
-                ],
+                // Points, so whole: null is no cap, as the purchase campaign's own cap.
+                'max_points_per_order'     => [ 'type' => 'limit' ],
                 'max_percent_of_subtotal'  => [
                     'type' => 'nullable_number',
                     'min'  => 0,
@@ -249,6 +251,10 @@ class Reward extends AbstractModel {
                 'refund_policy'            => [
                     'type'   => 'enum',
                     'values' => [ self::REFUND_POLICY_PROPORTIONAL, self::REFUND_POLICY_FULL, self::REFUND_POLICY_NONE ],
+                ],
+                'redemption_mode'          => [
+                    'type'   => 'enum',
+                    'values' => [ self::REDEMPTION_MODE_AUTO_MAX, self::REDEMPTION_MODE_FREE_INPUT ],
                 ],
                 // Global redemption cap, null for unlimited. Stored, but nothing enforces it yet.
                 'max_total'                => [
@@ -296,6 +302,21 @@ class Reward extends AbstractModel {
         }
 
         return true;
+    }
+
+    /**
+     * Why a config that passes config_is_valid() still can't be saved, or null. Checks rules across keys:
+     * a flexible discount's minimum must be at least its redemption increment, read as Clamp reads them.
+     */
+    public static function config_conflict( string $type, array $config ): ?string {
+        if ( RewardType::FLEXIBLE_DISCOUNT !== $type ) {
+            return null;
+        }
+
+        $min       = max( 0, (int) ( $config['min_points'] ?? 0 ) );
+        $increment = max( 1, (int) ( $config['increment'] ?? 1 ) );
+
+        return $min < $increment ? __( 'Minimum points must be at least the redemption increment.', 'yayloyalty' ) : null;
     }
 
     /**
@@ -366,6 +387,7 @@ class Reward extends AbstractModel {
                     'increment'                => 100,
                     'show_on'                  => [ 'cart', 'checkout' ],
                     'refund_policy'            => self::REFUND_POLICY_PROPORTIONAL,
+                    'redemption_mode'          => self::REDEMPTION_MODE_FREE_INPUT,
                     'max_total'                => null,
                 ];
 
