@@ -52,10 +52,6 @@ if ( ! empty( $entry ) ) {
     }
 
     echo "\n" . esc_html( Text::plain( $balance_sentence ) ) . "\n\n";
-
-    if ( ! empty( $balance_value_text ) ) {
-        echo esc_html( Text::plain( $balance_value_text ) ) . "\n\n";
-    }
 } else {
     echo esc_html__( 'You used your loyalty points on an order. Enjoy!', 'yayloyalty' ) . "\n\n";
 }

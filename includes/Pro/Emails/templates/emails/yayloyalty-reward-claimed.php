@@ -48,13 +48,6 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
     echo $reward_lines_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped when built; kses would strip wc_price()'s <bdi>, which keeps the amount readable in right-to-left stores.
     ?>
 <p><?php echo wp_kses_post( $balance_sentence ); ?></p>
-    <?php if ( ! empty( $balance_value_text ) ) : ?>
-<p>
-        <?php
-        echo $balance_value_text; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped when built; kses would strip wc_price()'s <bdi>, which keeps the amount readable in right-to-left stores.
-        ?>
-</p>
-    <?php endif; ?>
 <?php else : ?>
 <p><?php esc_html_e( 'You used your loyalty points on an order. Enjoy!', 'yayloyalty' ); ?></p>
 <?php endif; ?>

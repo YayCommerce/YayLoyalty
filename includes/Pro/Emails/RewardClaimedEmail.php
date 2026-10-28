@@ -223,6 +223,6 @@ class RewardClaimedEmail extends LedgerEntryEmail {
             $rows .= '<tr><td>' . esc_html( $line['name'] ) . '</td><td>' . esc_html( $line['points_text'] ) . '</td><td>' . $discount . '</td></tr>';
         }
 
-        return '<table class="yayloyalty-reward-lines" cellspacing="0" cellpadding="6" border="1" style="width:100%;border-collapse:collapse;">' . $rows . '</table>';
+        return '<table class="yayloyalty-reward-lines" cellspacing="0" cellpadding="6" border="1" style="width:100%;border-collapse:collapse;margin-bottom:16px;">' . $rows . '</table>';
     }
 }
