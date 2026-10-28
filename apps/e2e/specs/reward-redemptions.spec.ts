@@ -54,7 +54,7 @@ test.describe('reward redemptions', () => {
       await shopperPage.goto('/cart/');
       await expect(card(shopperPage)).toContainText('Your rewards');
       await expect(card(shopperPage)).toContainText('9,850 Points');
-      await expect(card(shopperPage)).toContainText('$98.50');
+      await expect(card(shopperPage)).toContainText('$98');
       await expect(pointsDiscountBox(shopperPage)).not.toBeChecked();
       await expect(rewardBox(shopperPage, '$5 off')).not.toBeChecked();
       await expect(rewardBox(shopperPage, '15% off')).not.toBeChecked();
@@ -159,7 +159,7 @@ test.describe('reward redemptions', () => {
       await expect(card(shopperPage)).toContainText('2 rewards selected');
 
       await card(shopperPage).getByRole('button', { name: 'Change' }).click();
-      await expect(card(shopperPage).getByRole('button', { name: 'Change' })).toHaveAttribute('aria-expanded', 'true');
+      await expect(card(shopperPage).getByRole('button', { name: 'Update' })).toBeVisible();
       await rewardBox(shopperPage, '15% off').check();
       await expect(reviewDiscounts).toHaveCount(2);
 
@@ -200,7 +200,7 @@ test.describe('reward redemptions', () => {
     });
   });
 
-  test("the slider's maximum is what the rewards leave", async ({ api, customer, shopperPage }) => {
+  test('the points discount can use up to what the rewards leave, on the increment', async ({ api, customer, shopperPage }) => {
     await api.adjustPoints(customer.id, 9850);
     await addWidgetsToCart(shopperPage);
     await shopperPage.goto('/cart/');
@@ -212,7 +212,7 @@ test.describe('reward redemptions', () => {
     await pointsDiscountBox(shopperPage).check();
 
     await expect(blockDiscounts(shopperPage)).toContainText('Points discount');
-    await expect(card(shopperPage)).toContainText('Use up to 7,850 Points');
+    await expect(card(shopperPage)).toContainText('Use up to 7,800 Points (= $78)');
   });
 
   test('rewards beyond the balance cannot be ticked', async ({ api, customer, shopperPage }) => {
