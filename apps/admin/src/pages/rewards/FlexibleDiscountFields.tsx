@@ -113,20 +113,16 @@ export function FlexibleDiscountFields({
           value={value.redemption_mode ?? 'free_input'}
           onValueChange={(redemption_mode) => onChange({ redemption_mode: redemption_mode as RedemptionMode })}
         >
-          <label className="flex items-center gap-2 text-sm">
-            <RadioGroupItem value="auto_max" />
-            {__('Apply the maximum automatically', 'yayloyalty')}
-            <span className="text-muted-foreground text-xs">
-              {__('customers tick Points discount and get the most the order allows', 'yayloyalty')}
-            </span>
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <RadioGroupItem value="free_input" />
-            {__('Customers enter an amount', 'yayloyalty')}
-            <span className="text-muted-foreground text-xs">
-              {__('between the minimum and the maximum, in multiples of the increment', 'yayloyalty')}
-            </span>
-          </label>
+          <RadioChoice
+            value="auto_max"
+            label={__('Apply the maximum automatically', 'yayloyalty')}
+            description={__('Customers tick Points discount and get the most the order allows.', 'yayloyalty')}
+          />
+          <RadioChoice
+            value="free_input"
+            label={__('Customers enter an amount', 'yayloyalty')}
+            description={__('Between the minimum and the maximum, in multiples of the increment.', 'yayloyalty')}
+          />
         </RadioGroup>
       </ConfigField>
 
@@ -139,25 +135,30 @@ export function FlexibleDiscountFields({
             onChange({ refund_policy: refund_policy as FlexibleDiscountConfig['refund_policy'] })
           }
         >
-          <label className="flex items-center gap-2 text-sm">
-            <RadioGroupItem value="proportional" />
-            {__('Proportionally', 'yayloyalty')}
-            <span className="text-muted-foreground text-xs">
-              {__('a half refund returns half the points', 'yayloyalty')}
-            </span>
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <RadioGroupItem value="full" />
-            {__('In full', 'yayloyalty')}
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            {/* Stored as "none"; "Never" is the wireframe's wording. */}
-            <RadioGroupItem value="none" />
-            {__('Never', 'yayloyalty')}
-          </label>
+          <RadioChoice
+            value="proportional"
+            label={__('Proportionally', 'yayloyalty')}
+            description={__('A half refund returns half the points.', 'yayloyalty')}
+          />
+          <RadioChoice value="full" label={__('In full', 'yayloyalty')} />
+          {/* Stored as "none"; "Never" is the wireframe's wording. */}
+          <RadioChoice value="none" label={__('Never', 'yayloyalty')} />
         </RadioGroup>
       </ConfigField>
     </>
+  );
+}
+
+/** One radio option: the label, with its description on the line below. */
+function RadioChoice({ value, label, description }: { value: string; label: string; description?: string }) {
+  return (
+    <label className="flex cursor-pointer items-start gap-2.5">
+      <RadioGroupItem value={value} className="mt-0.5" />
+      <span className="flex flex-col gap-0.5">
+        <span className="text-sm">{label}</span>
+        {description && <span className="text-muted-foreground text-xs">{description}</span>}
+      </span>
+    </label>
   );
 }
 
