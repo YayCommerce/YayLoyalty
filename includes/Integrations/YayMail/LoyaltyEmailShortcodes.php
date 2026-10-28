@@ -115,7 +115,8 @@ abstract class LoyaltyEmailShortcodes extends BaseShortcode {
 
     /**
      * The values of what is being sent, or of the sample for YayMail's editor, preview and
-     * test send, which render with `is_sample` or an order.
+     * test send, which render with `is_sample` or an order of YayMail's own. An email's template
+     * args may carry its own `order`, so only an order other than that one means a sample.
      *
      * @param mixed $render_data The body passes the WooCommerce template args and the subject passes the email; both include `email`.
      */
@@ -127,13 +128,14 @@ abstract class LoyaltyEmailShortcodes extends BaseShortcode {
             return [];
         }
 
-        if ( ! empty( $render_data['is_sample'] ) || ! empty( $render_data['order'] ) ) {
+        $email  = $render_data['email'] ?? null;
+        $values = $email instanceof LoyaltyEmail && $email->id === $root_email->id ? $email->get_template_values() : [];
+
+        if ( ! empty( $render_data['is_sample'] ) || ( ! empty( $render_data['order'] ) && ( $values['order'] ?? null ) !== $render_data['order'] ) ) {
             return $this->sample_values( $root_email );
         }
 
-        $email = $render_data['email'] ?? null;
-
-        return $email instanceof LoyaltyEmail && $email->id === $root_email->id ? $email->get_template_values() : [];
+        return $values;
     }
 
     private function sample_values( LoyaltyEmail $root_email ): array {
