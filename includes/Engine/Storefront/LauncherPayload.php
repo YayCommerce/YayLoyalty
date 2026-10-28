@@ -177,7 +177,7 @@ final class LauncherPayload {
      * unit of the shopper's currency, through LauncherCopy::converted_rate().
      *
      * @param Reward|null $reward The reward when it is live (RewardRepository::find_live_cart_discount()).
-     * @return array{points_per_unit: float, min_points: int, max_points: ?int, max_percent: ?float, unlock_points: int, unlock_off: ?float}|null
+     * @return array{name: string, points_per_unit: float, min_points: int, max_points: ?int, max_percent: ?float, unlock_points: int, unlock_off: ?float}|null
      *         `unlock_points` the smallest balance the discount takes, and `unlock_off` what it takes off: the points card's "Earn N more".
      */
     private static function redeem_rule( ?Reward $reward ): ?array {
@@ -194,6 +194,7 @@ final class LauncherPayload {
         $unlock = max( (int) ( ceil( Clamp::min_of( $reward ) / $step ) * $step ), Clamp::points_for( 1.0, $reward, $currency_rate ) );
 
         return [
+            'name'            => $reward->get_name(),
             'points_per_unit' => LauncherCopy::converted_rate( $rate / $currency_rate, $currency_rate ),
             'min_points'      => Clamp::min_of( $reward ),
             'max_points'      => isset( $config['max_points_per_order'] ) ? (int) $config['max_points_per_order'] : null,

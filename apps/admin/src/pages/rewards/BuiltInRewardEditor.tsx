@@ -10,7 +10,9 @@ import type { Reward } from '@/lib/schema/reward.schema';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { BuiltInConfigCard } from '@/components/ui/custom/built-in-config-card';
+import { ConfigField } from '@/components/ui/custom/config-field';
 import { ErrorState } from '@/components/ui/custom/error-state';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UpgradeToProBanner } from '@/components/pro/UpgradeToPro';
 import { FlexibleDiscountConfig, FlexibleDiscountFields } from './FlexibleDiscountFields';
@@ -18,7 +20,7 @@ import { FlexibleDiscountConfig, FlexibleDiscountFields } from './FlexibleDiscou
 /**
  * Lite's Rewards screen: the built-in flexible-discount reward edited in
  * place. The switch and fields change a local draft; Save changes writes
- * status and config together.
+ * name, status and config together.
  */
 export default function BuiltInRewardEditor() {
   // Only the built-in's type: rows a downgraded site keeps from Pro are never fetched.
@@ -98,12 +100,15 @@ function CouponsDisabledNotice() {
 function BuiltInRewardCard({ reward }: { reward: Reward }) {
   const [expanded, setExpanded] = useState(true);
   // What was last saved: the response, not the list refetch, so Save changes disables as the save lands.
-  const [baseline, setBaseline] = useState({ status: reward.status, config: reward.config });
+  const [baseline, setBaseline] = useState({ name: reward.name, status: reward.status, config: reward.config });
+  const [name, setName] = useState(reward.name);
   const [status, setStatus] = useState(reward.status);
   const [config, setConfig] = useState(reward.config);
   const mutation = useUpdateRewardMutation(reward.id);
   const isOn = status === 'active';
-  const isDirty = status !== baseline.status || JSON.stringify(config) !== JSON.stringify(baseline.config);
+  const isNameEmpty = name.trim() === '';
+  const isDirty =
+    name !== baseline.name || status !== baseline.status || JSON.stringify(config) !== JSON.stringify(baseline.config);
 
   const value = config as unknown as FlexibleDiscountConfig;
 
@@ -112,14 +117,16 @@ function BuiltInRewardCard({ reward }: { reward: Reward }) {
   }
 
   function reset() {
+    setName(baseline.name);
     setStatus(baseline.status);
     setConfig(baseline.config);
   }
 
   async function save() {
     try {
-      const saved = await mutation.mutateAsync({ status, config });
-      setBaseline({ status: saved.status, config: saved.config });
+      const saved = await mutation.mutateAsync({ name: name.trim(), status, config });
+      setBaseline({ name: saved.name, status: saved.status, config: saved.config });
+      setName(saved.name);
       setStatus(saved.status);
       setConfig(saved.config);
       toast.success(__('Reward saved.', 'yayloyalty'));
@@ -130,19 +137,31 @@ function BuiltInRewardCard({ reward }: { reward: Reward }) {
 
   return (
     <BuiltInConfigCard
-      name={reward.name}
+      name={baseline.name}
       subtitle={flexibleDiscountSubtitle(baseline.config)}
       isOn={isOn}
       onToggle={(checked) => setStatus(checked ? 'active' : 'paused')}
       toggleLoading={mutation.isPending}
       expanded={expanded}
       onToggleExpanded={() => setExpanded((current) => !current)}
-      onSave={save}
+      onSave={isNameEmpty ? undefined : save}
       onCancel={reset}
       isDirty={isDirty}
       saving={mutation.isPending}
       updatedAt={reward.updated_at}
     >
+      <ConfigField
+        label={__('Name', 'yayloyalty')}
+        description={__('Customers see this name in the launcher and in My Account.', 'yayloyalty')}
+        error={isNameEmpty ? __('A reward needs a name.', 'yayloyalty') : undefined}
+      >
+        <Input
+          aria-label={__('Name', 'yayloyalty')}
+          aria-invalid={isNameEmpty}
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+        />
+      </ConfigField>
       <FlexibleDiscountFields value={value} onChange={update} />
     </BuiltInConfigCard>
   );

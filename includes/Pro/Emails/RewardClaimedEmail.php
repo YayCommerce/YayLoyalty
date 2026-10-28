@@ -6,7 +6,6 @@ use YayLoyalty\Engine\Redemption\CouponProvider;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
-use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Models\Redemption;
@@ -157,13 +156,7 @@ class RewardClaimedEmail extends LedgerEntryEmail {
 
             $reward = $rewards->find_reward( $row->get_reward_id() );
 
-            if ( ! $reward ) {
-                $name = __( 'Reward', 'yayloyalty' );
-            } elseif ( RewardType::FLEXIBLE_DISCOUNT === $reward->get_type() ) {
-                $name = CouponProvider::display_label();
-            } else {
-                $name = $reward->get_name();
-            }
+            $name = $reward ? $reward->get_name() : __( 'Reward', 'yayloyalty' );
 
             $lines[] = [
                 'name'        => $name,
