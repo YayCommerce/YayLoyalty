@@ -85,7 +85,7 @@ function RewardEditorForm({ reward }: { reward: Reward }) {
         return false;
       }
     },
-    // Saving an existing reward stays on it; only a new one goes back to the list.
+    // Saving an existing reward stays on it, as creating one opens its editor.
     { listPath: null, onInvalid: toastInvalidFields },
   );
 
@@ -189,11 +189,12 @@ function RewardCreatorForm({ type, duplicateFrom }: { type: CatalogRewardType; d
     async (values, intent) => {
       try {
         const sourceConditions = duplicateFrom ? normalizeRewardConditions(duplicateFrom.conditions) : [];
-        await mutation.mutateAsync(formValuesToCreateInput(values, type, intent, sourceConditions));
-        // The created row lives in the list now; this form's baseline must stop counting as unsaved.
+        const created = await mutation.mutateAsync(formValuesToCreateInput(values, type, intent, sourceConditions));
+        // The baseline must stop counting as unsaved, or the redirect re-trips the leave guard.
         form.reset(values);
         toast.success(__('Reward created.', 'yayloyalty'));
-        return true;
+        // Replaces the create URL, so Back never reopens a blank form for a reward that now exists.
+        return `/rewards/${created.id}/edit`;
       } catch (error) {
         await toastApiError(error, __('Could not create the reward.', 'yayloyalty'));
         return false;
