@@ -113,8 +113,10 @@ final class RedeemCard {
      * For a page drawing the Cart or Checkout block: the card's assets and the slot fill that shows it
      * (redeem-blocks.js). The script is handed the Store API names it reads and posts to, the coupon's code and
      * the label its totals row reads on the blocks, so none of them is written a second time in JS.
+     *
+     * @param Reward|null $reward The live flexible reward, whose name the totals row reads; null for the fallback.
      */
-    public static function enqueue_block_assets(): void {
+    public static function enqueue_block_assets( ?Reward $reward = null ): void {
         self::enqueue_assets();
 
         wp_enqueue_script(
@@ -131,7 +133,7 @@ final class RedeemCard {
                     'namespace' => StoreApiAdapter::EXT_NAMESPACE,
                     'callback'  => StoreApiAdapter::CALLBACK,
                     'code'      => CouponProvider::CODE,
-                    'label'     => CouponProvider::display_label(),
+                    'label'     => CouponProvider::display_label( $reward ),
                 ]
             ) . ';',
             'before'
@@ -232,8 +234,8 @@ final class RedeemCard {
      * @param int      $requested SessionIntent::get(): the points the shopper asked for; 0 while the row is unticked.
      * @param int      $decimals  The charged currency's decimals.
      * @param float    $currency_rate Units of the charged currency per 1 base unit, as ContextFactory::from_cart() passes.
-     * @return array{state: string} `guest` and `hidden` carry nothing else. `slider` adds mode (auto_max or
-     *                              free_input), requested, points and value (applied; 0 when the quote is
+     * @return array{state: string} `guest` and `hidden` carry nothing else. `slider` adds name (the reward's),
+     *                              mode (auto_max or free_input), requested, points and value (applied; 0 when the quote is
      *                              refused), balance, min, step (Clamp::effective_step()), max (the ceiling's
      *                              points), max_value, rate, is_disabled and bound_by.
      */
@@ -262,6 +264,7 @@ final class RedeemCard {
 
         return [
             'state'       => 'slider',
+            'name'        => $reward->get_name(),
             'mode'        => $is_auto_max ? Reward::REDEMPTION_MODE_AUTO_MAX : Reward::REDEMPTION_MODE_FREE_INPUT,
             'requested'   => $requested,
             'points'      => $quote->is_allowed() ? $quote->get_points() : 0,

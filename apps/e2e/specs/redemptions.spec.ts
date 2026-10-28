@@ -72,7 +72,7 @@ test('a shopper spends points on the block checkout and a cancellation gives the
     const drawer = adminPage.getByRole('dialog');
     await drawer.getByRole('tab', { name: 'Redemptions' }).click();
 
-    const row = drawer.getByRole('row', { name: /Cart discount/ });
+    const row = drawer.getByRole('row', { name: /Points discount/ });
     await expect(row).toContainText('-500');
     await expect(row).toContainText(`#${orderId}`);
   });

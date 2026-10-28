@@ -82,7 +82,7 @@ final class StoreApiAdapter {
 
     /** On a page drawing the Cart or Checkout block: the card's assets and the slot fill that shows it. */
     public function enqueue(): void {
-        RedeemCard::enqueue_block_assets();
+        RedeemCard::enqueue_block_assets( $this->service->live_flexible_reward() );
     }
 
     /**

@@ -15,7 +15,6 @@
  *                  the amber notice; '' for a deleted reward).
  */
 
-use YayLoyalty\Engine\Redemption\CouponProvider;
 use YayLoyalty\Engine\Redemption\ProgramGate;
 use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Rewards\Clamp;
@@ -112,7 +111,7 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
                 <div class="yayloyalty-redeem__item" data-yl-slider>
                     <label class="yayloyalty-redeem__option">
                         <span class="yayloyalty-redeem__option-body">
-                            <span class="yayloyalty-redeem__name"><?php echo esc_html( CouponProvider::display_label() ); ?></span>
+                            <span class="yayloyalty-redeem__name"><?php echo esc_html( $view['name'] ); ?></span>
                             <?php if ( $yayloyalty_is_auto ) : ?>
                                 <span class="yayloyalty-redeem__chip"><?php echo esc_html( SettingsHelper::points_text( $view['max'] ) ); ?></span>
                             <?php else : ?>

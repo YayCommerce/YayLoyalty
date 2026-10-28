@@ -102,18 +102,22 @@ final class CouponProvider {
         return $reward_ids;
     }
 
-    /** "Points discount", with the merchant's label: what the totals row reads instead of the code. */
-    public static function display_label(): string {
+    /** The points discount's name, as the merchant set it; "Points discount", with the merchant's label, when there is no reward. */
+    public static function display_label( ?Reward $reward = null ): string {
+        if ( null !== $reward ) {
+            return $reward->get_name();
+        }
+
         /* translators: %s: the store's points label, as "Points". */
         return sprintf( __( '%s discount', 'yayloyalty' ), SettingsHelper::points_label_plural() );
     }
 
-    /** The classic totals row's label: "Points discount", or the reward's name. Postcondition: $label unchanged for every other coupon. */
+    /** The classic totals row's label: the points discount's or the reward's name. Postcondition: $label unchanged for every other coupon. */
     public function label( string $label, \WC_Coupon $coupon ): string {
         $code = (string) $coupon->get_code();
 
         if ( self::CODE === $code ) {
-            return self::display_label();
+            return self::display_label( $this->service->live_flexible_reward() );
         }
 
         $reward = $this->service->reward_for_code( $code );
@@ -325,7 +329,7 @@ final class CouponProvider {
 
         if ( ! $this->service->ceiling( $cart, $user_id )->is_allowed() ) {
             $this->intent->set( 0 );
-            self::notice_dropped( self::display_label() );
+            self::notice_dropped( self::display_label( $this->service->live_flexible_reward() ) );
         }
 
         return [];
