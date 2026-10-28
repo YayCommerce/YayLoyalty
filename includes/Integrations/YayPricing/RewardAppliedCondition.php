@@ -13,6 +13,13 @@ defined( 'ABSPATH' ) || exit;
  */
 final class RewardAppliedCondition extends \YAYDP\Abstracts\YAYDP_Condition_Type {
 
+    /** @var LoyaltyCouponRerun Told on every check, so a run that asked re-runs once the coupons settle. */
+    private $rerun;
+
+    public function __construct( LoyaltyCouponRerun $rerun ) {
+        $this->rerun = $rerun;
+    }
+
     public function slug() {
         return 'yayloyalty_reward_applied';
     }
@@ -43,13 +50,9 @@ final class RewardAppliedCondition extends \YAYDP\Abstracts\YAYDP_Condition_Type
     }
 
     public function check( array $condition, YAYDP_Condition_Context $ctx ) {
-        $has = [] !== array_filter(
-            $ctx->applied_coupons(),
-            static function ( $code ): bool {
-                return EarnContext::is_loyalty_code( (string) $code );
-            }
-        );
+        $this->rerun->mark_asked();
 
+        $has   = [] !== EarnContext::loyalty_codes( $ctx->applied_coupons() );
         $wants = (bool) ( $condition['comparation'] ?? true );
 
         return $wants === $has;

@@ -185,6 +185,16 @@ final class Context {
         return self::REDEEM_COUPON_CODE === $code || 0 === strpos( $code, self::REWARD_COUPON_PREFIX );
     }
 
+    /**
+     * The loyalty codes (is_loyalty_code()) among $codes, in their order.
+     *
+     * @param array $codes Coupon codes, as WC_Cart::get_applied_coupons() returns them.
+     * @return string[]
+     */
+    public static function loyalty_codes( array $codes ): array {
+        return array_values( array_filter( array_map( 'strval', $codes ), [ self::class, 'is_loyalty_code' ] ) );
+    }
+
     /** @return string[] */
     public function get_user_roles(): array {
         return $this->user_roles;

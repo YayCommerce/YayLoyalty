@@ -278,12 +278,7 @@ class LedgerRepository extends AbstractRepository {
      * @param string $before UTC MySQL datetime. A row at this exact second is excluded.
      */
     public function lifetime_earned_before( int $user_id, string $before ): int {
-        $types = LedgerType::lifetime_earned_types();
-
-        return $this->sum_points(
-            'user_id = %d AND created_at < %s AND type IN (' . Sql::in_placeholders( $types ) . ')',
-            array_merge( [ $user_id, $before ], $types )
-        );
+        return $this->sum_types( $user_id, LedgerType::lifetime_earned_types(), '<', $before );
     }
 
     /**
@@ -293,7 +288,7 @@ class LedgerRepository extends AbstractRepository {
      * @param string $from UTC MySQL datetime. A row at this exact second is included.
      */
     public function earned_since( int $user_id, string $from ): int {
-        return $this->sum_since( $user_id, $from, LedgerType::lifetime_earned_types() );
+        return $user_id < 1 ? 0 : $this->sum_types( $user_id, LedgerType::lifetime_earned_types(), '>=', $from );
     }
 
     /**
@@ -303,18 +298,20 @@ class LedgerRepository extends AbstractRepository {
      * @param string $from UTC MySQL datetime. A row at this exact second is included.
      */
     public function redeemed_since( int $user_id, string $from ): int {
-        return -$this->sum_since( $user_id, $from, LedgerType::lifetime_redeemed_types() );
+        return $user_id < 1 ? 0 : -$this->sum_types( $user_id, LedgerType::lifetime_redeemed_types(), '>=', $from );
     }
 
-    /** @param string[] $types */
-    private function sum_since( int $user_id, string $from, array $types ): int {
-        if ( $user_id < 1 ) {
-            return 0;
-        }
-
+    /**
+     * Signed SUM(points) of a user's rows of $types created on one side of $at.
+     *
+     * @param string[] $types
+     * @param string   $op    '<' or '>=', a literal from this class only, never input.
+     * @param string   $at    UTC MySQL datetime.
+     */
+    private function sum_types( int $user_id, array $types, string $op, string $at ): int {
         return $this->sum_points(
-            'user_id = %d AND created_at >= %s AND type IN (' . Sql::in_placeholders( $types ) . ')',
-            array_merge( [ $user_id, $from ], $types )
+            "user_id = %d AND created_at {$op} %s AND type IN (" . Sql::in_placeholders( $types ) . ')',
+            array_merge( [ $user_id, $at ], $types )
         );
     }
 

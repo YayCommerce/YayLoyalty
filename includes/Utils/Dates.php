@@ -60,7 +60,7 @@ final class Dates {
     public static function site_month_start( ?string $utc ): ?\DateTimeImmutable {
         $day = self::site_day_start( $utc );
 
-        return null === $day ? null : $day->setDate( (int) $day->format( 'Y' ), (int) $day->format( 'n' ), 1 );
+        return null === $day ? null : $day->modify( 'first day of this month' );
     }
 
     /**

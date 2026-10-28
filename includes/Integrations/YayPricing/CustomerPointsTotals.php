@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Integrations\YayPricing;
 
+use YayLoyalty\Models\Customer;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Utils\Dates;
@@ -28,6 +29,9 @@ final class CustomerPointsTotals {
     /** @var array<int, array<string, int>> */
     private $memo = [];
 
+    /** @var array<int, Customer|null> */
+    private $rows = [];
+
     public function __construct( ?LedgerRepository $ledger = null, ?CustomerRepository $customers = null ) {
         $this->ledger    = $ledger ?? new LedgerRepository();
         $this->customers = $customers ?? new CustomerRepository();
@@ -46,13 +50,13 @@ final class CustomerPointsTotals {
         switch ( $metric ) {
             case self::EARNED:
             case self::SPENT:
-                // One row answers both lifetime figures, so the other is memoised with it.
-                $customer = $this->customers->find_by_user_id( $user_id );
+                $customer = $this->customer( $user_id );
 
-                $this->memo[ $user_id ][ self::EARNED ] = null === $customer ? 0 : $customer->get_lifetime_earned();
-                $this->memo[ $user_id ][ self::SPENT ]  = null === $customer ? 0 : $customer->get_lifetime_redeemed();
+                if ( null === $customer ) {
+                    return 0;
+                }
 
-                return $this->memo[ $user_id ][ $metric ];
+                return self::EARNED === $metric ? $customer->get_lifetime_earned() : $customer->get_lifetime_redeemed();
             case self::EARNED_MONTH:
                 return $this->ledger->earned_since( $user_id, self::month_start() );
             case self::SPENT_MONTH:
@@ -60,6 +64,15 @@ final class CustomerPointsTotals {
             default:
                 return 0;
         }
+    }
+
+    /** The customer row, read once per user: it answers both lifetime figures. */
+    private function customer( int $user_id ): ?Customer {
+        if ( ! array_key_exists( $user_id, $this->rows ) ) {
+            $this->rows[ $user_id ] = $this->customers->find_by_user_id( $user_id );
+        }
+
+        return $this->rows[ $user_id ];
     }
 
     /** UTC bound of 00:00 on day 1 of the current site-calendar month. */
