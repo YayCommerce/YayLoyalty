@@ -12,8 +12,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The birthday-points email, sent in place of Points earned for a birthday award. It shares Points earned's action
- * and takes only birthday rows; turning it off sends nothing for them. Templates live under includes/Pro/, as
- * ProLoyaltyEmail's do, so the Lite build strips them with the class.
+ * and takes only birthday rows; turning it off sends nothing for them. Templates live under includes/Pro/,
+ * so the Lite build strips them with the class.
  */
 class BirthdayPointsEmail extends LedgerEntryEmail {
 

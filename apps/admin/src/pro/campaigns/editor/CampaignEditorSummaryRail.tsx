@@ -33,9 +33,11 @@ export function CampaignEditorSummaryRail({
   onDraftIntent: () => void;
 }) {
   const { formState } = useFormContext<CampaignFormValues>();
-  const { campaign } = useCampaignEditorContext();
+  const { mode, campaign } = useCampaignEditorContext();
 
   const busy = mutation.isPending || formState.isSubmitting;
+  // Editing with nothing changed, Save is a no-op; Save as draft still drafts a campaign that isn't one yet.
+  const unchanged = mode === 'edit' && !formState.isDirty;
   // Which save was pressed, so only that button spins. The leave dialog's save counts as Save.
   const [pressed, setPressed] = useState<EditorSaveIntent>('save');
 
@@ -55,7 +57,7 @@ export function CampaignEditorSummaryRail({
         <LoadingButton
           type="submit"
           loading={busy && pressed === 'save'}
-          disabled={busy}
+          disabled={busy || unchanged}
           onClick={() => setPressed('save')}
         >
           {__('Save campaign', 'yayloyalty')}
@@ -65,7 +67,7 @@ export function CampaignEditorSummaryRail({
           variant="outline"
           data-intent="draft"
           loading={busy && pressed === 'draft'}
-          disabled={busy}
+          disabled={busy || (unchanged && campaign.status === 'draft')}
           onClick={() => {
             setPressed('draft');
             onDraftIntent();

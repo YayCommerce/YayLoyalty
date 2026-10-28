@@ -293,7 +293,8 @@ function RewardEditorActions({
   onArchive?: () => void;
   onCancel: () => void;
 }) {
-  const { canSaveDraft, showArchive } = rewardEditorActions(reward);
+  const { formState } = useFormContext<RewardFormValues>();
+  const { canSave, canSaveDraft, showArchive } = rewardEditorActions(reward, formState.isDirty);
   // Which save was pressed, so only that button spins. The leave dialog's save counts as Save.
   const [pressed, setPressed] = useState<EditorSaveIntent>('save');
 
@@ -313,7 +314,7 @@ function RewardEditorActions({
         <LoadingButton
           type="submit"
           loading={busy && pressed === 'save'}
-          disabled={busy}
+          disabled={busy || !canSave}
           onClick={() => setPressed('save')}
         >
           {__('Save reward', 'yayloyalty')}
@@ -324,7 +325,7 @@ function RewardEditorActions({
             variant="outline"
             data-intent="draft"
             loading={busy && pressed === 'draft'}
-            disabled={busy}
+            disabled={busy || !canSave}
             onClick={() => {
               setPressed('draft');
               onDraftIntent();
