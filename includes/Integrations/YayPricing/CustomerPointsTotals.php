@@ -46,13 +46,13 @@ final class CustomerPointsTotals {
         switch ( $metric ) {
             case self::EARNED:
             case self::SPENT:
+                // One row answers both lifetime figures, so the other is memoised with it.
                 $customer = $this->customers->find_by_user_id( $user_id );
 
-                if ( null === $customer ) {
-                    return 0;
-                }
+                $this->memo[ $user_id ][ self::EARNED ] = null === $customer ? 0 : $customer->get_lifetime_earned();
+                $this->memo[ $user_id ][ self::SPENT ]  = null === $customer ? 0 : $customer->get_lifetime_redeemed();
 
-                return self::EARNED === $metric ? $customer->get_lifetime_earned() : $customer->get_lifetime_redeemed();
+                return $this->memo[ $user_id ][ $metric ];
             case self::EARNED_MONTH:
                 return $this->ledger->earned_since( $user_id, self::month_start() );
             case self::SPENT_MONTH:
