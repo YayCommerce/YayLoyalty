@@ -2,7 +2,10 @@
 namespace YayLoyalty\Engine\Emails;
 
 use YayLoyalty\Engine\Expiry\ExpiryPolicy;
+use YayLoyalty\Engine\Expiry\ExpiryReminders;
 use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Repositories\CustomerRepository;
+use YayLoyalty\Repositories\LotRepository;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
@@ -47,19 +50,22 @@ class PointsExpiringSoonEmail extends LoyaltyEmail {
     /**
      * Mails the reminder the expiry job claimed, and announces an accepted send for the activity log.
      *
-     * @return string One of the SEND_* results; SEND_SKIPPED once the date has passed or the customer is gone.
+     * @param string $expires_at The date the claim announced, UTC.
+     * @param int[]  $lot_ids    The lots a batch claim stamped; [] in inactivity mode.
+     * @return string One of the SEND_* results; SEND_SKIPPED once nothing is left to announce or the customer is gone.
      */
-    public function trigger( int $user_id, int $points, string $expires_at, bool $is_single_date ): string {
-        // A queued reminder can come due after its date: the points it announces are already gone.
-        if ( strcmp( $expires_at, Dates::now() ) <= 0 ) {
-            return self::SEND_SKIPPED;
-        }
-
-        $user = get_userdata( $user_id );
+    public function trigger( int $user_id, string $expires_at, array $lot_ids ): string {
+        // A queued reminder can come due after the customer earned, spent or lost the points it announced.
+        $claim = ( new ExpiryReminders( new CustomerRepository(), new LotRepository() ) )->still_due( $user_id, $expires_at, $lot_ids, Dates::now() );
+        $user  = null !== $claim ? get_userdata( $user_id ) : false;
 
         if ( ! $user ) {
             return self::SEND_SKIPPED;
         }
+
+        $points         = $claim['points'];
+        $expires_at     = $claim['expires_at'];
+        $is_single_date = $claim['is_single_date'];
 
         // is_enabled()'s filter receives the customer.
         $result = $this->send_prepared(

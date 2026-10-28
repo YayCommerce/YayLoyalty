@@ -105,8 +105,11 @@ final class QueuedEmailsTest extends IntegrationTestCase {
     }
 
     public function test_a_failed_send_is_retried_after_the_backoff(): void {
-        $user_id           = $this->customer_with_email();
-        $args              = [ $user_id, 120, Dates::offset( 10 * DAY_IN_SECONDS ), true ];
+        $user_id    = $this->customer_with_email();
+        $expires_at = Dates::offset( 10 * DAY_IN_SECONDS );
+        $this->ledger_service()->earn( $this->earn_draft( $user_id, 1, 120 ) );
+        ( new CustomerRepository() )->set_expires_at( $user_id, $expires_at );
+        $args              = [ $user_id, $expires_at, [] ];
         $this->mail_result = false;
         $before            = time();
 

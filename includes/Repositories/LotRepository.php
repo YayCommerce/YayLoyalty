@@ -315,7 +315,7 @@ class LotRepository {
      * still unannounced, and sums what it read. A racing run that took any of them first leaves this claim
      * short, and it returns null, so a lot is never announced twice; the lots it did stamp are dropped.
      *
-     * @return array{points: int, expires_at: string, is_single_date: bool}|null
+     * @return array{points: int, expires_at: string, is_single_date: bool, lot_ids: int[]}|null
      * @throws QueryException When the write fails.
      */
     public function claim_reminder_lots( int $user_id, string $now, string $horizon ): ?array {
@@ -355,6 +355,48 @@ class LotRepository {
             return null;
         }
 
+        return self::reminder_summary( $lots ) + [ 'lot_ids' => $ids ];
+    }
+
+    /**
+     * What a batch reminder still announces: those of its claimed lots that are open, still announced and
+     * expire after $now. A lot spent, expired or restamped since drops out, so a queued reminder never
+     * announces points the customer no longer holds.
+     *
+     * @param int[] $lot_ids The lots the claim stamped.
+     * @return array{points: int, expires_at: string, is_single_date: bool}|null Null once none remain.
+     */
+    public function reminded_lots( int $user_id, array $lot_ids, string $now ): ?array {
+        global $wpdb;
+
+        if ( empty( $lot_ids ) ) {
+            return null;
+        }
+
+        $lot_ids = array_map( 'intval', $lot_ids );
+        $in      = Sql::in_placeholders( $lot_ids, '%d' );
+
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $in holds only placeholders, bound by $lot_ids: the sniff cannot count through it.
+        $lots = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT remaining, expires_at FROM `' . esc_sql( $this->table() ) . "`
+                 WHERE user_id = %d AND id IN ({$in}) AND status = %s AND reminded_at IS NOT NULL AND remaining > 0 AND expires_at > %s",
+                array_merge( [ $user_id ], $lot_ids, [ LotStatus::OPEN, $now ] )
+            ),
+            ARRAY_A
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+
+        return empty( $lots ) ? null : self::reminder_summary( $lots );
+    }
+
+    /**
+     * One reminder's figures from its lots.
+     *
+     * @param array<int, array{remaining: string, expires_at: string}> $lots At least one.
+     * @return array{points: int, expires_at: string, is_single_date: bool}
+     */
+    private static function reminder_summary( array $lots ): array {
         $dates = array_column( $lots, 'expires_at' );
         // Days as the customer reads them: the email shows each date in the site's time zone.
         $days = array_unique(

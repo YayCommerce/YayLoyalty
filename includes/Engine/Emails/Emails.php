@@ -105,11 +105,13 @@ class Emails {
 
     /**
      * Queues the Points expiring soon email for a claimed reminder, paced by QueuedEmails. Called by the
-     * expiry job for each reminder it claimed. The figures travel as scalars: the claim already marked
-     * the lots, so a later send could not recompute them.
+     * expiry job for each reminder it claimed. Only the claim travels, not its figures: the send re-reads
+     * them (ExpiryReminders::still_due()), since the customer can earn or spend while it waits.
+     *
+     * @param int[] $lot_ids The lots a batch claim stamped; [] in inactivity mode.
      */
-    public static function relay_expiring_soon( int $user_id, int $points, string $expires_at, bool $is_single_date ): void {
-        QueuedEmails::enqueue( self::POINTS_EXPIRING_SOON_EMAIL_ID, [ $user_id, $points, $expires_at, $is_single_date ] );
+    public static function relay_expiring_soon( int $user_id, string $expires_at, array $lot_ids ): void {
+        QueuedEmails::enqueue( self::POINTS_EXPIRING_SOON_EMAIL_ID, [ $user_id, $expires_at, $lot_ids ] );
     }
 
     /**

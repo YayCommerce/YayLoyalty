@@ -131,6 +131,30 @@ final class ExpiryRemindersTest extends IntegrationTestCase {
         $this->assertCount( 0, $this->sent );
     }
 
+    public function test_a_queued_reminder_is_skipped_once_a_redeem_moves_the_date(): void {
+        $user_id = $this->customer_due_in( 10 );
+
+        ( new ExpiryRunner() )->run();
+        $this->ledger_service()->redeem( $this->redeem_draft( $user_id, 2, 50 ) );
+        $this->run_queued_emails();
+
+        $this->assertNotNull( $this->customer_row( $user_id )['reminder_sent_at'], 'The reminder was claimed before the redeem.' );
+        $this->assertCount( 0, $this->sent );
+    }
+
+    public function test_a_queued_batch_reminder_announces_only_the_points_still_held(): void {
+        $lots    = $this->customer_with_lots( [ 5, 20 ] );
+        $user_id = (int) $this->lot_row( $lots[0] )['user_id'];
+
+        ( new ExpiryRunner() )->run();
+        $this->ledger_service()->redeem( $this->redeem_draft( $user_id, 3, 100 ) );
+        $this->run_queued_emails();
+
+        $this->assertCount( 1, $this->sent );
+        $this->assertStringContainsString( '100 Points', (string) $this->sent[0]['message'] );
+        $this->assertStringContainsString( 'will expire on', (string) $this->sent[0]['message'] );
+    }
+
     /** One expiry job run, then every email it queued. */
     private function run_expiry(): void {
         ( new ExpiryRunner() )->run();
