@@ -143,18 +143,29 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
                             <?php disabled( $yayloyalty_is_stuck ); ?>
                         >
                         <div class="yayloyalty-redeem__controls">
-                            <input
-                                type="number"
-                                inputmode="numeric"
-                                class="yayloyalty-redeem__points"
-                                data-yl-points
-                                min="<?php echo esc_attr( (string) $view['min'] ); ?>"
-                                max="<?php echo esc_attr( (string) $view['max'] ); ?>"
-                                step="<?php echo esc_attr( (string) $view['step'] ); ?>"
-                                value="<?php echo esc_attr( (string) $yayloyalty_value ); ?>"
-                                aria-label="<?php echo esc_attr( $yayloyalty_aria ); ?>"
-                                <?php disabled( $yayloyalty_is_stuck ); ?>
-                            >
+                            <span class="yayloyalty-redeem__stepper">
+                                <input
+                                    type="number"
+                                    inputmode="numeric"
+                                    class="yayloyalty-redeem__points"
+                                    data-yl-points
+                                    min="<?php echo esc_attr( (string) $view['min'] ); ?>"
+                                    max="<?php echo esc_attr( (string) $view['max'] ); ?>"
+                                    step="<?php echo esc_attr( (string) $view['step'] ); ?>"
+                                    value="<?php echo esc_attr( (string) $yayloyalty_value ); ?>"
+                                    aria-label="<?php echo esc_attr( $yayloyalty_aria ); ?>"
+                                    <?php disabled( $yayloyalty_is_stuck ); ?>
+                                >
+                                <?php // The field's own arrow keys step it, so the chevrons stay out of the tab order and the accessibility tree. ?>
+                                <span class="yayloyalty-redeem__chevrons" aria-hidden="true">
+                                    <button type="button" class="yayloyalty-redeem__chevron" data-yl-step="up" tabindex="-1" <?php disabled( $yayloyalty_is_stuck ); ?>>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="m18 15-6-6-6 6"/></svg>
+                                    </button>
+                                    <button type="button" class="yayloyalty-redeem__chevron" data-yl-step="down" tabindex="-1" <?php disabled( $yayloyalty_is_stuck ); ?>>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+                                    </button>
+                                </span>
+                            </span>
                             <span class="yayloyalty-redeem__off" data-yl-off><?php echo esc_html( sprintf( $yayloyalty_off_template, LauncherCopy::money( $yayloyalty_preview_at ) ) ); ?></span>
                         </div>
                         <?php if ( '' !== $yayloyalty_note ) : ?>
