@@ -287,6 +287,38 @@ class LedgerRepository extends AbstractRepository {
     }
 
     /**
+     * Net points a user earned in rows created at or after $from: the signed SUM of
+     * lifetime_earned_types() rows, the same rule as customers.lifetime_earned. 0 for a guest.
+     *
+     * @param string $from UTC MySQL datetime. A row at this exact second is included.
+     */
+    public function earned_since( int $user_id, string $from ): int {
+        return $this->sum_since( $user_id, $from, LedgerType::lifetime_earned_types() );
+    }
+
+    /**
+     * Net points a user spent in rows created at or after $from: redeemed minus returned,
+     * the same rule as customers.lifetime_redeemed. 0 for a guest.
+     *
+     * @param string $from UTC MySQL datetime. A row at this exact second is included.
+     */
+    public function redeemed_since( int $user_id, string $from ): int {
+        return -$this->sum_since( $user_id, $from, LedgerType::lifetime_redeemed_types() );
+    }
+
+    /** @param string[] $types */
+    private function sum_since( int $user_id, string $from, array $types ): int {
+        if ( $user_id < 1 ) {
+            return 0;
+        }
+
+        return $this->sum_points(
+            'user_id = %d AND created_at >= %s AND type IN (' . Sql::in_placeholders( $types ) . ')',
+            array_merge( [ $user_id, $from ], $types )
+        );
+    }
+
+    /**
      * Points issued to a user (issued_row_sql()) in rows created strictly after $after: the launcher's
      * "You earned 40 new points." since the shopper last opened it (NewPointsNotice).
      *

@@ -68,6 +68,11 @@ final class LedgerType {
         return in_array( $type, [ self::REDEEM, self::REFUND_REDEEM ], true );
     }
 
+    /** @return string[] Types that feed customers.lifetime_redeemed. */
+    public static function lifetime_redeemed_types(): array {
+        return array_values( array_filter( self::all(), [ self::class, 'affects_lifetime_redeemed' ] ) );
+    }
+
     /** Whether the row touches last_activity_at: the last earn or redeem. */
     public static function is_activity( string $type ): bool {
         return in_array( $type, [ self::EARN, self::REDEEM ], true );
