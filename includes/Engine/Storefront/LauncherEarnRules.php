@@ -88,9 +88,9 @@ final class LauncherEarnRules {
     }
 
     /**
-     * member_rows() under the daily limit: at 0 left the limit line replaces the rows; below it, the line follows rows there are.
+     * rows_without_signup() under the daily limit: at 0 left the limit line replaces the rows; below it, the line follows rows there are.
      *
-     * @param array[]  $rows       member_rows(), each as the yayloyalty_launcher_earn_rows filter documents it.
+     * @param array[]  $rows       rows_without_signup(), each as the yayloyalty_launcher_earn_rows filter documents it.
      * @param int|null $left_today EarningService::points_left_today(); null for no limit.
      * @return array{rows: array[], limit_line: string}
      */
@@ -109,14 +109,15 @@ final class LauncherEarnRules {
     }
 
     /**
-     * A member's "Ways to earn" rows, in display order: no signup row, since a member already has the account it pays for.
+     * The "Ways to earn" rows everyone sees, in display order, the signup row aside: a member's whole list, and the
+     * part of a guest's that guest_rows() puts the signup row in front of.
      *
      * @param array{purchase: ?float, review: ?int} $earn              advertise()'s `earn`.
      * @param float                                 $purchase_min      advertise()'s `purchase_min`.
      * @param string                                $purchase_rounding advertise()'s `purchase_rounding`.
      * @return array[] Each row as the yayloyalty_launcher_earn_rows filter documents it.
      */
-    public static function member_rows( array $earn, float $purchase_min, string $purchase_rounding = PointsMath::ROUND_DOWN ): array {
+    public static function rows_without_signup( array $earn, float $purchase_min, string $purchase_rounding = PointsMath::ROUND_DOWN ): array {
         $rows = [];
 
         if ( null !== $earn[ CampaignTrigger::PURCHASE ] ) {
@@ -163,7 +164,7 @@ final class LauncherEarnRules {
         }
 
         if ( $user_id > 0 ) {
-            return self::with_daily_limit( self::member_rows( $payload['earn'], $payload['purchase_min'], $payload['purchase_rounding'] ), $payload['left_today'] );
+            return self::with_daily_limit( self::rows_without_signup( $payload['earn'], $payload['purchase_min'], $payload['purchase_rounding'] ), $payload['left_today'] );
         }
 
         return [
@@ -181,7 +182,7 @@ final class LauncherEarnRules {
      */
     public static function guest_rows( array $payload ): array {
         $earn = $payload['earn'];
-        $rows = self::member_rows( $earn, $payload['purchase_min'], $payload['purchase_rounding'] );
+        $rows = self::rows_without_signup( $earn, $payload['purchase_min'], $payload['purchase_rounding'] );
 
         if ( null !== $earn[ CampaignTrigger::SIGNUP ] ) {
             array_unshift(

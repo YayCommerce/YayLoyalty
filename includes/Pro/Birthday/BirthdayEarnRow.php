@@ -15,7 +15,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The birthday row in "Ways to earn", while a birthday campaign pays everyone. A signed-in customer with no
- * birthday on file gets the label as a link to Account details, where they can add it.
+ * birthday on file gets the label as a link to Account details, where they can add it; a guest gets it as a
+ * link to My Account, to join first.
  */
 final class BirthdayEarnRow {
 
@@ -30,7 +31,7 @@ final class BirthdayEarnRow {
     }
 
     /**
-     * @param array[] $rows Each row as the yayloyalty_launcher_earn_rows filter documents it (LauncherEarnRules::member_rows()).
+     * @param array[] $rows Each row as the yayloyalty_launcher_earn_rows filter documents it (LauncherEarnRules::rows_without_signup()).
      * @return array[]
      */
     public function add_row( array $rows ): array {
@@ -40,18 +41,27 @@ final class BirthdayEarnRow {
             return $rows;
         }
 
-        $missing = self::has_no_birthday( get_current_user_id() );
-
-        $rows[] = [
-            'trigger'     => CampaignTrigger::BIRTHDAY,
-            'label'       => __( 'Celebrate your birthday', 'yayloyalty' ),
-            'value'       => LauncherCopy::points_gain( $points ),
-            'description' => $missing
-                ? __( 'Tell us your birthday to get a birthday bonus.', 'yayloyalty' )
-                /* translators: %s: points with the store's label, as "100 Points". */
-                : sprintf( __( 'You\'ll receive %s on your next birthday.', 'yayloyalty' ), SettingsHelper::points_text( $points ) ),
-            'url'         => $missing ? wc_customer_edit_account_url() : '',
+        $user_id = get_current_user_id();
+        $row     = [
+            'trigger' => CampaignTrigger::BIRTHDAY,
+            'label'   => __( 'Celebrate your birthday', 'yayloyalty' ),
+            'value'   => LauncherCopy::points_gain( $points ),
         ];
+
+        if ( $user_id <= 0 ) {
+            /* translators: %s: points with the store's label, as "100 Points". */
+            $row['description'] = sprintf( __( 'Join free and add your birthday to get %s.', 'yayloyalty' ), SettingsHelper::points_text( $points ) );
+            $row['url']         = (string) wc_get_page_permalink( 'myaccount' );
+        } elseif ( self::is_member_without_birthday( $user_id ) ) {
+            $row['description'] = __( 'Tell us your birthday to get a birthday bonus.', 'yayloyalty' );
+            $row['url']         = wc_customer_edit_account_url();
+        } else {
+            /* translators: %s: points with the store's label, as "100 Points". */
+            $row['description'] = sprintf( __( 'You\'ll receive %s on your next birthday.', 'yayloyalty' ), SettingsHelper::points_text( $points ) );
+            $row['url']         = '';
+        }
+
+        $rows[] = $row;
 
         return $rows;
     }
@@ -66,7 +76,7 @@ final class BirthdayEarnRow {
         return self::$points;
     }
 
-    private static function has_no_birthday( int $user_id ): bool {
+    private static function is_member_without_birthday( int $user_id ): bool {
         if ( $user_id <= 0 ) {
             return false;
         }
