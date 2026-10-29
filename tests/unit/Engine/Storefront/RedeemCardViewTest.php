@@ -12,7 +12,7 @@ use YayLoyalty\Models\Reward;
 /** RedeemCard::view(): the card's numbers are Clamp's answers, and the state follows who is asking. */
 final class RedeemCardViewTest extends TestCase {
 
-    /** The seeded slider reward: 100 points per currency unit, minimum 100, step 100. */
+    /** The seeded slider reward in free input: 100 points per currency unit, minimum 100, step 100. */
     private function reward( array $config = [] ): Reward {
         return new Reward(
             9,
@@ -22,7 +22,7 @@ final class RedeemCardViewTest extends TestCase {
             Status::ACTIVE,
             0,
             null,
-            array_merge( Reward::default_config( RewardType::FLEXIBLE_DISCOUNT ), $config ),
+            array_merge( Reward::default_config( RewardType::FLEXIBLE_DISCOUNT ), [ 'redemption_mode' => Reward::REDEMPTION_MODE_FREE_INPUT ], $config ),
             [],
             null,
             null,

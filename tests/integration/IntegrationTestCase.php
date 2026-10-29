@@ -166,11 +166,11 @@ abstract class IntegrationTestCase extends TestCase {
         );
     }
 
-    /** The slider reward as a stored row, so the reversal can read its refund_policy. */
+    /** The slider reward in free input as a stored row, so the reversal can read its refund_policy. */
     protected function seeded_reward( array $config = [] ): Reward {
         $now     = Dates::now();
         $rewards = new RewardRepository();
-        $id      = $rewards->insert( new Reward( null, 'Cart discount', 'cart-discount', RewardType::FLEXIBLE_DISCOUNT, Status::ACTIVE, 0, null, array_merge( Reward::default_config( RewardType::FLEXIBLE_DISCOUNT ), $config ), [], null, null, true, null, null, $now, $now ) );
+        $id      = $rewards->insert( new Reward( null, 'Cart discount', 'cart-discount', RewardType::FLEXIBLE_DISCOUNT, Status::ACTIVE, 0, null, array_merge( Reward::default_config( RewardType::FLEXIBLE_DISCOUNT ), [ 'redemption_mode' => Reward::REDEMPTION_MODE_FREE_INPUT ], $config ), [], null, null, true, null, null, $now, $now ) );
 
         return $rewards->find_reward( $id );
     }

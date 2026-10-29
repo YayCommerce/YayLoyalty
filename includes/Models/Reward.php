@@ -395,7 +395,7 @@ class Reward extends AbstractModel {
                     'increment'                => 100,
                     'show_on'                  => [ 'cart', 'checkout' ],
                     'refund_policy'            => self::REFUND_POLICY_PROPORTIONAL,
-                    'redemption_mode'          => self::REDEMPTION_MODE_FREE_INPUT,
+                    'redemption_mode'          => self::REDEMPTION_MODE_AUTO_MAX,
                     'max_total'                => null,
                 ];
 
