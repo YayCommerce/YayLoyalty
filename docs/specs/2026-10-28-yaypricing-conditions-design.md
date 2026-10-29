@@ -43,7 +43,9 @@ On a store running YayPricing 3.5.8 or later, a merchant building a YayPricing r
 ## Acceptance criteria
 
 1. With YayPricing ≥ 3.5.8 active, its rule editor lists "Loyalty reward applied" under Cart, and four points conditions under Customer. Without YayPricing, or below 3.5.8, YayLoyalty adds no hooks and no error is logged.
-2. `yayloyalty_reward_applied` takes a list of rewards (every reward but the archived ones, the points discount among them). "Any of" (`contain`) matches when the cart holds the coupon code of at least one picked reward; "None of" (`not_contain`) matches when it holds none, guests included. A value that is not a list, or a comparator that is not a string, never matches. (Amended 2026-10-29: the first version took Applied / Not applied for any loyalty reward.)
+2. Two cart conditions (amended 2026-10-29; the first version had only the first, then briefly took a list):
+   - `yayloyalty_reward_applied` "Loyalty reward applied": "Applied" (`true`) matches when the cart holds any code `Context::is_loyalty_code()` accepts, the points discount's or a catalog reward's; "Not applied" (`false`) matches otherwise, guests included. A comparator that is not a boolean never matches.
+   - `yayloyalty_applied_rewards` "Applied loyalty rewards": takes a list of rewards (every reward but the archived ones, the points discount among them). "Any of" (`contain`) matches when the cart holds the coupon code of at least one picked reward; "None of" (`not_contain`) when it holds none, guests included. A value that is not a list, or a comparator that is not a string, never matches.
 3. A cart discount rule "10% off when Loyalty reward applied = Applied": applying a reward from the redeem card shows both discounts in the totals that same response, classic and block cart. Removing the reward drops the 10% in that same response.
 4. `yayloyalty_points_earned` compares `get_lifetime_earned()`, and `yayloyalty_points_spent` compares `get_lifetime_redeemed()`. Example: a customer with lifetime_earned 500 matches "≥ 500" and not "> 500".
 5. `yayloyalty_points_earned_this_month` compares the signed sum of `lifetime_earned_types()` rows with `created_at` ≥ 00:00 on the 1st of the current month in `wp_timezone()`, converted to UTC. `yayloyalty_points_spent_this_month` compares the negated sum of redeem + refund_redeem rows over the same window.
@@ -59,7 +61,7 @@ On a store running YayPricing 3.5.8 or later, a merchant building a YayPricing r
 - Lite and Pro: nothing under `includes/Pro/`; the Lite build validator must pass.
 - YayPricing classes (`YAYDP\*`) are named only inside the `yaydp_register_conditions` callback and the classes it constructs. Nothing autoloads them before then.
 - Boot guard: `defined( 'YAYDP_VERSION' ) && version_compare( YAYDP_VERSION, '3.5.8', '>=' )`.
-- Slugs are frozen once released: `yayloyalty_reward_applied`, `yayloyalty_points_earned`, `yayloyalty_points_spent`, `yayloyalty_points_earned_this_month`, `yayloyalty_points_spent_this_month`.
+- Slugs are frozen once released: `yayloyalty_reward_applied`, `yayloyalty_applied_rewards`, `yayloyalty_points_earned`, `yayloyalty_points_spent`, `yayloyalty_points_earned_this_month`, `yayloyalty_points_spent_this_month`.
 - Read-only: no ledger or balance writes (only `LedgerService` writes). Dates stored UTC; month boundary in `wp_timezone()`.
 - Strings use the `yayloyalty` text domain, and labels use the merchant's points label (`SettingsHelper::points_label_plural()`).
 
@@ -67,11 +69,12 @@ On a store running YayPricing 3.5.8 or later, a merchant building a YayPricing r
 
 **Chosen:** native YayPricing condition registry, with a per-request totals cache and a guarded totals re-run.
 
-**Architecture:** `YayPricingIntegration` checks the version guard, then adds the `yaydp_register_conditions` action and the re-run hooks. The callback constructs one `RewardAppliedCondition` and four `PointsTotalCondition` instances, each built with its slug, label and metric. Points conditions read through `CustomerPointsTotals`, which memoises per user per request and reads the customer row and two new ledger sums.
+**Architecture:** `YayPricingIntegration` checks the version guard, then adds the `yaydp_register_conditions` action and the re-run hooks. The callback constructs one `RewardAppliedCondition`, one `AppliedRewardsCondition` and four `PointsTotalCondition` instances, each built with its slug, label and metric. Points conditions read through `CustomerPointsTotals`, which memoises per user per request and reads the customer row and two new ledger sums.
 
 **Components:**
 - `includes/Integrations/YayPricing/YayPricingIntegration.php`: guard, hooks, registers the five types.
-- `includes/Integrations/YayPricing/RewardAppliedCondition.php`: extends `\YAYDP\Abstracts\YAYDP_Condition_Type`. Group `GROUP_CART`, editor `select` with one option per non-archived reward (`value` the reward id, `label` its name), default `[]`, comparators `contain` ("Any of") and `not_contain` ("None of"). `check()` maps each code `Context::loyalty_codes()` finds on the cart to its reward through `RewardRepository::find_by_coupon_code()`, once per code per request, and resolves the picked ids with `YAYDP_Comparators::matches_contain()`.
+- `includes/Integrations/YayPricing/RewardAppliedCondition.php`: extends `\YAYDP\Abstracts\YAYDP_Condition_Type`. Group `GROUP_CART`, editor `none`, default `true`, comparators `[ ['value'=>true,'label'=>'Applied'], ['value'=>false,'label'=>'Not applied'] ]`. `check()` tests the cart with `Context::loyalty_codes()`.
+- `includes/Integrations/YayPricing/AppliedRewardsCondition.php`: same base class. Group `GROUP_CART`, editor `select` with one option per non-archived reward (`value` the reward id, `label` its name), default `[]`, comparators `contain` ("Any of") and `not_contain` ("None of"). `check()` maps each code `Context::loyalty_codes()` finds on the cart to its reward through `RewardRepository::find_by_coupon_code()`, once per code per request, and resolves the picked ids with `YAYDP_Comparators::matches_contain()`.
 - `includes/Integrations/YayPricing/PointsTotalCondition.php`: one class, four instances. The constructor takes slug, label and metric (`earned`, `spent`, `earned_month`, `spent_month`). Group `GROUP_CUSTOMER`, `YAYDP_Comparators::numeric()`, editor `number`, default `100`. `check()` returns false for a guest, else `compare_numeric( totals, $condition )`.
 - `includes/Integrations/YayPricing/CustomerPointsTotals.php`: memo `[user_id][metric] => int`. Lifetime figures come from `CustomerRepository::find_by_user_id()` (null → 0). Month figures come from the ledger with `Dates::site_month_start()`.
 - `includes/Integrations/YayPricing/LoyaltyCouponRerun.php`: on `woocommerce_before_calculate_totals` at 100, snapshots the sorted loyalty codes. On `woocommerce_after_calculate_totals` at `PHP_INT_MAX`, if they differ and it is not already re-running, sets a flag, calls `$cart->calculate_totals()`, and clears the flag.
@@ -108,7 +111,7 @@ On a store running YayPricing 3.5.8 or later, a merchant building a YayPricing r
 | Accept one-recalculation lag | The cart shows a stale YayPricing discount right after applying or removing a reward. |
 | Gross counting (earn/redeem rows only) | Disagrees with the Customers page lifetime totals. User chose net. |
 | Rolling 30 days | User chose calendar month in site timezone. |
-| Applied / Not applied for any loyalty reward | First version. Replaced 2026-10-29: merchants need to target one reward, and every reward now has its own coupon code. |
+| One condition taking a list of rewards | Tried 2026-10-29. Asking only "is any reward applied" then meant picking every reward, and the list misses rewards added later; split into two conditions instead. |
 | Pro only | YayMail/YayCurrency ship in Lite. User chose Lite and Pro. |
 
 ## Rollout
