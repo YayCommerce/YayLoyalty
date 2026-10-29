@@ -22,7 +22,7 @@
 - Lite and Pro: nothing under `includes/Pro/`. Lite names Pro only in `YayLoyalty.php`'s guarded boot call, and `./scripts/run.sh release lite --no-prompt` must pass the validator.
 - `YAYDP\*` classes are named only inside the `yaydp_register_conditions` callback and in the classes it constructs. Nothing autoloads them earlier (same rule as YayMail's adapters).
 - Boot guard: `defined( 'YAYDP_VERSION' ) && version_compare( YAYDP_VERSION, '3.5.8', '>=' )`.
-- Frozen slugs: `yayloyalty_reward_applied`, `yayloyalty_applied_rewards`, `yayloyalty_points_earned`, `yayloyalty_points_spent`, `yayloyalty_points_earned_this_month`, `yayloyalty_points_spent_this_month`.
+- Frozen slugs: `yayloyalty_reward_applied`, `yayloyalty_rewards`, `yayloyalty_points_earned`, `yayloyalty_points_spent`, `yayloyalty_points_earned_this_month`, `yayloyalty_points_spent_this_month`.
 - Read-only: no ledger or balance writes. Only `LedgerService` writes, and production code does not construct it here.
 - Datetimes stored UTC; the month boundary is wall-clock 00:00 on day 1 in `wp_timezone()`.
 - Strings use the `yayloyalty` text domain. Labels use `SettingsHelper::points_label_plural()`.
@@ -209,7 +209,7 @@ Message: `feat(yaypricing): points earned and spent conditions for YayPricing ru
     - `editor()` is the base class's `[ 'kind' => 'none' ]`; `default_value()` returns `true`.
     - `check()`: false unless the comparator is a boolean; otherwise `$wants === $has`, where `$has` is true when `Context::loyalty_codes( $ctx->applied_coupons() )` is not empty.
   - `final class AppliedRewardsCondition extends \YAYDP\Abstracts\YAYDP_Condition_Type` (added 2026-10-29, spec AC 2):
-    - `slug()` returns `'yayloyalty_applied_rewards'`; `label()` returns "Applied loyalty rewards"; `group()` returns `GROUP_CART`.
+    - `slug()` returns `'yayloyalty_rewards'`; `label()` returns "Loyalty rewards"; `group()` returns `GROUP_CART`.
     - `comparators()` returns `YAYDP_Comparators::pick( [ CONTAIN => 'Any of', NOT_CONTAIN => 'None of' ] )` (labels in the `yayloyalty` domain).
     - `editor()` returns `[ 'kind' => 'select', 'options' => [ [ 'value' => <reward id>, 'label' => <name> ], … ] ]`, every reward but the archived ones; `default_value()` returns `[]`.
     - `check()`: false unless the comparator is a string and the value a list; otherwise `YAYDP_Comparators::matches_contain()` over the picked ids that the cart's loyalty codes map to (`RewardRepository::find_by_coupon_code()`, memoised per code).

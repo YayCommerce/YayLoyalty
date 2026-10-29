@@ -31,11 +31,11 @@ final class AppliedRewardsCondition extends \YAYDP\Abstracts\YAYDP_Condition_Typ
     }
 
     public function slug() {
-        return 'yayloyalty_applied_rewards';
+        return 'yayloyalty_rewards';
     }
 
     public function label() {
-        return __( 'Applied loyalty rewards', 'yayloyalty' );
+        return __( 'Loyalty rewards', 'yayloyalty' );
     }
 
     public function group() {
