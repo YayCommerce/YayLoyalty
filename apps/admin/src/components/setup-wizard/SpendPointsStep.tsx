@@ -87,7 +87,9 @@ export function SpendPointsStep({ form }: WizardStepProps) {
                   </NumberInputRoot>
                 )}
               />
-              <span className="text-muted-foreground text-xs">{__('of the subtotal', 'yayloyalty')}</span>
+              <span className="text-muted-foreground text-xs">
+                {__('of the order total after other discounts', 'yayloyalty')}
+              </span>
             </div>
           </div>
         </div>

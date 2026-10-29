@@ -102,7 +102,9 @@ export function FlexibleDiscountFields({
             <NumberInputInput />
             <NumberInputUnit unit="%" />
           </NumberInputRoot>
-          <span className="text-muted-foreground text-sm">{__('of the subtotal', 'yayloyalty')}</span>
+          <span className="text-muted-foreground text-sm">
+            {__('of the order total after other discounts', 'yayloyalty')}
+          </span>
         </div>
       </ConfigField>
 

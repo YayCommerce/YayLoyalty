@@ -190,8 +190,8 @@ final class CommitWriterTest extends IntegrationTestCase {
         list( , $rewards ) = $this->order_with_a_and_b();
         list( $a, $b )     = array_keys( $rewards );
         $lines             = [
-            $a                => 5.0,
-            $b                => 10.0,
+            $a                           => 5.0,
+            $b                           => 10.0,
             self::FLEXIBLE_DISCOUNT_CODE => 5.0,
         ];
 

@@ -32,7 +32,7 @@ $yayloyalty_money       = $view['money'];
 $yayloyalty_label       = SettingsHelper::points_label_plural();
 $yayloyalty_note        = '' !== ( $view['bound_by'] ?? '' ) ? RedemptionService::message_for( $view['bound_by'] ) : '';
 // Rounding to the step reads neutral; every other bound is a limit that lowered the amount.
-$yayloyalty_note_tone   = Clamp::BOUND_STEP === ( $view['bound_by'] ?? '' ) ? '' : ' yayloyalty-redeem__note--warning';
+$yayloyalty_note_tone = Clamp::BOUND_STEP === ( $view['bound_by'] ?? '' ) ? '' : ' yayloyalty-redeem__note--warning';
 /* translators: 1: the store's points label, as "Points", 2: money amount. */
 $yayloyalty_off_template = sprintf( __( '%1$s = %2$s', 'yayloyalty' ), $yayloyalty_label, '%s' );
 /* translators: %s: the store's points label, as "Points". */
