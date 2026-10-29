@@ -8,6 +8,7 @@
  */
 
 use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
+use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -18,10 +19,10 @@ $yayloyalty_item     += [
 $yayloyalty_item_tone = 'positive' === ( $yayloyalty_item['tone'] ?? '' ) ? ' yayloyalty-account__item-value--positive' : '';
 ?>
 <li class="yayloyalty-account__item">
-    <span class="yayloyalty-account__item-icon"><?php echo $yayloyalty_item['icon']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?></span>
+    <span class="yayloyalty-account__item-icon"><?php echo wp_kses( $yayloyalty_item['icon'], Kses::svg() ); ?></span>
     <span class="yayloyalty-account__item-body">
         <?php if ( '' !== $yayloyalty_item['url'] ) : ?>
-            <a class="yayloyalty-account__item-name" href="<?php echo esc_url( $yayloyalty_item['url'] ); ?>"><?php echo esc_html( $yayloyalty_item['name'] ); ?><?php echo AccountRewardsIcon::get( 'external' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?></a>
+            <a class="yayloyalty-account__item-name" href="<?php echo esc_url( $yayloyalty_item['url'] ); ?>"><?php echo esc_html( $yayloyalty_item['name'] ); ?><?php echo wp_kses( AccountRewardsIcon::get( 'external' ), Kses::svg() ); ?></a>
         <?php else : ?>
             <span class="yayloyalty-account__item-name"><?php echo esc_html( $yayloyalty_item['name'] ); ?></span>
         <?php endif; ?>

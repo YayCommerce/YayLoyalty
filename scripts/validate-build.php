@@ -332,6 +332,65 @@ if ( $is_lite ) {
     );
 }
 
+// The admin-shell strip and text-domain rewrite (build_package in scripts/run.sh)
+
+if ( $is_lite ) {
+    // Mirrors LITE_SHELL_STRIP in scripts/run.sh.
+    $shell_strip = [
+        'src/License/', 'src/Registry/', 'src/Contracts/AddonHostAdapter.php', 'src/Menu/ExternalPluginMenuAdapter.php',
+        'src/Pages/LicensesPage.php', 'src/Pages/RecommendedPluginsPage.php', 'views/license-card.php',
+        'views/license-activate-card.php', 'views/licenses-page.php', 'views/recommended-plugins-data.php',
+        'views/recommended-plugins-page.php', 'assets/css/licenses.css', 'assets/css/other-plugins.css',
+        'assets/js/license.js', 'assets/js/other-plugins.js',
+    ];
+    $shell_leftovers = [];
+    foreach ( $files as $rel ) {
+        foreach ( $shell_strip as $path ) {
+            if ( 0 === strpos( $rel, 'vendor-prefixed/' . $path ) ) {
+                $shell_leftovers[] = $rel;
+            }
+        }
+    }
+    record(
+        'Lite: admin-shell licensing and Recommended Plugins stripped',
+        [] === $shell_leftovers,
+        implode( ', ', array_slice( $shell_leftovers, 0, 5 ) )
+    );
+
+    // A stripped class still named in the shell or in Composer's maps fatals when reached, and
+    // WordPress.org review reads a listed EDD_SL_Plugin_Updater as an updater.
+    $shell_refs = [];
+    foreach ( $php_files as $rel ) {
+        if ( 0 !== strpos( $rel, 'vendor-prefixed/' ) && 0 !== strpos( $rel, 'vendor/composer/' ) ) {
+            continue;
+        }
+        $src = (string) file_get_contents( $root . '/' . $rel );
+        if ( preg_match( '/AdminShell\\\\{1,2}(License|Registry)\\\\|LicensesPage|RecommendedPluginsPage|ExternalPluginMenuAdapter|EDD_SL_Plugin_Updater/', $src ) ) {
+            $shell_refs[] = $rel;
+        }
+    }
+    record(
+        'Lite: nothing names a stripped admin-shell class',
+        [] === $shell_refs,
+        implode( ', ', array_slice( $shell_refs, 0, 5 ) )
+    );
+}
+
+$foreign_domains = [];
+foreach ( $php_files as $rel ) {
+    if ( 0 !== strpos( $rel, 'vendor-prefixed/' ) ) {
+        continue;
+    }
+    if ( preg_match( "/'yaycommerce'\s*\)/", (string) file_get_contents( $root . '/' . $rel ) ) ) {
+        $foreign_domains[] = $rel;
+    }
+}
+record(
+    'Admin-shell gettext calls use the ' . PLUGIN_SLUG . ' text domain',
+    [] === $foreign_domains,
+    implode( ', ', array_slice( $foreign_domains, 0, 5 ) )
+);
+
 // Inline Pro-field gates, read from the source, not the zip
 
 // Lite ships these field keys, because a downgraded site keeps its Pro data, so only the

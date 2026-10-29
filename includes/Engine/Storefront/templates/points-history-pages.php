@@ -10,6 +10,7 @@
 
 use YayLoyalty\Engine\Storefront\AccountRewards;
 use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
+use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -23,9 +24,9 @@ for ( $yayloyalty_p = 1; $yayloyalty_p <= $yayloyalty_pages; $yayloyalty_p++ ) {
 ?>
 <nav class="yayloyalty-account__pages" aria-label="<?php esc_attr_e( 'History pages', 'yayloyalty' ); ?>">
     <?php if ( $yayloyalty_page > 1 ) : ?>
-        <a class="yayloyalty-account__page" href="<?php echo esc_url( AccountRewards::url( $yayloyalty_page - 1, $yayloyalty_filter_on ) ); ?>" data-page="<?php echo esc_attr( $yayloyalty_page - 1 ); ?>" data-filter="<?php echo esc_attr( $yayloyalty_filter_on ); ?>" aria-label="<?php esc_attr_e( 'Previous page', 'yayloyalty' ); ?>"><?php echo AccountRewardsIcon::get( 'prev' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?></a>
+        <a class="yayloyalty-account__page" href="<?php echo esc_url( AccountRewards::url( $yayloyalty_page - 1, $yayloyalty_filter_on ) ); ?>" data-page="<?php echo esc_attr( $yayloyalty_page - 1 ); ?>" data-filter="<?php echo esc_attr( $yayloyalty_filter_on ); ?>" aria-label="<?php esc_attr_e( 'Previous page', 'yayloyalty' ); ?>"><?php echo wp_kses( AccountRewardsIcon::get( 'prev' ), Kses::svg() ); ?></a>
     <?php else : ?>
-        <span class="yayloyalty-account__page" aria-disabled="true"><?php echo AccountRewardsIcon::get( 'prev' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?></span>
+        <span class="yayloyalty-account__page" aria-disabled="true"><?php echo wp_kses( AccountRewardsIcon::get( 'prev' ), Kses::svg() ); ?></span>
     <?php endif; ?>
 
     <?php foreach ( $yayloyalty_shown as $yayloyalty_index => $yayloyalty_p ) : ?>
@@ -40,8 +41,8 @@ for ( $yayloyalty_p = 1; $yayloyalty_p <= $yayloyalty_pages; $yayloyalty_p++ ) {
     <?php endforeach; ?>
 
     <?php if ( $yayloyalty_page < $yayloyalty_pages ) : ?>
-        <a class="yayloyalty-account__page" href="<?php echo esc_url( AccountRewards::url( $yayloyalty_page + 1, $yayloyalty_filter_on ) ); ?>" data-page="<?php echo esc_attr( $yayloyalty_page + 1 ); ?>" data-filter="<?php echo esc_attr( $yayloyalty_filter_on ); ?>" aria-label="<?php esc_attr_e( 'Next page', 'yayloyalty' ); ?>"><?php echo AccountRewardsIcon::get( 'next' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?></a>
+        <a class="yayloyalty-account__page" href="<?php echo esc_url( AccountRewards::url( $yayloyalty_page + 1, $yayloyalty_filter_on ) ); ?>" data-page="<?php echo esc_attr( $yayloyalty_page + 1 ); ?>" data-filter="<?php echo esc_attr( $yayloyalty_filter_on ); ?>" aria-label="<?php esc_attr_e( 'Next page', 'yayloyalty' ); ?>"><?php echo wp_kses( AccountRewardsIcon::get( 'next' ), Kses::svg() ); ?></a>
     <?php else : ?>
-        <span class="yayloyalty-account__page" aria-disabled="true"><?php echo AccountRewardsIcon::get( 'next' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?></span>
+        <span class="yayloyalty-account__page" aria-disabled="true"><?php echo wp_kses( AccountRewardsIcon::get( 'next' ), Kses::svg() ); ?></span>
     <?php endif; ?>
 </nav>

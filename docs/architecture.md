@@ -21,7 +21,7 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
 
 ## Admin-shell sync and scoping
 
-- Admin-shell is a private Composer package (`composer.json`) shared by the YayCommerce plugins. It draws the shared YayCommerce admin menu and its common pages (help, licences, recommended plugins). It also adds this plugin's submenu entry and plugin-row links.
+- Admin-shell is a private Composer package (`composer.json`) shared by the YayCommerce plugins. It draws the shared YayCommerce admin menu and its common pages (help, licences, recommended plugins). It also adds this plugin's submenu entry and plugin-row links. The Lite zip ships it without the licences and recommended-plugins pages ([Build and release](#build-and-release)), because WordPress.org rejects an updater or a plugin installer in a directory plugin.
 - Every plugin ships its own copy. To keep the copies from colliding, php-scoper rewrites the package into `vendor-prefixed/` under the `YayLoyaltyScoped` namespace (`scoper.inc.php`). [The decision record](decisions/2026-10-01-admin-shell-scoped-with-php-scoper.md) says why.
   - The plugin uses only the scoped copy, which loads through the Composer classmap. The unscoped package is in Composer's autoload map too, so a stray `YayCommerce\AdminShell\` reference works in development and fails in a release zip, which doesn't ship `vendor/yaycommerce/`.
   - With several YayCommerce plugins active, each copy registers its own plugin, and the newest version draws the shared menu.
@@ -184,16 +184,19 @@ One tree builds both editions. Lite is Pro without `includes/Pro/` and without t
   1. runs the prerelease sync, which leaves only `--no-dev` Composer packages, and dumps the production classmap;
   2. builds the SPA;
   3. stages `release/yayloyalty/` from an explicit include list: the root plugin files, `includes/`, `assets/`, `languages/`, `vendor-prefixed/` and Composer's autoloader only;
-  4. Lite only: deletes `includes/Pro/`;
-  5. both editions: delete `RegisterDev.php` and dev artifacts;
-  6. writes `release-manifest.json`, with a SHA-256 for each file, and zips;
-  7. runs `scripts/validate-build.php` and renames a failing zip to `.invalid`.
+  4. Lite only: deletes `includes/Pro/`, then strips admin-shell's licensing (with the EDD updater) and Recommended Plugins page: `scripts/lite-admin-shell.patch` removes their wiring, `LITE_SHELL_STRIP` lists the files deleted, and the classmap is re-dumped from the staged copy so it no longer lists them. The patch is YayCheckout's Free patch with this plugin's scoped namespace; it fails the release when the shell changes, and then has to be regenerated;
+  5. both editions: rewrite the scoped shell's gettext text domain from `yaycommerce` to `yayloyalty`, which is the only domain this plugin loads and translate.wordpress.org imports;
+  6. both editions: delete `RegisterDev.php` and dev artifacts;
+  7. writes `release-manifest.json`, with a SHA-256 for each file, and zips;
+  8. runs `scripts/validate-build.php` and renames a failing zip to `.invalid`.
 - Both editions unpack to the same `yayloyalty/` folder, so Pro installs over Lite in place.
 - Pro runs first because that run stamps the version, which Lite's `--no-prompt` run then reads back, so both zips carry the same version. The two runs share `assets/dist/` and the staging folder, so they must run one after the other.
 - Besides the Pro/Lite checks above, the validator checks:
   - the manifest: build type, hashes, no unlisted files, and a version that matches the header and the constant;
   - `php -l` on every PHP file;
   - that no dev artifacts remain;
+  - Lite only: that no `LITE_SHELL_STRIP` file shipped, and that nothing in `vendor-prefixed/` or `vendor/composer/` still names a stripped class or `EDD_SL_Plugin_Updater`;
+  - that no scoped-shell gettext call still uses the `yaycommerce` text domain;
   - a headless WP-CLI boot of the zip, when `YAYLOYALTY_WP_CLI` is set. The boot also checks `is_pro()` against the edition and fails if either localized payload has a key with the whole word `pro` or `premium`. Otherwise it reports SKIP, or fails under `--require-boot`, which `run.sh` doesn't pass.
 - `readme.txt` is the WordPress.org readme and carries the release notes.
 

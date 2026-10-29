@@ -25,7 +25,7 @@ final class AccountHistoryCsv {
     /** On `template_redirect`: streams the file and exits when the request asks for it. */
     public static function maybe_send(): void {
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- the nonce is verified below, once the request is known to be an export.
-        if ( ! isset( $_GET[ self::QUERY_ARG ] ) || 'csv' !== $_GET[ self::QUERY_ARG ] || ! is_user_logged_in() || ! is_wc_endpoint_url( AccountRewards::ENDPOINT ) ) {
+        if ( ! isset( $_GET[ self::QUERY_ARG ] ) || 'csv' !== sanitize_key( wp_unslash( $_GET[ self::QUERY_ARG ] ) ) || ! is_user_logged_in() || ! is_wc_endpoint_url( AccountRewards::ENDPOINT ) ) {
             return;
         }
 

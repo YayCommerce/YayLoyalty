@@ -14,6 +14,7 @@ use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\ShopperActivityRow;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Utils\Dates;
+use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -36,9 +37,9 @@ $yayloyalty_download  = AccountRewardsIcon::get( 'download' ) . esc_html__( 'Exp
             ?>
         </h3>
         <?php if ( $yayloyalty_has_rows ) : ?>
-            <a class="yayloyalty-account__download" href="<?php echo esc_url( AccountHistoryCsv::url() ); ?>"><?php echo $yayloyalty_download; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG and escaped text. ?></a>
+            <a class="yayloyalty-account__download" href="<?php echo esc_url( AccountHistoryCsv::url() ); ?>"><?php echo wp_kses( $yayloyalty_download, Kses::svg() ); ?></a>
         <?php else : ?>
-            <span class="yayloyalty-account__download" aria-disabled="true"><?php echo $yayloyalty_download; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG and escaped text. ?></span>
+            <span class="yayloyalty-account__download" aria-disabled="true"><?php echo wp_kses( $yayloyalty_download, Kses::svg() ); ?></span>
         <?php endif; ?>
     </div>
 
@@ -63,7 +64,7 @@ $yayloyalty_download  = AccountRewardsIcon::get( 'download' ) . esc_html__( 'Exp
         $yayloyalty_empty = $yayloyalty_empty[ $yayloyalty_filter_on ] ?? $yayloyalty_empty['all'];
         ?>
         <div class="yayloyalty-account__empty">
-            <span class="yayloyalty-account__empty-icon"><?php echo AccountRewardsIcon::empty_history(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?></span>
+            <span class="yayloyalty-account__empty-icon"><?php echo wp_kses( AccountRewardsIcon::empty_history(), Kses::svg() ); ?></span>
             <p class="yayloyalty-account__empty-title"><?php echo esc_html( sprintf( $yayloyalty_empty[0], $yayloyalty_label ) ); ?></p>
             <p class="yayloyalty-account__empty-text">
                 <?php echo esc_html( sprintf( $yayloyalty_empty[1], $yayloyalty_label ) ); ?>

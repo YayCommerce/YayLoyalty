@@ -15,6 +15,15 @@ RELEASE_DIR="$PLUGIN_DIR/release"
 PLUGIN_SLUG="yayloyalty"
 MAIN_FILE="$PLUGIN_DIR/$PLUGIN_SLUG.php"
 
+# Admin-shell files the Lite zip deletes: its licensing (with the EDD updater) and the Recommended Plugins
+# page, which WordPress.org review rejects in a directory plugin. LITE_SHELL_PATCH first removes every
+# reference to them; validate-build.php checks both. The same list and patch as YayCheckout's Free build.
+LITE_SHELL_STRIP="src/License/ src/Registry/ src/Contracts/AddonHostAdapter.php src/Menu/ExternalPluginMenuAdapter.php
+src/Pages/LicensesPage.php src/Pages/RecommendedPluginsPage.php views/license-card.php views/license-activate-card.php
+views/licenses-page.php views/recommended-plugins-data.php views/recommended-plugins-page.php
+assets/css/licenses.css assets/css/other-plugins.css assets/js/license.js assets/js/other-plugins.js"
+LITE_SHELL_PATCH="$SCRIPT_DIR/lite-admin-shell.patch"
+
 if [ -z "$PLUGIN_DIR" ] || [ "$PLUGIN_DIR" = "/" ] || [ ! -f "$MAIN_FILE" ]; then
     echo "ERROR: Invalid plugin directory: '$PLUGIN_DIR'" >&2
     exit 1
@@ -325,7 +334,39 @@ build_package() {
     if [ "$build_type" = "lite" ]; then
         print_step "Stripping Pro code..."
         rm -rf "$temp_dir/includes/Pro"
+
+        # The patch drops the shell's licensing and Recommended Plugins wiring, and registers this copy
+        # at a low election version so a full shell from another YayCommerce plugin runs the shared menu.
+        # It is made against vendor-prefixed/ and fails on a changed shell: regenerate it then.
+        print_step "Stripping admin-shell licensing and Recommended Plugins..."
+        if ! patch -p1 -d "$temp_dir" --forward --no-backup-if-mismatch --quiet < "$LITE_SHELL_PATCH"; then
+            print_error "scripts/lite-admin-shell.patch no longer applies: the admin-shell changed, regenerate the patch"
+            exit 1
+        fi
+        local shell_path
+        for shell_path in $LITE_SHELL_STRIP; do
+            rm -rf "${temp_dir:?}/vendor-prefixed/$shell_path"
+        done
+        for shell_path in src/AdminShell.php src/Menu/PagesRouter.php src/Menu/PluginSubmenu.php; do
+            if ! php -l "$temp_dir/vendor-prefixed/$shell_path" > /dev/null; then
+                print_error "Patched vendor-prefixed/$shell_path does not parse"
+                exit 1
+            fi
+        done
+
+        # The classmap dumped above still lists the stripped classes, and a reviewer reads a listed
+        # EDD_SL_Plugin_Updater as an updater. Re-dump it from the staged copy.
+        (cd "$temp_dir" && composer dump-autoload --no-dev --classmap-authoritative --quiet)
     fi
+
+    # The scoped shell keeps its upstream 'yaycommerce' text domain, which nothing loads and
+    # translate.wordpress.org never imports. Gettext calls end with the domain, so this leaves
+    # the shell's 'yaycommerce' menu slugs alone.
+    print_step "Rewriting the admin-shell text domain to $PLUGIN_SLUG..."
+    local shell_php
+    find "$temp_dir/vendor-prefixed" -name '*.php' | while IFS= read -r shell_php; do
+        sed_inplace "s/'yaycommerce'\([[:space:]]*\))/'$PLUGIN_SLUG'\1)/g" "$shell_php"
+    done
 
     # Strip dev-only files. validate-build.php's dev-artifact check mirrors this list.
     rm -f "$temp_dir/includes/Engine/Register/RegisterDev.php"

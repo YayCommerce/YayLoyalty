@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Engine\Register;
 
+defined( 'ABSPATH' ) || exit;
+
 /** Handles of the plugin's registered scripts and styles. */
 class ScriptName {
 

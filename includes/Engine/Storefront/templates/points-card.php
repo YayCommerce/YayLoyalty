@@ -13,6 +13,7 @@ use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\LauncherEarnRules;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Utils\Dates;
+use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -61,13 +62,13 @@ if ( null !== $yayloyalty_card_member && null !== $yayloyalty_card_member['worth
             <?php endif; ?>
             <?php // Any balance can be taken to checkout, which says what it is worth there; an empty one is sent to earn, if there is a way to. ?>
             <?php if ( $yayloyalty_card_member['balance'] > 0 ) : ?>
-                <a class="yayloyalty-account__button" href="<?php echo esc_url( $yayloyalty_card_payload['checkout_url'] ); ?>"><?php esc_html_e( 'Use points at checkout', 'yayloyalty' ); ?><?php echo AccountRewardsIcon::get( 'arrow' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?></a>
+                <a class="yayloyalty-account__button" href="<?php echo esc_url( $yayloyalty_card_payload['checkout_url'] ); ?>"><?php esc_html_e( 'Use points at checkout', 'yayloyalty' ); ?><?php echo wp_kses( AccountRewardsIcon::get( 'arrow' ), Kses::svg() ); ?></a>
             <?php elseif ( [] !== LauncherEarnRules::member_rows( $yayloyalty_card_payload['earn'], $yayloyalty_card_payload['purchase_min'] ) ) : ?>
                 <a class="yayloyalty-account__button" href="<?php echo esc_url( (string) wc_get_page_permalink( 'shop' ) ); ?>">
                     <?php
                     /* translators: %s: the store's points label, as "Points". */
                     echo esc_html( sprintf( __( 'Start earning %s', 'yayloyalty' ), $yayloyalty_card_label ) );
-                    echo AccountRewardsIcon::get( 'arrow' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG.
+                    echo wp_kses( AccountRewardsIcon::get( 'arrow' ), Kses::svg() );
                     ?>
                 </a>
             <?php endif; ?>
@@ -77,7 +78,7 @@ if ( null !== $yayloyalty_card_member && null !== $yayloyalty_card_member['worth
 </section>
 <?php if ( null !== $yayloyalty_card_member && null !== $yayloyalty_card_member['expires_at'] ) : ?>
     <p class="yayloyalty-account__notice">
-        <?php echo AccountRewardsIcon::design( 'expiring' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?>
+        <?php echo wp_kses( AccountRewardsIcon::design( 'expiring' ), Kses::svg() ); ?>
         <span class="yayloyalty-account__notice-text">
             <strong>
                 <?php

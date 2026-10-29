@@ -12,6 +12,7 @@ use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\UiClasses;
 use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -44,7 +45,7 @@ $yayloyalty_label    = SettingsHelper::points_label_plural();
         ?>
     </template>
     <div class="yayloyalty-account__activity-empty" data-yl-activity-empty<?php echo [] === $yayloyalty_activity ? '' : ' hidden'; ?>>
-        <span class="yayloyalty-account__activity-empty-icon"><?php echo AccountRewardsIcon::empty_activity(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?></span>
+        <span class="yayloyalty-account__activity-empty-icon"><?php echo wp_kses( AccountRewardsIcon::empty_activity(), Kses::svg() ); ?></span>
         <p>
             <?php echo esc_html( LauncherCopy::no_activity() ); ?>
             <?php

@@ -1,0 +1,287 @@
+--- a/vendor-prefixed/src/AdminShell.php
++++ b/vendor-prefixed/src/AdminShell.php
+@@ -2,21 +2,12 @@
+ 
+ namespace YayLoyaltyScoped\YayCommerce\AdminShell;
+ 
+-use YayLoyaltyScoped\YayCommerce\AdminShell\Contracts\AddonHostAdapter;
+ use YayLoyaltyScoped\YayCommerce\AdminShell\Contracts\PluginMenuAdapter;
+-use YayLoyaltyScoped\YayCommerce\AdminShell\License\Contracts\LicenseConfigAdapter;
+-use YayLoyaltyScoped\YayCommerce\AdminShell\License\LicenseHandler;
+-use YayLoyaltyScoped\YayCommerce\AdminShell\License\PluginInfoFactory;
+-use YayLoyaltyScoped\YayCommerce\AdminShell\Menu\ExternalPluginMenuAdapter;
+ use YayLoyaltyScoped\YayCommerce\AdminShell\Menu\PluginSubmenu;
+ use YayLoyaltyScoped\YayCommerce\AdminShell\Menu\MenuSuppressor;
+ use YayLoyaltyScoped\YayCommerce\AdminShell\Menu\PagesRouter;
+ use YayLoyaltyScoped\YayCommerce\AdminShell\Menu\SubmenuPositioner;
+ use YayLoyaltyScoped\YayCommerce\AdminShell\Menu\TopLevelMenu;
+-use YayLoyaltyScoped\YayCommerce\AdminShell\Pages\RecommendedPluginsPage;
+-use YayLoyaltyScoped\YayCommerce\AdminShell\Registry\AddonBridge;
+-use YayLoyaltyScoped\YayCommerce\AdminShell\Registry\LegacyBridge;
+-use YayLoyaltyScoped\YayCommerce\AdminShell\Registry\LicenseRegistry;
+ use YayLoyaltyScoped\YayCommerce\AdminShell\Support\AdminContext;
+ use YayLoyaltyScoped\YayCommerce\AdminShell\Support\Constants;
+ defined('ABSPATH') || exit;
+@@ -33,13 +24,10 @@
+     const VERSION = '2.8.6';
+     private static ?self $instance = null;
+     private static bool $booted = \false;
+-    private static array $enabled_slugs = [];
+     /** The scoped prefix for THIS copy (derived from namespace). */
+     private static string $prefix = '';
+-    private LicenseRegistry $registry;
+     private function __construct()
+     {
+-        $this->registry = new LicenseRegistry();
+     }
+     /**
+      * Bootstrap the shared admin shell.
+@@ -65,7 +53,9 @@
+         if (!isset($GLOBALS['yaycommerce_admin_shell_versions'])) {
+             $GLOBALS['yaycommerce_admin_shell_versions'] = [];
+         }
+-        $GLOBALS['yaycommerce_admin_shell_versions'][self::$prefix] = ['version' => self::VERSION, 'registry' => $instance->registry, 'boot_cb' => [static::class, 'do_shell_registration']];
++        // YayLoyalty Lite: this copy has no licensing or Recommended Plugins, so it
++        // registers a low version and any full shell from another plugin wins.
++        $GLOBALS['yaycommerce_admin_shell_versions'][self::$prefix] = ['version' => '0.0.1', 'boot_cb' => [static::class, 'do_shell_registration']];
+         // Register the version election — only once (first copy to call boot sets it up).
+         // Bound to both admin_menu and network_admin_menu so election runs in the
+         // Multisite Network Admin too; only the firing hook's election actually runs.
+@@ -90,20 +80,6 @@
+             $GLOBALS['yaycommerce_network_election_wired'] = \true;
+             add_action('network_admin_menu', [static::class, 'elect_version'], 8);
+         }
+-        // Legacy bridge — reads yaycommerce_licensing_plugins filter.
+-        // Runs for ALL versions (uses global WP hooks, contributes to any winning registry).
+-        $legacy_bridge = new LegacyBridge($instance->registry);
+-        $legacy_bridge->init();
+-        // On AJAX requests admin_menu doesn't fire, so register AJAX handlers directly.
+-        // Global guard ensures only one scoped copy registers (action name is identical across copies).
+-        // DOING_AJAX must be in scoper.inc.php exclude-constants to avoid namespace prefixing.
+-        if (\defined('DOING_AJAX') && \DOING_AJAX) {
+-            $registered_ver = $GLOBALS['yaycommerce_ajax_handlers_registered'] ?? '0.0.0';
+-            if (\version_compare(self::VERSION, $registered_ver, '>')) {
+-                $GLOBALS['yaycommerce_ajax_handlers_registered'] = self::VERSION;
+-                RecommendedPluginsPage::get_instance();
+-            }
+-        }
+         do_action('yaycommerce_admin_shell_booted', $instance);
+     }
+     /**
+@@ -136,23 +112,11 @@
+      */
+     public static function do_shell_registration(): void
+     {
+-        $instance = self::get_instance();
+-        // Merge all registries into the winner's registry
+-        foreach ($GLOBALS['yaycommerce_admin_shell_versions'] ?? [] as $prefix => $data) {
+-            if ($prefix !== self::$prefix && isset($data['registry'])) {
+-                $other_registry = $data['registry'];
+-                foreach ($other_registry->all() as $info) {
+-                    if (!$instance->registry->get($info->slug)) {
+-                        $instance->registry->register($info);
+-                    }
+-                }
+-            }
+-        }
+         $suppressor = new MenuSuppressor();
+         $suppressor->init();
+         $top_menu = new TopLevelMenu();
+         $top_menu->init();
+-        $router = new PagesRouter($instance->registry);
++        $router = new PagesRouter();
+         $router->init();
+         // Order all submenus by declared position — runs once, only for the
+         // winning version, so a single authority reorders every plugin's submenu.
+@@ -186,32 +150,8 @@
+         if (is_admin()) {
+             self::register_plugin_links($adapter);
+         }
+-        // License subsystem — per-plugin, all versions
+-        if ($adapter instanceof LicenseConfigAdapter) {
+-            self::enable_license($adapter);
+-        }
+-        // Addon host — bridge plugin-specific addon filter into registry.
+-        if ($adapter instanceof AddonHostAdapter) {
+-            $filter_name = $adapter->get_addon_licensing_filter();
+-            if (!empty($filter_name)) {
+-                $bridge = new AddonBridge($filter_name, self::get_instance()->registry);
+-                $bridge->init();
+-            }
+-        }
+     }
+     /**
+-     * Register an "Other Plugins" submenu under an external plugin's own top-level menu.
+-     * Use for plugins with their own menu hierarchy (e.g. whatsapp, filester) that should
+-     * not appear under the shared YayCommerce menu.
+-     *
+-     * @param array{parent_menu: string, menu_title: string, menu_capability: string, menu_slug: string} $config
+-     */
+-    public static function register_external_plugin_menu(array $config): void
+-    {
+-        $adapter = new ExternalPluginMenuAdapter($config);
+-        $adapter->init();
+-    }
+-    /**
+      * Validate adapter values upfront.
+      */
+     private static function validate_adapter(PluginMenuAdapter $adapter): void
+@@ -228,43 +168,8 @@
+         if (null !== $callback && !is_callable($callback)) {
+             trigger_error('[YayCommerce AdminShell] get_settings_page_callback() returned a non-callable value.', \E_USER_WARNING);
+         }
+-        if ($adapter instanceof LicenseConfigAdapter) {
+-            $slug = $adapter->get_plugin_slug();
+-            if (empty($slug)) {
+-                trigger_error('[YayCommerce AdminShell] get_plugin_slug() must return a non-empty string.', \E_USER_WARNING);
+-            }
+-            $item_id = $adapter->get_item_id();
+-            if ($item_id <= 0) {
+-                trigger_error('[YayCommerce AdminShell] get_item_id() must return a positive integer.', \E_USER_WARNING);
+-            }
+-            $store_url = $adapter->get_store_url();
+-            if (empty($store_url)) {
+-                trigger_error('[YayCommerce AdminShell] get_store_url() must return a non-empty URL.', \E_USER_WARNING);
+-            }
+-            $plugin_file = $adapter->get_plugin_file();
+-            if (empty($plugin_file)) {
+-                trigger_error('[YayCommerce AdminShell] get_plugin_file() must return a non-empty path.', \E_USER_WARNING);
+-            }
+-        }
+     }
+     /**
+-     * Enable the license subsystem for a plugin.
+-     * Runs for ALL versions (not version-gated).
+-     */
+-    public static function enable_license(LicenseConfigAdapter $adapter): void
+-    {
+-        $slug = $adapter->get_plugin_slug();
+-        if (isset(self::$enabled_slugs[$slug])) {
+-            return;
+-        }
+-        self::$enabled_slugs[$slug] = \true;
+-        $instance = self::get_instance();
+-        new LicenseHandler($adapter);
+-        $info = PluginInfoFactory::from_adapter($adapter);
+-        $instance->registry->register($info);
+-        do_action('yaycommerce_admin_shell_license_enabled', $adapter);
+-    }
+-    /**
+      * Register plugin action links + row meta.
+      */
+     private static function register_plugin_links(PluginMenuAdapter $adapter): void
+@@ -294,13 +199,6 @@
+             $meta[] = '<a href="https://yaycommerce.com/support" target="_blank">' . esc_html__('Support', 'yaycommerce') . '</a>';
+             return $meta;
+         }, 10, 2);
+-    }
+-    /**
+-     * Return the shared registry.
+-     */
+-    public static function registry(): LicenseRegistry
+-    {
+-        return self::get_instance()->registry;
+     }
+     private static function get_instance(): self
+     {
+--- a/vendor-prefixed/src/Menu/PagesRouter.php
++++ b/vendor-prefixed/src/Menu/PagesRouter.php
+@@ -2,10 +2,7 @@
+ 
+ namespace YayLoyaltyScoped\YayCommerce\AdminShell\Menu;
+ 
+-use YayLoyaltyScoped\YayCommerce\AdminShell\Pages\LicensesPage;
+-use YayLoyaltyScoped\YayCommerce\AdminShell\Pages\RecommendedPluginsPage;
+ use YayLoyaltyScoped\YayCommerce\AdminShell\Pages\HelpPage;
+-use YayLoyaltyScoped\YayCommerce\AdminShell\Registry\LicenseRegistry;
+ use YayLoyaltyScoped\YayCommerce\AdminShell\Support\AdminContext;
+ /**
+  * Registers Licenses, Other Plugins, and Help submenus under 'yaycommerce'.
+@@ -14,18 +11,11 @@
+  */
+ class PagesRouter
+ {
+-    private LicenseRegistry $registry;
+-    public function __construct(LicenseRegistry $registry)
+-    {
+-        $this->registry = $registry;
+-    }
+     public function init(): void
+     {
+         // Bind on both admin_menu and network_admin_menu so the shell pages
+         // (Help, Licenses, Recommended) appear in the Multisite Network Admin too.
+         AdminContext::bind_menu([$this, 'register_submenus'], 11);
+-        // Instantiate RecommendedPluginsPage to register its wp_ajax_* handlers.
+-        RecommendedPluginsPage::get_instance();
+     }
+     public function register_submenus(): void
+     {
+@@ -45,12 +35,7 @@
+         // In Network Admin the capability is elevated to manage_network.
+         $capability = AdminContext::capability('manage_options');
+         $submenus['yaycommerce-help'] = ['parent' => 'yaycommerce', 'name' => __('Help', 'yaycommerce'), 'capability' => $capability, 'render_callback' => [HelpPage::class, 'render'], 'load_callback' => [HelpPage::class, 'load_data'], 'position' => 900];
+-        // Licenses submenu — only shown if any plugins are registered.
+-        $has_any = !empty($this->registry->all());
+-        if ($has_any) {
+-            $submenus['yaycommerce-licenses'] = ['parent' => 'yaycommerce', 'name' => __('Licenses', 'yaycommerce'), 'capability' => $capability, 'render_callback' => [LicensesPage::class, 'render'], 'load_callback' => [LicensesPage::class, 'load_data'], 'position' => 910];
+-        }
+-        $submenus['yaycommerce-other-plugins'] = ['parent' => 'yaycommerce', 'name' => __('Recommended Plugins', 'yaycommerce'), 'capability' => $capability, 'render_callback' => [RecommendedPluginsPage::class, 'render'], 'load_callback' => [RecommendedPluginsPage::class, 'load_data'], 'position' => 920];
++        // YayLoyalty Lite ships no Licenses or Recommended Plugins page.
+         return $submenus;
+     }
+ }
+--- a/vendor-prefixed/src/Menu/PluginSubmenu.php
++++ b/vendor-prefixed/src/Menu/PluginSubmenu.php
+@@ -3,8 +3,6 @@
+ namespace YayLoyaltyScoped\YayCommerce\AdminShell\Menu;
+ 
+ use YayLoyaltyScoped\YayCommerce\AdminShell\Contracts\PluginMenuAdapter;
+-use YayLoyaltyScoped\YayCommerce\AdminShell\License\Contracts\LicenseConfigAdapter;
+-use YayLoyaltyScoped\YayCommerce\AdminShell\License\License;
+ use YayLoyaltyScoped\YayCommerce\AdminShell\Pages\WooCommerceRequiredPage;
+ use YayLoyaltyScoped\YayCommerce\AdminShell\Support\AdminContext;
+ /**
+@@ -68,23 +66,13 @@
+         if (null !== $callback && !is_callable($callback)) {
+             $callback = null;
+         }
+-        // Pro plugins without active license → override callback to redirect
+-        $needs_redirect = \false;
+-        if ($this->adapter instanceof LicenseConfigAdapter) {
+-            $license = new License($this->adapter);
+-            if (!$license->is_active()) {
+-                $needs_redirect = \true;
+-                $callback = null;
+-            }
+-        }
+         // WooCommerce dependency gate: when the plugin depends on WooCommerce and it
+         // is inactive, render the shared "install WooCommerce" screen in place of the
+-        // settings page. Applied only on the real render path — the license redirect
+-        // above takes precedence, so unlicensed pro plugins still land on Licenses.
++        // settings page.
+         // Opt-in via the optional needs_woocommerce_screen() adapter method; the
+         // adapter owns the runtime WooCommerce check so it runs un-prefixed under
+         // PHP-Scoper (the adapter class is excluded from scoping in each plugin).
+-        if (!$needs_redirect && method_exists($this->adapter, 'needs_woocommerce_screen') && $this->adapter->needs_woocommerce_screen()) {
++        if (method_exists($this->adapter, 'needs_woocommerce_screen') && $this->adapter->needs_woocommerce_screen()) {
+             $screen_copy = method_exists($this->adapter, 'get_woocommerce_screen_copy') ? (array) $this->adapter->get_woocommerce_screen_copy() : [];
+             $callback = static function () use ($screen_copy) {
+                 WooCommerceRequiredPage::render($screen_copy);
+@@ -107,17 +95,5 @@
+         if ($is_override) {
+             remove_all_actions('load-' . $page_id);
+         }
+-        if ($needs_redirect) {
+-            add_action('load-' . $page_id, [__CLASS__, 'redirect_to_licenses']);
+-        }
+-    }
+-    public static function redirect_to_licenses(): void
+-    {
+-        // The load hook fires in the current context — target the matching dashboard
+-        // so a network-flagged pro plugin redirects within Network Admin, not the site.
+-        $path = 'admin.php?page=yaycommerce-licenses';
+-        $url = AdminContext::is_network() ? network_admin_url($path) : admin_url($path);
+-        wp_safe_redirect($url);
+-        exit;
+     }
+ }

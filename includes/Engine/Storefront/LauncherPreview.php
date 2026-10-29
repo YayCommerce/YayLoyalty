@@ -28,17 +28,8 @@ final class LauncherPreview {
     /** The sample member's balance. */
     public const SAMPLE_BALANCE = 9850;
 
-    /** The store around the launcher: flat greys, so only the launcher reads at full contrast. */
-    private const FRAME_CSS = <<<'CSS'
-html,body{margin:0;height:100%;overflow:hidden}
-a,button,input,select,textarea,label{pointer-events:none}
-body{background:#f7f7f7;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-.yl-preview-header{display:flex;align-items:center;gap:18px;height:44px;padding:0 20px;background:#ededed;border-bottom:1px solid #e0e0e0;font-size:13px;color:#a8a8a8}
-.yl-preview-header strong{color:#8a8a8a;letter-spacing:.06em;text-transform:uppercase}
-.yl-preview-header span:last-child{margin-left:auto}
-.yl-preview-lines{display:flex;flex-direction:column;gap:10px;padding:24px 20px}
-.yl-preview-lines i{display:block;height:12px;background:#e6e6e6}
-CSS;
+    /** The store around the launcher, linked by document(): flat greys, so only the launcher reads at full contrast. */
+    private const FRAME_STYLE_PATH = 'assets/storefront/launcher-preview.css';
 
     /**
      * The button alone and the open panel, from one view.
@@ -70,7 +61,8 @@ CSS;
             . '<meta name="viewport" content="width=device-width, initial-scale=1">'
             . '<link rel="stylesheet" href="' . esc_url( Launcher::style_url() ) . '">' // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- a standalone page for an iframe; there is no WordPress head to enqueue into.
             . '<link rel="stylesheet" href="' . esc_url( AccountRewards::style_url() ) . '">' // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- as above: the panel prints the Rewards tab's partials.
-            . '<style>' . self::FRAME_CSS . '</style></head><body>'
+            . '<link rel="stylesheet" href="' . esc_url( Launcher::versioned_url( self::FRAME_STYLE_PATH ) ) . '">' // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- as above.
+            . '</head><body>'
             . self::store_frame()
             . Launcher::markup( $view )
             . '</body></html>';
