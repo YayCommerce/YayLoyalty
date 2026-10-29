@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Utils;
 
+defined( 'ABSPATH' ) || exit;
+
 /** One shared instance per class, for the boot classes only. */
 trait SingletonTrait {
     protected static $instance = null;

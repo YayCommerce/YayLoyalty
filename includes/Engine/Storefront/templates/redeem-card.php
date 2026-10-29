@@ -21,6 +21,7 @@ use YayLoyalty\Engine\Rewards\Clamp;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\RedeemCard;
 use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -59,17 +60,17 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
 >
     <?php if ( 'guest' === $yayloyalty_state ) : ?>
         <div class="yayloyalty-redeem__guest">
-            <span class="yayloyalty-redeem__badge"><?php echo $yayloyalty_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG literal. ?></span>
+            <span class="yayloyalty-redeem__badge"><?php echo wp_kses( $yayloyalty_icon, Kses::svg() ); ?></span>
             <div class="yayloyalty-redeem__guest-text">
-                <h3 class="yayloyalty-redeem__heading"><?php echo RedeemCard::heading( null, null ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- heading() escapes every value. ?></h3>
+                <h3 class="yayloyalty-redeem__heading"><?php echo wp_kses( RedeemCard::heading( null, null ), Kses::inline() ); ?></h3>
                 <p class="yayloyalty-redeem__text"><?php echo esc_html( RedemptionService::message_for( ProgramGate::REASON_NO_CUSTOMER ) ); ?></p>
             </div>
             <a class="yayloyalty-redeem__signin" href="<?php echo esc_url( $view['account_url'] ); ?>"><?php esc_html_e( 'Sign in', 'yayloyalty' ); ?></a>
         </div>
     <?php else : ?>
         <div class="yayloyalty-redeem__header">
-            <?php echo $yayloyalty_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG literal. ?>
-            <h3 class="yayloyalty-redeem__heading"><?php echo RedeemCard::heading( $view['heading_balance'], $view['worth'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- heading() escapes every value. ?></h3>
+            <?php echo wp_kses( $yayloyalty_icon, Kses::svg() ); ?>
+            <h3 class="yayloyalty-redeem__heading"><?php echo wp_kses( RedeemCard::heading( $view['heading_balance'], $view['worth'] ), Kses::inline() ); ?></h3>
             <?php if ( $yayloyalty_is_applied ) : ?>
                 <p class="yayloyalty-redeem__summary" data-yl-summary>
                     <span class="yayloyalty-redeem__tick" aria-hidden="true">✓</span>

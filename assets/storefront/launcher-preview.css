@@ -1,0 +1,9 @@
+/* The Design tab preview's store frame (LauncherPreview::document()). Not loaded on the storefront. */
+html,body{margin:0;height:100%;overflow:hidden}
+a,button,input,select,textarea,label{pointer-events:none}
+body{background:#f7f7f7;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.yl-preview-header{display:flex;align-items:center;gap:18px;height:44px;padding:0 20px;background:#ededed;border-bottom:1px solid #e0e0e0;font-size:13px;color:#a8a8a8}
+.yl-preview-header strong{color:#8a8a8a;letter-spacing:.06em;text-transform:uppercase}
+.yl-preview-header span:last-child{margin-left:auto}
+.yl-preview-lines{display:flex;flex-direction:column;gap:10px;padding:24px 20px}
+.yl-preview-lines i{display:block;height:12px;background:#e6e6e6}

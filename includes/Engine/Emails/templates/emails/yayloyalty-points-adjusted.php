@@ -25,6 +25,7 @@
 
 use Automattic\WooCommerce\Utilities\FeaturesUtil;
 use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -48,7 +49,7 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
     <?php if ( ! empty( $balance_value_text ) ) : ?>
 <p>
         <?php
-        echo $balance_value_text; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped when built; kses would strip wc_price()'s <bdi>, which keeps the amount readable in right-to-left stores.
+        echo wp_kses( $balance_value_text, Kses::inline() );
         ?>
 </p>
     <?php endif; ?>

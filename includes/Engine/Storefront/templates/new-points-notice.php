@@ -10,6 +10,7 @@
 use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -20,7 +21,7 @@ if ( $yayloyalty_new_points <= 0 ) {
 }
 ?>
 <p class="yayloyalty-account__notice yayloyalty-account__notice--new">
-    <?php echo AccountRewardsIcon::design( 'new_points' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?>
+    <?php echo wp_kses( AccountRewardsIcon::design( 'new_points' ), Kses::svg() ); ?>
     <span class="yayloyalty-account__notice-text">
         <?php
         /* translators: 1: points number, as "40", 2: the store's points label agreeing with it, as "Points". */
