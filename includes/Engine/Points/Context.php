@@ -37,7 +37,7 @@ final class Context {
     private $currency;
 
     /** @var float Multiply order-currency amounts by this to reach store base currency. */
-    private $base_rate;
+    private $to_base_factor;
 
     /** @var ContextLineItem[] */
     private $line_items;
@@ -85,7 +85,7 @@ final class Context {
         ?int $user_id,
         string $occurred_at,
         string $currency,
-        float $base_rate,
+        float $to_base_factor,
         array $line_items,
         float $order_subtotal,
         float $order_discount_total,
@@ -104,7 +104,7 @@ final class Context {
         $this->user_id              = $user_id;
         $this->occurred_at          = $occurred_at;
         $this->currency             = $currency;
-        $this->base_rate            = $base_rate;
+        $this->to_base_factor       = $to_base_factor;
         $this->line_items           = array_values( $line_items );
         $this->order_subtotal       = $order_subtotal;
         $this->order_discount_total = $order_discount_total;
@@ -118,8 +118,8 @@ final class Context {
     }
 
     /** A guest with an empty cart and no event, at $at (UTC MySQL), for advertising what a campaign pays. */
-    public static function advert( string $at, string $currency, float $base_rate ): self {
-        $ctx         = new self( null, $at, $currency, $base_rate, [], 0.0, 0.0, 0.0, [], [] );
+    public static function advert( string $at, string $currency, float $to_base_factor ): self {
+        $ctx         = new self( null, $at, $currency, $to_base_factor, [], 0.0, 0.0, 0.0, [], [] );
         $ctx->advert = true;
 
         return $ctx;
@@ -142,8 +142,8 @@ final class Context {
         return $this->currency;
     }
 
-    public function get_base_rate(): float {
-        return $this->base_rate;
+    public function get_to_base_factor(): float {
+        return $this->to_base_factor;
     }
 
     /** @return ContextLineItem[] */

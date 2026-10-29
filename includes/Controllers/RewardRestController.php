@@ -447,12 +447,12 @@ final class RewardRestController extends AbstractRestController {
     }
 
     /**
-     * Whether $reward may be deleted: never the built-in (the Free UI binds to
+     * Whether $reward may be deleted: never the built-in (the Lite UI binds to
      * it), and only with no redemption row naming it. Rows in any status, never
      * points: a refunded claim still names the reward in customer history.
      */
-    private static function is_deletable( Reward $reward, int $redemption_rows ): bool {
-        return ! $reward->is_builtin() && 0 === $redemption_rows;
+    private static function is_deletable( Reward $reward, int $redemption_row_count ): bool {
+        return ! $reward->is_builtin() && 0 === $redemption_row_count;
     }
 
     protected function define_item_schema(): array {

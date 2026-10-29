@@ -114,9 +114,9 @@ final class CustomerItemSchema {
                     'reminders'       => [
                         'type'       => 'object',
                         'properties' => [
-                            'sent_at'     => [ 'type' => [ 'string', 'null' ] ],
-                            'next_due_at' => [ 'type' => [ 'string', 'null' ] ],
-                            'window_days' => [ 'type' => 'integer' ],
+                            'sent_at'       => [ 'type' => [ 'string', 'null' ] ],
+                            'next_due_at'   => [ 'type' => [ 'string', 'null' ] ],
+                            'reminder_days' => [ 'type' => 'integer' ],
                         ],
                     ],
                     'batches'         => [

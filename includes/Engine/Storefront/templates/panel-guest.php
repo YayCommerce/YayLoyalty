@@ -3,8 +3,8 @@
  * Guest panel body: the top card, "How it works" in the My Points tab's rows, then join and sign in.
  * Styled by assets/storefront/account/panel-guest.css.
  *
- * Rates are stated plainly (they are the argument), at the base rate only: a tier multiplier
- * belongs to members, and promising it before signup would be untrue.
+ * Rates are stated plainly (they are the argument), only as a guest qualifies for them: a rate
+ * that needs an account or history belongs to members, and promising it before signup would be untrue.
  *
  * @var array $view            Launcher::view().
  */

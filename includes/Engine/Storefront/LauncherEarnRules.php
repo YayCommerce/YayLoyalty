@@ -29,7 +29,7 @@ final class LauncherEarnRules {
      * @return array{earn: array{purchase: ?float, signup: ?int, review: ?int}, purchase_min: float, purchase_rounding: string}
      *         Points per unit of the shopper's currency / per signup / per review (null when not advertised),
      *         and the advertised purchase campaign's minimum order subtotal in the shopper's currency, so the
-     *         rate line can say it (0 for none). Both convert from base through $ctx's base rate. Last, how that
+     *         rate line can say it (0 for none). Both convert from base through $ctx's to_base_factor. Last, how that
      *         campaign rounds an order's points, so the rate line shows what a round spend earns.
      */
     public static function advertise( PointsEngine $engine, Context $ctx, bool $can_register ): array {
@@ -47,12 +47,12 @@ final class LauncherEarnRules {
             }
 
             if ( CampaignTrigger::PURCHASE === $trigger ) {
-                $base_rate = $ctx->get_base_rate();
-                $min       = PurchaseHandler::min_subtotal( $advert['campaign']->get_config() );
+                $to_base_factor = $ctx->get_to_base_factor();
+                $min            = PurchaseHandler::min_subtotal( $advert['campaign']->get_config() );
 
                 // In the base currency both stay exact, as configured.
-                $rules['earn'][ $trigger ]  = LauncherCopy::converted_rate( $advert['value'] * $base_rate, $base_rate );
-                $rules['purchase_min']      = round( $min / $base_rate, wc_get_price_decimals() );
+                $rules['earn'][ $trigger ]  = LauncherCopy::converted_rate( $advert['value'] * $to_base_factor, $to_base_factor );
+                $rules['purchase_min']      = round( $min / $to_base_factor, wc_get_price_decimals() );
                 $rules['purchase_rounding'] = PurchaseHandler::rounding( $advert['campaign']->get_config() );
             } else {
                 $rules['earn'][ $trigger ] = (int) $advert['value'];

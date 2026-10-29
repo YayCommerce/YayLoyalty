@@ -34,7 +34,7 @@ class LotRepository {
      * @return int The new lot's id.
      * @throws QueryException When the write fails.
      */
-    public function open( int $ledger_id, int $user_id, int $points, int $remaining, string $created_at, ?string $expires_at ): int {
+    public function open( int $ledger_id, int $user_id, int $points, int $remaining, string $earned_at, ?string $expires_at ): int {
         global $wpdb;
 
         $result = $wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
@@ -46,7 +46,7 @@ class LotRepository {
                 'remaining'  => $remaining,
                 'expires_at' => $expires_at,
                 'status'     => LotStatus::OPEN,
-                'created_at' => $created_at,
+                'earned_at'  => $earned_at,
             ],
             [ '%d', '%d', '%d', '%d', '%s', '%s', '%s' ]
         );
@@ -61,7 +61,7 @@ class LotRepository {
     /**
      * A user's open lots in spend order.
      *
-     * @param string $order 'ASC' for oldest first, 'DESC' for newest first, by created_at then id.
+     * @param string $order 'ASC' for oldest first, 'DESC' for newest first, by earned_at then id.
      * @return array<int, array{id: int, ledger_id: int, remaining: int, expires_at: ?string}>
      */
     public function open_lots( int $user_id, string $order ): array {
@@ -73,7 +73,7 @@ class LotRepository {
         $rows = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT id, ledger_id, remaining, expires_at FROM `' . esc_sql( $this->table() ) . "`
-                 WHERE user_id = %d AND status = %s ORDER BY created_at {$direction}, id {$direction}",
+                 WHERE user_id = %d AND status = %s ORDER BY earned_at {$direction}, id {$direction}",
                 $user_id,
                 LotStatus::OPEN
             ),
@@ -162,14 +162,14 @@ class LotRepository {
     /**
      * The dates of the first lot $ledger_id took a slice from, or null when it took none.
      *
-     * @return array{created_at: string, expires_at: ?string}|null
+     * @return array{earned_at: string, expires_at: ?string}|null
      */
     public function first_lot_taken_by( int $ledger_id ): ?array {
         global $wpdb;
 
         $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
-                'SELECT l.created_at, l.expires_at
+                'SELECT l.earned_at, l.expires_at
                  FROM `' . esc_sql( $this->allocations_table() ) . '` a
                  JOIN `' . esc_sql( $this->table() ) . '` l ON l.id = a.lot_id
                  WHERE a.ledger_id = %d ORDER BY a.id LIMIT 1',
@@ -183,7 +183,7 @@ class LotRepository {
         }
 
         return [
-            'created_at' => (string) $row['created_at'],
+            'earned_at'  => (string) $row['earned_at'],
             'expires_at' => null === $row['expires_at'] ? null : (string) $row['expires_at'],
         ];
     }
@@ -265,8 +265,8 @@ class LotRepository {
 
         $new_date        = 'IF(
                 %d = 1 OR expires_at IS NULL,
-                GREATEST(DATE_ADD(created_at, INTERVAL %d MONTH), CAST(%s AS DATETIME), COALESCE(expires_at, CAST(%s AS DATETIME))),
-                DATE_ADD(created_at, INTERVAL %d MONTH)
+                GREATEST(DATE_ADD(earned_at, INTERVAL %d MONTH), CAST(%s AS DATETIME), COALESCE(expires_at, CAST(%s AS DATETIME))),
+                DATE_ADD(earned_at, INTERVAL %d MONTH)
             )';
         $new_date_values = [ (int) $keep, $months, $floor, $floor, $months ];
 

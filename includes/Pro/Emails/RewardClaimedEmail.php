@@ -75,7 +75,7 @@ class RewardClaimedEmail extends LedgerEntryEmail {
     }
 
     /** @return array{points: string, points_label: string, balance: string, order_number: string} */
-    protected function amounts( LedgerEntry $entry ): array {
+    protected function placeholder_values( LedgerEntry $entry ): array {
         $claim  = $this->claim( $entry );
         $points = self::total_points( $claim['lines'] );
 
@@ -92,7 +92,7 @@ class RewardClaimedEmail extends LedgerEntryEmail {
         $claim     = $this->claim( $entry );
         $order_url = $claim['order'] ? $claim['order']->get_view_order_url() : '';
 
-        return $this->balance_values( $entry ) + [
+        return $this->shared_values( $entry ) + [
             'order'             => $claim['order'],
             'order_url'         => $order_url,
             'claimed_text'      => self::claimed_text( self::total_points( $claim['lines'] ), $claim['order_number'], $order_url ),
@@ -134,7 +134,7 @@ class RewardClaimedEmail extends LedgerEntryEmail {
 
     /**
      * What the entry's order claimed: one line per `applied` redemption row, oldest first, and the order, null when
-     * it is gone. Read once per row: accepts(), amounts() and build_values() each ask.
+     * it is gone. Read once per row: accepts(), placeholder_values() and build_values() each ask.
      *
      * @return array{lines: array<int, array{name: string, points: int, points_text: string, discount: string}>, order: \WC_Order|null, order_number: string}
      */

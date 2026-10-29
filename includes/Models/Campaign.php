@@ -444,7 +444,7 @@ class Campaign extends AbstractModel {
         return (int) ( $this->config['points'] ?? 0 );
     }
 
-    /** Whether this campaign may be archived: never a built-in, since the engine and the Free UI assume they exist. */
+    /** Whether this campaign may be archived: never a built-in, since the engine and the Lite UI assume they exist. */
     public function can_archive(): bool {
         return ! $this->is_builtin;
     }

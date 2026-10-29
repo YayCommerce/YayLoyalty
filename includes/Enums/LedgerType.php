@@ -47,7 +47,7 @@ final class LedgerType {
 
     /**
      * lifetime_earned = SUM(earn) + SUM(adjust) - SUM(|refund_earn|). Spending (redeem, expire)
-     * and `correction` never move it, so they never demote a tier. An admin's `adjust` deduction can.
+     * and `correction` never move it, so they never lower it. An admin's `adjust` deduction can.
      */
     public static function affects_lifetime_earned( string $type ): bool {
         return in_array( $type, [ self::EARN, self::REFUND_EARN, self::ADJUST ], true );

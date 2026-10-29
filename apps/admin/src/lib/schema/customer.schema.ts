@@ -49,7 +49,7 @@ export const drawerExpirySchema = z.object({
   reminders: z.object({
     sent_at: z.string().nullable(),
     next_due_at: z.string().nullable(),
-    window_days: z.number().int(),
+    reminder_days: z.number().int(),
   }),
   batches: z.array(drawerExpiryBatchSchema).nullable(),
 });
@@ -97,7 +97,7 @@ export const customerListRowSchema = z.object({
   /** Signed: a clawback after a refund can legitimately push this below zero. */
   balance: z.number().int(),
   pending_points: z.number().int(),
-  /** Signed. Unaffected by redemptions, so spending never demotes a tier. */
+  /** Signed. Unaffected by redemptions, so spending never lowers it. */
   lifetime_earned: z.number().int(),
   last_activity_at: z.string().nullable(),
   expires_at: z.string().nullable(),

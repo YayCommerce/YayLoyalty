@@ -26,7 +26,7 @@ final class DashboardCache {
         $this->repository = $repository;
     }
 
-    /** '' for the Free payload, 'pro' for the Pro one. */
+    /** '' for the Lite payload, 'pro' for the Pro one. */
     public const VARIANTS = [ '', 'pro' ];
 
     /**

@@ -42,7 +42,7 @@ final class ReviewHandler implements TriggerHandler {
         return Breakdown::flat( $campaign->flat_points() );
     }
 
-    public function advertised_value( Campaign $campaign ): float {
+    public function advertised_points( Campaign $campaign ): float {
         return (float) $campaign->flat_points();
     }
 

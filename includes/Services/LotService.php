@@ -44,12 +44,12 @@ final class LotService {
         $policy  = ExpiryPolicy::current();
 
         if ( $points > 0 ) {
-            $size  = min( $points, max( 0, $balance_before + $points ) );
-            $taken = null === $source_ledger_id ? null : $this->lots->first_lot_taken_by( $source_ledger_id );
-            $since = null === $taken ? $row->get_created_at() : $taken['created_at'];
+            $size         = min( $points, max( 0, $balance_before + $points ) );
+            $taken        = null === $source_ledger_id ? null : $this->lots->first_lot_taken_by( $source_ledger_id );
+            $earned_since = null === $taken ? $row->get_created_at() : $taken['earned_at'];
 
             if ( $size > 0 ) {
-                $this->lots->open( (int) $row->get_id(), $user_id, $size, $size, $since, $taken['expires_at'] ?? $policy->lot_expires_at( $since ) );
+                $this->lots->open( (int) $row->get_id(), $user_id, $size, $size, $earned_since, $taken['expires_at'] ?? $policy->lot_expires_at( $earned_since ) );
             }
 
             return;
@@ -141,22 +141,22 @@ final class LotService {
         $floor  = $policy->grace_floor( Dates::now() );
 
         foreach ( $lots as $lot ) {
-            $expires_at = $policy->lot_expires_at( $lot['created_at'] );
+            $expires_at = $policy->lot_expires_at( $lot['earned_at'] );
             $expires_at = null === $expires_at ? null : ExpiryPolicy::floor_at( $expires_at, $floor );
 
-            $this->lots->open( $lot['ledger_id'], $user_id, $lot['points'], $lot['remaining'], $lot['created_at'], $expires_at );
+            $this->lots->open( $lot['ledger_id'], $user_id, $lot['points'], $lot['remaining'], $lot['earned_at'], $expires_at );
         }
 
         return count( $lots );
     }
 
     /**
-     * What a balance is still made of, FIFO: positive rows newest first until they cover it, the
-     * oldest covering row only in part. When the history sums to less than the balance, the lots end at the oldest row and cover less
-     * than the balance; the caller reports the shortfall.
+     * What a balance is still made of: it covers the balance from the newest positive rows back, the
+     * oldest covering row only in part. When the history sums to less than the balance, the lots end at
+     * the oldest row and cover less than the balance; the caller reports the shortfall.
      *
      * @param array<int, array{id: int, points: int, created_at: string}> $rows_newest_first Positive ledger rows.
-     * @return array<int, array{ledger_id: int, points: int, remaining: int, created_at: string}> Newest first.
+     * @return array<int, array{ledger_id: int, points: int, remaining: int, earned_at: string}> Newest first.
      */
     private static function from_ledger( array $rows_newest_first, int $balance ): array {
         $lots  = [];
@@ -171,10 +171,10 @@ final class LotService {
             $cover    -= $remaining;
 
             $lots[] = [
-                'ledger_id'  => (int) $row['id'],
-                'points'     => (int) $row['points'],
-                'remaining'  => $remaining,
-                'created_at' => (string) $row['created_at'],
+                'ledger_id' => (int) $row['id'],
+                'points'    => (int) $row['points'],
+                'remaining' => $remaining,
+                'earned_at' => (string) $row['created_at'],
             ];
         }
 

@@ -175,7 +175,7 @@ final class Launcher {
             $payload['seen_url']     = rest_url( StorefrontActivityRestController::REST_NAMESPACE . StorefrontActivityRestController::SEEN_ROUTE );
             $payload['nonce']        = wp_create_nonce( 'wp_rest' );
 
-            $payload['member']['new_points'] = NewPointsNotice::points_since_seen( get_current_user_id() );
+            $payload['member']['new_points'] = NewPointsNotice::points_since_seen_or_start( get_current_user_id() );
         }
 
         return $payload;

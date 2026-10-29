@@ -120,7 +120,7 @@ final class ConditionsEvaluator {
                 return $this->apply_set( $result, $this->category_ids( $ctx ), $operator, $value );
 
             case CampaignConditionType::LIFETIME_POINTS:
-                return $this->apply_numeric( $result, (float) $ctx->get_customer_facts()->get_lifetime_points(), $operator, $value );
+                return $this->apply_numeric( $result, (float) $ctx->get_customer_facts()->get_lifetime_earned(), $operator, $value );
 
             case CampaignConditionType::ORDER_COUNT:
                 return $this->apply_numeric( $result, (float) $ctx->get_customer_facts()->get_order_count(), $operator, $value );

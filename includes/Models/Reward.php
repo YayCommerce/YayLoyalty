@@ -491,7 +491,7 @@ class Reward extends AbstractModel {
         return $this->is_builtin;
     }
 
-    /** Whether this reward may be archived: never the built-in, which the Free UI and DashboardRepository find by slug. */
+    /** Whether this reward may be archived: never the built-in, which the Lite UI and DashboardRepository find by slug. */
     public function can_archive(): bool {
         return ! $this->is_builtin;
     }

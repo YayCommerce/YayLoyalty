@@ -25,6 +25,6 @@ class PointsExpiredYayMailEmail extends LoyaltyYayMailEmail {
         $greeting = LoyaltyEmail::greeting_text( LoyaltyEmailShortcodes::tag( 'customer_name' ) );
         $balance  = LoyaltyEmail::balance_sentence( LoyaltyEmailShortcodes::tag( 'balance_points' ) );
 
-        return '<p>' . $greeting . '</p><p>' . LoyaltyEmailShortcodes::tag( 'expired_points' ) . '</p><p>' . $balance . '</p>';
+        return '<p>' . $greeting . '</p><p>' . LoyaltyEmailShortcodes::tag( 'expired_message' ) . '</p><p>' . $balance . '</p>';
     }
 }

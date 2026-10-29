@@ -75,7 +75,7 @@ class LedgerRepository extends AbstractRepository {
      * @param string      $at     UTC MySQL datetime.
      * @param string|null $source A LedgerSource constant, or null for all sources.
      */
-    public function points_earned_today( ?int $user_id, string $at, ?string $source ): int {
+    public function points_earned_on_site_day( ?int $user_id, string $at, ?string $source ): int {
         $day_start = Dates::site_day_start( $at );
 
         if ( null === $user_id || $user_id < 1 || null === $day_start ) {

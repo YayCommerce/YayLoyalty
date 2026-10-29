@@ -70,7 +70,7 @@ final class DashboardProRestController extends AbstractRestController {
 
         $payload = $this->cache->remember( $range, fn(): array => $this->build( $window ), 'pro' );
 
-        // The Free payload owns the cache strip.
+        // The Lite payload owns the cache strip.
         unset( $payload['cached'], $payload['generated_at'], $payload['next_refresh_at'] );
 
         return [ 'range' => $range ] + $payload;

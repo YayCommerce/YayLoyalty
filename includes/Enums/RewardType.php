@@ -13,7 +13,7 @@ final class RewardType {
 
     public const FLEXIBLE_DISCOUNT = 'flexible_discount';
 
-    // Pro: recognised when stored, not offered in Free.
+    // Pro: recognised when stored, not offered in Lite.
 
     public const FIXED_COUPON   = 'fixed_coupon';
     public const PERCENT_COUPON = 'percent_coupon';

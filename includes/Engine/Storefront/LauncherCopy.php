@@ -200,13 +200,13 @@ final class LauncherCopy {
     }
 
     /**
-     * A points rate in the shopper's currency, for the payload; $currency_rate is the rate that converted it. In the
-     * base currency (1.0) it stays as the merchant set it. Converted, at 1 or more it is rounded to 4 significant
-     * digits; below 1 it stays exact, because earn_rate() and redeem_rate() print its inverse, which must land on the
-     * currency's own amount (1 / 0.00003636… is 27,500, but 1 / 0.00003636 is not).
+     * A points rate in the shopper's currency, for the payload; $conversion_factor is the factor that converted it,
+     * in either direction (a currency rate or a to-base factor). In the base currency (1.0) it stays as the merchant
+     * set it. Converted, at 1 or more it is rounded to 4 significant digits; below 1 it stays exact, because
+     * earn_rate() and redeem_rate() print its inverse, which must land on the currency's own amount (1 / 0.00003636… is 27,500, but 1 / 0.00003636 is not).
      */
-    public static function converted_rate( float $rate, float $currency_rate ): float {
-        return 1.0 === $currency_rate || $rate < 1 ? $rate : PointsMath::round_significant( $rate );
+    public static function converted_rate( float $rate, float $conversion_factor ): float {
+        return 1.0 === $conversion_factor || $rate < 1 ? $rate : PointsMath::round_significant( $rate );
     }
 
     /**

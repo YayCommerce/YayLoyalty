@@ -17,7 +17,7 @@ const BREAKDOWN_DEFAULT_OFF_ABOVE = 10_000;
 /**
  * The single Pro export for the dashboard. Owns the second request and the
  * breakdown toggle, and hands the page its slots through a render prop so
- * the Free layout stays the one tree in both tiers.
+ * the Lite layout stays the one tree in both tiers.
  */
 export function DashboardProPanels({
   range,

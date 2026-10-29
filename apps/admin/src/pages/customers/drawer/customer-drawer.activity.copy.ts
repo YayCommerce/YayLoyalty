@@ -63,11 +63,11 @@ export function activityBalanceEmailSubLine(subject: string): string {
     subject,
   );
 }
-export function activityExpiringSoonEmailSubLine(windowDays: string, deadline: string): string {
+export function activityExpiringSoonEmailSubLine(reminderDays: string, deadline: string): string {
   return sprintf(
     /* translators: 1: the reminder window in days; 2: the deadline date, formatted. */
     __('%1$s-day reminder · deadline was %2$s', 'yayloyalty'),
-    windowDays,
+    reminderDays,
     deadline,
   );
 }

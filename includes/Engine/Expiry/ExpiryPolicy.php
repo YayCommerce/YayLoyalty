@@ -156,8 +156,8 @@ final class ExpiryPolicy {
     }
 
     /** A new lot's expiry: set only while batch expiry is on. */
-    public function lot_expires_at( string $created_at ): ?string {
-        return $this->is_batch() ? self::batch_expires_at( $created_at, $this->batch_months() ) : null;
+    public function lot_expires_at( string $earned_at ): ?string {
+        return $this->is_batch() ? self::batch_expires_at( $earned_at, $this->batch_months() ) : null;
     }
 
     /**

@@ -3,21 +3,21 @@ import { formatSignedPoints } from '@/lib/helpers/ledger.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import type { ActivityEntry, ActivityEventType } from '@/lib/schema/activity.schema';
 import {
-  ACTIVITY_TITLE_MEMBERSHIP_STARTED,
   ACTIVITY_TITLE_ACCOUNT_DELETED,
   ACTIVITY_TITLE_BALANCE_EMAIL_SENT,
   ACTIVITY_TITLE_EARNING_LIMITED,
   ACTIVITY_TITLE_EXPIRING_SOON_EMAIL_SENT,
   ACTIVITY_TITLE_EXPIRY_RESET,
+  ACTIVITY_TITLE_MEMBERSHIP_STARTED,
   ACTIVITY_TITLE_POINTS_ADJUSTED,
   ACTIVITY_TITLE_REWARD_REDEEMED,
   ACTIVITY_TITLE_TIER_CHANGED,
-  activityMembershipStartedSubLine,
   activityAccountDeletedSubLine,
   activityBalanceEmailSubLine,
   activityEarningLimitedSubLine,
   activityExpiringSoonEmailSubLine,
   activityExpiryResetSubLine,
+  activityMembershipStartedSubLine,
   activityPointsAdjustedSubLine,
   activityRewardRedeemedSubLine,
   AUTOMATIC_ACTOR_LABEL,
@@ -107,11 +107,11 @@ function subLineFor(entry: ActivityEntry, occurred: Date): string {
     case 'balance_email_sent':
       return activityBalanceEmailSubLine(str(data, 'subject'));
     case 'expiring_soon_email_sent': {
-      // The API does not send a deadline: it is occurred_at plus window_days.
-      const windowDays = num(data, 'window_days');
-      const deadline = new Date(occurred.getTime() + windowDays * 24 * 60 * 60 * 1000);
+      // The API does not send a deadline: it is occurred_at plus reminder_days.
+      const reminderDays = num(data, 'reminder_days');
+      const deadline = new Date(occurred.getTime() + reminderDays * 24 * 60 * 60 * 1000);
 
-      return activityExpiringSoonEmailSubLine(formatPoints(windowDays), parseWPDate(deadline));
+      return activityExpiringSoonEmailSubLine(formatPoints(reminderDays), parseWPDate(deadline));
     }
     case 'earning_limited': {
       // Data keys from CustomerActivityService::record_earning_limited().

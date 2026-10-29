@@ -34,8 +34,8 @@ class YayCurrencyIntegration {
         }
 
         add_filter( 'yayloyalty_currency_rate', [ $this, 'rate' ], 10, 3 );
-        add_action( 'woocommerce_checkout_create_order', [ OrderRateSnapshot::class, 'save' ], 20, 1 );
-        add_action( 'woocommerce_store_api_checkout_update_order_meta', [ OrderRateSnapshot::class, 'save' ], 20, 1 );
+        add_action( 'woocommerce_checkout_create_order', [ OrderRateSnapshot::class, 'stage' ], 20, 1 );
+        add_action( 'woocommerce_store_api_checkout_update_order_meta', [ OrderRateSnapshot::class, 'stage' ], 20, 1 );
         add_filter( 'YayCurrency/ConvertPrice/NotPermitted', [ $this, 'skip_own_rest_requests' ], 10, 1 );
 
         // After YayCurrency's own conversion at 10.

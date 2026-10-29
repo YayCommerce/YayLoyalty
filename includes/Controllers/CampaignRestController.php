@@ -372,12 +372,12 @@ final class CampaignRestController extends AbstractRestController {
     }
 
     /**
-     * Whether $campaign may be deleted: never a built-in, which the engine and the Free UI expect,
+     * Whether $campaign may be deleted: never a built-in, which the engine and the Lite UI expect,
      * and only with no ledger row naming it. Rows, never points: a campaign earned-then-fully-refunded
      * nets 0 points but still has rows, and deleting would orphan them.
      */
-    private static function is_deletable( Campaign $campaign, int $ledger_rows ): bool {
-        return ! $campaign->is_builtin() && 0 === $ledger_rows;
+    private static function is_deletable( Campaign $campaign, int $ledger_row_count ): bool {
+        return ! $campaign->is_builtin() && 0 === $ledger_row_count;
     }
 
     protected function define_item_schema(): array {

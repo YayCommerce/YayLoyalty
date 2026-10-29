@@ -71,7 +71,7 @@ final class LedgerService {
      *
      * @param bool $adjust_lifetime True writes an ADJUST row: lifetime_earned
      *             moves by the same signed amount as the balance, so a
-     *             deduction can undo a mistaken grant's tier progress. False
+     *             deduction can undo a mistaken grant's lifetime total. False
      *             writes a CORRECTION row: balance only.
      * @param string|null $customer_note Shown to the customer in place of "Adjustment by {store}"; blank stores NULL.
      *

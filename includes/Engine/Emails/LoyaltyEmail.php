@@ -196,7 +196,7 @@ abstract class LoyaltyEmail extends \WC_Email {
      * What the balance buys at the live discount rate, as wc_price() HTML.
      * '' while the reward is not live, or when there is nothing to spend.
      */
-    protected static function balance_value( int $balance ): string {
+    protected static function points_worth_html( int $balance ): string {
         $amount = PointsMath::points_to_currency( $balance, ( new RewardRepository() )->live_points_per_currency_unit(), wc_get_price_decimals() );
 
         if ( null === $amount || $amount <= 0 ) {
@@ -219,7 +219,7 @@ abstract class LoyaltyEmail extends \WC_Email {
         return sprintf( esc_html__( 'Your balance is now %s.', 'yayloyalty' ), '<strong>' . $balance_html . '</strong>' );
     }
 
-    /** "That's worth <strong>$1.50</strong> in rewards." around balance_value(), or '' when that is ''. */
+    /** "That's worth <strong>$1.50</strong> in rewards." around points_worth_html(), or '' when that is ''. */
     protected static function balance_value_text( string $balance_value ): string {
         /* translators: %s: money amount, e.g. "$1.50". */
         return '' === $balance_value ? '' : sprintf( esc_html__( 'That\'s worth %s in rewards.', 'yayloyalty' ), '<strong>' . $balance_value . '</strong>' );

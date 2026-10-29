@@ -30,7 +30,7 @@ final class BaseCalculator {
             }
         }
 
-        $base = max( 0.0, $included * $ctx->get_base_rate() );
+        $base = max( 0.0, $included * $ctx->get_to_base_factor() );
 
         /**
          * Base-currency amount a purchase campaign earns on.
