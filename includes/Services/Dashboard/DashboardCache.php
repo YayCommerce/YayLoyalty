@@ -17,7 +17,7 @@ final class DashboardCache {
     public const TTL       = 5 * MINUTE_IN_SECONDS;
     public const THRESHOLD = 10000;
 
-    private const KEY_PREFIX = 'yayloyalty_dashboard_v2_';
+    private const KEY_PREFIX = 'yayloyalty_dashboard_v1_';
 
     /** @var DashboardRepository */
     private $repository;
