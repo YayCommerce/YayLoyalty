@@ -4,7 +4,7 @@ import { getCustomerLedger } from '@/lib/api/customer.api';
 import { fetchAllPages } from '@/lib/api/paginated';
 import { downloadCsv, toCsv } from '@/lib/helpers/csv.helper';
 import { utcToDate } from '@/lib/helpers/format.helper';
-import { describeLedgerEntry, formatSignedPoints, ledgerTypeLabel } from '@/lib/helpers/ledger.helper';
+import { describeLedgerEntry, ledgerTypeLabel, signedPointsCsv } from '@/lib/helpers/ledger.helper';
 import type { LedgerEntry } from '@/lib/schema/ledger.schema';
 import { exportLedgerTooLarge, LEDGER_CSV_HEADERS } from './customer-drawer.copy';
 
@@ -34,7 +34,7 @@ export function ledgerCsvRow(entry: LedgerEntry, campaignNames: Map<number, stri
     dateI18n('Y-m-d H:i:s', utcToDate(entry.created_at)),
     ledgerTypeLabel(entry.type),
     describeLedgerEntry(entry),
-    formatSignedPoints(entry.points),
+    signedPointsCsv(entry.points),
     entry.balance_after,
     entry.order_id ?? '',
     campaignCell(entry.campaign_id, campaignNames),

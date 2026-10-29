@@ -1,5 +1,6 @@
 import { __, sprintf } from '@wordpress/i18n';
 
+import { formatPoints } from '@/lib/helpers/points.helper';
 import type { LedgerEntry, LedgerType } from '@/lib/schema/ledger.schema';
 
 /** A human description for a ledger row. Built here, not stored, so system rows stay translatable. */
@@ -85,7 +86,12 @@ export function ledgerTypeLabel(type: LedgerType): string {
   return LEDGER_TYPE_LABELS[type]();
 }
 
-/** Signed display, so a clawback reads as -30 rather than 30. */
+/** Signed display with the store's separators, so a clawback reads as -30 rather than 30. */
 export function formatSignedPoints(points: number): string {
+  return points > 0 ? `+${formatPoints(points)}` : formatPoints(points);
+}
+
+/** Signed and ungrouped, for a CSV cell: a separator would split the column. */
+export function signedPointsCsv(points: number): string {
   return points > 0 ? `+${points}` : String(points);
 }
