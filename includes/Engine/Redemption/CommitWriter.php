@@ -14,6 +14,7 @@ use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Services\LedgerService;
+use YayLoyalty\Utils\CurrencyRate;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
@@ -391,10 +392,12 @@ final class CommitWriter {
         return $rows;
     }
 
-    /** A reward line's redemptions row: the full cost, the line's discount as value and base_value, no rate, no catalog coupon. */
+    /** A reward line's redemptions row: the full cost, the line's discount as value and in the base currency, no rate, no catalog coupon. */
     private function reward_row( \WC_Order $order, Reward $reward, int $points, float $value, string $code ): Redemption {
-        $value = $this->money( $value );
-        $now   = Dates::now();
+        $currency   = (string) $order->get_currency();
+        $base_value = $this->money( CurrencyRate::to_base( $value, $currency, $order ) );
+        $value      = $this->money( $value );
+        $now        = Dates::now();
 
         return new Redemption(
             null,
@@ -403,8 +406,8 @@ final class CommitWriter {
             (int) $order->get_id(),
             $points,
             $value,
-            (string) $order->get_currency(),
-            $value,
+            $currency,
+            $base_value,
             '0',
             $code,
             null,
@@ -426,10 +429,12 @@ final class CommitWriter {
         return (string) wc_format_decimal( $amount, wc_get_price_decimals() );
     }
 
-    /** The redemptions row a quote becomes. Precondition: $quote is allowed with points > 0. `base_value` equals `value`: there is no currency conversion. */
+    /** The redemptions row a quote becomes. Precondition: $quote is allowed with points > 0. `base_value` is `value` at the order's saved rate. */
     private function redemption_from( Result $quote, \WC_Order $order ): Redemption {
-        $value = $this->decimal( $quote );
-        $now   = Dates::now();
+        $currency   = (string) $quote->get_currency();
+        $value      = $this->decimal( $quote );
+        $base_value = $this->money( CurrencyRate::to_base( $quote->get_value(), $currency, $order ) );
+        $now        = Dates::now();
 
         return new Redemption(
             null,
@@ -438,8 +443,8 @@ final class CommitWriter {
             (int) $order->get_id(),
             $quote->get_points(),
             $value,
-            (string) $quote->get_currency(),
-            $value,
+            $currency,
+            $base_value,
             (string) $quote->get_rate_snapshot(),
             $quote->get_reward()->get_coupon_code(),
             null,

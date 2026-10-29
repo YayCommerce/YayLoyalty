@@ -53,6 +53,33 @@ final class CommitWriterTest extends IntegrationTestCase {
         $this->assertSame( 5.0, (float) $saved->get_meta( CommitWriter::META_VALUE ) );
     }
 
+    /** `value` stays in the charged currency; `base_value` is the same discount at the order's rate, for reports. */
+    public function test_a_non_base_currency_order_stores_base_value_in_the_base_currency(): void {
+        $currency = 'EUR' === get_option( 'woocommerce_currency' ) ? 'GBP' : 'EUR';
+        $rate     = static function ( $current, $priced_in ) use ( $currency ) {
+            return $priced_in === $currency ? 2.0 : $current;
+        };
+        add_filter( 'yayloyalty_currency_rate', $rate, 10, 2 );
+
+        try {
+            $this->ledger_service()->earn( $this->earn_draft( 7, 100, 1000 ) );
+            $order = $this->order_with_points_discount( 7, 20.0, 10.0, self::SLIDER_CODE );
+            $order->set_currency( $currency );
+            $order->save();
+
+            $outcome = $this->commit_writer()->commit( $order, $this->reward() );
+        } finally {
+            remove_filter( 'yayloyalty_currency_rate', $rate, 10 );
+        }
+
+        $this->assertSame( Outcome::REDEEMED, $outcome->get_status() );
+        $rows = $this->redemption_rows( 7 );
+        $this->assertCount( 1, $rows );
+        $this->assertSame( $currency, $rows[0]['currency'] );
+        $this->assertSame( 10.0, (float) $rows[0]['value'] );
+        $this->assertSame( 5.0, (float) $rows[0]['base_value'] );
+    }
+
     /** Auto max is a cart-time request: the commit debits the line it finds, never the most the balance could take. */
     public function test_an_auto_max_order_debits_exactly_its_line(): void {
         $this->ledger_service()->earn( $this->earn_draft( 7, 100, 1000 ) );
