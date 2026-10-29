@@ -80,23 +80,23 @@ describe('availabilityLabel', () => {
 });
 
 describe('resolveRewardsScreen', () => {
-  it('is the init case when only the built-in reward exists', () => {
+  it('has an empty catalog when only the built-in reward exists', () => {
     const builtin = reward({ id: 1, is_builtin: true, type: 'flexible_discount', cost_points: null });
 
     const screen = resolveRewardsScreen([builtin]);
 
-    expect(screen.isInitCase).toBe(true);
+    expect(screen.isCatalogEmpty).toBe(true);
     expect(screen.catalogRows).toHaveLength(0);
     expect(screen.rows).toEqual([builtin]);
   });
 
-  it('is not the init case once a catalog reward exists', () => {
+  it('has a catalog once a catalog reward exists', () => {
     const builtin = reward({ id: 1, is_builtin: true, type: 'flexible_discount', cost_points: null });
     const catalogReward = reward({ id: 2, name: '$5 off' });
 
     const screen = resolveRewardsScreen([catalogReward, builtin]);
 
-    expect(screen.isInitCase).toBe(false);
+    expect(screen.isCatalogEmpty).toBe(false);
     expect(screen.catalogRows).toEqual([catalogReward]);
   });
 
@@ -117,8 +117,8 @@ describe('resolveRewardsScreen', () => {
 
     expect(screen.rows).toEqual([builtin]);
     expect(screen.catalogRows).toHaveLength(0);
-    // An archived reward is not a reason to show the empty state; it once had a catalog.
-    expect(screen.isInitCase).toBe(true);
+    // An archived reward is out of the catalog, so the catalog reads as empty.
+    expect(screen.isCatalogEmpty).toBe(true);
   });
 
   it('collects archived rewards, in display order, for the Archived view', () => {
@@ -131,7 +131,7 @@ describe('resolveRewardsScreen', () => {
 });
 
 describe('headerSubtitle', () => {
-  it('is the init-case copy when there is no catalog reward', () => {
+  it('is the empty-catalog copy when there is no catalog reward', () => {
     const builtin = reward({ id: 1, is_builtin: true, type: 'flexible_discount', cost_points: null });
 
     expect(headerSubtitle(resolveRewardsScreen([builtin]))).toEqual({

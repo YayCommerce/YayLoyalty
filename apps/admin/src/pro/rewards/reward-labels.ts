@@ -14,8 +14,10 @@ export interface RewardsScreen {
   catalogRows: Reward[];
   /** Archived rows in display order: the Archived view, out of the catalog and never dragged. */
   archivedRows: Reward[];
-  /** No catalog reward exists yet (2a). */
-  isInitCase: boolean;
+  /** No live catalog reward; archived and built-in rows don't count. */
+  isCatalogEmpty: boolean;
+  /** Any reward, archived or built-in included, has been claimed at least once. */
+  hasRedemptions: boolean;
 }
 
 /** The one place a case is detected, from the plain list the API returns. */
@@ -29,7 +31,8 @@ export function resolveRewardsScreen(rewards: Reward[]): RewardsScreen {
     rows,
     catalogRows,
     archivedRows: rewards.filter((reward) => reward.status === 'archived'),
-    isInitCase: catalogRows.length === 0,
+    isCatalogEmpty: catalogRows.length === 0,
+    hasRedemptions: rewards.some((reward) => reward.redemption_summary.claimed > 0),
   };
 }
 
@@ -230,15 +233,16 @@ function scheduleWindowLabel(startsAt: string | null, endsAt: string | null): st
 /**
  * The line under "Rewards", in two parts so the table can put its
  * "{n} archived" link between them: the row count, then the sentence after
- * it. On the init case the sentence says nothing has been redeemed yet —
- * Redeemed stays "—" until redemption ships and defines it; its source is then
- * `redemption_summary`, the figure the archive dialog already shows.
+ * it. With an empty catalog only the built-in row is left, so the sentence
+ * says whether anything was ever redeemed rather than how to reorder.
  */
 export function headerSubtitle(screen: RewardsScreen): { count: string; detail: string } {
-  if (screen.isInitCase) {
+  if (screen.isCatalogEmpty) {
     return {
       count: __('One reward', 'yayloyalty'),
-      detail: __('Nothing has been redeemed yet.', 'yayloyalty'),
+      detail: screen.hasRedemptions
+        ? __('Add a reward to give customers more to choose from.', 'yayloyalty')
+        : __('Nothing has been redeemed yet.', 'yayloyalty'),
     };
   }
 
