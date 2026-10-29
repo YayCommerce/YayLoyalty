@@ -56,11 +56,11 @@ function copyFor(n: TypedNotice): NoticeCopy {
       return {
         title: __("Customers aren't earning points on purchases", 'yayloyalty'),
         body: sprintf(
-          /* translators: 1: the date the campaign was paused; 2: the "N orders have completed" phrase. */
-          __('The default campaign has been paused since %1$s. %2$s and awarded nothing.', 'yayloyalty'),
-          formatStoredDate(n.data.paused_since),
+          /* translators: 1: the date the campaign was last changed; 2: the "N orders have completed" phrase. */
+          __('The default campaign is paused and was last changed on %1$s. Since then, %2$s and awarded nothing.', 'yayloyalty'),
+          formatStoredDate(n.data.last_updated_at),
           sprintf(
-            /* translators: %s: number of orders completed since the pause, formatted. */
+            /* translators: %s: number of orders completed since the campaign was last changed, formatted. */
             _n('%s order has completed', '%s orders have completed', n.data.orders_without_points, 'yayloyalty'),
             formatPoints(n.data.orders_without_points),
           ),

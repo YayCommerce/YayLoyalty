@@ -96,18 +96,19 @@ class DashboardNotices {
             return null;
         }
 
-        $since   = $campaign->get_updated_at();
-        $now_utc = Dates::to_utc( $now_site );
-        $orders  = $this->repository->count_orders( Dates::to_timestamp( $since ), $now_site->getTimestamp() );
+        // Nothing records when a campaign was paused, so the last change stands in for it.
+        $last_updated_at = $campaign->get_updated_at();
+        $now_utc         = Dates::to_utc( $now_site );
+        $orders          = $this->repository->count_orders( Dates::to_timestamp( $last_updated_at ), $now_site->getTimestamp() );
 
         return [
             'key'         => 'default_campaign_paused',
             'severity'    => 'affected',
-            'fingerprint' => $since,
+            'fingerprint' => $last_updated_at,
             'data'        => [
                 'campaign_id'           => (int) $campaign->get_id(),
-                'paused_since'          => $since,
-                'orders_without_points' => max( 0, $orders - $this->repository->orders_with_earn( $since, $now_utc ) ),
+                'last_updated_at'       => $last_updated_at,
+                'orders_without_points' => max( 0, $orders - $this->repository->orders_with_earn( $last_updated_at, $now_utc ) ),
             ],
         ];
     }

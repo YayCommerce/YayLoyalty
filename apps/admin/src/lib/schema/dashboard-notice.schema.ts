@@ -13,9 +13,9 @@ export const negativeBalanceDataSchema = z.object({
 
 export const defaultCampaignPausedDataSchema = z.object({
   campaign_id: z.number().int(),
-  /** UTC MySQL datetime of the pause (the campaign's `updated_at`). */
-  paused_since: z.string(),
-  /** Completed orders since the pause minus orders that still earned. */
+  /** UTC MySQL datetime of the campaign's last change; not necessarily when it was paused. */
+  last_updated_at: z.string(),
+  /** Completed orders since that change minus orders that still earned. */
   orders_without_points: z.number().int(),
 });
 
