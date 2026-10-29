@@ -21,7 +21,7 @@ import {
   RewardUpdateInput,
 } from '@/lib/schema/reward.schema';
 import type { EditorSaveIntent } from '@/hooks/useEditorSave';
-import { templateTitle } from '../reward-labels';
+import { defaultRewardName } from '../reward-labels';
 
 /**
  * The form's fields. No `conditions`: the editor shows none, and a save sends
@@ -111,11 +111,13 @@ export function templateExample(type: CatalogRewardType): string {
 
 /** A new reward's starting values; nothing is persisted until Save or Save draft. */
 export function rewardCreateSeed(type: CatalogRewardType, currency: string): RewardFormValues {
+  const config = seedConfig(type, currency);
+
   return {
-    name: templateTitle(type),
+    name: defaultRewardName(type, config),
     status: 'active',
     cost_points: SEED_COST_POINTS[type],
-    config: seedConfig(type, currency),
+    config,
     starts_at: null,
     ends_at: null,
   };

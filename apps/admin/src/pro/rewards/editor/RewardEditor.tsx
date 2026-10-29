@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, FormProvider, useForm, useFormContext, UseFormReturn, useWatch } from 'react-hook-form';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
@@ -28,7 +28,7 @@ import NotFoundPage from '@/pages/404';
 import { statusLabel } from '@/pro/campaigns/campaign-labels';
 import { CampaignStatusBadge } from '@/pro/campaigns/CampaignStatusBadge';
 import { RewardArchiveDialog } from '../archive/RewardArchiveDialog';
-import { isCreatableRewardType, templateTitle, typeLabel } from '../reward-labels';
+import { defaultRewardName, isCreatableRewardType, templateTitle, typeLabel } from '../reward-labels';
 import {
   duplicateToFormValues,
   EDITABLE_REWARD_STATUSES,
@@ -183,6 +183,25 @@ function RewardCreatorForm({ type, duplicateFrom }: { type: CatalogRewardType; d
   );
   const resolver = useMemo(() => rewardFormResolver(type), [type]);
   const form = useForm<RewardFormValues>({ resolver, values: seed, resetOptions: { keepDirtyValues: true } });
+  const autoName = useRef(seed.name);
+
+  // A new reward's name follows its offer until the merchant types their own; a duplicate keeps "(copy)".
+  useEffect(() => {
+    if (duplicateFrom) {
+      return;
+    }
+
+    const subscription = form.watch((values, { name }) => {
+      if (name !== 'config' || form.getValues('name') !== autoName.current) {
+        return;
+      }
+
+      autoName.current = defaultRewardName(type, form.getValues('config'));
+      form.setValue('name', autoName.current);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [form, type, duplicateFrom]);
 
   const { handleSave, markDraftIntent, leaveDialogProps } = useEditorSave(
     form,
