@@ -2,6 +2,7 @@
 namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Engine\Earning\EarningService;
+use YayLoyalty\Engine\Expiry\ExpiryPolicy;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Redemption\ProgramGate as RedemptionProgramGate;
@@ -10,6 +11,7 @@ use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
+use YayLoyalty\Repositories\LotRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Utils\CurrencyRate;
 use YayLoyalty\Utils\Dates;
@@ -73,7 +75,10 @@ final class LauncherPayload {
         $payload  = $this->for_balance( $design, null === $customer ? 0 : $customer->get_balance(), EarningService::points_left_today( $user_id ) );
 
         if ( null !== $customer && $customer->get_balance() > 0 ) {
-            $payload['member']['expires_at'] = self::expiring_soon( $customer->get_expires_at() );
+            $expires_at = self::expiring_soon( $customer->get_expires_at() );
+
+            $payload['member']['expires_at']      = $expires_at;
+            $payload['member']['expiring_points'] = null === $expires_at ? null : self::expiring_points( $user_id, $customer->get_balance(), $expires_at );
         }
 
         // A shopper checkout refuses (excluded role, opted out, program paused, coupons off) is promised no discount.
@@ -137,15 +142,26 @@ final class LauncherPayload {
 
     /**
      * @param Reward|null $reward The cart-discount reward when it is live; null hides the worth.
-     * @return array{balance: int, worth: ?float, expires_at: ?string} `expires_at` stays null here; build() sets it
-     *         for a live member whose points expire within EXPIRING_SOON_DAYS.
+     * @return array{balance: int, worth: ?float, expires_at: ?string, expiring_points: ?int} `expires_at` and
+     *         `expiring_points` stay null here; build() sets them for a live member whose points expire within
+     *         EXPIRING_SOON_DAYS.
      */
     private static function member( int $balance, ?Reward $reward ): array {
         return [
-            'balance'    => $balance,
-            'worth'      => null === $reward || $balance <= 0 ? null : self::worth( $reward, $balance ),
-            'expires_at' => null,
+            'balance'         => $balance,
+            'worth'           => null === $reward || $balance <= 0 ? null : self::worth( $reward, $balance ),
+            'expires_at'      => null,
+            'expiring_points' => null,
         ];
+    }
+
+    /** The points that expire on $expires_at: the lots due by then in batch expiry, the whole balance on inactivity. */
+    private static function expiring_points( int $user_id, int $balance, string $expires_at ): int {
+        if ( ! ExpiryPolicy::current()->is_batch() ) {
+            return $balance;
+        }
+
+        return min( $balance, ( new LotRepository() )->remaining_expiring_by( $user_id, $expires_at ) );
     }
 
     /** $expires_at (UTC) when it is still ahead and no more than EXPIRING_SOON_DAYS away, else null. */

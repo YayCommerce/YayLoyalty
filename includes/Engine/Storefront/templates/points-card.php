@@ -63,7 +63,7 @@ if ( null !== $yayloyalty_card_member && null !== $yayloyalty_card_member['worth
             <?php // Any balance can be taken to checkout, which says what it is worth there; an empty one is sent to earn, if there is a way to. ?>
             <?php if ( $yayloyalty_card_member['balance'] > 0 ) : ?>
                 <a class="yayloyalty-account__button" href="<?php echo esc_url( $yayloyalty_card_payload['checkout_url'] ); ?>"><?php esc_html_e( 'Use points at checkout', 'yayloyalty' ); ?><?php echo wp_kses( AccountRewardsIcon::get( 'arrow' ), Kses::svg() ); ?></a>
-            <?php elseif ( [] !== LauncherEarnRules::member_rows( $yayloyalty_card_payload['earn'], $yayloyalty_card_payload['purchase_min'] ) ) : ?>
+            <?php elseif ( [] !== LauncherEarnRules::rows_without_signup( $yayloyalty_card_payload['earn'], $yayloyalty_card_payload['purchase_min'] ) ) : ?>
                 <a class="yayloyalty-account__button" href="<?php echo esc_url( (string) wc_get_page_permalink( 'shop' ) ); ?>">
                     <?php
                     /* translators: %s: the store's points label, as "Points". */
@@ -83,7 +83,7 @@ if ( null !== $yayloyalty_card_member && null !== $yayloyalty_card_member['worth
             <strong>
                 <?php
                 /* translators: 1: points with the store's label, as "200 Points", 2: date. */
-                echo esc_html( sprintf( __( '%1$s expire on %2$s.', 'yayloyalty' ), SettingsHelper::points_text( $yayloyalty_card_member['balance'] ), Dates::to_site_date( $yayloyalty_card_member['expires_at'] ) ) );
+                echo esc_html( sprintf( __( '%1$s expire on %2$s.', 'yayloyalty' ), SettingsHelper::points_text( (int) $yayloyalty_card_member['expiring_points'] ), Dates::to_site_date( $yayloyalty_card_member['expires_at'] ) ) );
                 ?>
             </strong>
         </span>

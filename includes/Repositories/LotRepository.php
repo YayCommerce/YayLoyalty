@@ -236,6 +236,20 @@ class LotRepository {
         return array_map( 'intval', is_array( $ids ) ? $ids : [] );
     }
 
+    /** The points left in a user's open lots that expire by $expires_at (UTC); read-only, unlike claim_reminder_lots(). */
+    public function remaining_expiring_by( int $user_id, string $expires_at ): int {
+        global $wpdb;
+
+        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT COALESCE(SUM(remaining), 0) FROM `' . esc_sql( $this->table() ) . '` WHERE user_id = %d AND status = %s AND expires_at <= %s',
+                $user_id,
+                LotStatus::OPEN,
+                $expires_at
+            )
+        );
+    }
+
     /** The soonest expiry among a user's open lots, or null. */
     public function earliest_open_expiry( int $user_id ): ?string {
         global $wpdb;
