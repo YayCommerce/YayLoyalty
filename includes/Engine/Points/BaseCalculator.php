@@ -7,8 +7,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The base-currency amount a purchase campaign earns on: included lines'
- * totals per `base`, plus the share of our own redemption discount that
- * fell on them, since spending points must not reduce future earning.
+ * totals per `base`. After discounts, every coupon on the line lowers it,
+ * merchant coupons and our own points discount and reward coupons alike.
  */
 final class BaseCalculator {
 
@@ -16,25 +16,18 @@ final class BaseCalculator {
         $config           = $campaign->get_config();
         $before_discounts = 'before_discounts' === ( $config['base'] ?? 'after_discounts' );
 
-        $included          = 0.0; // What we earn on, order currency.
-        $included_subtotal = 0.0; // Pre-discount share of the order, for proportioning.
+        $included = 0.0; // What we earn on, order currency.
 
         foreach ( $ctx->get_line_items() as $item ) {
             if ( ! self::includes_line( $campaign, $item ) ) {
                 continue;
             }
 
-            $included_subtotal += $item->get_subtotal();
-            $included          += $before_discounts ? $item->get_subtotal() : $item->get_total();
+            $included += $before_discounts ? $item->get_subtotal() : $item->get_total();
 
             if ( ! empty( $config['include_tax'] ) ) {
                 $included += $item->get_tax_total();
             }
-        }
-
-        // Only the included lines' share: the part on an excluded product never counted.
-        if ( ! $before_discounts && $ctx->get_loyalty_discount() > 0 && $ctx->get_order_subtotal() > 0 ) {
-            $included += $ctx->get_loyalty_discount() * ( $included_subtotal / $ctx->get_order_subtotal() );
         }
 
         $base = max( 0.0, $included * $ctx->get_base_rate() );

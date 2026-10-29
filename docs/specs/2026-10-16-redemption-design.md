@@ -2,7 +2,7 @@
 
 **Status:** accepted 2026-10-16
 **Replaces:** the redemptions design of 2026-10-07 and the reward redemption design of 2026-10-14, which were never committed. This document describes the component as built on `jason/feat/redemptions`, with every decision those specs and their plans made.
-**Amended:** 2026-10-22: the points discount and rewards stack, and the card is one checkbox list ([the points discount and rewards stack](../decisions/2026-10-22-stack-points-discount-and-rewards.md)). The sections marked "amended 2026-10-22" describe the change. 2026-10-28: the points discount's shopper-facing label is its reward's name, seeded "Points discount" and editable in Lite and Pro.
+**Amended:** 2026-10-22: the points discount and rewards stack, and the card is one checkbox list ([the points discount and rewards stack](../decisions/2026-10-22-stack-points-discount-and-rewards.md)). The sections marked "amended 2026-10-22" describe the change. 2026-10-28: the points discount's shopper-facing label is its reward's name, seeded "Points discount" and editable in Lite and Pro. 2026-10-29: a purchase campaign earns after every discount, the points discount and reward coupons included, and `base` and `exclude_coupon_orders` are fixed and no longer shown (see Earning).
 **Decision records:** [Lite owns every redemption write](../decisions/2026-10-07-lite-owns-redemption-writes.md), [the points discount and rewards stack](../decisions/2026-10-22-stack-points-discount-and-rewards.md) (superseding [loyalty discounts are virtual coupons](../decisions/2026-10-14-loyalty-discounts-as-virtual-coupons.md)), [the ledger's single writer](../decisions/2026-10-01-ledger-service-sole-writer.md)
 **Plan:** [docs/plans/2026-10-16-redemption.md](../plans/2026-10-16-redemption.md)
 
@@ -162,8 +162,8 @@ No schema change and no version bump: the plugin is unreleased at 1.0.0. A devel
 
 ## Earning
 
-- `Points\Context::is_loyalty_code()` is true for `yayloyalty-redeem` and every `yayloyalty-reward-*` code. `get_real_coupon_codes()` excludes them, so `exclude_coupon_orders` still awards an order whose only discounts are loyalty ones.
-- `Points\ContextFactory` sums every loyalty line as `loyalty_discount`. With `base` `after_discounts`, `BaseCalculator` adds the included lines' share of it back, so spending points never lowers what the order earns.
+- `Points\Context::is_loyalty_code()` is true for `yayloyalty-redeem` and every `yayloyalty-reward-*` code. `get_real_coupon_codes()` excludes them.
+- Amended 2026-10-29: `Campaign` fixes a purchase campaign's `base` to `after_discounts` and `exclude_coupon_orders` to `false`, whatever is stored or sent, and the admin shows neither setting. `BaseCalculator` earns on the included lines' totals after every discount: merchant coupons, the points discount and reward coupons all lower what the order earns. `ContextFactory` still sums loyalty lines as `loyalty_discount`, but `BaseCalculator` no longer adds it back.
 
 ## Storefront
 
@@ -248,7 +248,7 @@ Fixtures: a Pro build; a signed-in customer with 9,850 Points; `cart-discount` l
 13. **Policy.** With the points discount's policy `none`, a refund restores nothing; with `full`, a half refund restores everything.
 14. **Other shoppers.** A guest sees "Sign in to spend your Points."; an opted-out shopper or an excluded role sees no card.
 15. **Downgrade.** An order placed under Pro with A and B still restores 500 + 1,500 on cancel after switching to Lite.
-16. **Earning.** A `purchase` campaign with `exclude_coupon_orders` awards points on an order whose only discounts are A and B.
+16. **Earning** (amended 2026-10-29). A `purchase` campaign earns on the order's lines after A and B: a $100 order with both earns on $85 ($5 + $10 off), not $100.
 17. **Console.** No console errors on classic or block cart and checkout.
 18. **End to end:** on the block cart tick A and B, Apply, see $85.00, place the order, see −500 and −1,500 in the drawer's Ledger tab and a balance of 7,850, cancel it and see 9,850; repeat on `/e2e-classic-cart/` and `/e2e-classic-checkout/` with a full refund instead. This is `apps/e2e/specs/reward-redemptions.spec.ts`; the slider's walk-through is `apps/e2e/specs/redemptions.spec.ts`.
 
