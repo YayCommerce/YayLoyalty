@@ -67,8 +67,8 @@ abstract class IntegrationTestCase extends TestCase {
         );
     }
 
-    /** A slider REDEEM draft for one order, keyed as CommitWriter keys it. */
-    protected function redeem_draft( int $user_id, int $order_id, int $points ): LedgerEntry {
+    /** A slider REDEEM draft for one order, keyed as CommitWriter keys it, written at $created_at ('' for now). */
+    protected function redeem_draft( int $user_id, int $order_id, int $points, string $created_at = '' ): LedgerEntry {
         return new LedgerEntry(
             null,
             $user_id,
@@ -83,8 +83,29 @@ abstract class IntegrationTestCase extends TestCase {
             $order_id,
             null,
             null,
-            Dates::now(),
+            '' === $created_at ? Dates::now() : $created_at,
             IdempotencyKey::compose( LedgerType::REDEEM, $user_id, ReferenceType::ORDER, $order_id, RewardType::FLEXIBLE_DISCOUNT )
+        );
+    }
+
+    /** A REFUND_REDEEM draft returning $points of the redemption on $order_id, keyed on the order. */
+    protected function refund_redeem_draft( int $user_id, int $order_id, int $points ): LedgerEntry {
+        return new LedgerEntry(
+            null,
+            $user_id,
+            $points,
+            0,
+            LedgerType::REFUND_REDEEM,
+            LedgerSource::ORDER,
+            ReferenceType::ORDER,
+            $order_id,
+            null,
+            null,
+            $order_id,
+            null,
+            null,
+            Dates::now(),
+            IdempotencyKey::compose( LedgerType::REFUND_REDEEM, $user_id, ReferenceType::ORDER, $order_id, RewardType::FLEXIBLE_DISCOUNT )
         );
     }
 

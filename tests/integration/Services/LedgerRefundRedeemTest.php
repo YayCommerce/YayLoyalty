@@ -1,16 +1,9 @@
 <?php
 namespace YayLoyalty\Tests\Integration\Services;
 
-use YayLoyalty\Engine\Earning\IdempotencyKey;
 use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Rewards\Result;
-use YayLoyalty\Enums\LedgerSource;
-use YayLoyalty\Enums\LedgerType;
-use YayLoyalty\Enums\ReferenceType;
-use YayLoyalty\Enums\RewardType;
-use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
-use YayLoyalty\Utils\Dates;
 
 /** LedgerService::refund_redeem(): the restore and its idempotency key, and a redeem() that is allowed to overdraw. */
 final class LedgerRefundRedeemTest extends IntegrationTestCase {
@@ -55,26 +48,5 @@ final class LedgerRefundRedeemTest extends IntegrationTestCase {
         $this->assertSame( -200, $overdrawn->get_entry()->get_balance_after() );
         $this->assertSame( -200, (int) $this->customer_row( 7 )['balance'] );
         $this->assertSame( 500, (int) $this->customer_row( 7 )['lifetime_redeemed'] );
-    }
-
-    /** A REFUND_REDEEM draft returning $points of the redemption on $order_id, keyed on the order. */
-    private function refund_redeem_draft( int $user_id, int $order_id, int $points ): LedgerEntry {
-        return new LedgerEntry(
-            null,
-            $user_id,
-            $points,
-            0,
-            LedgerType::REFUND_REDEEM,
-            LedgerSource::ORDER,
-            ReferenceType::ORDER,
-            $order_id,
-            null,
-            null,
-            $order_id,
-            null,
-            null,
-            Dates::now(),
-            IdempotencyKey::compose( LedgerType::REFUND_REDEEM, $user_id, ReferenceType::ORDER, $order_id, RewardType::FLEXIBLE_DISCOUNT )
-        );
     }
 }

@@ -278,11 +278,40 @@ class LedgerRepository extends AbstractRepository {
      * @param string $before UTC MySQL datetime. A row at this exact second is excluded.
      */
     public function lifetime_earned_before( int $user_id, string $before ): int {
-        $types = LedgerType::lifetime_earned_types();
+        return $this->sum_types( $user_id, LedgerType::lifetime_earned_types(), '<', $before );
+    }
 
+    /**
+     * Net points a user earned in rows created at or after $from: the signed SUM of
+     * lifetime_earned_types() rows, the same rule as customers.lifetime_earned. 0 for a guest.
+     *
+     * @param string $from UTC MySQL datetime. A row at this exact second is included.
+     */
+    public function earned_since( int $user_id, string $from ): int {
+        return $user_id < 1 ? 0 : $this->sum_types( $user_id, LedgerType::lifetime_earned_types(), '>=', $from );
+    }
+
+    /**
+     * Net points a user spent in rows created at or after $from: redeemed minus returned,
+     * the same rule as customers.lifetime_redeemed. 0 for a guest.
+     *
+     * @param string $from UTC MySQL datetime. A row at this exact second is included.
+     */
+    public function redeemed_since( int $user_id, string $from ): int {
+        return $user_id < 1 ? 0 : -$this->sum_types( $user_id, LedgerType::lifetime_redeemed_types(), '>=', $from );
+    }
+
+    /**
+     * Signed SUM(points) of a user's rows of $types created on one side of $at.
+     *
+     * @param string[] $types
+     * @param string   $op    '<' or '>=', a literal from this class only, never input.
+     * @param string   $at    UTC MySQL datetime.
+     */
+    private function sum_types( int $user_id, array $types, string $op, string $at ): int {
         return $this->sum_points(
-            'user_id = %d AND created_at < %s AND type IN (' . Sql::in_placeholders( $types ) . ')',
-            array_merge( [ $user_id, $before ], $types )
+            "user_id = %d AND created_at {$op} %s AND type IN (" . Sql::in_placeholders( $types ) . ')',
+            array_merge( [ $user_id, $at ], $types )
         );
     }
 

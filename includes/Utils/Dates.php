@@ -52,6 +52,18 @@ final class Dates {
     }
 
     /**
+     * Midnight, in the site timezone, of day 1 of the site-calendar month holding a UTC moment.
+     * Wall-clock midnight, as site_day_start().
+     *
+     * @return \DateTimeImmutable|null Null when $utc is empty or unparsable.
+     */
+    public static function site_month_start( ?string $utc ): ?\DateTimeImmutable {
+        $day = self::site_day_start( $utc );
+
+        return null === $day ? null : $day->modify( 'first day of this month' );
+    }
+
+    /**
      * UTC bound for site-timezone midnight of a `Y-m-d` calendar day, shifted
      * by $modify (`'+1 day'` for an exclusive end). Wall-clock midnight, as
      * site_day_start(). Null when $ymd is not a valid `Y-m-d`.
