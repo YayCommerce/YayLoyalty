@@ -48,7 +48,7 @@ export function typeLabel(type: Reward['type']): string {
   }
 }
 
-/** A catalog type's starting-point title: the template card heading and a new reward's default name. */
+/** A catalog type's starting-point title: the template card heading and the new-reward page header. */
 export function templateTitle(type: CatalogRewardType): string {
   switch (type) {
     case 'fixed_coupon':
@@ -60,6 +60,39 @@ export function templateTitle(type: CatalogRewardType): string {
     case 'free_product':
       return __('Free product', 'yayloyalty');
   }
+}
+
+/** A new reward's default name, from its config: "$5 Off", "15% Off - Max $50"; the template title otherwise. */
+export function defaultRewardName(type: CatalogRewardType, config: Reward['config']): string {
+  if (type === 'fixed_coupon') {
+    const amount = numberConfig(config, 'amount');
+
+    if (amount !== null) {
+      /* translators: %s: discount amount, formatted as money. */
+      return sprintf(__('%s Off', 'yayloyalty'), parseWPCurrency(amount));
+    }
+  }
+
+  if (type === 'percent_coupon') {
+    const percent = numberConfig(config, 'percent');
+    const maxDiscount = numberConfig(config, 'max_discount');
+
+    if (percent !== null && maxDiscount !== null) {
+      return sprintf(
+        /* translators: 1: discount percent, 2: maximum discount, formatted as money. */
+        __('%1$s%% Off - Max %2$s', 'yayloyalty'),
+        String(percent),
+        parseWPCurrency(maxDiscount),
+      );
+    }
+
+    if (percent !== null) {
+      /* translators: %s: discount percent. */
+      return sprintf(__('%s%% Off', 'yayloyalty'), String(percent));
+    }
+  }
+
+  return templateTitle(type);
 }
 
 /**

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { normalizeRewardConditions, Reward, RewardCondition } from '@/lib/schema/reward.schema';
 import {
@@ -12,6 +12,13 @@ import {
   rewardToFormValues,
 } from '@/pro/rewards/editor/reward-editor.form';
 import { reward } from './fixtures/reward.fixture';
+
+// A new reward's default name is money-formatted, and some seeds are built while the suite is collected.
+vi.stubGlobal('window', {
+  yayLoyaltyMeta: {
+    wcMeta: { currency_data: { symbol: '$', position: 'left', thousand_sep: ',', decimal_sep: '.', num_decimals: 2 } },
+  },
+});
 
 describe('resolveSaveStatus', () => {
   it.each([
