@@ -25,4 +25,13 @@ final class PointsMathTest extends TestCase {
         $this->assertSame( $nearest, PointsMath::round_points( $raw, PointsMath::ROUND_NEAREST ) );
         $this->assertSame( $up, PointsMath::round_points( $raw, PointsMath::ROUND_UP ) );
     }
+
+    /** A rate line never shows a fraction of a point: an exact whole pair, else what a round spend earns under the campaign's rounding. */
+    public function test_rate_pairs_read_in_whole_points(): void {
+        $this->assertSame( [ 3, 2.0 ], PointsMath::rate_pair( 1.5, 0, PointsMath::ROUND_DOWN ) );
+        $this->assertSame( [ 3, 4.0 ], PointsMath::rate_pair( 0.75, 0, PointsMath::ROUND_DOWN ) );
+        $this->assertSame( [ 1, 25000.0 ], PointsMath::rate_pair( 0.00004, 0, PointsMath::ROUND_DOWN ) );
+        $this->assertSame( [ 253, 10.0 ], PointsMath::rate_pair( 25.387, 2, PointsMath::ROUND_DOWN ) );
+        $this->assertSame( [ 254, 10.0 ], PointsMath::rate_pair( 25.387, 2, PointsMath::ROUND_UP ) );
+    }
 }

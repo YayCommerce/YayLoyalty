@@ -103,20 +103,21 @@ final class LauncherPayload {
         $estimate = null !== $engine && null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate() : null;
 
         return [
-            'hide_mobile'  => ! empty( $design['visibility']['hide_on_mobile'] ),
-            'earn'         => $rules['earn'],
-            'purchase_min' => $rules['purchase_min'],
-            'redeem'       => $redeem,
-            'offers'       => self::redeem_offers( $now ),
-            'member'       => null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward ),
-            'left_today'   => $left_today,
-            'estimate'     => $estimate,
+            'hide_mobile'       => ! empty( $design['visibility']['hide_on_mobile'] ),
+            'earn'              => $rules['earn'],
+            'purchase_min'      => $rules['purchase_min'],
+            'purchase_rounding' => $rules['purchase_rounding'],
+            'redeem'            => $redeem,
+            'offers'            => self::redeem_offers( $now ),
+            'member'            => null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward ),
+            'left_today'        => $left_today,
+            'estimate'          => $estimate,
             // What the estimate takes off an order, as checkout would grant it: null below the minimum.
-            'estimate_off' => null === $estimate || null === $redeem ? null : self::worth( $reward, $estimate ),
-            'register'     => $register,
-            'account_url'  => (string) wc_get_page_permalink( 'myaccount' ),
-            'history_url'  => AccountRewards::history_url(),
-            'checkout_url' => (string) wc_get_checkout_url(),
+            'estimate_off'      => null === $estimate || null === $redeem ? null : self::worth( $reward, $estimate ),
+            'register'          => $register,
+            'account_url'       => (string) wc_get_page_permalink( 'myaccount' ),
+            'history_url'       => AccountRewards::history_url(),
+            'checkout_url'      => (string) wc_get_checkout_url(),
         ];
     }
 
@@ -176,7 +177,7 @@ final class LauncherPayload {
      * unit of the shopper's currency, through LauncherCopy::converted_rate().
      *
      * @param Reward|null $reward The reward when it is live (RewardRepository::find_live_cart_discount()).
-     * @return array{points_per_unit: float, min_points: int, max_points: ?int, max_percent: ?float, unlock_points: int, unlock_off: ?float}|null
+     * @return array{name: string, points_per_unit: float, min_points: int, max_points: ?int, max_percent: ?float, unlock_points: int, unlock_off: ?float}|null
      *         `unlock_points` the smallest balance the discount takes, and `unlock_off` what it takes off: the points card's "Earn N more".
      */
     private static function redeem_rule( ?Reward $reward ): ?array {
@@ -193,6 +194,7 @@ final class LauncherPayload {
         $unlock = max( (int) ( ceil( Clamp::min_of( $reward ) / $step ) * $step ), Clamp::points_for( 1.0, $reward, $currency_rate ) );
 
         return [
+            'name'            => $reward->get_name(),
             'points_per_unit' => LauncherCopy::converted_rate( $rate / $currency_rate, $currency_rate ),
             'min_points'      => Clamp::min_of( $reward ),
             'max_points'      => isset( $config['max_points_per_order'] ) ? (int) $config['max_points_per_order'] : null,

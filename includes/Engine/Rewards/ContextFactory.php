@@ -63,7 +63,7 @@ final class ContextFactory {
      */
     public function from_order( \WC_Order $order, Reward $reward, int $balance ): Context {
         $user_id = (int) $order->get_customer_id();
-        $ours    = $this->points_discount_of( $order );
+        $ours    = $this->points_discount_of( $order, $reward );
         $rate    = CurrencyRate::rate( $order->get_currency(), $order );
 
         return new Context(
@@ -109,9 +109,9 @@ final class ContextFactory {
         );
     }
 
-    /** What our slider coupon line takes off the order: line_discount_of() its code. 0 without the line. */
-    public function points_discount_of( \WC_Order $order ): float {
-        return $this->line_discount_of( $order, EarnContext::REDEEM_COUPON_CODE );
+    /** What the slider's coupon line takes off the order: line_discount_of() the flexible reward's code. 0 without the line. */
+    public function points_discount_of( \WC_Order $order, Reward $reward ): float {
+        return $this->line_discount_of( $order, $reward->get_coupon_code() );
     }
 
     /** What one coupon code's lines take off the order, on the basis prices were entered: discount tax included when they include tax. 0 without the line. */

@@ -6,6 +6,7 @@ export function reward(overrides: Partial<Reward> = {}): Reward {
     id: 1,
     name: 'Test reward',
     slug: 'test-reward',
+    coupon_code: 'yayloyalty-ab12cd34',
     type: 'fixed_coupon',
     status: 'active',
     sort_order: 0,

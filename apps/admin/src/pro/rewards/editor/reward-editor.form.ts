@@ -155,9 +155,13 @@ export function resolveSaveStatus(values: RewardFormValues, intent: RewardSaveIn
   return intent === 'draft' ? 'draft' : values.status;
 }
 
-/** Which of the side area's buttons a reward offers; Save and Cancel are always shown. The built-in is never archived. */
-export function rewardEditorActions(reward: Reward | null) {
+/**
+ * Which of the side area's buttons a reward offers; Save and Cancel are always shown. The built-in is never archived.
+ * Saving an unchanged reward is a no-op, except an archived one, which Save restores.
+ */
+export function rewardEditorActions(reward: Reward | null, isDirty: boolean) {
   return {
+    canSave: reward === null || isDirty || reward.status === 'archived',
     canSaveDraft: reward === null || (reward.status === 'draft' && !reward.is_builtin),
     showArchive: reward !== null && !reward.is_builtin && reward.status !== 'archived',
   };

@@ -85,7 +85,8 @@ function RewardEditorForm({ reward }: { reward: Reward }) {
         return false;
       }
     },
-    { listPath: '/rewards', onInvalid: toastInvalidFields },
+    // Saving an existing reward stays on it, as creating one opens its editor.
+    { listPath: null, onInvalid: toastInvalidFields },
   );
 
   function leaveAfterArchiveOrDelete() {
@@ -188,11 +189,12 @@ function RewardCreatorForm({ type, duplicateFrom }: { type: CatalogRewardType; d
     async (values, intent) => {
       try {
         const sourceConditions = duplicateFrom ? normalizeRewardConditions(duplicateFrom.conditions) : [];
-        await mutation.mutateAsync(formValuesToCreateInput(values, type, intent, sourceConditions));
-        // The created row lives in the list now; this form's baseline must stop counting as unsaved.
+        const created = await mutation.mutateAsync(formValuesToCreateInput(values, type, intent, sourceConditions));
+        // The baseline must stop counting as unsaved, or the redirect re-trips the leave guard.
         form.reset(values);
         toast.success(__('Reward created.', 'yayloyalty'));
-        return true;
+        // Replaces the create URL, so Back never reopens a blank form for a reward that now exists.
+        return `/rewards/${created.id}/edit`;
       } catch (error) {
         await toastApiError(error, __('Could not create the reward.', 'yayloyalty'));
         return false;
@@ -258,7 +260,7 @@ function RewardEditorLayout({
         >
           <div className="flex flex-col items-start gap-5 lg:flex-row">
             <div className="min-w-0 flex-1">
-              <RewardEditorSections type={type} />
+              <RewardEditorSections type={type} couponCode={reward?.coupon_code} />
             </div>
 
             <RewardEditorActions
@@ -293,7 +295,8 @@ function RewardEditorActions({
   onArchive?: () => void;
   onCancel: () => void;
 }) {
-  const { canSaveDraft, showArchive } = rewardEditorActions(reward);
+  const { formState } = useFormContext<RewardFormValues>();
+  const { canSave, canSaveDraft, showArchive } = rewardEditorActions(reward, formState.isDirty);
   // Which save was pressed, so only that button spins. The leave dialog's save counts as Save.
   const [pressed, setPressed] = useState<EditorSaveIntent>('save');
 
@@ -313,7 +316,7 @@ function RewardEditorActions({
         <LoadingButton
           type="submit"
           loading={busy && pressed === 'save'}
-          disabled={busy}
+          disabled={busy || !canSave}
           onClick={() => setPressed('save')}
         >
           {__('Save reward', 'yayloyalty')}
@@ -324,7 +327,7 @@ function RewardEditorActions({
             variant="outline"
             data-intent="draft"
             loading={busy && pressed === 'draft'}
-            disabled={busy}
+            disabled={busy || !canSave}
             onClick={() => {
               setPressed('draft');
               onDraftIntent();

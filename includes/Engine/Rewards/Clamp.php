@@ -114,6 +114,36 @@ final class Clamp {
         return (int) ( ceil( $points / $step ) * $step );
     }
 
+    /**
+     * The step the card offers: the smallest multiple of step_of() whose points buy whole smallest currency
+     * units, so apply() keeps it as asked. At 25,000 points per cent that is 25,000, not a step of 100 that buys
+     * nothing. Falls back to step_of() when no multiple near one unit's worth is kept (an irregular rate).
+     *
+     * @param float $currency_rate Units of the charged currency per 1 base unit; 1.0 in the base currency.
+     */
+    public static function effective_step( Reward $reward, int $decimals, float $currency_rate = 1.0 ): int {
+        $step = self::step_of( $reward );
+        $rate = self::effective_rate( $reward, $currency_rate );
+
+        if ( $rate <= 0 ) {
+            return $step;
+        }
+
+        // Fewer points than one smallest unit's worth buy nothing, so start there.
+        $first = max( 1, (int) ceil( round( $rate / pow( 10, max( 0, $decimals ) ) / $step, 6 ) ) );
+
+        for ( $k = $first; $k <= $first + 100; $k++ ) {
+            $points = $k * $step;
+            $value  = self::value_of( $points, $rate, $decimals );
+
+            if ( $value > 0 && self::points_for( $value, $reward, $currency_rate ) >= $points ) {
+                return $points;
+            }
+        }
+
+        return $step;
+    }
+
     /** Points per unit of the charged currency: the base-currency rate over $currency_rate, which reads as 1.0 when it isn't above 0. */
     private static function effective_rate( Reward $reward, float $currency_rate ): float {
         $rate = (float) ( $reward->get_config()['points_per_currency_unit'] ?? 0 );
@@ -124,6 +154,14 @@ final class Clamp {
     /** The reward's step: points are spent in multiples of it. At least 1. */
     public static function step_of( Reward $reward ): int {
         return max( 1, (int) ( $reward->get_config()['increment'] ?? 1 ) );
+    }
+
+    /**
+     * Whether a tick asks for the most the cart allows (`redemption_mode` auto_max) rather than a typed amount.
+     * apply() never reads it: RedemptionService::quote() turns it into the request, so the commit re-checks the line.
+     */
+    public static function is_auto_max( Reward $reward ): bool {
+        return Reward::REDEMPTION_MODE_AUTO_MAX === ( $reward->get_config()['redemption_mode'] ?? Reward::REDEMPTION_MODE_FREE_INPUT );
     }
 
     /** The fewest points one order may take. Not rounded to the step. */

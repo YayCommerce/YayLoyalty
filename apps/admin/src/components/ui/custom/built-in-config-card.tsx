@@ -19,6 +19,7 @@ export function BuiltInConfigCard({
   onToggleExpanded,
   onSave,
   onCancel,
+  isDirty,
   saving,
   updatedAt,
   children,
@@ -33,6 +34,8 @@ export function BuiltInConfigCard({
   onToggleExpanded: () => void;
   onSave?: () => void;
   onCancel: () => void;
+  /** The fields differ from what was last saved; Save changes is disabled until they do. */
+  isDirty: boolean;
   saving?: boolean;
   updatedAt: string;
   children: ReactNode;
@@ -79,7 +82,7 @@ export function BuiltInConfigCard({
 
           <div className="flex flex-wrap items-center gap-3 border-t pt-4">
             {/* Disabled without onSave, so a card with no save route never looks saved. */}
-            <LoadingButton loading={!!saving} disabled={saving || !onSave} onClick={onSave}>
+            <LoadingButton loading={!!saving} disabled={saving || !onSave || !isDirty} onClick={onSave}>
               {__('Save changes', 'yayloyalty')}
             </LoadingButton>
             <Button variant="link" size="sm" className="h-auto p-0" onClick={onCancel}>

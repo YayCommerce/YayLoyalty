@@ -3,7 +3,6 @@ namespace YayLoyalty\Engine\Redemption;
 
 use YayLoyalty\Database\Transaction;
 use YayLoyalty\Engine\Earning\Outcome;
-use YayLoyalty\Engine\Points\Context as EarnContext;
 use YayLoyalty\Engine\Rewards\Clamp;
 use YayLoyalty\Engine\Rewards\ContextFactory;
 use YayLoyalty\Engine\Rewards\Result;
@@ -298,7 +297,7 @@ final class CommitWriter {
         }
 
         // The order carries a discount these points do not buy: debit nothing.
-        if ( abs( $quote->get_value() - $this->contexts->points_discount_of( $order ) ) >= 0.5 / pow( 10, wc_get_price_decimals() ) ) {
+        if ( abs( $quote->get_value() - $this->contexts->points_discount_of( $order, $reward ) ) >= 0.5 / pow( 10, wc_get_price_decimals() ) ) {
             return Outcome::skipped( Clamp::BOUND_CART, $quote );
         }
 
@@ -370,14 +369,22 @@ final class CommitWriter {
      * @return Redemption[]
      */
     private function existing_rows( int $order_id, array $codes ): array {
+        $by_code = [];
+
+        // Oldest first, so the first row per code wins, as one row per code is all a commit writes.
+        foreach ( $this->redemptions->for_order( $order_id ) as $row ) {
+            $code = (string) $row->get_coupon_code();
+
+            if ( ! isset( $by_code[ $code ] ) ) {
+                $by_code[ $code ] = $row;
+            }
+        }
+
         $rows = [];
 
         foreach ( $codes as $code ) {
-            $reward_id = CouponProvider::reward_id_of( (string) $code );
-            $row       = null === $reward_id ? null : $this->redemptions->find_by_order( $order_id, $reward_id );
-
-            if ( null !== $row ) {
-                $rows[] = $row;
+            if ( isset( $by_code[ (string) $code ] ) ) {
+                $rows[] = $by_code[ (string) $code ];
             }
         }
 
@@ -434,7 +441,7 @@ final class CommitWriter {
             (string) $quote->get_currency(),
             $value,
             (string) $quote->get_rate_snapshot(),
-            EarnContext::REDEEM_COUPON_CODE,
+            $quote->get_reward()->get_coupon_code(),
             null,
             Redemption::STATUS_APPLIED,
             0,

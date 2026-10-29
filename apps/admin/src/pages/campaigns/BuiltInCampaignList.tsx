@@ -98,15 +98,18 @@ function BuiltInCampaignCard({
   // Local draft; config only persists on "Save changes". The switch is not part of the draft —
   // it writes immediately, below.
   const [status, setStatus] = useState(campaign.status);
+  // What was last saved: the response, not the list refetch, so Save changes disables as the save lands.
+  const [savedConfig, setSavedConfig] = useState(campaign.config);
   const [config, setConfig] = useState(campaign.config);
   const isOn = status === 'active';
+  const isDirty = JSON.stringify(config) !== JSON.stringify(savedConfig);
 
   const statusMutation = useUpdateCampaignStatusMutation(campaign.id);
   const configMutation = useUpdateCampaignConfigMutation(campaign.id);
 
   // Status is left alone: the switch has already written it.
   function reset() {
-    setConfig(campaign.config);
+    setConfig(savedConfig);
     onToggleExpanded();
   }
 
@@ -125,7 +128,9 @@ function BuiltInCampaignCard({
 
   async function saveConfig() {
     try {
-      await configMutation.mutateAsync(config);
+      const saved = await configMutation.mutateAsync(config);
+      setSavedConfig(saved.config);
+      setConfig(saved.config);
       toast.success(__('Campaign saved.', 'yayloyalty'));
     } catch (error) {
       await toastApiError(error, __('Could not save the campaign.', 'yayloyalty'));
@@ -143,6 +148,7 @@ function BuiltInCampaignCard({
       onToggleExpanded={onToggleExpanded}
       onSave={saveConfig}
       onCancel={reset}
+      isDirty={isDirty}
       saving={configMutation.isPending}
       updatedAt={campaign.updated_at}
     >

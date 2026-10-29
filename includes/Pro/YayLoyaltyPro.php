@@ -174,17 +174,24 @@ final class YayLoyaltyPro {
     }
 
     /**
-     * Typed config specs for the campaign triggers Pro can fire; their keys are the only ones a config may hold.
+     * Typed config specs for the campaign triggers Pro adds. Birthday's keys are the only ones its config may hold.
+     * The other three type only `points`, which must be whole; add_config_keys() lists the rest of their keys.
      *
      * @param array<string, array<string, array<string, mixed>>> $schema
      * @return array<string, array<string, array<string, mixed>>>
      */
     public static function add_campaign_config_schema( array $schema ): array {
+        $points = [
+            'type' => 'int',
+            'min'  => 0,
+        ];
+
+        foreach ( [ CampaignTrigger::FIRST_ORDER, CampaignTrigger::ORDER_COUNT, CampaignTrigger::SPEND_MILESTONE ] as $trigger ) {
+            $schema[ $trigger ] = [ 'points' => $points ];
+        }
+
         $schema[ CampaignTrigger::BIRTHDAY ] = [
-            'points'      => [
-                'type' => 'int',
-                'min'  => 0,
-            ],
+            'points'      => $points,
             'days_before' => [
                 'type' => 'int',
                 'min'  => 0,

@@ -56,6 +56,8 @@ export const rewardSchema = z.object({
   name: z.string(),
   /** Built-in is RewardRepository::CART_DISCOUNT_SLUG. */
   slug: z.string(),
+  /** Set once when the reward is created (RewardRepository::insert()); never changes. */
+  coupon_code: z.string(),
   type: rewardTypeSchema,
   status: rewardStatusSchema,
   sort_order: z.number().int(),
@@ -142,6 +144,17 @@ const moneySchema = z.number().min(0).nullable();
 /** A cap: null is no cap, and a set cap is above 0 (the PHP spec's `exclusive_min: 0`). */
 const moneyCapSchema = z.number().positive().nullable();
 const couponExpiryDaysSchema = z.number().int().min(1).nullable();
+/** Mirrors ConfigSpec's `limit`: null is no cap, and a set cap is a whole number of points from 1. */
+const pointsCapSchema = z.number().int().min(1).nullable();
+
+/** Mirrors Reward::REDEMPTION_MODE_*, the source of truth. How a shopper spends points on the flexible discount. */
+export const REDEMPTION_MODES = ['auto_max', 'free_input'] as const;
+
+export type RedemptionMode = (typeof REDEMPTION_MODES)[number];
+
+/** Mirrors Reward::config_conflict()'s message, the source of truth. */
+export const MIN_BELOW_INCREMENT_MESSAGE = () =>
+  __('Minimum points must be at least the redemption increment.', 'yayloyalty');
 
 /**
  * Mirrors Reward::config_schema() (flexible_discount) and
@@ -149,17 +162,25 @@ const couponExpiryDaysSchema = z.number().int().min(1).nullable();
  * Its bounds give form feedback before the request; the PHP specs decide what is stored.
  */
 export const REWARD_CONFIG_SCHEMAS = {
-  flexible_discount: z.object({
-    currency: z.string(),
-    points_per_currency_unit: z.number().positive(),
-    min_points: z.number().int().min(0),
-    max_points_per_order: moneyCapSchema,
-    max_percent_of_subtotal: moneySchema,
-    increment: z.number().int().min(1),
-    show_on: z.array(z.enum(['cart', 'checkout'])),
-    refund_policy: z.enum(['proportional', 'full', 'none']),
-    max_total: moneyCapSchema,
-  }),
+  flexible_discount: z
+    .object({
+      currency: z.string(),
+      points_per_currency_unit: z.number().positive(),
+      min_points: z.number().int().min(0),
+      max_points_per_order: pointsCapSchema,
+      max_percent_of_subtotal: moneySchema,
+      increment: z.number().int().min(1),
+      show_on: z.array(z.enum(['cart', 'checkout'])),
+      refund_policy: z.enum(['proportional', 'full', 'none']),
+      // A row saved before the key existed reads as free input, as Clamp::is_auto_max() does.
+      redemption_mode: z.enum(REDEMPTION_MODES).default('free_input'),
+      max_total: moneyCapSchema,
+    })
+    // Mirrors Reward::config_conflict().
+    .refine((config) => config.min_points >= config.increment, {
+      message: MIN_BELOW_INCREMENT_MESSAGE(),
+      path: ['min_points'],
+    }),
   fixed_coupon: z.object({
     currency: z.string(),
     amount: z.number().min(0.01, __('The discount must be more than zero.', 'yayloyalty')),
