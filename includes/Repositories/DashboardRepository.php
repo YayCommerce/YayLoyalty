@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Repositories;
 
+use YayLoyalty\Engine\Redemption\CommitWriter;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Utils\Sql;
@@ -93,9 +94,21 @@ class DashboardRepository {
         return (int) $wpdb->get_var( 'SELECT COALESCE(SUM(balance), 0) FROM `' . esc_sql( Table::name( 'customers' ) ) . '`' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- a direct query on escaped table names; it takes no values.
     }
 
-    /** Distinct orders on which points were redeemed. */
-    public function orders_with_redemption( string $from, string $to ): int {
-        return $this->count_distinct_orders( 'type = %s', [ LedgerType::REDEEM ], $from, $to );
+    /**
+     * Completed orders created in [$from_ts, $to_ts) that redeemed points: count_orders()'s orders, so the
+     * redemption rate divides like by like and can't pass 100%. Every commit stamps the meta, and nothing clears it.
+     */
+    public function orders_with_redemption( int $from_ts, int $to_ts ): int {
+        return $this->count_completed_orders(
+            $from_ts,
+            $to_ts,
+            [
+                [
+                    'key'     => CommitWriter::META_POINTS,
+                    'compare' => 'EXISTS',
+                ],
+            ]
+        );
     }
 
     /** Distinct orders that earned points. Issued rows only: a clawback is not an award. */
@@ -201,19 +214,28 @@ class DashboardRepository {
      * as a site-local day and drift from the UTC ledger window.
      */
     public function count_orders( int $from_ts, int $to_ts ): int {
+        return $this->count_completed_orders( $from_ts, $to_ts, [] );
+    }
+
+    /** @param array[] $meta_query A WooCommerce order meta query; empty for none. */
+    private function count_completed_orders( int $from_ts, int $to_ts, array $meta_query ): int {
         if ( ! function_exists( 'wc_get_orders' ) ) {
             return 0;
         }
 
-        $result = wc_get_orders(
-            [
-                'date_created' => $from_ts . '...' . ( $to_ts - 1 ),
-                'status'       => [ 'wc-completed' ],
-                'return'       => 'ids',
-                'paginate'     => true,
-                'limit'        => 1,
-            ]
-        );
+        $args = [
+            'date_created' => $from_ts . '...' . ( $to_ts - 1 ),
+            'status'       => [ 'wc-completed' ],
+            'return'       => 'ids',
+            'paginate'     => true,
+            'limit'        => 1,
+        ];
+
+        if ( [] !== $meta_query ) {
+            $args['meta_query'] = $meta_query; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- one EXISTS on an indexed meta key, counted with limit 1.
+        }
+
+        $result = wc_get_orders( $args );
 
         return is_object( $result ) && isset( $result->total ) ? (int) $result->total : 0;
     }
