@@ -20,7 +20,7 @@ class PointsExpiredShortcodes extends LoyaltyEmailShortcodes {
         'balance_points' => 'balance_text',
     ];
 
-    protected const HTML_KEYS = [ 'expired_points', 'balance_value', 'balance_value_text' ];
+    protected const HTML_KEYS = [ 'expired_points' ];
 
     public $available_email_ids = [ PointsExpiredEmail::ID ];
 
@@ -30,13 +30,8 @@ class PointsExpiredShortcodes extends LoyaltyEmailShortcodes {
 
     protected function descriptions(): array {
         return [
-            'expired_points'     => __( 'Points Expired Message', 'yayloyalty' ),
-            'points'             => __( 'Points Expired', 'yayloyalty' ),
-            'points_label'       => __( 'Points Label', 'yayloyalty' ),
-            'balance'            => __( 'Balance', 'yayloyalty' ),
-            'balance_points'     => __( 'Balance With Label', 'yayloyalty' ),
-            'balance_value'      => __( 'Balance Value', 'yayloyalty' ),
-            'balance_value_text' => __( 'Balance Value Message', 'yayloyalty' ),
-        ];
+            'expired_points' => __( 'Points Expired Message', 'yayloyalty' ),
+            'points'         => __( 'Points Expired', 'yayloyalty' ),
+        ] + self::shared_descriptions( 'points_label', 'balance', 'balance_points', 'balance_value', 'balance_value_text' );
     }
 }

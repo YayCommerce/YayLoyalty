@@ -25,8 +25,8 @@ defined( 'ABSPATH' ) || exit;
  * nothing to move and part refunds add up without summing the ledger.
  * Cancel restores twice and un-cancel debits once, because the key has no
  * cycle part: a second un-cancel answers REASON_KEY_SPENT. Rows with a
- * `coupon_id` are not touched; reward rows (`yayloyalty-reward-*`, no
- * `coupon_id`) follow the same rules as the slider, keyed per reward.
+ * `coupon_id` are not touched; catalog reward rows (no `coupon_id`) follow
+ * the same rules as the slider, keyed per reward.
  * Never writes an ADJUST row: LedgerRepository::sum_refunded_for() reads
  * one that references a refund as an earn give-back.
  */
@@ -44,8 +44,11 @@ final class Reversal {
 
     private CustomerRepository $customers;
 
-    /** Read-only use: the reward's `refund_policy` as it is when the event runs. */
+    /** Read-only use: the reward's `refund_policy` as it is when the event runs, and its type for the key. */
     private RewardRepository $rewards;
+
+    /** @var array<int, Reward|null> Rewards read by id this event; null for an id with no row. */
+    private array $reward_cache = [];
 
     public function __construct( LedgerService $ledger, RedemptionRepository $redemptions, CustomerRepository $customers, RewardRepository $rewards ) {
         $this->ledger      = $ledger;
@@ -200,7 +203,7 @@ final class Reversal {
         }
 
         foreach ( $keys as list( $reference_type, $reference_id ) ) {
-            $outcome = $this->ledger->refund_redeem( self::draft( $row, LedgerType::REFUND_REDEEM, $points, $reference_type, $reference_id, null ) );
+            $outcome = $this->ledger->refund_redeem( $this->draft( $row, LedgerType::REFUND_REDEEM, $points, $reference_type, $reference_id, null ) );
 
             if ( Outcome::AWARDED === $outcome->get_status() ) {
                 $this->redemptions->record_restore( (int) $row->get_id(), $target, $status );
@@ -220,7 +223,7 @@ final class Reversal {
             return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
         }
 
-        $outcome = $this->ledger->redeem( self::draft( $row, LedgerType::REDEEM, -$points, $reference_type, $reference_id, $note ), $allow_negative );
+        $outcome = $this->ledger->redeem( $this->draft( $row, LedgerType::REDEEM, -$points, $reference_type, $reference_id, $note ), $allow_negative );
 
         if ( Outcome::DUPLICATE === $outcome->get_status() ) {
             return Outcome::skipped( self::REASON_KEY_SPENT );
@@ -257,10 +260,21 @@ final class Reversal {
 
     /** The reward's `refund_policy` as it is now; `proportional` when the reward is gone or its config lacks the key. */
     private function policy_of( Redemption $row ): string {
-        $reward = $this->rewards->find_reward( $row->get_reward_id() );
+        $reward = $this->reward_of( $row );
         $policy = null === $reward ? null : ( $reward->get_config()['refund_policy'] ?? null );
 
         return in_array( $policy, [ Reward::REFUND_POLICY_FULL, Reward::REFUND_POLICY_NONE ], true ) ? $policy : Reward::REFUND_POLICY_PROPORTIONAL;
+    }
+
+    /** The row's reward, read once per reward id. */
+    private function reward_of( Redemption $row ): ?Reward {
+        $reward_id = $row->get_reward_id();
+
+        if ( ! array_key_exists( $reward_id, $this->reward_cache ) ) {
+            $this->reward_cache[ $reward_id ] = $this->rewards->find_reward( $reward_id );
+        }
+
+        return $this->reward_cache[ $reward_id ];
     }
 
     /** `refunded` only when every point is restored. */
@@ -277,8 +291,10 @@ final class Reversal {
         return [ [ ReferenceType::ORDER, $order_id ], [ ReferenceType::REDEMPTION, (int) $row->get_id() ] ];
     }
 
-    /** RedemptionDraft::of() for the row's customer, order and id. */
-    private static function draft( Redemption $row, string $type, int $points, string $reference_type, int $reference_id, ?string $note ): LedgerEntry {
-        return RedemptionDraft::of( $row->get_user_id(), $row->get_order_id(), (int) $row->get_id(), $type, $points, $reference_type, $reference_id, $note, RedemptionDraft::qualifier_for( $row ) );
+    /** RedemptionDraft::of() for the row's customer, order and id, keyed by its reward's qualifier. */
+    private function draft( Redemption $row, string $type, int $points, string $reference_type, int $reference_id, ?string $note ): LedgerEntry {
+        $qualifier = RedemptionDraft::qualifier_for( $row, $this->reward_of( $row ) );
+
+        return RedemptionDraft::of( $row->get_user_id(), $row->get_order_id(), (int) $row->get_id(), $type, $points, $reference_type, $reference_id, $note, $qualifier );
     }
 }

@@ -17,7 +17,6 @@ defined( 'ABSPATH' ) || exit;
 
 $yayloyalty_redeem = $yayloyalty_payload['redeem'];
 $yayloyalty_offers = $yayloyalty_payload['offers'];
-$yayloyalty_label  = SettingsHelper::points_label_plural();
 
 if ( LauncherPayload::redeem_is_empty( $yayloyalty_payload ) ) {
     return;
@@ -28,8 +27,7 @@ $yayloyalty_items = [];
 if ( null !== $yayloyalty_redeem ) {
     $yayloyalty_items[] = [
         'icon'  => AccountRewardsIcon::design( 'discount' ),
-        /* translators: %s: the store's points label, as "Points". */
-        'name'  => sprintf( __( '%s discount', 'yayloyalty' ), $yayloyalty_label ),
+        'name'  => $yayloyalty_redeem['name'],
         'text'  => LauncherCopy::redeem_limits( $yayloyalty_redeem ),
         'value' => LauncherCopy::redeem_rate( $yayloyalty_redeem['points_per_unit'] ),
     ];

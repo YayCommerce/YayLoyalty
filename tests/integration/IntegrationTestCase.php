@@ -175,8 +175,8 @@ abstract class IntegrationTestCase extends TestCase {
         return $rewards->find_reward( $id );
     }
 
-    /** An order with one line and our coupon line, as checkout leaves it. */
-    protected function order_with_points_discount( int $user_id, float $subtotal, float $discount ): \WC_Order {
+    /** An order with one line and the slider's coupon line under $code, as checkout leaves it. */
+    protected function order_with_points_discount( int $user_id, float $subtotal, float $discount, string $code ): \WC_Order {
         $order = wc_create_order( [ 'customer_id' => $user_id ] );
 
         $line = new \WC_Order_Item_Product();
@@ -187,7 +187,7 @@ abstract class IntegrationTestCase extends TestCase {
         $order->add_item( $line );
 
         $coupon = new \WC_Order_Item_Coupon();
-        $coupon->set_code( 'yayloyalty-redeem' );
+        $coupon->set_code( $code );
         $coupon->set_discount( $discount );
         $order->add_item( $coupon );
 

@@ -17,16 +17,21 @@ import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { FlexibleDiscountConfig, FlexibleDiscountFields } from '@/pages/rewards/FlexibleDiscountFields';
+import { rewardCouponCodeCopy } from '@/pages/rewards/reward-coupon-code.copy';
 import { RewardFormValues } from './reward-editor.form';
 
-/** The editor's sections for one reward type: the built-in's rate settings, or a catalog reward's cost and coupon. Status and schedule live in the side area. */
-export function RewardEditorSections({ type }: { type: RewardType }) {
+/**
+ * The editor's sections for one reward type: the built-in's rate settings, or a catalog reward's cost and coupon.
+ * Status and schedule live in the side area. `couponCode` is the saved reward's, absent while creating.
+ */
+export function RewardEditorSections({ type, couponCode }: { type: RewardType; couponCode?: string }) {
   const isCatalog = isCatalogRewardType(type);
 
   return (
     <div className="flex flex-col gap-4">
       <EditorSection contentClassName="gap-5" step={1} title={__('Basics', 'yayloyalty')}>
         <RewardEditorBasics />
+        {couponCode && <RewardEditorCouponCode code={couponCode} />}
       </EditorSection>
 
       <EditorSection
@@ -79,6 +84,20 @@ function RewardEditorBasics() {
         <FieldDescription>
           {__('Customers see this name in the launcher and in My Account.', 'yayloyalty')}
         </FieldDescription>
+      </FieldContent>
+    </Field>
+  );
+}
+
+function RewardEditorCouponCode({ code }: { code: string }) {
+  const copy = rewardCouponCodeCopy();
+
+  return (
+    <Field orientation="responsive">
+      <FieldLabel htmlFor="reward-basics-coupon-code">{copy.label}</FieldLabel>
+      <FieldContent>
+        <Input id="reward-basics-coupon-code" value={code} readOnly className="font-mono" />
+        <FieldDescription>{copy.description}</FieldDescription>
       </FieldContent>
     </Field>
   );

@@ -5,7 +5,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The points arithmetic every layer shares. PHP is the source of truth; apps/admin/src/lib/points-math/ copies
- * SNAP_DECIMALS, round_points(), pct_delta() and pct_of(), the parts the admin SPA previews.
+ * SNAP_DECIMALS, round_points(), pct_delta() and pct_of(), the parts the admin SPA previews, and
+ * spendPairFromRate() in apps/admin/src/lib/helpers/points.helper.ts copies whole_pair().
  * A zero denominator yields null, never 0, and the SPA renders "—" for null.
  */
 final class PointsMath {
@@ -39,6 +40,64 @@ final class PointsMath {
             default:
                 return (int) floor( $raw );
         }
+    }
+
+    /**
+     * The pair a rate reads as in whole points, exactly: the smallest spend from 1 to 100 whose points are whole
+     * (1.5 → 3 per 2, 0.75 → 3 per 4), else one point and the whole currency amount it takes (0.00004 → 1 per
+     * 25,000). Null when neither is exact.
+     *
+     * @param float $rate Points per 1 unit of currency.
+     * @return array{0: int, 1: float}|null Points, then the spend they are paired with.
+     */
+    public static function whole_pair( float $rate, int $decimals ): ?array {
+        if ( $rate <= 0 ) {
+            return null;
+        }
+
+        for ( $spend = 1; $spend <= 100; $spend++ ) {
+            $points = self::snap( $rate * $spend );
+
+            if ( $points >= 1 && floor( $points ) === $points ) {
+                return [ (int) $points, (float) $spend ];
+            }
+        }
+
+        $scale = pow( 10, max( 0, $decimals ) );
+        $spend = round( $scale / $rate ) / $scale;
+
+        return $spend > 0 && 1.0 === self::snap( $spend * $rate ) ? [ 1, $spend ] : null;
+    }
+
+    /**
+     * The pair a rate is shown as, always in whole points: whole_pair(), or else what the first round spend (1, 10,
+     * 100…) holding 100 or more points comes to under $mode, which is exactly what an order of that size earns:
+     * 25.387 per $1 rounded down reads 253 per $10.
+     *
+     * @param float $rate Points per 1 unit of currency.
+     * @return array{0: int, 1: float} Points, then the spend they are paired with; [ 0, 1.0 ] without a rate.
+     */
+    public static function rate_pair( float $rate, int $decimals, string $mode ): array {
+        $pair = self::whole_pair( $rate, $decimals );
+
+        if ( null !== $pair ) {
+            return $pair;
+        }
+
+        if ( $rate <= 0 ) {
+            return [ 0, 1.0 ];
+        }
+
+        // 100 points or more keeps the shown rate within 1% of the true one.
+        for ( $spend = 1.0; $spend < 1e9; $spend *= 10 ) {
+            $points = self::round_points( $rate * $spend, $mode );
+
+            if ( $points >= 100 ) {
+                return [ $points, $spend ];
+            }
+        }
+
+        return [ self::round_points( $rate * $spend, $mode ), $spend ];
     }
 
     /** $value with float error removed (0.57 × 100 = 56.999… becomes 57), before a comparison or a rounding. */

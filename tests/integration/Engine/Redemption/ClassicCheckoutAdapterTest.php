@@ -33,9 +33,9 @@ final class ClassicCheckoutAdapterTest extends IntegrationTestCase {
     }
 
     public function test_the_order_hook_writes_one_redemption_and_a_repeat_writes_nothing(): void {
-        $this->seeded_reward();
+        $code = $this->seeded_reward()->get_coupon_code();
         $this->ledger_service()->earn( $this->earn_draft( 7, 100, 1000 ) );
-        $order = $this->order_with_points_discount( 7, 20.0, 5.0 );
+        $order = $this->order_with_points_discount( 7, 20.0, 5.0, $code );
 
         $this->adapter()->on_order_processed( $order->get_id(), [], $order );
         $this->adapter()->on_order_processed( $order->get_id(), [], $order );
@@ -47,9 +47,9 @@ final class ClassicCheckoutAdapterTest extends IntegrationTestCase {
     }
 
     public function test_a_balance_that_dropped_stops_the_checkout_and_debits_nothing(): void {
-        $this->seeded_reward();
+        $code = $this->seeded_reward()->get_coupon_code();
         $this->ledger_service()->earn( $this->earn_draft( 7, 100, 300 ) );
-        $order = $this->order_with_points_discount( 7, 20.0, 5.0 );
+        $order = $this->order_with_points_discount( 7, 20.0, 5.0, $code );
 
         try {
             $this->adapter()->on_order_processed( $order->get_id(), [], $order );
@@ -60,7 +60,7 @@ final class ClassicCheckoutAdapterTest extends IntegrationTestCase {
 
         $this->assertSame( [ 300 ], $this->ledger_points( 7 ) );
         $this->assertSame( [], $this->redemption_rows( 7 ) );
-        $this->assertNotContains( 'yayloyalty-redeem', wc_get_order( $order->get_id() )->get_coupon_codes() );
+        $this->assertNotContains( $code, wc_get_order( $order->get_id() )->get_coupon_codes() );
     }
 
     public function test_an_order_without_the_points_coupon_passes_untouched(): void {

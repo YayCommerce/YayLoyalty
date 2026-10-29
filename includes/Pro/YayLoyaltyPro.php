@@ -18,6 +18,7 @@ use YayLoyalty\Pro\Controllers\DashboardProRestController;
 use YayLoyalty\Pro\Controllers\StoreLedgerRestController;
 use YayLoyalty\Pro\Emails\ProEmails;
 use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
+use YayLoyalty\Pro\Integrations\YayMail\ProYayMail;
 use YayLoyalty\Pro\Repositories\CampaignPerformanceRepository;
 use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
 use YayLoyalty\Pro\Repositories\StoreLedgerRepository;
@@ -91,6 +92,10 @@ final class YayLoyaltyPro {
         add_filter( 'yayloyalty_localize_admin_data', [ self::class, 'add_segments' ] );
         add_filter( 'woocommerce_email_classes', [ ProEmails::class, 'add_classes' ] );
         add_filter( 'woocommerce_email_groups', [ ProEmails::class, 'add_groups' ] );
+        add_filter( 'woocommerce_email_actions', [ ProEmails::class, 'add_email_actions' ] );
+        add_action( 'yayloyalty_points_redeemed', [ ProEmails::class, 'relay_redemption' ] );
+        add_action( 'yayloyalty_yaymail_register_emails', [ ProYayMail::class, 'register_emails' ] );
+        add_action( 'yayloyalty_yaymail_register_shortcodes', [ ProYayMail::class, 'register_shortcodes' ] );
 
         $daily_limit = new DailyEarningLimit( new LedgerRepository() );
         add_filter( EarningService::AWARD_POINTS_FILTER, [ $daily_limit, 'clamp' ], 10, 3 );
@@ -169,17 +174,24 @@ final class YayLoyaltyPro {
     }
 
     /**
-     * Typed config specs for the campaign triggers Pro can fire; their keys are the only ones a config may hold.
+     * Typed config specs for the campaign triggers Pro adds. Birthday's keys are the only ones its config may hold.
+     * The other three type only `points`, which must be whole; add_config_keys() lists the rest of their keys.
      *
      * @param array<string, array<string, array<string, mixed>>> $schema
      * @return array<string, array<string, array<string, mixed>>>
      */
     public static function add_campaign_config_schema( array $schema ): array {
+        $points = [
+            'type' => 'int',
+            'min'  => 0,
+        ];
+
+        foreach ( [ CampaignTrigger::FIRST_ORDER, CampaignTrigger::ORDER_COUNT, CampaignTrigger::SPEND_MILESTONE ] as $trigger ) {
+            $schema[ $trigger ] = [ 'points' => $points ];
+        }
+
         $schema[ CampaignTrigger::BIRTHDAY ] = [
-            'points'      => [
-                'type' => 'int',
-                'min'  => 0,
-            ],
+            'points'      => $points,
             'days_before' => [
                 'type' => 'int',
                 'min'  => 0,

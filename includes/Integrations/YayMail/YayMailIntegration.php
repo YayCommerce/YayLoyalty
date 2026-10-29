@@ -10,7 +10,8 @@ defined( 'ABSPATH' ) || exit;
  * Lets merchants design the Points earned, Points expired and Points expiring soon emails in a licensed YayMail.
  * The expiry emails only while expiry is on, as WooCommerce only knows them then.
  * The adapter classes extend YayMail's own, so they are first named inside
- * YayMail's register hooks: autoloading them earlier, or without YayMail, is a fatal.
+ * YayMail's register hooks: autoloading them earlier, or without YayMail, is a fatal. Other editions' emails
+ * register through the yayloyalty_yaymail_register_emails and yayloyalty_yaymail_register_shortcodes actions.
  */
 class YayMailIntegration {
 
@@ -49,6 +50,14 @@ class YayMailIntegration {
             $yaymail_emails->register( PointsExpiredYayMailEmail::get_instance() );
             $yaymail_emails->register( PointsExpiringSoonYayMailEmail::get_instance() );
         }
+
+        /**
+         * Fires inside YayMail's yaymail_register_emails, only while YayMail is active, at least 4.4.7 and licensed,
+         * so a subscriber may name YayMail's classes here to register its own loyalty emails.
+         *
+         * @param \YayMail\Emails\YayMailEmails $yaymail_emails YayMail's email registry.
+         */
+        do_action( 'yayloyalty_yaymail_register_emails', $yaymail_emails );
     }
 
     public function register_shortcodes(): void {
@@ -58,5 +67,11 @@ class YayMailIntegration {
             PointsExpiredShortcodes::get_instance();
             PointsExpiringSoonShortcodes::get_instance();
         }
+
+        /**
+         * Fires inside YayMail's yaymail_register_shortcodes, only while YayMail is active, at least 4.4.7 and
+         * licensed, so a subscriber may name YayMail's classes here to register its loyalty emails' shortcodes.
+         */
+        do_action( 'yayloyalty_yaymail_register_shortcodes' );
     }
 }

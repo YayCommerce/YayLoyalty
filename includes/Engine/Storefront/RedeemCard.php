@@ -10,7 +10,9 @@ use YayLoyalty\Engine\Register\ScriptName;
 use YayLoyalty\Engine\Rewards\Clamp;
 use YayLoyalty\Engine\Rewards\Result;
 use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CustomerReader;
+use YayLoyalty\Utils\CurrencyRate;
 use YayLoyalty\Utils\Log;
 use YayLoyalty\Utils\Text;
 
@@ -37,8 +39,8 @@ final class RedeemCard {
     private const AJAX_ENDPOINT = 'yayloyalty_redeem';
     private const NONCE_ACTION  = 'yayloyalty-redeem';
 
-    /** The clamp bounds the card explains; `step` stays silent because the slider already moves in steps. */
-    private const EXPLAINED_BOUNDS = [ Clamp::BOUND_BALANCE, Clamp::BOUND_REWARD_MAX, Clamp::BOUND_CART, Clamp::BOUND_REWARD_MIN ];
+    /** The clamp bounds the card explains: every one, since a typed amount can be lowered by any of them. */
+    private const EXPLAINED_BOUNDS = [ Clamp::BOUND_BALANCE, Clamp::BOUND_REWARD_MAX, Clamp::BOUND_CART, Clamp::BOUND_STEP, Clamp::BOUND_REWARD_MIN ];
 
     private RedemptionService $service;
 
@@ -111,8 +113,10 @@ final class RedeemCard {
      * For a page drawing the Cart or Checkout block: the card's assets and the slot fill that shows it
      * (redeem-blocks.js). The script is handed the Store API names it reads and posts to, the coupon's code and
      * the label its totals row reads on the blocks, so none of them is written a second time in JS.
+     *
+     * @param Reward|null $reward The live flexible reward, whose code and name the totals row reads; null for the fallback.
      */
-    public static function enqueue_block_assets(): void {
+    public static function enqueue_block_assets( ?Reward $reward = null ): void {
         self::enqueue_assets();
 
         wp_enqueue_script(
@@ -128,8 +132,8 @@ final class RedeemCard {
                 [
                     'namespace' => StoreApiAdapter::EXT_NAMESPACE,
                     'callback'  => StoreApiAdapter::CALLBACK,
-                    'code'      => CouponProvider::CODE,
-                    'label'     => CouponProvider::display_label(),
+                    'code'      => null === $reward ? '' : $reward->get_coupon_code(),
+                    'label'     => CouponProvider::display_label( $reward ),
                 ]
             ) . ';',
             'before'
@@ -185,7 +189,7 @@ final class RedeemCard {
 
             $balance = (int) $this->balance_of( $user_id );
             $quote   = $this->service->quote( $cart, $user_id );
-            $view    = self::view( $balance, $quote, $this->service->ceiling( $cart, $user_id ), $this->intent->get() );
+            $view    = self::view( $balance, $quote, $this->service->ceiling( $cart, $user_id ), $this->intent->get(), wc_get_price_decimals(), CurrencyRate::rate( CurrencyRate::current() ) );
             $rows    = $this->rows( $cart, $user_id, $balance );
 
             if ( 'hidden' === $view['state'] && [] === $rows ) {
@@ -228,11 +232,14 @@ final class RedeemCard {
      * @param Result   $quote     RedemptionService::quote(): what the session's request gets, net of the rewards.
      * @param Result   $ceiling   RedemptionService::ceiling(): what asking for everything gets, net of the rewards.
      * @param int      $requested SessionIntent::get(): the points the shopper asked for; 0 while the row is unticked.
-     * @return array{state: string} `guest` and `hidden` carry nothing else. `slider` adds requested, points and
-     *                              value (applied; 0 when the quote is refused), balance, min, step, max (the
-     *                              ceiling's points), max_value, rate, is_disabled and bound_by.
+     * @param int      $decimals  The charged currency's decimals.
+     * @param float    $currency_rate Units of the charged currency per 1 base unit, as ContextFactory::from_cart() passes.
+     * @return array{state: string} `guest` and `hidden` carry nothing else. `slider` adds name (the reward's),
+     *                              mode (auto_max or free_input), requested, points and value (applied; 0 when the quote is
+     *                              refused), balance, min, step (Clamp::effective_step()), max (the ceiling's
+     *                              points), max_value, rate, is_disabled and bound_by.
      */
-    public static function view( ?int $balance, Result $quote, Result $ceiling, int $requested ): array {
+    public static function view( ?int $balance, Result $quote, Result $ceiling, int $requested, int $decimals = 2, float $currency_rate = 1.0 ): array {
         if ( null === $balance ) {
             return [ 'state' => 'guest' ];
         }
@@ -243,17 +250,22 @@ final class RedeemCard {
             return [ 'state' => 'hidden' ];
         }
 
-        $is_lowered = $quote->is_allowed()
+        $is_auto_max = Clamp::is_auto_max( $reward );
+        // An auto-max quote always asks for more than it gets, so only a typed request is ever lowered.
+        $is_lowered = ! $is_auto_max
+            && $quote->is_allowed()
             && $quote->get_points_requested() > $quote->get_points()
             && in_array( $quote->get_bound_by(), self::EXPLAINED_BOUNDS, true );
 
-        $step = Clamp::step_of( $reward );
-        // The slider moves in steps from 0, so its left end is the first step at or above the reward's minimum.
+        $step = Clamp::effective_step( $reward, $decimals, $currency_rate );
+        // Amounts move in steps from 0, so the smallest is the first step at or above the reward's minimum.
         $min = max( $step, (int) ceil( Clamp::min_of( $reward ) / $step ) * $step );
         $max = $ceiling->get_points();
 
         return [
             'state'       => 'slider',
+            'name'        => $reward->get_name(),
+            'mode'        => $is_auto_max ? Reward::REDEMPTION_MODE_AUTO_MAX : Reward::REDEMPTION_MODE_FREE_INPUT,
             'requested'   => $requested,
             'points'      => $quote->is_allowed() ? $quote->get_points() : 0,
             'value'       => $quote->is_allowed() ? $quote->get_value() : 0.0,

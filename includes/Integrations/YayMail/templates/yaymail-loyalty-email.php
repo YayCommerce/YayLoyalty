@@ -1,6 +1,6 @@
 <?php
 /**
- * A YayLoyalty email (points earned, points expired, points expiring soon), rendered from the merchant's YayMail design.
+ * A YayLoyalty email, rendered from the merchant's YayMail design.
  *
  * @var array<string, mixed> $args The WooCommerce template args; YayMail hands them to shortcodes as render_data.
  */

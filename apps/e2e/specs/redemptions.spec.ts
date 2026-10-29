@@ -72,7 +72,7 @@ test('a shopper spends points on the block checkout and a cancellation gives the
     const drawer = adminPage.getByRole('dialog');
     await drawer.getByRole('tab', { name: 'Redemptions' }).click();
 
-    const row = drawer.getByRole('row', { name: /Cart discount/ });
+    const row = drawer.getByRole('row', { name: /Points discount/ });
     await expect(row).toContainText('-500');
     await expect(row).toContainText(`#${orderId}`);
   });
@@ -177,7 +177,7 @@ test('the card offers no more than the balance and the cart allow', async ({ pag
     await pointsDiscountBox(shopperPage).check();
 
     await expect(blockDiscounts(shopperPage)).toContainText('Points discount');
-    await expect(card(shopperPage)).toContainText('Max 2,000 Points');
+    await expect(card(shopperPage)).toContainText('Use up to 2,000 Points');
     await expect(pointsField(shopperPage)).toHaveValue('2000');
   });
 });

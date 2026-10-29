@@ -13,6 +13,9 @@ export const WIZARD_STEP_COUNT = 5;
 /** Mirrors DesignSchema::get_default_design()'s `launcher.brand_color`, the source of truth. */
 export const DEFAULT_BRAND_COLOR = '#3858e9';
 
+/** Mirrors Reward::default_config()'s `increment`, the source of truth. The wizard's smallest redemption can't go below it. */
+export const DEFAULT_REDEMPTION_INCREMENT = 100;
+
 /** The made-up balance the previews show; the store has no customers yet. */
 export const SAMPLE_BALANCE = 850;
 

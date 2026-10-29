@@ -24,6 +24,8 @@
   --yayloyalty-positive-bg: #f2f7f3;
   --yayloyalty-warning: #8a5a00;
   --yayloyalty-warning-bg: #fdf6e8;
+  --yayloyalty-error: #b32d2e;
+  --yayloyalty-error-bg: #fcf0f1;
   --yayloyalty-radius: 8px;
 }
 
@@ -76,9 +78,10 @@
   --yayloyalty-redeem-surface: var(--yayloyalty-subtle);
   --yayloyalty-redeem-selected: var(--yayloyalty-subtle);
   --yayloyalty-redeem-chip: var(--yayloyalty-fill);
-  --yayloyalty-redeem-track: var(--yayloyalty-border);
   --yayloyalty-redeem-check-border: #d4d4d8;
-  --yayloyalty-redeem-success: #2e7d32;
+  --yayloyalty-redeem-success: var(--yayloyalty-positive);
+  --yayloyalty-redeem-error: var(--yayloyalty-error);
+  --yayloyalty-redeem-error-bg: var(--yayloyalty-error-bg);
   --yayloyalty-redeem-field: var(--yayloyalty-surface);
   --yayloyalty-redeem-badge: #000000;
   --yayloyalty-redeem-radius: var(--yayloyalty-radius);

@@ -58,7 +58,8 @@ function EmailsSettingsForm({ data }: { data: EmailsResponse }) {
     async (values) => {
       try {
         const saved = await saveMutation.mutateAsync(values);
-        form.reset(toEmailsFormValues(saved));
+        // Overrides resetOptions, or keepDirtyValues would keep the edit over the sanitised save.
+        form.reset(toEmailsFormValues(saved), { keepDirtyValues: false });
         toast.success(__('Email settings saved.', 'yayloyalty'));
         return true;
       } catch (error) {

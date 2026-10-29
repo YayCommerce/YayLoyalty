@@ -373,9 +373,13 @@ final class RewardRestController extends AbstractRestController {
     }
 
     private function config_error( string $type, array $config ): ?\WP_Error {
-        return Reward::config_is_valid( $type, $config )
-            ? null
-            : $this->error_invalid_arguments( __( 'The reward config has an unknown key or a value of the wrong type.', 'yayloyalty' ) );
+        if ( ! Reward::config_is_valid( $type, $config ) ) {
+            return $this->error_invalid_arguments( __( 'The reward config has an unknown key or a value of the wrong type.', 'yayloyalty' ) );
+        }
+
+        $conflict = Reward::config_conflict( $type, $config );
+
+        return null === $conflict ? null : $this->error_invalid_arguments( $conflict );
     }
 
     private function conditions_error( array $conditions ): ?\WP_Error {
@@ -474,6 +478,12 @@ final class RewardRestController extends AbstractRestController {
                     ),
                     'type'        => 'string',
                     'context'     => [ 'view', 'edit' ],
+                ],
+                'coupon_code'        => [
+                    'description' => __( 'The reward\'s coupon code, set once on create.', 'yayloyalty' ),
+                    'type'        => 'string',
+                    'context'     => [ 'view' ],
+                    'readonly'    => true,
                 ],
                 'type'               => [
                     'type'    => 'string',

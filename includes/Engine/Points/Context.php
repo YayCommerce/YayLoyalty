@@ -11,11 +11,16 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Context {
 
-    /** Our own redemption coupon; must never count as "used a coupon". */
-    public const REDEEM_COUPON_CODE = 'yayloyalty-redeem';
+    /**
+     * Every reward's stored coupon code is this prefix plus COUPON_CODE_LENGTH characters of COUPON_CODE_ALPHABET. Codes of
+     * that shape are our own virtual coupons and never count as "used a coupon".
+     */
+    public const COUPON_CODE_PREFIX   = 'yayloyalty-';
+    public const COUPON_CODE_LENGTH   = 8;
+    public const COUPON_CODE_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
-    /** Each applied reward's virtual coupon is this prefix plus the reward id; never counts as "used a coupon" either. */
-    public const REWARD_COUPON_PREFIX = 'yayloyalty-reward-';
+    /** COUPON_CODE_ALPHABET as a character class: change both together. */
+    private const COUPON_CODE_PATTERN = '/^' . self::COUPON_CODE_PREFIX . '[a-z0-9]{' . self::COUPON_CODE_LENGTH . '}$/D';
 
     /** Order facts in `extra` for campaign conditions; strings, '' when unknown. */
     public const EXTRA_PAYMENT_METHOD   = 'payment_method';
@@ -180,9 +185,9 @@ final class Context {
         );
     }
 
-    /** True for `yayloyalty-redeem` and any `yayloyalty-reward-*` code. */
+    /** True for a code of a reward's stored shape: COUPON_CODE_PREFIX plus COUPON_CODE_LENGTH of COUPON_CODE_ALPHABET. */
     public static function is_loyalty_code( string $code ): bool {
-        return self::REDEEM_COUPON_CODE === $code || 0 === strpos( $code, self::REWARD_COUPON_PREFIX );
+        return 1 === preg_match( self::COUPON_CODE_PATTERN, $code );
     }
 
     /**

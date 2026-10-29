@@ -60,8 +60,9 @@ final class LauncherCopy {
     }
 
     /**
-     * A rate like 1, 1.5 or 0.004, with every decimal the merchant entered. At most 10 places, which drops float noise.
-     * The digits match the admin's pointsPerCurrencyLabel(), which owns them. The separators are the store's, as for money ("1,5" with a comma decimal separator).
+     * A percentage like 15 or 12.5, with every decimal the merchant entered. At most 10 places, which drops float noise.
+     * The separators are the store's, as for money ("12,5" with a comma decimal separator). Points rates are
+     * never printed with it: earn_rate() and redeem_rate() read them as whole points.
      */
     public static function rate( float $rate ): string {
         $fixed = rtrim( sprintf( '%.10F', $rate ), '0' );
@@ -103,19 +104,19 @@ final class LauncherCopy {
     }
 
     /**
-     * The purchase earn rate: "1 Point / $1", with the label agreeing with the rate.
+     * The purchase earn rate in whole points, PointsMath::rate_pair() under the campaign's $rounding: "1 Point / $1",
+     * "3 Points / 2 ₫", "1 Point / 25,000 ₫", or for an uneven rate what a round spend earns, "253 Points / $10".
      * A campaign minimum is appended, since an order under it earns nothing.
-     * A rate below 1 reads per point instead: "1 Point / 25,000 ₫".
      */
-    public static function earn_rate( float $points_per_unit, float $min_subtotal ): string {
-        list( $points, $amount ) = self::rate_terms( $points_per_unit );
+    public static function earn_rate( float $points_per_unit, float $min_subtotal, string $rounding = PointsMath::ROUND_DOWN ): string {
+        list( $points, $amount ) = PointsMath::rate_pair( $points_per_unit, wc_get_price_decimals(), $rounding );
 
         $line = strtr(
             /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
             __( '{points} {points_label} / {amount}', 'yayloyalty' ),
             [
-                '{points}'       => self::rate( $points ),
-                '{points_label}' => self::rate_label( $points ),
+                '{points}'       => self::points( $points ),
+                '{points_label}' => SettingsHelper::points_label( $points ),
                 '{amount}'       => self::money( $amount ),
             ]
         );
@@ -187,12 +188,15 @@ final class LauncherCopy {
         return sprintf( __( 'You can earn %s more today.', 'yayloyalty' ), SettingsHelper::points_text( $left_today ) );
     }
 
-    /** "100 points = $1", with the merchant's label. A rate below 1 reads per point instead: "1 Point = 25,000 ₫". */
+    /**
+     * "100 points = $1" in whole points, with the merchant's label: PointsMath::rate_pair() rounded up, the points
+     * that money costs as Clamp::points_for() charges them. A rate below 1 reads per point: "1 Point = 25,000 ₫".
+     */
     public static function redeem_rate( float $points_per_unit ): string {
-        list( $points, $amount ) = self::rate_terms( $points_per_unit );
+        list( $points, $amount ) = PointsMath::rate_pair( $points_per_unit, wc_get_price_decimals(), PointsMath::ROUND_UP );
 
         /* translators: 1: points per unit of currency, 2: the store's points label, 3: money amount. */
-        return sprintf( __( '%1$s %2$s = %3$s', 'yayloyalty' ), self::rate( $points ), self::rate_label( $points ), self::money( $amount ) );
+        return sprintf( __( '%1$s %2$s = %3$s', 'yayloyalty' ), self::points( $points ), SettingsHelper::points_label( $points ), self::money( $amount ) );
     }
 
     /**
@@ -211,20 +215,6 @@ final class LauncherCopy {
      */
     private static function from_base( float $amount ): float {
         return PointsMath::floor_to_decimals( CurrencyRate::from_base( $amount ), wc_get_price_decimals() );
-    }
-
-    /**
-     * The points and the money amount a rate line pairs: the rate per 1 unit of currency, or, below 1, one point
-     * and what it is worth, converted or not: "0.00004 Points = 1 ₫" says less than "1 Point = 25,000 ₫".
-     *
-     * @return array{0: float, 1: float}
-     */
-    private static function rate_terms( float $points_per_unit ): array {
-        if ( $points_per_unit <= 0 || $points_per_unit >= 1 ) {
-            return [ $points_per_unit, 1.0 ];
-        }
-
-        return [ 1.0, (float) PointsMath::points_to_currency( 1, $points_per_unit, wc_get_price_decimals() ) ];
     }
 
     /**
@@ -257,10 +247,5 @@ final class LauncherCopy {
 
         /* translators: 1: points amount with the store's label, as "100 Points", 2: the most one order can take, as "the full order value". */
         return sprintf( __( 'From %1$s, up to %2$s.', 'yayloyalty' ), SettingsHelper::points_text( $redeem['min_points'] ), $cap );
-    }
-
-    /** The merchant's label for a rate: singular only when rate() prints it as 1, so number and label agree. */
-    private static function rate_label( float $rate ): string {
-        return SettingsHelper::points_label( '1' === self::rate( $rate ) ? 1 : 0 );
     }
 }

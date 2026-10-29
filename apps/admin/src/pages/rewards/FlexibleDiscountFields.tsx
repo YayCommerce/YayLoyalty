@@ -2,7 +2,7 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { parseWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints, spendPairFromRate } from '@/lib/helpers/points.helper';
-import type { RewardConfigOf } from '@/lib/schema/reward.schema';
+import { MIN_BELOW_INCREMENT_MESSAGE, RedemptionMode, RewardConfigOf } from '@/lib/schema/reward.schema';
 import { AMOUNT_INPUT_WIDTH, OptionalCountInput, PointsInput } from '@/components/ui/custom/amount-inputs';
 import { ConfigField } from '@/components/ui/custom/config-field';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
@@ -59,8 +59,16 @@ export function FlexibleDiscountFields({
       )}
 
       <ConfigField
+        label={__('Redemption increment', 'yayloyalty')}
+        description={__('Points are redeemed in multiples of this.', 'yayloyalty')}
+      >
+        <PointsInput value={value.increment} min={1} onValueChange={(increment) => onChange({ increment })} />
+      </ConfigField>
+
+      <ConfigField
         label={__('Minimum points per redemption', 'yayloyalty')}
-        description={__('The slider is disabled below this.', 'yayloyalty')}
+        description={__('At least the redemption increment.', 'yayloyalty')}
+        error={value.min_points < value.increment ? MIN_BELOW_INCREMENT_MESSAGE() : undefined}
       >
         <PointsInput value={value.min_points} min={0} onValueChange={(min_points) => onChange({ min_points })} />
       </ConfigField>
@@ -99,8 +107,23 @@ export function FlexibleDiscountFields({
 
       {/* Total discount cap (config.max_total) stays hidden until redemption enforces it; nothing reads it yet. */}
 
-      <ConfigField label={__('Slider step', 'yayloyalty')}>
-        <PointsInput value={value.increment} min={1} onValueChange={(increment) => onChange({ increment })} />
+      <ConfigField label={__('How customers redeem', 'yayloyalty')}>
+        <RadioGroup
+          className="gap-2.5 pt-1.5"
+          value={value.redemption_mode ?? 'free_input'}
+          onValueChange={(redemption_mode) => onChange({ redemption_mode: redemption_mode as RedemptionMode })}
+        >
+          <RadioChoice
+            value="auto_max"
+            label={__('Apply the maximum automatically', 'yayloyalty')}
+            description={__('Customers tick Points discount and get the most the order allows.', 'yayloyalty')}
+          />
+          <RadioChoice
+            value="free_input"
+            label={__('Customers enter an amount', 'yayloyalty')}
+            description={__('Between the minimum and the maximum, in multiples of the increment.', 'yayloyalty')}
+          />
+        </RadioGroup>
       </ConfigField>
 
       {/* No field for show_on: the reward keeps its default, cart and checkout. */}
@@ -112,25 +135,30 @@ export function FlexibleDiscountFields({
             onChange({ refund_policy: refund_policy as FlexibleDiscountConfig['refund_policy'] })
           }
         >
-          <label className="flex items-center gap-2 text-sm">
-            <RadioGroupItem value="proportional" />
-            {__('Proportionally', 'yayloyalty')}
-            <span className="text-muted-foreground text-xs">
-              {__('a half refund returns half the points', 'yayloyalty')}
-            </span>
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <RadioGroupItem value="full" />
-            {__('In full', 'yayloyalty')}
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            {/* Stored as "none"; "Never" is the wireframe's wording. */}
-            <RadioGroupItem value="none" />
-            {__('Never', 'yayloyalty')}
-          </label>
+          <RadioChoice
+            value="proportional"
+            label={__('Proportionally', 'yayloyalty')}
+            description={__('A half refund returns half the points.', 'yayloyalty')}
+          />
+          <RadioChoice value="full" label={__('In full', 'yayloyalty')} />
+          {/* Stored as "none"; "Never" is the wireframe's wording. */}
+          <RadioChoice value="none" label={__('Never', 'yayloyalty')} />
         </RadioGroup>
       </ConfigField>
     </>
+  );
+}
+
+/** One radio option: the label, with its description on the line below. */
+function RadioChoice({ value, label, description }: { value: string; label: string; description?: string }) {
+  return (
+    <label className="flex cursor-pointer items-start gap-2.5">
+      <RadioGroupItem value={value} className="mt-0.5" />
+      <span className="flex flex-col gap-0.5">
+        <span className="text-sm">{label}</span>
+        {description && <span className="text-muted-foreground text-xs">{description}</span>}
+      </span>
+    </label>
   );
 }
 

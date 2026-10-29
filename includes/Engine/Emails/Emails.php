@@ -60,9 +60,9 @@ class Emails {
      * before 10.8 serializes an action's arguments, and the award's Context may hold a Closure.
      */
     public function relay_award( Outcome $awarded ): void {
-        $entry = $awarded->get_entry();
+        $entry_id = self::entry_id( $awarded );
 
-        if ( ! $entry || null === $entry->get_id() ) {
+        if ( null === $entry_id ) {
             return;
         }
 
@@ -72,7 +72,14 @@ class Emails {
          *
          * @param int $entry_id The awarded ledger row.
          */
-        do_action( self::POINTS_EARNED_ACTION, $entry->get_id() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+        do_action( self::POINTS_EARNED_ACTION, $entry_id ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+    }
+
+    /** The id of an outcome's ledger row, which an email action passes on, or null when it has none. */
+    public static function entry_id( Outcome $outcome ): ?int {
+        $entry = $outcome->get_entry();
+
+        return $entry ? $entry->get_id() : null;
     }
 
     /**
