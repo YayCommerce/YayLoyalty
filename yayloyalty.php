@@ -13,7 +13,7 @@
  * Requires at least: 6.5
  * Requires PHP: 7.4
  * WC requires at least: 10.0
- * WC tested up to: 10.7
+ * WC tested up to: 11.2
  *
  * @package yaycommerce/yayloyalty
  */
