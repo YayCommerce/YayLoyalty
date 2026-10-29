@@ -205,10 +205,11 @@ Message: `feat(yaypricing): points earned and spent conditions for YayPricing ru
     - `slug()` returns `'yayloyalty_reward_applied'`.
     - `label()` returns "Loyalty reward applied".
     - `group()` returns `YAYDP_Condition_Registry::GROUP_CART`.
-    - `comparators()` returns `[ [ 'value' => true, 'label' => __( 'Applied', 'yayloyalty' ) ], [ 'value' => false, 'label' => __( 'Not applied', 'yayloyalty' ) ] ]`.
-    - `editor()` returns `[ 'kind' => 'none' ]`.
-    - `default_value()` returns `true`.
-    - `check()` returns `$has === (bool) $condition['comparation']`, where `$has` is true when any code in `$ctx->applied_coupons()` passes `Context::is_loyalty_code()`.
+    - `comparators()` returns `YAYDP_Comparators::pick( [ CONTAIN => 'Any of', NOT_CONTAIN => 'None of' ] )` (labels in the `yayloyalty` domain).
+    - `editor()` returns `[ 'kind' => 'select', 'options' => [ [ 'value' => <reward id>, 'label' => <name> ], … ] ]`, every reward but the archived ones.
+    - `default_value()` returns `[]`.
+    - `check()`: false unless the comparator is a string and the value a list; otherwise `YAYDP_Comparators::matches_contain()` over the picked ids that the cart's loyalty codes map to (`RewardRepository::find_by_coupon_code()`, memoised per code).
+    - Amended 2026-10-29 from Applied / Not applied (spec AC 2).
   - `final class LoyaltyCouponRerun` (names no `YAYDP\*`):
     - `public function register(): void` adds `woocommerce_before_calculate_totals` → `snapshot` at priority `100` and `woocommerce_after_calculate_totals` → `rerun_if_changed` at `PHP_INT_MAX`.
     - `public function snapshot( \WC_Cart $cart ): void` stores the sorted loyalty codes of `$cart->get_applied_coupons()`, unless a re-run is in progress.
