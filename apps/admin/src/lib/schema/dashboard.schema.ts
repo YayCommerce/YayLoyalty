@@ -33,11 +33,10 @@ export const dashboardLiabilitySchema = z.object({
 export type DashboardLiability = z.infer<typeof dashboardLiabilitySchema>;
 
 export const dashboardRateSchema = z.object({
-  /** `orders_with_points / orders_total` as a percentage, 1 dp; `null` when no orders. */
+  /** `orders_with_redemption / completed_orders` as a percentage, 1 dp; `null` when no orders. */
   rate: z.number().nullable(),
-  orders_with_points: z.number().int(),
-  /** Completed orders only. */
-  orders_total: z.number().int(),
+  orders_with_redemption: z.number().int(),
+  completed_orders: z.number().int(),
   prev_delta_pct: prevDeltaPct,
 });
 

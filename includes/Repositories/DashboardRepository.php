@@ -94,7 +94,7 @@ class DashboardRepository {
     }
 
     /** Distinct orders on which points were redeemed. */
-    public function orders_with_points( string $from, string $to ): int {
+    public function orders_with_redemption( string $from, string $to ): int {
         return $this->count_distinct_orders( 'type = %s', [ LedgerType::REDEEM ], $from, $to );
     }
 

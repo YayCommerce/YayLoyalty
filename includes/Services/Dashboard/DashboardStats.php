@@ -37,11 +37,11 @@ final class DashboardStats {
         $redeemed     = $repo->sum_redeemed( $from, $to );
         $liability    = $repo->liability_points();
 
-        $orders_total       = $repo->count_orders( $window->from_ts(), $window->to_ts() );
-        $orders_with_points = $repo->orders_with_points( $from, $to );
-        $rate               = PointsMath::pct_of( $orders_with_points, $orders_total );
-        $rate_prev          = PointsMath::pct_of(
-            $repo->orders_with_points( $pf, $pt ),
+        $completed_orders       = $repo->count_orders( $window->from_ts(), $window->to_ts() );
+        $orders_with_redemption = $repo->orders_with_redemption( $from, $to );
+        $rate                   = PointsMath::pct_of( $orders_with_redemption, $completed_orders );
+        $rate_prev              = PointsMath::pct_of(
+            $repo->orders_with_redemption( $pf, $pt ),
             $repo->count_orders( $window->prev_from_ts(), $window->from_ts() )
         );
 
@@ -64,10 +64,10 @@ final class DashboardStats {
                     'prev_delta_pct' => PointsMath::pct_delta( $liability, $repo->net_balance() - $repo->net_delta( $from, $to ) ),
                 ],
                 'redemption_rate' => [
-                    'rate'               => $rate,
-                    'orders_with_points' => $orders_with_points,
-                    'orders_total'       => $orders_total,
-                    'prev_delta_pct'     => null === $rate || null === $rate_prev ? null : PointsMath::pct_delta( $rate, $rate_prev ),
+                    'rate'                   => $rate,
+                    'orders_with_redemption' => $orders_with_redemption,
+                    'completed_orders'       => $completed_orders,
+                    'prev_delta_pct'         => null === $rate || null === $rate_prev ? null : PointsMath::pct_delta( $rate, $rate_prev ),
                 ],
             ],
             'series'          => DashboardMath::fill_series(

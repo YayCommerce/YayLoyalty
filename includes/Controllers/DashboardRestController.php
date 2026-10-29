@@ -178,10 +178,10 @@ final class DashboardRestController extends AbstractRestController {
                         'redemption_rate' => [
                             'type'       => 'object',
                             'properties' => [
-                                'rate'               => [ 'type' => [ 'number', 'null' ] ],
-                                'orders_with_points' => [ 'type' => 'integer' ],
-                                'orders_total'       => [ 'type' => 'integer' ],
-                                'prev_delta_pct'     => [ 'type' => [ 'number', 'null' ] ],
+                                'rate'                   => [ 'type' => [ 'number', 'null' ] ],
+                                'orders_with_redemption' => [ 'type' => 'integer' ],
+                                'completed_orders'       => [ 'type' => 'integer' ],
+                                'prev_delta_pct'         => [ 'type' => [ 'number', 'null' ] ],
                             ],
                         ],
                     ],
