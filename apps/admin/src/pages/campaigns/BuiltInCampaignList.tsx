@@ -21,7 +21,7 @@ import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { UpgradeToProBanner } from '@/components/pro/UpgradeToPro';
-import { BaseAmountSegmented, PurchaseRateInput, RoundingSegmented } from './PurchaseConfigControls';
+import { PurchaseRateInput, RoundingSegmented } from './PurchaseConfigControls';
 
 /** Display order for the three built-ins; same as CampaignTable's group order. */
 const BUILTIN_TRIGGER_ORDER: Campaign['trigger'][] = ['purchase', 'signup', 'review'];
@@ -189,16 +189,6 @@ function PurchaseFields({
         <span className="text-sm font-semibold">{worked}</span>
       </div>
 
-      <ConfigField
-        label={__('Base amount', 'yayloyalty')}
-        description={__(
-          'What the points are calculated on. After discounts means a coupon reduces the points too.',
-          'yayloyalty',
-        )}
-      >
-        <BaseAmountSegmented value={value.base} onValueChange={(base) => onChange({ base })} />
-      </ConfigField>
-
       <ConfigField label={__('Tax', 'yayloyalty')}>
         <label className="flex items-center gap-2 text-sm">
           <Switch checked={value.include_tax} onCheckedChange={(include_tax) => onChange({ include_tax })} />
@@ -226,16 +216,6 @@ function PurchaseFields({
           <NumberInputInput />
           <NumberInputUnit unit={currency} />
         </NumberInputRoot>
-      </ConfigField>
-
-      <ConfigField label={__('Coupon orders', 'yayloyalty')}>
-        <label className="flex items-center gap-2 text-sm">
-          <Switch
-            checked={value.exclude_coupon_orders}
-            onCheckedChange={(exclude_coupon_orders) => onChange({ exclude_coupon_orders })}
-          />
-          {__('Exclude orders that used a coupon', 'yayloyalty')}
-        </label>
       </ConfigField>
     </>
   );

@@ -9,7 +9,6 @@ import { shortPoints } from '@/lib/helpers/points.helper';
 interface PurchaseAdvancedFacts {
   includeTax: boolean;
   minSubtotal: number;
-  excludeCouponOrders: boolean;
   maxPointsPerOrder: number;
   excludedProducts: number;
   excludedCategories: number;
@@ -22,7 +21,6 @@ function purchaseAdvancedFacts(config: Record<string, unknown>): PurchaseAdvance
   return {
     includeTax: config.include_tax === true,
     minSubtotal: positive(config.min_subtotal),
-    excludeCouponOrders: config.exclude_coupon_orders === true,
     maxPointsPerOrder: positive(config.max_points_per_order),
     excludedProducts: count(config.excluded_product_ids),
     excludedCategories: count(config.excluded_category_ids),
@@ -42,10 +40,6 @@ export function purchaseAdvancedPhrases(config: Record<string, unknown>): string
         parseWPCurrency(facts.minSubtotal),
       ),
     );
-  }
-
-  if (facts.excludeCouponOrders) {
-    phrases.push(__('No coupon orders', 'yayloyalty'));
   }
 
   if (facts.includeTax) {

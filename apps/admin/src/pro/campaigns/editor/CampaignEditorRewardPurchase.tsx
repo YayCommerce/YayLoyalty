@@ -21,7 +21,7 @@ import {
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { BaseAmountSegmented, PurchaseRateInput, RoundingSegmented } from '@/pages/campaigns/PurchaseConfigControls';
+import { PurchaseRateInput, RoundingSegmented } from '@/pages/campaigns/PurchaseConfigControls';
 import { CampaignFormValues } from './campaign-editor.form';
 import { purchaseAdvancedPhrases } from './campaign-reward.copy';
 
@@ -154,23 +154,6 @@ function PurchaseEligibilityFields({ config, patchConfig }: PurchaseFieldsProps)
           </FieldDescription>
         </FieldContent>
       </Field>
-
-      <Field orientation="horizontal">
-        <FieldContent>
-          <FieldLabel htmlFor="reward-purchase-exclude-coupon">
-            {__('Exclude orders that used a coupon', 'yayloyalty')}
-          </FieldLabel>
-          <FieldDescription>
-            {__('Redeeming YayLoyalty points doesn’t count as a coupon.', 'yayloyalty')}
-          </FieldDescription>
-        </FieldContent>
-        <Switch
-          id="reward-purchase-exclude-coupon"
-          className="w-11!"
-          checked={!!config.exclude_coupon_orders}
-          onCheckedChange={(exclude_coupon_orders) => patchConfig({ exclude_coupon_orders })}
-        />
-      </Field>
     </PurchaseGroup>
   );
 }
@@ -179,19 +162,6 @@ function PurchaseEligibilityFields({ config, patchConfig }: PurchaseFieldsProps)
 function PurchaseAmountFields({ config, patchConfig }: PurchaseFieldsProps) {
   return (
     <PurchaseGroup legend={__('Amount counted', 'yayloyalty')}>
-      <Field>
-        <FieldLabel>{__('Base amount', 'yayloyalty')}</FieldLabel>
-        <FieldContent>
-          <BaseAmountSegmented
-            value={config.base ?? 'after_discounts'}
-            onValueChange={(base) => patchConfig({ base })}
-          />
-          <FieldDescription>
-            {__('After discounts means a coupon reduces the points too.', 'yayloyalty')}
-          </FieldDescription>
-        </FieldContent>
-      </Field>
-
       <Field orientation="horizontal">
         <FieldLabel htmlFor="reward-purchase-include-tax">{__('Include tax', 'yayloyalty')}</FieldLabel>
         <Switch
