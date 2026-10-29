@@ -2,11 +2,11 @@
 namespace YayLoyalty\Engine\Redemption;
 
 use YayLoyalty\Engine\Earning\IdempotencyKey;
-use YayLoyalty\Engine\Points\Context as EarnContext;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Models\Redemption;
+use YayLoyalty\Models\Reward;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
@@ -50,10 +50,11 @@ final class RedemptionDraft {
         return 'reward_' . $reward_id;
     }
 
-    /** `flexible_discount` for a slider row (no code, or `yayloyalty-redeem`), reward_qualifier() for any other. */
-    public static function qualifier_for( Redemption $row ): string {
-        $code = $row->get_coupon_code();
-
-        return null === $code || EarnContext::REDEEM_COUPON_CODE === $code ? RewardType::FLEXIBLE_DISCOUNT : self::reward_qualifier( $row->get_reward_id() );
+    /**
+     * `flexible_discount` for a row of the slider's reward, reward_qualifier() for any other. A null $reward is never
+     * the slider's: neither the built-in nor a reward with redemption rows can be deleted.
+     */
+    public static function qualifier_for( Redemption $row, ?Reward $reward ): string {
+        return RedemptionService::is_slider( $reward ) ? RewardType::FLEXIBLE_DISCOUNT : self::reward_qualifier( $row->get_reward_id() );
     }
 }

@@ -47,7 +47,7 @@ final class Redemption extends AbstractModel {
     /** Points per currency unit at redemption time. */
     private string $rate_snapshot;
 
-    /** `yayloyalty-redeem` for the virtual coupon, or the issued code for catalog rewards. */
+    /** The reward's stored coupon code, the code of the virtual coupon the order carries. */
     private ?string $coupon_code;
 
     /** `shop_coupon` post id for catalog rewards, or null for the virtual coupon. */

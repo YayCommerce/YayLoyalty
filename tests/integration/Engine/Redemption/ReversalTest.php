@@ -24,7 +24,7 @@ final class ReversalTest extends IntegrationTestCase {
     private function redeemed_order( Reward $reward ): \WC_Order {
         $this->ledger_service()->earn( $this->earn_draft( 7, 100, 1000 ) );
 
-        $order = $this->order_with_points_discount( 7, 20.0, 5.0 );
+        $order = $this->order_with_points_discount( 7, 20.0, 5.0, $reward->get_coupon_code() );
         $order->set_total( 15.0 );
         $order->save();
 
@@ -240,8 +240,8 @@ final class ReversalTest extends IntegrationTestCase {
             ]
         );
         $codes = [
-            'yayloyalty-reward-' . $a->get_id() => 5.0,
-            'yayloyalty-reward-' . $b->get_id() => 10.0,
+            $a->get_coupon_code() => 5.0,
+            $b->get_coupon_code() => 10.0,
         ];
         $order = $this->order_with_reward_lines( 7, 100.0, $codes );
         $order->set_total( 85.0 );
@@ -270,6 +270,37 @@ final class ReversalTest extends IntegrationTestCase {
 
         $this->assertSame( [ 9850, -500, -1500, 500, 1500 ], $this->ledger_points( 7 ) );
         $this->assertSame( [ Redemption::STATUS_CANCELLED, Redemption::STATUS_CANCELLED ], array_column( $this->redemption_rows( 7 ), 'status' ) );
+        $this->assertSame( 9850, (int) $this->customer_row( 7 )['balance'] );
+    }
+
+    public function test_a_cancel_of_a_mixed_order_restores_each_row_once_under_its_own_key(): void {
+        $this->ledger_service()->earn( $this->earn_draft( 7, 100, 9850 ) );
+        $flexible = $this->seeded_reward();
+        $a        = $this->pro_reward( RewardType::FIXED_COUPON, 500, [ 'amount' => 5 ] );
+        $order    = $this->order_with_reward_lines(
+            7,
+            100.0,
+            [
+                $a->get_coupon_code()        => 5.0,
+                $flexible->get_coupon_code() => 5.0,
+            ]
+        );
+        $order->set_total( 90.0 );
+        $order->save();
+        $this->assertSame( Outcome::REDEEMED, $this->commit_writer()->commit_all( $order, [ $a->get_coupon_code() => $a ], $flexible )->get_status() );
+        $this->assertSame( [ $a->get_coupon_code(), $flexible->get_coupon_code() ], array_column( $this->redemption_rows( 7 ), 'coupon_code' ) );
+
+        $this->reversal()->cancelled( $order );
+        $this->reversal()->cancelled( $order );
+
+        $this->assertSame( [ 9850, -500, -500, 500, 500 ], $this->ledger_points( 7 ) );
+        $this->assertSame(
+            [
+                sprintf( 'refund_redeem:7:order:%d:reward_%d', $order->get_id(), $a->get_id() ),
+                sprintf( 'refund_redeem:7:order:%d:flexible_discount', $order->get_id() ),
+            ],
+            array_column( array_slice( $this->ledger_rows( 7 ), 3 ), 'idempotency_key' )
+        );
         $this->assertSame( 9850, (int) $this->customer_row( 7 )['balance'] );
     }
 }

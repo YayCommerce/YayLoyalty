@@ -479,6 +479,12 @@ final class RewardRestController extends AbstractRestController {
                     'type'        => 'string',
                     'context'     => [ 'view', 'edit' ],
                 ],
+                'coupon_code'        => [
+                    'description' => __( 'The reward\'s coupon code, set once on create.', 'yayloyalty' ),
+                    'type'        => 'string',
+                    'context'     => [ 'view' ],
+                    'readonly'    => true,
+                ],
                 'type'               => [
                     'type'    => 'string',
                     'enum'    => RewardType::all(),

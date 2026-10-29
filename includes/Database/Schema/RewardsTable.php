@@ -20,6 +20,7 @@ final class RewardsTable extends AbstractTableSchema {
             id bigint unsigned NOT NULL AUTO_INCREMENT,
             name varchar(191) NOT NULL,
             slug varchar(64) NOT NULL,
+            coupon_code varchar(32) DEFAULT NULL,
             type varchar(32) NOT NULL,
             status varchar(20) NOT NULL DEFAULT 'active',
             sort_order int NOT NULL DEFAULT 0,
@@ -36,6 +37,7 @@ final class RewardsTable extends AbstractTableSchema {
             archived_at datetime DEFAULT NULL,
             PRIMARY KEY  (id),
             UNIQUE KEY uk_slug (slug),
+            UNIQUE KEY uk_coupon_code (coupon_code),
             KEY idx_catalog (status,sort_order),
             KEY idx_archived (status,archived_at)
         ) {$this->charset_collate()} ENGINE=InnoDB";
@@ -46,6 +48,7 @@ final class RewardsTable extends AbstractTableSchema {
             'id',
             'name',
             'slug',
+            'coupon_code',
             'type',
             'status',
             'sort_order',
@@ -67,6 +70,7 @@ final class RewardsTable extends AbstractTableSchema {
         return [
             'PRIMARY',
             'uk_slug',
+            'uk_coupon_code',
             'idx_catalog',
             'idx_archived',
         ];

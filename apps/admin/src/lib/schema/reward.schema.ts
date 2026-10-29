@@ -56,6 +56,8 @@ export const rewardSchema = z.object({
   name: z.string(),
   /** Built-in is RewardRepository::CART_DISCOUNT_SLUG. */
   slug: z.string(),
+  /** Set once when the reward is created (RewardRepository::insert()); never changes. */
+  coupon_code: z.string(),
   type: rewardTypeSchema,
   status: rewardStatusSchema,
   sort_order: z.number().int(),

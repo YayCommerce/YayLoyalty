@@ -1,7 +1,9 @@
 <?php
 namespace YayLoyalty\Repositories;
 
+use YayLoyalty\Engine\Points\Context as EarnContext;
 use YayLoyalty\Enums\Status;
+use YayLoyalty\Models\AbstractModel;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Sql;
@@ -13,6 +15,9 @@ final class RewardRepository extends AbstractRepository {
 
     /** The built-in flexible-discount reward the installer seeds. Its config holds the one points→money rate. */
     public const CART_DISCOUNT_SLUG = 'cart-discount';
+
+    /** Draws before giving up and letting the unique key refuse the insert. */
+    private const COUPON_CODE_ATTEMPTS = 5;
 
     protected function table_slug(): string {
         return 'rewards';
@@ -36,6 +41,21 @@ final class RewardRepository extends AbstractRepository {
         $model = $this->find_one_by( 'slug', $slug );
 
         return $model instanceof Reward ? $model : null;
+    }
+
+    public function find_by_coupon_code( string $code ): ?Reward {
+        $model = $this->find_one_by( 'coupon_code', $code );
+
+        return $model instanceof Reward ? $model : null;
+    }
+
+    /** Gives a reward without a code its generated one before the row is written. */
+    public function insert( AbstractModel $model ): int {
+        if ( $model instanceof Reward && '' === $model->get_coupon_code() ) {
+            $model->set_coupon_code( $this->unique_coupon_code() );
+        }
+
+        return parent::insert( $model );
     }
 
     /**
@@ -161,5 +181,40 @@ final class RewardRepository extends AbstractRepository {
 
     public function seed_builtin( Reward $reward ): void {
         $this->seed_builtin_by_slug( $reward, $reward->get_slug() );
+    }
+
+    /** A code no reward and no WooCommerce coupon uses yet; after the last attempt, a fresh draw, which the unique key backs. */
+    private function unique_coupon_code(): string {
+        for ( $attempt = 1; $attempt < self::COUPON_CODE_ATTEMPTS; $attempt++ ) {
+            $code = self::draw_coupon_code();
+
+            if ( ! $this->is_coupon_code_taken( $code ) ) {
+                return $code;
+            }
+        }
+
+        return self::draw_coupon_code();
+    }
+
+    /** EarnContext::COUPON_CODE_PREFIX plus COUPON_CODE_LENGTH random characters of COUPON_CODE_ALPHABET. */
+    private static function draw_coupon_code(): string {
+        $alphabet = EarnContext::COUPON_CODE_ALPHABET;
+        $last     = strlen( $alphabet ) - 1;
+        $code     = EarnContext::COUPON_CODE_PREFIX;
+
+        for ( $i = 0; $i < EarnContext::COUPON_CODE_LENGTH; $i++ ) {
+            $code .= $alphabet[ random_int( 0, $last ) ];
+        }
+
+        return $code;
+    }
+
+    /** Whether a reward or a WooCommerce coupon already uses $code. */
+    private function is_coupon_code_taken( string $code ): bool {
+        if ( null !== $this->find_by_coupon_code( $code ) ) {
+            return true;
+        }
+
+        return function_exists( 'wc_get_coupon_id_by_code' ) && 0 !== (int) wc_get_coupon_id_by_code( $code );
     }
 }

@@ -67,7 +67,7 @@ test.describe('reward redemptions', () => {
     await test.step('ticks apply at once', async () => {
       await rewardBox(shopperPage, '$5 off').check();
       await expect(blockDiscounts(shopperPage)).toContainText('$5 off');
-      await expect(blockDiscounts(shopperPage)).not.toContainText('yayloyalty-reward-');
+      await expect(blockDiscounts(shopperPage)).not.toContainText('yayloyalty-');
       await expect(blockTotal(shopperPage)).toContainText('$95.00');
 
       await pointsDiscountBox(shopperPage).check();

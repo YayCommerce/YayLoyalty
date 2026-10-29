@@ -76,7 +76,7 @@ final class PointsEngineEvaluateTest extends EngineTestCase {
                 'exclude_coupon_orders' => true,
             ]
         );
-        $ctx      = $this->context( [ $this->line( 100.0 ) ], 15.0, [ 'yayloyalty-reward-5', 'yayloyalty-reward-6' ] );
+        $ctx      = $this->context( [ $this->line( 100.0 ) ], 15.0, [ 'yayloyalty-ab12cd34', 'yayloyalty-ef56gh78' ] );
 
         $result = $this->engine( [ $campaign ] )->evaluate( CampaignTrigger::PURCHASE, $ctx );
 
@@ -85,7 +85,7 @@ final class PointsEngineEvaluateTest extends EngineTestCase {
     }
 
     public function test_a_merchant_coupon_still_counts_beside_a_reward_coupon(): void {
-        $ctx = $this->context( [ $this->line( 100.0 ) ], 5.0, [ 'yayloyalty-reward-5', 'summer10' ] );
+        $ctx = $this->context( [ $this->line( 100.0 ) ], 5.0, [ 'yayloyalty-ab12cd34', 'summer10' ] );
 
         $this->assertSame( [ 'summer10' ], $ctx->get_real_coupon_codes() );
     }

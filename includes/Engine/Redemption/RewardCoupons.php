@@ -8,7 +8,7 @@ use YayLoyalty\Utils\PointsMath;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * A reward's virtual coupon, `yayloyalty-reward-{id}`, from the props its RewardHandler describes. Never a
+ * A reward's virtual coupon, under its stored coupon code, from the props its RewardHandler describes. Never a
  * `shop_coupon` post. Every coupon here is built with set_props() and never loaded by code: loading
  * `new \WC_Coupon( $code )` would re-enter `woocommerce_get_shop_coupon_data`, which is what calls in here.
  */
@@ -24,10 +24,10 @@ final class RewardCoupons {
      *
      * @param array $props RewardHandler::coupon_props().
      */
-    public static function coupon( int $reward_id, array $props ): \WC_Coupon {
+    public static function coupon( string $code, array $props ): \WC_Coupon {
         $coupon = new \WC_Coupon();
 
-        $coupon->set_code( CouponProvider::reward_code( $reward_id ) );
+        $coupon->set_code( $code );
         $coupon->set_virtual( true );
         $coupon->set_props( self::coupon_fields( $props ) );
 
@@ -41,8 +41,8 @@ final class RewardCoupons {
      * @param array $props RewardHandler::coupon_props().
      * @return array{reason: string, value: float}
      */
-    public static function probe( int $reward_id, array $props, \WC_Cart $cart ): array {
-        $coupon    = self::coupon( $reward_id, $props );
+    public static function probe( string $code, array $props, \WC_Cart $cart ): array {
+        $coupon    = self::coupon( $code, $props );
         $discounts = new \WC_Discounts( $cart );
         $error     = 0;
         $subtotal  = self::displayed_subtotal( $cart );
@@ -103,14 +103,14 @@ final class RewardCoupons {
      * @param array $props RewardHandler::coupon_props().
      * @return array
      */
-    public static function capped( int $reward_id, array $props, \WC_Cart $cart ): array {
+    public static function capped( string $code, array $props, \WC_Cart $cart ): array {
         $cap = $props['max_discount'] ?? null;
 
         if ( null === $cap ) {
             return $props;
         }
 
-        $probe = self::probe( $reward_id, $props, $cart );
+        $probe = self::probe( $code, $props, $cart );
 
         if ( $probe['value'] > (float) $cap ) {
             $props['discount_type'] = 'fixed_cart';

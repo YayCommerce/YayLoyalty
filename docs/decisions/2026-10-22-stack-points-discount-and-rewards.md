@@ -6,7 +6,7 @@
 
 ## Status
 
-Accepted, 2026-10-22, by PhungTruong1997, with the redeem card v2 design. It supersedes [loyalty discounts are virtual coupons](2026-10-14-loyalty-discounts-as-virtual-coupons.md) whole.
+Superseded by [loyalty discounts under stored reward codes](2026-10-28-stack-points-discount-and-rewards-with-stored-codes.md), 2026-10-28. Accepted 2026-10-22 by PhungTruong1997, with the redeem card v2 design. It superseded [loyalty discounts are virtual coupons](2026-10-14-loyalty-discounts-as-virtual-coupons.md) whole.
 
 ## Context
 
