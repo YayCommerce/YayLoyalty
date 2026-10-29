@@ -498,27 +498,6 @@
     }
   });
 
-  // The field's chevrons step it as the browser's spin buttons did, firing the same events so the handlers above run.
-  // mousedown, not click: preventDefault keeps focus where it was, as the admin's NumberInput does.
-  document.addEventListener("mousedown", function (event) {
-    var target = event.target instanceof Element ? event.target : null;
-    var chevron = target && target.closest("[data-yl-step]");
-    var field = chevron && chevron.parentElement.parentElement.querySelector("[data-yl-points]");
-
-    if (!field || chevron.disabled || field.disabled) {
-      return;
-    }
-    event.preventDefault();
-
-    if (chevron.getAttribute("data-yl-step") === "up") {
-      field.stepUp();
-    } else {
-      field.stepDown();
-    }
-    field.dispatchEvent(new Event("input", { bubbles: true }));
-    field.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-
   // Change opens the checkout list; Update sends the draft, or only collapses the card when nothing changed.
   document.addEventListener("click", function (event) {
     var target = event.target instanceof Element ? event.target : null;
