@@ -178,7 +178,7 @@ function flexibleDiscountAvailability(config: Reward['config']): string {
   parts.push(
     maxPercent === null
       ? __('up to 100% of the order', 'yayloyalty')
-      : /* translators: %s: maximum percent of the order subtotal, formatted. */
+      : /* translators: %s: maximum percent of the order after other coupons, formatted. */
         sprintf(__('up to %s%% of the order', 'yayloyalty'), formatPoints(maxPercent)),
   );
 

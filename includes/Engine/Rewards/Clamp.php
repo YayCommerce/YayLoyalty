@@ -27,14 +27,14 @@ final class Clamp {
     public const BOUND_STEP       = 'step';
 
     /**
-     * $cart_subtotal is in $currency and already net of every other coupon, or null for a claim with no cart.
+     * $net_items_total is in $currency and already net of every other coupon, or null for a claim with no cart.
      * The result's value and rate snapshot are in $currency too.
      * Ceilings are checked in order (balance, reward max, cart) and the first that binds is reported.
      * The only denial is REASON_NO_RATE, for a reward with no usable `points_per_currency_unit`.
      *
      * @param float $currency_rate Units of $currency per 1 base unit; 1.0 in the base currency.
      */
-    public static function apply( Reward $reward, int $requested, int $balance, ?float $cart_subtotal, string $currency, int $decimals, float $currency_rate = 1.0 ): Result {
+    public static function apply( Reward $reward, int $requested, int $balance, ?float $net_items_total, string $currency, int $decimals, float $currency_rate = 1.0 ): Result {
         $config = $reward->get_config();
         $rate   = self::effective_rate( $reward, $currency_rate );
 
@@ -51,11 +51,11 @@ final class Clamp {
             $ceilings[ self::BOUND_REWARD_MAX ] = max( 0, (int) $config['max_points_per_order'] );
         }
 
-        if ( null !== $cart_subtotal ) {
-            $cart_points = self::points_in( $cart_subtotal, $rate );
+        if ( null !== $net_items_total ) {
+            $cart_points = self::points_in( $net_items_total, $rate );
 
             if ( isset( $config['max_percent_of_subtotal'] ) ) {
-                $cart_points = min( $cart_points, self::points_in( $cart_subtotal * (float) $config['max_percent_of_subtotal'] / 100, $rate ) );
+                $cart_points = min( $cart_points, self::points_in( $net_items_total * (float) $config['max_percent_of_subtotal'] / 100, $rate ) );
             }
 
             $ceilings[ self::BOUND_CART ] = $cart_points;

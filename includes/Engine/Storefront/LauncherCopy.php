@@ -229,13 +229,13 @@ final class LauncherCopy {
 
         if ( null !== $max_points && null !== $max_percent ) {
             /* translators: 1: points amount with the store's label, as "5,000 Points", 2: a percentage number, as "50". */
-            $cap = sprintf( __( '%1$s or %2$s%% of the order subtotal', 'yayloyalty' ), SettingsHelper::points_text( $max_points ), $max_percent );
+            $cap = sprintf( __( '%1$s or %2$s%% of the order after other coupons', 'yayloyalty' ), SettingsHelper::points_text( $max_points ), $max_percent );
         } elseif ( null !== $max_points ) {
             /* translators: %s: points amount with the store's label, as "5,000 Points". */
             $cap = sprintf( __( '%s per order', 'yayloyalty' ), SettingsHelper::points_text( $max_points ) );
         } elseif ( null !== $max_percent ) {
             /* translators: %s: a percentage number, as "50". */
-            $cap = sprintf( __( '%s%% of the order subtotal', 'yayloyalty' ), $max_percent );
+            $cap = sprintf( __( '%s%% of the order after other coupons', 'yayloyalty' ), $max_percent );
         } else {
             $cap = __( 'the full order value', 'yayloyalty' );
         }

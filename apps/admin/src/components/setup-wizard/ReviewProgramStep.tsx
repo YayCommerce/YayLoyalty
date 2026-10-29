@@ -58,8 +58,8 @@ export function ReviewProgramStep({ form, onEdit }: ReviewProgramStepProps) {
     {
       label: __('Redemption limits', 'yayloyalty'),
       value: sprintf(
-        /* translators: 1: the smallest redemption, in points; 2: the most of the subtotal points may cover, a percentage. */
-        __('from %1$s points, up to %2$s%% of the subtotal', 'yayloyalty'),
+        /* translators: 1: the smallest redemption, in points; 2: the most of the order after other coupons points may cover, a percentage. */
+        __('from %1$s points, up to %2$s%% of the order after other coupons', 'yayloyalty'),
         formatPoints(v.minPoints),
         String(v.maxPercent),
       ),

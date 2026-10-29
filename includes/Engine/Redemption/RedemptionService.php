@@ -202,7 +202,7 @@ final class RedemptionService {
         }
 
         if ( $cost > 0 ) {
-            $ctx = $ctx->with_balance( $ctx->get_balance() - $cost )->with_cart_subtotal( max( 0.0, (float) $ctx->get_cart_subtotal() - $amount ) );
+            $ctx = $ctx->with_balance( $ctx->get_balance() - $cost )->with_net_items_total( max( 0.0, (float) $ctx->get_net_items_total() - $amount ) );
         }
 
         return $this->quoter->quote( $reward, $ctx );

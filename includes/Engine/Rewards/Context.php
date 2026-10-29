@@ -20,8 +20,8 @@ final class Context {
     /** @var int|null How many points the customer chose to spend; flexible_discount only, null for fixed-cost types. */
     private $points_requested;
 
-    /** @var float|null Cart subtotal in `currency`, net of every other coupon; null for a catalog claim with no cart. */
-    private $cart_subtotal;
+    /** @var float|null The items' total in `currency`, net of every other coupon; null for a catalog claim with no cart. */
+    private $net_items_total;
 
     /** @var string Checkout currency, e.g. 'EUR'. */
     private $currency;
@@ -42,7 +42,7 @@ final class Context {
         ?int $user_id,
         int $balance,
         ?int $points_requested,
-        ?float $cart_subtotal,
+        ?float $net_items_total,
         string $currency,
         string $at,
         ?CustomerFacts $facts = null,
@@ -52,7 +52,7 @@ final class Context {
         $this->user_id          = $user_id;
         $this->balance          = $balance;
         $this->points_requested = $points_requested;
-        $this->cart_subtotal    = $cart_subtotal;
+        $this->net_items_total  = $net_items_total;
         $this->currency         = $currency;
         $this->at               = $at;
         $this->facts            = $facts;
@@ -68,10 +68,10 @@ final class Context {
         return $copy;
     }
 
-    /** A copy at $cart_subtotal: what the points discount quotes against once the picked rewards take their share. */
-    public function with_cart_subtotal( float $cart_subtotal ): self {
-        $copy                = clone $this;
-        $copy->cart_subtotal = $cart_subtotal;
+    /** A copy at $net_items_total: what the points discount quotes against once the picked rewards take their share. */
+    public function with_net_items_total( float $net_items_total ): self {
+        $copy                  = clone $this;
+        $copy->net_items_total = $net_items_total;
 
         return $copy;
     }
@@ -88,8 +88,8 @@ final class Context {
         return $this->points_requested;
     }
 
-    public function get_cart_subtotal(): ?float {
-        return $this->cart_subtotal;
+    public function get_net_items_total(): ?float {
+        return $this->net_items_total;
     }
 
     public function get_currency(): string {
