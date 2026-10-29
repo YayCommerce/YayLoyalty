@@ -43,7 +43,7 @@ export function CustomerDrawerExpiryPanel({ customer, expiry }: { customer: Cust
               {expiringReminderSentence(
                 formatStoredDate(expiry.reminders.sent_at),
                 formatStoredDate(expiry.reminders.next_due_at),
-                String(expiry.reminders.window_days),
+                String(expiry.reminders.reminder_days),
               )}
             </p>
           )}

@@ -28,7 +28,7 @@ class Emails {
     /** The email action an expiry reminder is relayed on, with the claimed points, date and whether it is one date. */
     public const POINTS_EXPIRING_SOON_ACTION = 'yayloyalty_points_expiring_soon_email';
 
-    /** Fired after the transport accepted an expiry reminder, for the activity log. Args: user id, points, expires_at, window days. */
+    /** Fired after the transport accepted an expiry reminder, for the activity log. Args: user id, points, expires_at, reminder days. */
     public const POINTS_EXPIRING_SOON_SENT_ACTION = 'yayloyalty_points_expiring_soon_email_sent';
 
     protected function __construct() {

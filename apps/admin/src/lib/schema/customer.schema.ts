@@ -49,7 +49,7 @@ export const drawerExpirySchema = z.object({
   reminders: z.object({
     sent_at: z.string().nullable(),
     next_due_at: z.string().nullable(),
-    window_days: z.number().int(),
+    reminder_days: z.number().int(),
   }),
   batches: z.array(drawerExpiryBatchSchema).nullable(),
 });

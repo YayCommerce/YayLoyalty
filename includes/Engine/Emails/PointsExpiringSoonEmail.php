@@ -62,10 +62,10 @@ class PointsExpiringSoonEmail extends LoyaltyEmail {
             /**
              * Fires once the transport accepted an expiry reminder. CustomerActivityListener logs it.
              *
-             * @param int    $user_id     The customer reminded.
-             * @param int    $points      Points that expire.
-             * @param string $expires_at  The soonest of their expiry dates, UTC.
-             * @param int    $window_days The reminder timing it went out under.
+             * @param int    $user_id       The customer reminded.
+             * @param int    $points        Points that expire.
+             * @param string $expires_at    The soonest of their expiry dates, UTC.
+             * @param int    $reminder_days How many days ahead of expiry it went out.
              */
             do_action( Emails::POINTS_EXPIRING_SOON_SENT_ACTION, $user_id, $points, $expires_at, ExpiryPolicy::current()->reminder_days() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
         }

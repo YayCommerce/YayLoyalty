@@ -102,12 +102,12 @@ export function expiringBannerBody(days: number, points: string, sharePercent: s
     sharePercent,
   );
 }
-export function expiringReminderSentence(sentDate: string, dueDate: string, windowDays: string): string {
+export function expiringReminderSentence(sentDate: string, dueDate: string, reminderDays: string): string {
   return sprintf(
-    /* translators: 1: the date the 30-day reminder was sent, formatted; 2: the next reminder's window in days; 3: the date it is due, formatted. */
+    /* translators: 1: the date the 30-day reminder was sent, formatted; 2: how many days ahead of expiry the next reminder goes out; 3: the date it is due, formatted. */
     __('The 30-day reminder went out on %1$s; the %2$s-day one is due on %3$s.', 'yayloyalty'),
     sentDate,
-    windowDays,
+    reminderDays,
     dueDate,
   );
 }

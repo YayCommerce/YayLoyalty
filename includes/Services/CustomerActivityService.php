@@ -160,13 +160,13 @@ final class CustomerActivityService {
 
     /**
      * One `expiring_soon_email_sent` row per expiry reminder the transport accepted, so support can see
-     * the customer was warned. `window_days` is the reminder timing it went out under.
+     * the customer was warned. `reminder_days` is how many days ahead of expiry it went out.
      */
-    public function record_expiring_soon_email_sent( int $user_id, int $points, string $expires_at, int $window_days ): void {
+    public function record_expiring_soon_email_sent( int $user_id, int $points, string $expires_at, int $reminder_days ): void {
         $data = [
-            'points'      => $points,
-            'expires_at'  => $expires_at,
-            'window_days' => $window_days,
+            'points'        => $points,
+            'expires_at'    => $expires_at,
+            'reminder_days' => $reminder_days,
         ];
 
         $this->meta->insert(
