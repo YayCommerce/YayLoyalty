@@ -4,6 +4,7 @@ namespace YayLoyalty\Pro\Repositories;
 use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Repositories\CustomerMetaRepository;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Utils\CurrencyRate;
 use YayLoyalty\Utils\Table;
 use YayLoyalty\Utils\WooOrders;
 
@@ -179,15 +180,19 @@ class CampaignPerformanceRepository {
         }
     }
 
-    /** Null when WooCommerce no longer has the order. */
-    private function order_subtotal( int $order_id ): ?float {
+    /** The order's subtotal in the base currency, at its saved rate, as a money string; null when WooCommerce no longer has the order. */
+    private function order_subtotal( int $order_id ): ?string {
         if ( ! function_exists( 'wc_get_order' ) ) {
             return null;
         }
 
         $order = wc_get_order( $order_id );
 
-        return $order instanceof \WC_Order ? (float) $order->get_subtotal() : null;
+        if ( ! $order instanceof \WC_Order ) {
+            return null;
+        }
+
+        return (string) wc_format_decimal( CurrencyRate::to_base( (float) $order->get_subtotal(), (string) $order->get_currency(), $order ), wc_get_price_decimals() );
     }
 
     private function order_edit_url( int $order_id ): string {

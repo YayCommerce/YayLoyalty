@@ -90,7 +90,7 @@ export type CampaignPerformance = z.infer<typeof campaignPerformanceSchema>;
 
 /**
  * One row of `GET /campaigns/{id}/performance/entries`: an order, a signup or a review, by trigger.
- * `reference` is the order or the review, and null for a signup. `subtotal` is purchase-only.
+ * `reference` is the order or the review, and null for a signup. `subtotal` is purchase-only, in the base currency.
  */
 export const campaignPerformanceEntrySchema = z.object({
   id: z.number().int(),
@@ -106,7 +106,7 @@ export const campaignPerformanceEntrySchema = z.object({
       url: z.string(),
     })
     .nullable(),
-  subtotal: z.number().nullable(),
+  subtotal: z.string().nullable(),
 });
 
 export type CampaignPerformanceEntry = z.infer<typeof campaignPerformanceEntrySchema>;
