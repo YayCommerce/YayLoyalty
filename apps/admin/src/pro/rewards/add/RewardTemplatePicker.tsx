@@ -11,7 +11,7 @@ import { REWARD_TEMPLATE_ORDER, templateDescription, templateTitle } from '../re
 /**
  * "Add a reward" chooser: one card per catalog type, each opening the editor
  * in create mode via rewards/new/:type. No flexible-discount card: the
- * built-in slider is the only one and is edited, never added.
+ * built-in flexible discount is the only one and is edited, never added.
  */
 export function RewardTemplatePicker() {
   const navigate = useNavigate();

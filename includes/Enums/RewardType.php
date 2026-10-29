@@ -5,7 +5,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * What a reward does when redeemed. It also keys the per-type config whitelist and the cost_points rule:
- * flexible_discount is the slider, with a null cost, and every other type has a fixed cost.
+ * flexible_discount is the built-in points discount, with a null cost, and every other type has a fixed cost.
  */
 final class RewardType {
 

@@ -41,7 +41,7 @@ $yayloyalty_is_open = ! empty( $view['is_open'] );
         <?php // The label is not drawn, only read: it stays the button's accessible name. ?>
         <span class="yl:sr-only"><?php echo esc_html( LauncherCopy::launcher_label() ); ?></span>
         <?php if ( null !== $yayloyalty_member ) : ?>
-            <?php // The dot says points expire within LauncherPayload::EXPIRING_SOON_DAYS; the Rewards tab spells it out. ?>
+            <?php // The dot says points expire within LauncherPayload::EXPIRING_SOON_DAYS; the My Points tab spells it out. ?>
             <?php if ( null !== $yayloyalty_member['expires_at'] ) : ?>
                 <span class="yl-launcher-dot" aria-hidden="true"></span>
             <?php endif; ?>
@@ -80,7 +80,7 @@ $yayloyalty_is_open = ! empty( $view['is_open'] );
             </div>
         </div>
 
-        <?php // .yayloyalty-account: the body prints the Rewards tab's partials, styled by assets/storefront/account/. ?>
+        <?php // .yayloyalty-account: the body prints the My Points tab's partials, styled by assets/storefront/account/. ?>
         <div class="yl-launcher-body yayloyalty-account yl:flex yl:flex-col yl:overflow-y-auto">
             <?php
             if ( null !== $yayloyalty_member ) {

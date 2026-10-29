@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  * Materialises the discount as virtual coupons from the current quotes —
  * never a `shop_coupon` post on the 1.0 path: each under its reward's stored
  * code (`yayloyalty-` plus 8 characters), the flexible reward's for the
- * slider and one per picked reward, together.
+ * flexible discount and one per picked reward, together.
  * Applied after every real coupon, so each loyalty amount is quoted against
  * what is left; stacks with them (`individual_use` false); no free shipping.
  * The amounts are re-derived on every totals run, so a cart change is
@@ -76,7 +76,7 @@ final class CouponProvider {
     public function label( string $label, \WC_Coupon $coupon ): string {
         $reward = $this->service->reward_for_code( (string) $coupon->get_code() );
 
-        if ( RedemptionService::is_slider( $reward ) ) {
+        if ( RedemptionService::is_flexible_discount( $reward ) ) {
             return self::display_label( $this->service->live_flexible_reward() );
         }
 
@@ -112,8 +112,8 @@ final class CouponProvider {
     /**
      * Precondition: $code is any coupon WooCommerce is loading, a code or
      * an id. Postcondition: $data untouched for every code that is not a
-     * loyalty code, before any query, and for the slider's when there is no
-     * cart; for the slider's code an array with discount_type
+     * loyalty code, before any query, and for the flexible discount's when there is no
+     * cart; for the flexible discount's code an array with discount_type
      * `fixed_cart`, amount = quote()->get_value() (0 when the quote is
      * denied), individual_use false, free_shipping false, usage_limit 0,
      * no expiry, no restrictions. For a catalog reward's code,
@@ -134,7 +134,7 @@ final class CouponProvider {
 
         $reward = $this->service->reward_for_code( $code );
 
-        if ( ! RedemptionService::is_slider( $reward ) ) {
+        if ( ! RedemptionService::is_flexible_discount( $reward ) ) {
             $reward = null === $reward ? null : $this->service->coupon_data_for( $reward, RedemptionService::cart() );
 
             return null !== $reward ? $reward : RewardCoupons::data(
@@ -168,7 +168,7 @@ final class CouponProvider {
      * WooCommerce sorts cart coupons by a per-coupon weight before applying
      * them (WC_Cart_Totals::get_coupons_from_cart, filter
      * `woocommerce_coupon_sort`). Postcondition: $sort unchanged for every
-     * other coupon; PHP_INT_MAX for the slider's, so every real coupon
+     * other coupon; PHP_INT_MAX for the flexible discount's, so every real coupon
      * discounts first and our amount is quoted against what is left. A
      * reward's weight follows its type, not the discount type it emits, so a
      * capped percent reward keeps its place: percent rewards, then fixed.
@@ -176,25 +176,25 @@ final class CouponProvider {
     public function sort_weight( int $sort, \WC_Coupon $coupon ): int {
         $reward = $this->service->reward_for_code( (string) $coupon->get_code() );
 
-        if ( RedemptionService::is_slider( $reward ) ) {
+        if ( RedemptionService::is_flexible_discount( $reward ) ) {
             return PHP_INT_MAX;
         }
 
         return null === $reward ? $sort : self::weight_of( $reward );
     }
 
-    /** A reward coupon's sort weight: percent rewards before fixed ones, both after every real coupon and before the slider's. */
+    /** A reward coupon's sort weight: percent rewards before fixed ones, both after every real coupon and before the flexible discount's. */
     private static function weight_of( Reward $reward ): int {
         return RewardType::PERCENT_COUPON === $reward->get_type() ? PHP_INT_MAX - 2 : PHP_INT_MAX - 1;
     }
 
     /**
      * Keeps the loyalty coupon lines in step with the intent: one code per
-     * picked reward whose quote is allowed with a value, and the slider's
+     * picked reward whose quote is allowed with a value, and the flexible discount's
      * code while its quote applies points. Every other loyalty code is taken
      * off, so a guest never sees a zero-value line. The loyalty codes go
      * after the merchant codes in the order the totals list them: percent
-     * rewards, then fixed, each in the order picked, then the slider, which
+     * rewards, then fixed, each in the order picked, then the flexible discount, which
      * is quoted against what the rewards leave. A picked reward that stopped qualifying
      * (REASONS that drop) leaves the session with notice_removed(); one the
      * balance cannot cover stays picked, unapplied. Edits the applied-coupon
@@ -215,8 +215,8 @@ final class CouponProvider {
         }
 
         $wanted   = array_merge(
-            [] === $reward_ids ? [] : $this->wanted_rewards( $cart ),
-            $points > 0 ? $this->wanted_slider( $cart ) : []
+            [] === $reward_ids ? [] : $this->resolve_rewards( $cart ),
+            $points > 0 ? $this->resolve_flexible_discount( $cart ) : []
         );
         $merchant = array_filter(
             $applied,
@@ -247,7 +247,7 @@ final class CouponProvider {
     }
 
     /**
-     * The shopper removed a coupon, or WooCommerce removed it as invalid. The slider's clears its points and a
+     * The shopper removed a coupon, or WooCommerce removed it as invalid. The flexible discount's code clears its points and a
      * reward's leaves the picked rewards, or the next totals run would apply it again; the other kind stays.
      *
      * @param mixed $code
@@ -255,7 +255,7 @@ final class CouponProvider {
     public function on_removed( $code ): void {
         $reward = is_string( $code ) ? $this->service->reward_for_code( $code ) : null;
 
-        if ( RedemptionService::is_slider( $reward ) ) {
+        if ( RedemptionService::is_flexible_discount( $reward ) ) {
             $this->intent->set( 0 );
         } elseif ( null !== $reward ) {
             $this->intent->remove_reward( (int) $reward->get_id() );
@@ -263,18 +263,18 @@ final class CouponProvider {
     }
 
     /**
-     * The slider's code while its quote applies points, else nothing. When asking for everything is refused too,
-     * the card shows no slider to change the amount and checkout would refuse it on every try, so the amount
+     * The flexible discount's code while its quote applies points, else nothing. When asking for everything is refused too,
+     * the card shows no field to change the amount and checkout would refuse it on every try, so the amount
      * leaves the session with the "was removed" notice.
      *
      * @return string[]
      */
-    private function wanted_slider( \WC_Cart $cart ): array {
+    private function resolve_flexible_discount( \WC_Cart $cart ): array {
         $user_id = RedemptionService::shopper_id();
         $quote   = $this->service->quote( $cart, $user_id );
 
         if ( $quote->is_allowed() && $quote->get_points() > 0 ) {
-            return [ $this->service->slider_code() ];
+            return [ $this->service->flexible_discount_code() ];
         }
 
         if ( ! $this->service->ceiling( $cart, $user_id )->is_allowed() ) {
@@ -292,18 +292,18 @@ final class CouponProvider {
      *
      * @return string[]
      */
-    private function wanted_rewards( \WC_Cart $cart ): array {
-        $percent = [];
-        $fixed   = [];
+    private function resolve_rewards( \WC_Cart $cart ): array {
+        $percent_codes = [];
+        $fixed_codes   = [];
 
         foreach ( $this->service->quote_rewards( $cart, RedemptionService::shopper_id() ) as $reward_id => $row ) {
             $quote = $row['quote'];
 
             if ( RedemptionService::applies( $quote ) ) {
                 if ( RewardType::PERCENT_COUPON === $row['reward']->get_type() ) {
-                    $percent[] = $row['reward']->get_coupon_code();
+                    $percent_codes[] = $row['reward']->get_coupon_code();
                 } else {
-                    $fixed[] = $row['reward']->get_coupon_code();
+                    $fixed_codes[] = $row['reward']->get_coupon_code();
                 }
             } elseif ( ! $quote->is_allowed() && in_array( $quote->get_reason(), self::DROPPING_REASONS, true ) ) {
                 $this->intent->remove_reward( $reward_id );
@@ -317,6 +317,6 @@ final class CouponProvider {
             }
         }
 
-        return array_merge( $percent, $fixed );
+        return array_merge( $percent_codes, $fixed_codes );
     }
 }

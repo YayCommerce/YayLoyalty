@@ -149,7 +149,7 @@ export function rewardSubtitle(reward: Reward): string {
   );
 }
 
-/** "any" for the slider — the customer picks the amount — otherwise the fixed point cost. */
+/** "any" for the flexible discount — the customer picks the amount — otherwise the fixed point cost. */
 export function costLabel(reward: Reward): string {
   if (reward.type === 'flexible_discount' || null === reward.cost_points) {
     return __('any', 'yayloyalty');
@@ -158,7 +158,7 @@ export function costLabel(reward: Reward): string {
   return shortPoints(reward.cost_points);
 }
 
-/** The built-in slider's own availability phrase: its limits live in config, not conditions. */
+/** The built-in flexible discount's own availability phrase: its limits live in config, not conditions. */
 function flexibleDiscountAvailability(config: Reward['config']): string {
   const parts: string[] = [];
   const minPoints = numberConfig(config, 'min_points');
@@ -173,12 +173,12 @@ function flexibleDiscountAvailability(config: Reward['config']): string {
     );
   }
 
-  const maxPercent = numberConfig(config, 'max_percent_of_subtotal');
+  const maxPercent = numberConfig(config, 'max_percent_of_discountable');
 
   parts.push(
     maxPercent === null
       ? __('up to 100% of the order', 'yayloyalty')
-      : /* translators: %s: maximum percent of the order subtotal, formatted. */
+      : /* translators: %s: maximum percent of the order total after other discounts, formatted. */
         sprintf(__('up to %s%% of the order', 'yayloyalty'), formatPoints(maxPercent)),
   );
 

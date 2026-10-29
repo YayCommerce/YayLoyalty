@@ -11,7 +11,7 @@ use YayLoyalty\Models\Reward;
 /** Clamp: every ceiling, the step, the minimum, and the whole-coin rule that keeps the debit equal to the discount. */
 final class ClampTest extends TestCase {
 
-    /** The seeded slider reward: 100 points per currency unit, minimum 100, step 100. */
+    /** The seeded flexible discount reward: 100 points per currency unit, minimum 100, step 100. */
     private function reward( array $config = [] ): Reward {
         return new Reward(
             9,
@@ -78,7 +78,7 @@ final class ClampTest extends TestCase {
     }
 
     public function test_the_percent_of_subtotal_caps_the_request(): void {
-        $result = Clamp::apply( $this->reward( [ 'max_percent_of_subtotal' => 50 ] ), 800, 1000, 10.0, 'USD', 2 );
+        $result = Clamp::apply( $this->reward( [ 'max_percent_of_discountable' => 50 ] ), 800, 1000, 10.0, 'USD', 2 );
 
         $this->assertSame( 500, $result->get_points() );
         $this->assertSame( Clamp::BOUND_CART, $result->get_bound_by() );

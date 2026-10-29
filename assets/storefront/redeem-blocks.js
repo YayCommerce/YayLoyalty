@@ -1,7 +1,7 @@
 /**
  * The points card on the Cart and Checkout blocks: a slot fill that shows the card the server rendered
  * (the `card` field of the plugin's Store API cart extension), so the blocks and the classic pages share one template.
- * The card's ticks, slider and checkout Update stay in redeem.js; here their requests are routed through the
+ * The card's ticks, points field and checkout Update stay in redeem.js; here their requests are routed through the
  * cart store, which redraws the card. The totals rows of reward coupons are relabelled with the reward's name.
  *
  * Plain script, no build step and no JSX. Its values, the Store API names included, come from
@@ -74,7 +74,7 @@
     return data && Array.isArray(data.rewards) ? data.rewards : [];
   }
 
-  /** A totals row reads the reward's name, or the slider's label, never the virtual coupon's code. */
+  /** A totals row reads the reward's name, or the flexible discount's label, never the virtual coupon's code. */
   checkout.registerCheckoutFilters("yayloyalty", {
     coupons: function (coupons) {
       if (!Array.isArray(coupons)) {

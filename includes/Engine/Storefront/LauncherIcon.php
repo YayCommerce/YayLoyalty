@@ -6,9 +6,9 @@ defined( 'ABSPATH' ) || exit;
 /** The launcher's inline SVG icons, in currentColor so they follow the button's foreground. */
 final class LauncherIcon {
 
-    /** lucide's Gift, on the launcher button and the panel header: AccountRewardsIcon's, sized for the launcher. */
+    /** lucide's Gift, on the launcher button and the panel header: AccountMyPointsIcon's, sized for the launcher. */
     public static function gift(): string {
-        return AccountRewardsIcon::get( 'gift', 'yl:size-5 yl:shrink-0' );
+        return AccountMyPointsIcon::get( 'gift', 'yl:size-5 yl:shrink-0' );
     }
 
     /** lucide's X, for the panel's close button. */

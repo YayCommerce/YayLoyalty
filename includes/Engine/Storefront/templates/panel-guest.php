@@ -1,6 +1,6 @@
 <?php
 /**
- * Guest panel body: the top card, "How it works" in the Rewards tab's rows, then join and sign in.
+ * Guest panel body: the top card, "How it works" in the My Points tab's rows, then join and sign in.
  * Styled by assets/storefront/account/panel-guest.css.
  *
  * Rates are stated plainly (they are the argument), at the base rate only: a tier multiplier
@@ -9,7 +9,7 @@
  * @var array $view            Launcher::view().
  */
 
-use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
+use YayLoyalty\Engine\Storefront\AccountMyPointsIcon;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\LauncherEarnRules;
 use YayLoyalty\Engine\Storefront\LauncherPayload;
@@ -26,7 +26,7 @@ $yayloyalty_steps            = [];
 
 foreach ( LauncherEarnRules::guest_rows( $view ) as $yayloyalty_row ) {
     $yayloyalty_step         = LauncherEarnRules::list_item( $yayloyalty_row );
-    $yayloyalty_step['icon'] = AccountRewardsIcon::for_step( $yayloyalty_row['trigger'] );
+    $yayloyalty_step['icon'] = AccountMyPointsIcon::for_step( $yayloyalty_row['trigger'] );
 
     if ( CampaignTrigger::SIGNUP === $yayloyalty_row['trigger'] ) {
         $yayloyalty_step['name']  = LauncherCopy::join_free( $yayloyalty_route );
@@ -41,7 +41,7 @@ foreach ( LauncherEarnRules::guest_rows( $view ) as $yayloyalty_row ) {
 
 if ( null !== $view['redeem'] ) {
     $yayloyalty_steps[] = [
-        'icon'  => AccountRewardsIcon::design( 'redeem' ),
+        'icon'  => AccountMyPointsIcon::design( 'redeem' ),
         'name'  => __( 'Redeem & save', 'yayloyalty' ),
         'value' => LauncherCopy::redeem_rate( $view['redeem']['points_per_unit'] ),
     ];

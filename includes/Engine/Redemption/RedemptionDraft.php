@@ -23,7 +23,7 @@ final class RedemptionDraft {
      *
      * @param string $type      LedgerType::REDEEM (negative $points) or LedgerType::REFUND_REDEEM (positive).
      * @param int    $points    Signed.
-     * @param string $qualifier `flexible_discount` for the slider, reward_qualifier() for a reward row.
+     * @param string $qualifier `flexible_discount` for the flexible discount, reward_qualifier() for a reward row.
      */
     public static function of( int $user_id, ?int $order_id, int $redemption_id, string $type, int $points, string $reference_type, int $reference_id, ?string $note = null, string $qualifier = RewardType::FLEXIBLE_DISCOUNT ): LedgerEntry {
         return new LedgerEntry(
@@ -51,10 +51,10 @@ final class RedemptionDraft {
     }
 
     /**
-     * `flexible_discount` for a row of the slider's reward, reward_qualifier() for any other. A null $reward is never
-     * the slider's: neither the built-in nor a reward with redemption rows can be deleted.
+     * `flexible_discount` for a row of the flexible discount's reward, reward_qualifier() for any other. A null $reward is never
+     * the flexible discount's: neither the built-in nor a reward with redemption rows can be deleted.
      */
     public static function qualifier_for( Redemption $row, ?Reward $reward ): string {
-        return RedemptionService::is_slider( $reward ) ? RewardType::FLEXIBLE_DISCOUNT : self::reward_qualifier( $row->get_reward_id() );
+        return RedemptionService::is_flexible_discount( $reward ) ? RewardType::FLEXIBLE_DISCOUNT : self::reward_qualifier( $row->get_reward_id() );
     }
 }

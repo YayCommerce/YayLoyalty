@@ -141,7 +141,7 @@ final class RewardRouteTest extends IntegrationTestCase {
             'POST',
             '/yayloyalty/v1/rewards',
             [
-                'name'   => 'Second slider',
+                'name'   => 'Second flexible discount',
                 'type'   => RewardType::FLEXIBLE_DISCOUNT,
                 'config' => Reward::default_config( RewardType::FLEXIBLE_DISCOUNT ),
             ]

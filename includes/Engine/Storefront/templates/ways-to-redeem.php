@@ -1,6 +1,6 @@
 <?php
 /**
- * "Ways to redeem": the Rewards tab's list, also in the launcher panel and placed by [yayloyalty_ways_to_redeem] and its block.
+ * "Ways to redeem": the My Points tab's list, also in the launcher panel and placed by [yayloyalty_ways_to_redeem] and its block.
  * The points discount, then the offers Pro adds.
  * No stylesheet of its own: the list and its rows are rule-list-item.php and rule-list-item.css.
  *
@@ -8,7 +8,7 @@
  *                                 while the discount reward is not live) and `offers`.
  */
 
-use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
+use YayLoyalty\Engine\Storefront\AccountMyPointsIcon;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\LauncherPayload;
 use YayLoyalty\Helpers\SettingsHelper;
@@ -26,7 +26,7 @@ $yayloyalty_items = [];
 
 if ( null !== $yayloyalty_redeem ) {
     $yayloyalty_items[] = [
-        'icon'  => AccountRewardsIcon::design( 'discount' ),
+        'icon'  => AccountMyPointsIcon::design( 'discount' ),
         'name'  => $yayloyalty_redeem['name'],
         'text'  => LauncherCopy::redeem_limits( $yayloyalty_redeem ),
         'value' => LauncherCopy::redeem_rate( $yayloyalty_redeem['points_per_unit'] ),
@@ -35,7 +35,7 @@ if ( null !== $yayloyalty_redeem ) {
 
 foreach ( $yayloyalty_offers as $yayloyalty_offer ) {
     $yayloyalty_items[] = [
-        'icon'  => AccountRewardsIcon::design( 'offer' ),
+        'icon'  => AccountMyPointsIcon::design( 'offer' ),
         'name'  => $yayloyalty_offer['name'],
         'text'  => $yayloyalty_offer['text'],
         'value' => SettingsHelper::points_text( $yayloyalty_offer['cost'] ),

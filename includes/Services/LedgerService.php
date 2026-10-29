@@ -438,7 +438,7 @@ final class LedgerService {
      *
      * Preconditions: $draft is a REDEEM row with points < 0 and an
      * idempotency key composed by the caller
-     * (`redeem:{user}:order:{order_id}:flexible_discount` for the slider).
+     * (`redeem:{user}:order:{order_id}:flexible_discount` for the flexible discount).
      * `order_id` is optional. Nothing slow or externally fallible may run inside.
      *
      * Returns exactly one of: Outcome::awarded( persisted row ), with

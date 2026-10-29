@@ -3,7 +3,7 @@ namespace YayLoyalty\Engine;
 
 use YayLoyalty\Database\Installer;
 use YayLoyalty\Engine\Expiry\ExpiryRunner;
-use YayLoyalty\Engine\Storefront\AccountRewards;
+use YayLoyalty\Engine\Storefront\AccountMyPoints;
 use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
@@ -98,7 +98,7 @@ class ActDeact {
 
     public static function deactivate() {
         // The next activation flushes the rewrite rules again.
-        delete_option( AccountRewards::OPTION_REWRITE_VERSION );
+        delete_option( AccountMyPoints::OPTION_REWRITE_VERSION );
 
         // Every job in the group, so a build's own jobs stop too; the next request after reactivation schedules them again.
         ExpiryRunner::unschedule_group();

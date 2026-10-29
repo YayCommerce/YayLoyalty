@@ -474,7 +474,7 @@ final class RewardRestController extends AbstractRestController {
                     'description' => sprintf(
                         /* translators: %s: the built-in reward's slug. */
                         __( 'Stable machine key, generated on create and immutable afterwards. Built-in is "%s".', 'yayloyalty' ),
-                        RewardRepository::CART_DISCOUNT_SLUG
+                        RewardRepository::FLEXIBLE_DISCOUNT_SLUG
                     ),
                     'type'        => 'string',
                     'context'     => [ 'view', 'edit' ],

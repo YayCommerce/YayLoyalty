@@ -5,7 +5,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The only mutable state on the quote path, in the WooCommerce session: the points the customer asked to
- * spend on the slider and the reward ids they picked, each set on its own, plus the names of picked rewards the store
+ * spend on the flexible discount and the reward ids they picked, each set on its own, plus the names of picked rewards the store
  * took away, for the card's notice. Never a discount value — that is derived
  * from the current cart on every recalculation — and never a Quote. Every method returns quietly when
  * WooCommerce has no session.

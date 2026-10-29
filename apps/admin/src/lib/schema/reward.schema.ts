@@ -10,7 +10,7 @@ import {
 
 /** Mirrors RewardRestController::define_item_schema(), the source of truth. */
 
-/** Mirrors RewardType::lite_types(), the source of truth. The built-in slider, offered in every build. */
+/** Mirrors RewardType::lite_types(), the source of truth. The built-in flexible discount, offered in every build. */
 export const LITE_REWARD_TYPES = ['flexible_discount'] as const;
 
 /** Mirrors YayLoyaltyPro::add_reward_types(), the source of truth. The catalog types Pro adds. */
@@ -25,7 +25,7 @@ export const ALL_KNOWN_REWARD_TYPES = [...LITE_REWARD_TYPES, ...PRO_REWARD_TYPES
 
 export const rewardTypeSchema = z.enum(ALL_KNOWN_REWARD_TYPES);
 export type RewardType = z.infer<typeof rewardTypeSchema>;
-/** Catalog rewards: every offerable type except the built-in slider, which is looked up by slug, not listed as a template. */
+/** Catalog rewards: every offerable type except the built-in flexible discount, which is looked up by slug, not listed as a template. */
 export type CatalogRewardType = (typeof PRO_REWARD_TYPES)[number];
 
 export function isCatalogRewardType(type: string): type is CatalogRewardType {
@@ -54,7 +54,7 @@ export type RewardRedemptionSummary = z.infer<typeof rewardRedemptionSummarySche
 export const rewardSchema = z.object({
   id: z.number().int(),
   name: z.string(),
-  /** Built-in is RewardRepository::CART_DISCOUNT_SLUG. */
+  /** Built-in is RewardRepository::FLEXIBLE_DISCOUNT_SLUG. */
   slug: z.string(),
   /** Set once when the reward is created (RewardRepository::insert()); never changes. */
   coupon_code: z.string(),
@@ -168,7 +168,7 @@ export const REWARD_CONFIG_SCHEMAS = {
       points_per_currency_unit: z.number().positive(),
       min_points: z.number().int().min(0),
       max_points_per_order: pointsCapSchema,
-      max_percent_of_subtotal: moneySchema,
+      max_percent_of_discountable: moneySchema,
       increment: z.number().int().min(1),
       show_on: z.array(z.enum(['cart', 'checkout'])),
       refund_policy: z.enum(['proportional', 'full', 'none']),

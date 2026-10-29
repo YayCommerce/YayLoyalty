@@ -12,7 +12,7 @@ use YayLoyalty\Models\Reward;
 /** RedeemCard::view(): the card's numbers are Clamp's answers, and the state follows who is asking. */
 final class RedeemCardViewTest extends TestCase {
 
-    /** The seeded slider reward in free input: 100 points per currency unit, minimum 100, step 100. */
+    /** The seeded flexible discount reward in free input: 100 points per currency unit, minimum 100, step 100. */
     private function reward( array $config = [] ): Reward {
         return new Reward(
             9,
@@ -42,14 +42,14 @@ final class RedeemCardViewTest extends TestCase {
 
         $view = RedeemCard::view( 9850, $quote, $ceiling, 0 );
 
-        $this->assertSame( 'slider', $view['state'] );
+        $this->assertSame( 'flexible', $view['state'] );
         $this->assertSame( 0, $view['requested'] );
         $this->assertSame( 0, $view['points'] );
         $this->assertSame( 0.0, $view['value'] );
         $this->assertSame( 9850, $view['balance'] );
         $this->assertArrayNotHasKey( 'worth', $view );
         $this->assertSame( 100, $view['min'] );
-        $this->assertSame( 100, $view['step'] );
+        $this->assertSame( 100, $view['effective_step'] );
         $this->assertSame( 9800, $view['max'] );
         $this->assertSame( 98.0, $view['max_value'] );
         $this->assertSame( 100.0, $view['rate'] );
@@ -64,12 +64,12 @@ final class RedeemCardViewTest extends TestCase {
 
         $view = RedeemCard::view( 50, $quote, $ceiling, 0 );
 
-        $this->assertSame( 'slider', $view['state'] );
+        $this->assertSame( 'flexible', $view['state'] );
         $this->assertSame( 0, $view['max'] );
         $this->assertTrue( $view['is_disabled'] );
     }
 
-    public function test_the_slider_minimum_is_the_first_step_at_or_above_the_reward_minimum(): void {
+    public function test_the_flexible_discount_minimum_is_the_first_step_at_or_above_the_reward_minimum(): void {
         $reward  = $this->reward( [ 'min_points' => 150 ] );
         $ceiling = Clamp::apply( $reward, PHP_INT_MAX, 9850, 300.0, 'USD', 2 );
         $quote   = Clamp::apply( $reward, 0, 9850, 300.0, 'USD', 2 );
@@ -84,7 +84,7 @@ final class RedeemCardViewTest extends TestCase {
 
         $view = RedeemCard::view( 9850, $quote, $ceiling, 5000 );
 
-        $this->assertSame( 'slider', $view['state'] );
+        $this->assertSame( 'flexible', $view['state'] );
         $this->assertSame( 5000, $view['requested'] );
         $this->assertSame( 5000, $view['points'] );
         $this->assertSame( 50.0, $view['value'] );
@@ -112,14 +112,14 @@ final class RedeemCardViewTest extends TestCase {
     }
 
     /** Rewards took the whole balance: the ticked row stays ticked, applies nothing and says why. */
-    public function test_a_ticked_slider_the_rewards_leave_nothing_for_stays_ticked_with_the_balance_note(): void {
+    public function test_a_ticked_flexible_discount_the_rewards_leave_nothing_for_stays_ticked_with_the_balance_note(): void {
         $reward  = $this->reward();
         $ceiling = Clamp::apply( $reward, PHP_INT_MAX, 0, 85.0, 'USD', 2 );
         $quote   = Clamp::apply( $reward, 500, 0, 85.0, 'USD', 2 );
 
         $view = RedeemCard::view( 2000, $quote, $ceiling, 500 );
 
-        $this->assertSame( 'slider', $view['state'] );
+        $this->assertSame( 'flexible', $view['state'] );
         $this->assertSame( 500, $view['requested'] );
         $this->assertSame( 0, $view['points'] );
         $this->assertSame( 0.0, $view['value'] );

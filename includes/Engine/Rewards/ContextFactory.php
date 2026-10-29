@@ -26,7 +26,7 @@ final class ContextFactory {
 
     /**
      * The cart-time Context. Postconditions: balance is the customer row's
-     * `balance` (0 for a guest or a missing row); cart_subtotal = the items'
+     * `balance` (0 for a guest or a missing row); discountable_amount = the items'
      * total minus what every other applied coupon takes, computed here and
      * never read from the cart's stored totals, which are stale while
      * WooCommerce is loading coupons; currency = the one the cart is charged
@@ -41,7 +41,7 @@ final class ContextFactory {
             $user_id,
             null === $customer ? 0 : $customer->get_balance(),
             $points_requested,
-            $this->cart_subtotal( $cart ),
+            $this->discountable_amount( $cart ),
             $currency,
             Dates::now(),
             // TODO(redemption): pass customer facts when the Pro conditions gate lands.
@@ -57,7 +57,7 @@ final class ContextFactory {
      * customer row's balance read under the lock (never re-read here).
      * Postconditions: points_requested = our coupon line's amount turned back
      * into points by Clamp::points_for(), the inverse of the value the cart
-     * quoted; cart_subtotal = the line items' subtotal minus every other
+     * quoted; discountable_amount = the line items' subtotal minus every other
      * coupon line, on the basis prices were entered (tax included or not);
      * at = Dates::now(); the rate saved on the order, else the live one.
      */
@@ -82,7 +82,7 @@ final class ContextFactory {
     /**
      * The commit-time Context for one reward coupon line of the order.
      * Preconditions as for from_order(). Postconditions: points_requested
-     * null (the cost is fixed); cart_subtotal = the line items' subtotal minus
+     * null (the cost is fixed); discountable_amount = the line items' subtotal minus
      * every coupon line that is not a loyalty one; no cart, so the handler
      * answers the cost and the commit checks the line's own discount.
      */
@@ -109,7 +109,7 @@ final class ContextFactory {
         );
     }
 
-    /** What the slider's coupon line takes off the order: line_discount_of() the flexible reward's code. 0 without the line. */
+    /** What the flexible discount's coupon line takes off the order: line_discount_of() the flexible reward's code. 0 without the line. */
     public function points_discount_of( \WC_Order $order, Reward $reward ): float {
         return $this->line_discount_of( $order, $reward->get_coupon_code() );
     }
@@ -152,13 +152,13 @@ final class ContextFactory {
      * ones. Never calls $cart->get_coupons(): that loads our own coupons,
      * whose amounts are quoted from this method.
      */
-    private function cart_subtotal( \WC_Cart $cart ): float {
-        $items_total = 0.0;
+    private function discountable_amount( \WC_Cart $cart ): float {
+        $items_subtotal = 0.0;
 
         // The same basis WC_Discounts::set_items_from_cart() discounts from.
         foreach ( $cart->get_cart() as $item ) {
             if ( isset( $item['data'] ) && $item['data'] instanceof \WC_Product ) {
-                $items_total += (float) $item['data']->get_price() * (float) $item['quantity'];
+                $items_subtotal += (float) $item['data']->get_price() * (float) $item['quantity'];
             }
         }
 
@@ -171,7 +171,7 @@ final class ContextFactory {
         }
 
         if ( empty( $coupons ) ) {
-            return max( 0.0, $items_total );
+            return max( 0.0, $items_subtotal );
         }
 
         $discounts = new \WC_Discounts( $cart );
@@ -180,7 +180,7 @@ final class ContextFactory {
             $discounts->apply_coupon( $coupon );
         }
 
-        return max( 0.0, $items_total - (float) array_sum( $discounts->get_discounts_by_coupon() ) );
+        return max( 0.0, $items_subtotal - (float) array_sum( $discounts->get_discounts_by_coupon() ) );
     }
 
     /**

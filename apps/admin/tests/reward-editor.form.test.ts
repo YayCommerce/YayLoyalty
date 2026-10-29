@@ -130,7 +130,7 @@ describe('rewardFormSchema bounds mirror the PHP specs', () => {
       points_per_currency_unit: 100,
       min_points: 100,
       max_points_per_order: null,
-      max_percent_of_subtotal: null,
+      max_percent_of_discountable: null,
       increment: 100,
       show_on: ['cart', 'checkout'],
       refund_policy: 'proportional',

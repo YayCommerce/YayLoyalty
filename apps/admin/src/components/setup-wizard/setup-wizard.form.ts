@@ -75,10 +75,10 @@ export function toSetupPayload(form: SetupForm): Setup {
     purchase: { points_per_unit: rateFromSpend(form.earnSpend, form.earnPoints) ?? 0 },
     signup: { enabled: form.signupEnabled, points: form.signupPoints },
     review: { enabled: form.reviewEnabled, points: form.reviewPoints },
-    cart_discount: {
+    flexible_discount: {
       points_per_currency_unit: rateFromSpend(form.worthAmount, form.worthPoints) ?? 0,
       min_points: form.minPoints,
-      max_percent_of_subtotal: form.maxPercent >= 100 ? null : form.maxPercent,
+      max_percent_of_discountable: form.maxPercent >= 100 ? null : form.maxPercent,
     },
     brand_color: form.brandColor,
   };

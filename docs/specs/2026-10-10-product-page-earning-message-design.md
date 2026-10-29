@@ -16,7 +16,7 @@ On a single product page, show the shopper how many points buying that product e
 - `LauncherPayload::register_route()` (private today) returns `'account'`, `'checkout'` or null for where a guest can create an account; `LauncherEarnRules::advertise()` reports the signup campaign's points.
 - Design settings: `DesignSchema::get_default_design()` / `schema()` (`includes/Helpers/DesignSchema.php`), read through `DesignHelper::get_design()`, which merges defaults over the stored design. SPA mirrors in `apps/admin/src/lib/schema/design.schema.ts`, with UI in `apps/admin/src/pages/settings/DesignVisibilitySection.tsx` and `DesignStorefrontTextSection.tsx`.
 - Copy helpers live in `includes/Engine/Storefront/LauncherCopy.php` (`earn_rate()`, `storefront_text()`); labels in `SettingsHelper::points_label()` / `points_text()`.
-- Storefront registration in `includes/YayLoyalty.php`: `AccountRewards::register()` runs on every request; `Launcher::register()` only when `! is_admin()`.
+- Storefront registration in `includes/YayLoyalty.php`: `AccountMyPoints::register()` runs on every request; `Launcher::register()` only when `! is_admin()`.
 - WooCommerce's default block template `single-product.html` uses `woocommerce/product-price` and `woocommerce/add-to-cart-form`; the latter renders the classic variations form, so `found_variation` / `reset_data` fire in block and classic themes alike. The Local test site runs Twenty Twenty-Five (block theme), WooCommerce 11.1.2.
 - `RedemptionService::is_available()` is false while the redemption backend is in progress; tiers are not built (`docs/backlog/` `tiers-not-built`).
 
@@ -76,7 +76,7 @@ On a single product page, show the shopper how many points buying that product e
 - `includes/Engine/Storefront/LauncherPayload.php`: `register_route()` becomes `public static`.
 - `includes/Engine/Register/ScriptName.php`: `PRODUCT_EARN_SCRIPT = 'yayloyalty/script/storefront-product-earn'`.
 - `includes/Helpers/DesignSchema.php`: two keys (below).
-- `includes/YayLoyalty.php`: calls `ProductEarnMessage::register()` next to `AccountRewards::register()`, outside the `! is_admin()` block.
+- `includes/YayLoyalty.php`: calls `ProductEarnMessage::register()` next to `AccountMyPoints::register()`, outside the `! is_admin()` block.
 - `apps/admin/src/lib/schema/design.schema.ts`, `DesignVisibilitySection.tsx` (switch "Show on product pages"), `DesignStorefrontTextSection.tsx` (sixth field "Product page earning line") and their i18n strings.
 - `docs/architecture.md`: a Storefront line for `ProductEarnMessage`.
 

@@ -6,7 +6,7 @@
  *      `state` is 'earned' or 'pending'; `line` is LauncherCopy::points_sentence_html(), already escaped.
  */
 
-use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
+use YayLoyalty\Engine\Storefront\AccountMyPointsIcon;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\ThankYouPoints;
 use YayLoyalty\Helpers\SettingsHelper;
@@ -18,7 +18,7 @@ $yayloyalty_class = ThankYouPoints::CSS_CLASS;
 ?>
 <section class="<?php echo esc_attr( $yayloyalty_class . ' ' . $yayloyalty_class . '--' . $yayloyalty_thankyou['state'] ); ?>">
     <div class="<?php echo esc_attr( $yayloyalty_class ); ?>__head">
-        <span class="<?php echo esc_attr( $yayloyalty_class ); ?>__icon"><?php echo wp_kses( AccountRewardsIcon::design( 'gift' ), Kses::svg() ); ?></span>
+        <span class="<?php echo esc_attr( $yayloyalty_class ); ?>__icon"><?php echo wp_kses( AccountMyPointsIcon::design( 'gift' ), Kses::svg() ); ?></span>
         <h2 class="<?php echo esc_attr( $yayloyalty_class ); ?>__title"><?php esc_html_e( 'Rewards', 'yayloyalty' ); ?></h2>
     </div>
     <div class="<?php echo esc_attr( $yayloyalty_class ); ?>__body">

@@ -34,7 +34,7 @@ final class RedemptionRepository extends AbstractRepository {
     }
 
     /**
-     * The slider redemption already written for this order, oldest first, or
+     * The flexible discount redemption already written for this order, oldest first, or
      * null. No unique index backs it: the caller holds the customer lock.
      */
     public function find_by_order( int $order_id, int $reward_id ): ?Redemption {

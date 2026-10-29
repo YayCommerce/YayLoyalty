@@ -26,7 +26,7 @@ defined( 'ABSPATH' ) || exit;
  * Cancel restores twice and un-cancel debits once, because the key has no
  * cycle part: a second un-cancel answers REASON_KEY_SPENT. Rows with a
  * `coupon_id` are not touched; catalog reward rows (no `coupon_id`) follow
- * the same rules as the slider, keyed per reward.
+ * the same rules as the flexible discount, keyed per reward.
  * Never writes an ADJUST row: LedgerRepository::sum_refunded_for() reads
  * one that references a refund as an earn give-back.
  */
@@ -60,7 +60,7 @@ final class Reversal {
     /**
      * Cancel or trash: restores whatever is not restored yet; the row becomes `cancelled`.
      *
-     * @return Outcome[] One per slider redemption row of the order.
+     * @return Outcome[] One per flexible discount redemption row of the order.
      */
     public function cancelled( \WC_Order $order ): array {
         $order_id = (int) $order->get_id();
@@ -77,7 +77,7 @@ final class Reversal {
     /**
      * A refund was created: restores up to what the order's refunds justify so far under the reward's policy, keyed on this refund.
      *
-     * @return Outcome[] One per slider redemption row of the order.
+     * @return Outcome[] One per flexible discount redemption row of the order.
      */
     public function refunded( \WC_Order $order, int $refund_id ): array {
         return $this->settle_each(
@@ -95,7 +95,7 @@ final class Reversal {
      * The `refunded` status. Acts only when no refund object exists: then the order was marked refunded
      * outside WooCommerce's refunds, and the policy decides between everything and nothing. Otherwise the refunds drive it.
      *
-     * @return Outcome[] One per slider redemption row of the order; none when refund objects exist.
+     * @return Outcome[] One per flexible discount redemption row of the order; none when refund objects exist.
      */
     public function refunded_status( \WC_Order $order ): array {
         $order_id = (int) $order->get_id();
@@ -119,7 +119,7 @@ final class Reversal {
      * A refund was deleted: debits the difference between what is restored and what the remaining refunds
      * still justify. The balance may go negative. Nothing once the row is `cancelled`.
      *
-     * @return Outcome[] One per slider redemption row of the order; none when the order is gone.
+     * @return Outcome[] One per flexible discount redemption row of the order; none when the order is gone.
      */
     public function refund_deleted( int $refund_id, int $order_id ): array {
         $order = wc_get_order( $order_id );
@@ -142,7 +142,7 @@ final class Reversal {
      * refunds still justify, all or nothing. A short balance answers Rewards\Result::REASON_INSUFFICIENT_BALANCE
      * and leaves the row `cancelled`.
      *
-     * @return Outcome[] One per slider redemption row of the order.
+     * @return Outcome[] One per flexible discount redemption row of the order.
      */
     public function uncancelled( \WC_Order $order ): array {
         return $this->settle_each(
@@ -155,7 +155,7 @@ final class Reversal {
     }
 
     /**
-     * Runs $event once per slider redemption row of the order, each in its own transaction holding the
+     * Runs $event once per flexible discount redemption row of the order, each in its own transaction holding the
      * customer lock and then the row lock. The lock is on the row's user, not the order's customer:
      * an admin may have reassigned the order. A row that is gone, or whose locked status the event does not
      * act on, answers REASON_NOTHING_TO_MOVE.

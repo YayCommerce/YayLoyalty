@@ -219,7 +219,7 @@ final class ProductEarnMessage {
             '<div class="%1$s" data-default="%2$s"><p class="%1$s__line"><span class="%1$s__icon">%3$s</span><span class="%1$s__text">%4$s</span></p>%5$s</div>',
             esc_attr( self::CSS_CLASS ),
             esc_attr( $sentence ),
-            AccountRewardsIcon::get( 'gift' ),
+            AccountMyPointsIcon::get( 'gift' ),
             $sentence,
             $guest
         );

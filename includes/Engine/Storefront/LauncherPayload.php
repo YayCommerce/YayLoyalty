@@ -27,7 +27,7 @@ final class LauncherPayload {
     /** Extra rows for "Ways to redeem", after the points discount. */
     public const REDEEM_OFFERS_FILTER = 'yayloyalty_launcher_redeem_offers';
 
-    /** A member's points count as expiring soon, for the launcher's dot and the Rewards tab's notice, this many days ahead. */
+    /** A member's points count as expiring soon, for the launcher's dot and the My Points tab's notice, this many days ahead. */
     public const EXPIRING_SOON_DAYS = 30;
 
     /** @var CampaignRepository */
@@ -95,7 +95,7 @@ final class LauncherPayload {
      */
     public function for_balance( array $design, ?int $balance, ?int $left_today = null ): array {
         $now      = Dates::now();
-        $reward   = $this->rewards->find_live_cart_discount( $now );
+        $reward   = $this->rewards->find_live_flexible_discount( $now );
         $redeem   = self::redeem_rule( $reward );
         $register = self::register_route();
         $engine   = $this->engine();
@@ -116,7 +116,7 @@ final class LauncherPayload {
             'estimate_off'      => null === $estimate || null === $redeem ? null : self::worth( $reward, $estimate ),
             'register'          => $register,
             'account_url'       => (string) wc_get_page_permalink( 'myaccount' ),
-            'history_url'       => AccountRewards::history_url(),
+            'history_url'       => AccountMyPoints::history_url(),
             'checkout_url'      => (string) wc_get_checkout_url(),
         ];
     }
@@ -176,7 +176,7 @@ final class LauncherPayload {
      * and the member panel's "Ways to redeem". A limit the merchant left off is null. points_per_unit is per
      * unit of the shopper's currency, through LauncherCopy::converted_rate().
      *
-     * @param Reward|null $reward The reward when it is live (RewardRepository::find_live_cart_discount()).
+     * @param Reward|null $reward The reward when it is live (RewardRepository::find_live_flexible_discount()).
      * @return array{name: string, points_per_unit: float, min_points: int, max_points: ?int, max_percent: ?float, unlock_points: int, unlock_off: ?float}|null
      *         `unlock_points` the smallest balance the discount takes, and `unlock_off` what it takes off: the points card's "Earn N more".
      */
@@ -198,7 +198,7 @@ final class LauncherPayload {
             'points_per_unit' => LauncherCopy::converted_rate( $rate / $currency_rate, $currency_rate ),
             'min_points'      => Clamp::min_of( $reward ),
             'max_points'      => isset( $config['max_points_per_order'] ) ? (int) $config['max_points_per_order'] : null,
-            'max_percent'     => isset( $config['max_percent_of_subtotal'] ) ? (float) $config['max_percent_of_subtotal'] : null,
+            'max_percent'     => isset( $config['max_percent_of_discountable'] ) ? (float) $config['max_percent_of_discountable'] : null,
             'unlock_points'   => $unlock,
             'unlock_off'      => self::worth( $reward, $unlock ),
         ];

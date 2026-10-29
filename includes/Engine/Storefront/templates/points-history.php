@@ -1,15 +1,15 @@
 <?php
 /**
- * "Points history" on the Rewards tab: the CSV link, the filters, the table or its empty state, and the pages.
+ * "Points history" on the My Points tab: the CSV link, the filters, the table or its empty state, and the pages.
  * Styled by assets/storefront/account/points-history.css.
  *
- * @var array $yayloyalty_history AccountRewards::view()'s `history`.
+ * @var array $yayloyalty_history AccountMyPoints::view()'s `history`.
  */
 
 use YayLoyalty\Engine\Storefront\AccountHistoryAjax;
 use YayLoyalty\Engine\Storefront\AccountHistoryCsv;
-use YayLoyalty\Engine\Storefront\AccountRewards;
-use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
+use YayLoyalty\Engine\Storefront\AccountMyPoints;
+use YayLoyalty\Engine\Storefront\AccountMyPointsIcon;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\ShopperActivityRow;
 use YayLoyalty\Helpers\SettingsHelper;
@@ -19,16 +19,16 @@ use YayLoyalty\Utils\Kses;
 defined( 'ABSPATH' ) || exit;
 
 $yayloyalty_label     = SettingsHelper::points_label_plural();
-$yayloyalty_columns   = AccountRewards::column_labels();
+$yayloyalty_columns   = AccountMyPoints::column_labels();
 $yayloyalty_page      = $yayloyalty_history['page'];
 $yayloyalty_filter_on = $yayloyalty_history['filter'];
-$yayloyalty_pages     = (int) ceil( $yayloyalty_history['total'] / AccountRewards::PER_PAGE );
-$yayloyalty_first     = ( $yayloyalty_page - 1 ) * AccountRewards::PER_PAGE + 1;
+$yayloyalty_pages     = (int) ceil( $yayloyalty_history['total'] / AccountMyPoints::PER_PAGE );
+$yayloyalty_first     = ( $yayloyalty_page - 1 ) * AccountMyPoints::PER_PAGE + 1;
 $yayloyalty_last      = $yayloyalty_first + count( $yayloyalty_history['rows'] ) - 1;
 $yayloyalty_has_rows  = 'all' !== $yayloyalty_filter_on || $yayloyalty_history['total'] > 0;
-$yayloyalty_download  = AccountRewardsIcon::get( 'download' ) . esc_html__( 'Export CSV', 'yayloyalty' );
+$yayloyalty_download  = AccountMyPointsIcon::get( 'download' ) . esc_html__( 'Export CSV', 'yayloyalty' );
 ?>
-<section class="yayloyalty-account__section" id="<?php echo esc_attr( AccountRewards::HISTORY_ANCHOR ); ?>" data-endpoint="<?php echo esc_url( AccountHistoryAjax::url() ); ?>" data-page="<?php echo esc_attr( $yayloyalty_page ); ?>" data-filter="<?php echo esc_attr( $yayloyalty_filter_on ); ?>">
+<section class="yayloyalty-account__section" id="<?php echo esc_attr( AccountMyPoints::HISTORY_ANCHOR ); ?>" data-endpoint="<?php echo esc_url( AccountHistoryAjax::url() ); ?>" data-page="<?php echo esc_attr( $yayloyalty_page ); ?>" data-filter="<?php echo esc_attr( $yayloyalty_filter_on ); ?>">
     <div class="yayloyalty-account__section-head">
         <h3 class="yayloyalty-account__title">
             <?php
@@ -44,8 +44,8 @@ $yayloyalty_download  = AccountRewardsIcon::get( 'download' ) . esc_html__( 'Exp
     </div>
 
     <nav class="yayloyalty-account__tabs" aria-label="<?php esc_attr_e( 'Filter history', 'yayloyalty' ); ?>">
-        <?php foreach ( AccountRewards::filter_labels() as $yayloyalty_filter => $yayloyalty_filter_label ) : ?>
-            <a class="yayloyalty-account__tab" href="<?php echo esc_url( AccountRewards::url( 1, $yayloyalty_filter ) ); ?>" data-page="1" data-filter="<?php echo esc_attr( $yayloyalty_filter ); ?>"<?php echo $yayloyalty_filter === $yayloyalty_filter_on ? ' aria-current="page"' : ''; ?>><?php echo esc_html( $yayloyalty_filter_label ); ?></a>
+        <?php foreach ( AccountMyPoints::filter_labels() as $yayloyalty_filter => $yayloyalty_filter_label ) : ?>
+            <a class="yayloyalty-account__tab" href="<?php echo esc_url( AccountMyPoints::url( 1, $yayloyalty_filter ) ); ?>" data-page="1" data-filter="<?php echo esc_attr( $yayloyalty_filter ); ?>"<?php echo $yayloyalty_filter === $yayloyalty_filter_on ? ' aria-current="page"' : ''; ?>><?php echo esc_html( $yayloyalty_filter_label ); ?></a>
         <?php endforeach; ?>
     </nav>
 
@@ -64,7 +64,7 @@ $yayloyalty_download  = AccountRewardsIcon::get( 'download' ) . esc_html__( 'Exp
         $yayloyalty_empty = $yayloyalty_empty[ $yayloyalty_filter_on ] ?? $yayloyalty_empty['all'];
         ?>
         <div class="yayloyalty-account__empty">
-            <span class="yayloyalty-account__empty-icon"><?php echo wp_kses( AccountRewardsIcon::empty_history(), Kses::svg() ); ?></span>
+            <span class="yayloyalty-account__empty-icon"><?php echo wp_kses( AccountMyPointsIcon::empty_history(), Kses::svg() ); ?></span>
             <p class="yayloyalty-account__empty-title"><?php echo esc_html( sprintf( $yayloyalty_empty[0], $yayloyalty_label ) ); ?></p>
             <p class="yayloyalty-account__empty-text">
                 <?php echo esc_html( sprintf( $yayloyalty_empty[1], $yayloyalty_label ) ); ?>

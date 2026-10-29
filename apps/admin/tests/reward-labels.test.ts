@@ -32,7 +32,7 @@ describe('typeLabel', () => {
 });
 
 describe('costLabel', () => {
-  it('is "any" for the slider, whose customer picks the amount', () => {
+  it('is "any" for the flexible discount, whose customer picks the amount', () => {
     expect(costLabel(reward({ type: 'flexible_discount', cost_points: null }))).toBe('any');
   });
 
@@ -42,7 +42,7 @@ describe('costLabel', () => {
 });
 
 describe('rewardSubtitle', () => {
-  it('is the fixed slider copy for flexible_discount', () => {
+  it('is the fixed flexible discount copy for flexible_discount', () => {
     expect(rewardSubtitle(reward({ type: 'flexible_discount' }))).toBe(
       'The customer chooses how many points to use at checkout',
     );
@@ -60,10 +60,10 @@ describe('rewardSubtitle', () => {
 });
 
 describe('availabilityLabel', () => {
-  it('reads the slider limits from config, not conditions', () => {
+  it('reads the flexible discount limits from config, not conditions', () => {
     expect(
       availabilityLabel(
-        reward({ type: 'flexible_discount', config: { min_points: 100, max_percent_of_subtotal: null } }),
+        reward({ type: 'flexible_discount', config: { min_points: 100, max_percent_of_discountable: null } }),
       ),
     ).toBe('100 pts minimum · up to 100% of the order');
   });

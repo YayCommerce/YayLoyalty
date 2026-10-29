@@ -140,7 +140,7 @@ final class LauncherEarnRules {
 
         /**
          * Ways to earn rows for the current viewer, a guest's included. A row's optional `url` links its label,
-         * and its optional `description` is the line under it on the Rewards tab.
+         * and its optional `description` is the line under it on the My Points tab.
          * Internal Pro seam, not a public API.
          *
          * @param array<int, array{trigger: string, label: string, value: string, description?: string, url?: string}> $rows
@@ -206,7 +206,7 @@ final class LauncherEarnRules {
      */
     public static function list_item( array $row ): array {
         return [
-            'icon'  => AccountRewardsIcon::for_trigger( $row['trigger'] ),
+            'icon'  => AccountMyPointsIcon::for_trigger( $row['trigger'] ),
             'name'  => $row['label'],
             'url'   => (string) ( $row['url'] ?? '' ),
             'text'  => (string) ( $row['description'] ?? '' ),

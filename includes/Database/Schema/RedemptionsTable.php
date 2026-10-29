@@ -4,9 +4,9 @@ namespace YayLoyalty\Database\Schema;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * yayloyalty_redemptions: one row per reward claim. The slider's double-debit guard is the ledger's
+ * yayloyalty_redemptions: one row per reward claim. The flexible discount's double-debit guard is the ledger's
  * idempotency key, not an index here, so one order can carry several rows of one reward.
- * uk_coupon guards catalog coupons: coupon_id is NULL for the slider, so slider rows never collide.
+ * uk_coupon guards catalog coupons: coupon_id is NULL for the flexible discount, so flexible discount rows never collide.
  */
 final class RedemptionsTable extends AbstractTableSchema {
 

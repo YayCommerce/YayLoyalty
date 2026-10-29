@@ -4,10 +4,10 @@
  * Styled by assets/storefront/account/rule-list-item.css.
  *
  * @var array{icon: string, name: string, url?: string, text?: string, value: string, tone?: string} $yayloyalty_item
- *      `icon` an AccountRewardsIcon SVG; `url` and `text` missing or '' for none; `tone` 'positive' to colour the value.
+ *      `icon` an AccountMyPointsIcon SVG; `url` and `text` missing or '' for none; `tone` 'positive' to colour the value.
  */
 
-use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
+use YayLoyalty\Engine\Storefront\AccountMyPointsIcon;
 use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
@@ -22,7 +22,7 @@ $yayloyalty_item_tone = 'positive' === ( $yayloyalty_item['tone'] ?? '' ) ? ' ya
     <span class="yayloyalty-account__item-icon"><?php echo wp_kses( $yayloyalty_item['icon'], Kses::svg() ); ?></span>
     <span class="yayloyalty-account__item-body">
         <?php if ( '' !== $yayloyalty_item['url'] ) : ?>
-            <a class="yayloyalty-account__item-name" href="<?php echo esc_url( $yayloyalty_item['url'] ); ?>"><?php echo esc_html( $yayloyalty_item['name'] ); ?><?php echo wp_kses( AccountRewardsIcon::get( 'external' ), Kses::svg() ); ?></a>
+            <a class="yayloyalty-account__item-name" href="<?php echo esc_url( $yayloyalty_item['url'] ); ?>"><?php echo esc_html( $yayloyalty_item['name'] ); ?><?php echo wp_kses( AccountMyPointsIcon::get( 'external' ), Kses::svg() ); ?></a>
         <?php else : ?>
             <span class="yayloyalty-account__item-name"><?php echo esc_html( $yayloyalty_item['name'] ); ?></span>
         <?php endif; ?>

@@ -96,8 +96,8 @@ export function FlexibleDiscountFields({
             min={1}
             max={100}
             isAllowed={({ floatValue }) => floatValue === undefined || floatValue <= 100}
-            value={value.max_percent_of_subtotal ?? 100}
-            onValueChange={(percent) => onChange({ max_percent_of_subtotal: percent < 100 ? percent : null })}
+            value={value.max_percent_of_discountable ?? 100}
+            onValueChange={(percent) => onChange({ max_percent_of_discountable: percent < 100 ? percent : null })}
           >
             <NumberInputInput />
             <NumberInputUnit unit="%" />
