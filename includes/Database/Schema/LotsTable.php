@@ -8,7 +8,7 @@ defined( 'ABSPATH' ) || exit;
  * to the part of the row above zero. `remaining` is the only mutable counter. Invariant: after every
  * committed LedgerService write, a user's SUM(remaining) over `open` lots equals max(0, balance).
  * Only Services\LotService writes it, and only LedgerService calls LotService, inside its transaction.
- * `expires_at` is set only in batch expiry. `earned_at` is the ledger row's created_at, the earned date.
+ * `expires_at` is set only in batch expiry. `created_at` is the ledger row's, the earned date.
  * `reminded_at` is the expiry job's own: Engine\Expiry\ExpiryReminders sets it when a reminder announces
  * the lot, and a restamp that moves the lot's date clears it.
  */
@@ -30,7 +30,7 @@ final class LotsTable extends AbstractTableSchema {
             expires_at datetime DEFAULT NULL,
             reminded_at datetime DEFAULT NULL,
             status varchar(10) NOT NULL,
-            earned_at datetime NOT NULL,
+            created_at datetime NOT NULL,
             PRIMARY KEY  (id),
             UNIQUE KEY uniq_ledger_id (ledger_id),
             KEY idx_user_status (user_id,status,id),
@@ -39,7 +39,7 @@ final class LotsTable extends AbstractTableSchema {
     }
 
     public function expected_columns(): array {
-        return [ 'id', 'ledger_id', 'user_id', 'points', 'remaining', 'expires_at', 'reminded_at', 'status', 'earned_at' ];
+        return [ 'id', 'ledger_id', 'user_id', 'points', 'remaining', 'expires_at', 'reminded_at', 'status', 'created_at' ];
     }
 
     public function expected_indexes(): array {

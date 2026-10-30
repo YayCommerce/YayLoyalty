@@ -46,7 +46,7 @@ class LotRepository {
                 'remaining'  => $remaining,
                 'expires_at' => $expires_at,
                 'status'     => LotStatus::OPEN,
-                'earned_at'  => $earned_at,
+                'created_at' => $earned_at,
             ],
             [ '%d', '%d', '%d', '%d', '%s', '%s', '%s' ]
         );
@@ -61,7 +61,7 @@ class LotRepository {
     /**
      * A user's open lots in spend order.
      *
-     * @param string $order 'ASC' for oldest first, 'DESC' for newest first, by earned_at then id.
+     * @param string $order 'ASC' for oldest first, 'DESC' for newest first, by created_at then id.
      * @return array<int, array{id: int, ledger_id: int, remaining: int, expires_at: ?string}>
      */
     public function open_lots( int $user_id, string $order ): array {
@@ -73,7 +73,7 @@ class LotRepository {
         $rows = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT id, ledger_id, remaining, expires_at FROM `' . esc_sql( $this->table() ) . "`
-                 WHERE user_id = %d AND status = %s ORDER BY earned_at {$direction}, id {$direction}",
+                 WHERE user_id = %d AND status = %s ORDER BY created_at {$direction}, id {$direction}",
                 $user_id,
                 LotStatus::OPEN
             ),
@@ -169,7 +169,7 @@ class LotRepository {
 
         $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
-                'SELECT l.earned_at, l.expires_at
+                'SELECT l.created_at AS earned_at, l.expires_at
                  FROM `' . esc_sql( $this->allocations_table() ) . '` a
                  JOIN `' . esc_sql( $this->table() ) . '` l ON l.id = a.lot_id
                  WHERE a.ledger_id = %d ORDER BY a.id LIMIT 1',
@@ -265,8 +265,8 @@ class LotRepository {
 
         $new_date        = 'IF(
                 %d = 1 OR expires_at IS NULL,
-                GREATEST(DATE_ADD(earned_at, INTERVAL %d MONTH), CAST(%s AS DATETIME), COALESCE(expires_at, CAST(%s AS DATETIME))),
-                DATE_ADD(earned_at, INTERVAL %d MONTH)
+                GREATEST(DATE_ADD(created_at, INTERVAL %d MONTH), CAST(%s AS DATETIME), COALESCE(expires_at, CAST(%s AS DATETIME))),
+                DATE_ADD(created_at, INTERVAL %d MONTH)
             )';
         $new_date_values = [ (int) $keep, $months, $floor, $floor, $months ];
 
