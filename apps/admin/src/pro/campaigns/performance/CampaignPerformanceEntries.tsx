@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { parseWPCurrency, parseWPDate, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatWPCurrency, formatWPDate, formatWPTime, utcToDate } from '@/lib/helpers/format.helper';
+import { formatCount, formatPoints } from '@/lib/helpers/points.helper';
 import type { CampaignPerformanceEntry, CampaignPerformanceTrigger } from '@/lib/schema/campaign-performance.schema';
 import { cn } from '@/lib/utils';
 import { useDebouncedSearchCommit } from '@/hooks/useDebouncedSearchCommit';
@@ -57,7 +57,7 @@ function renderCell(column: ColumnKey, entry: CampaignPerformanceEntry): ReactNo
     case 'customer':
       return entry.customer_name;
     case 'subtotal':
-      return entry.subtotal === null ? '—' : parseWPCurrency(entry.subtotal);
+      return entry.subtotal === null ? '—' : formatWPCurrency(entry.subtotal);
     case 'points':
       return <span className="font-semibold tabular-nums">{formatPoints(entry.points)}</span>;
     case 'when': {
@@ -67,8 +67,8 @@ function renderCell(column: ColumnKey, entry: CampaignPerformanceEntry): ReactNo
           {sprintf(
             /* translators: 1: date, 2: time. */
             __('%1$s, %2$s', 'yayloyalty'),
-            parseWPDate(instant),
-            parseWPTime(instant),
+            formatWPDate(instant),
+            formatWPTime(instant),
           )}
         </span>
       );
@@ -124,7 +124,7 @@ export function CampaignPerformanceEntries({
             {sprintf(
               /* translators: %s: total number of entries. */
               __('%s in total', 'yayloyalty'),
-              formatPoints(entriesTotal),
+              formatCount(entriesTotal),
             )}
           </p>
         </div>

@@ -1,7 +1,7 @@
 import { __, sprintf } from '@wordpress/i18n';
 
-import { parseWPCurrency } from '@/lib/helpers/format.helper';
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatWPCurrency } from '@/lib/helpers/format.helper';
+import { formatCount, formatPoints } from '@/lib/helpers/points.helper';
 import type { CampaignPerformance, CampaignPerformanceTrigger } from '@/lib/schema/campaign-performance.schema';
 import { PointsValue } from '@/components/ui/custom/points-value';
 import { StatTile } from '@/components/ui/custom/stat-tile';
@@ -25,7 +25,7 @@ function ordersSubline(totals: Totals, hasData: boolean): string {
   return sprintf(
     /* translators: %s: total number of completed orders the store has ever had. */
     __('of %s completed orders', 'yayloyalty'),
-    formatPoints(totals.orders_count_all_time),
+    formatCount(totals.orders_count_all_time),
   );
 }
 
@@ -40,7 +40,7 @@ function averagePerOrderSubline(totals: Totals): string {
   return sprintf(
     /* translators: %s: the average order subtotal, formatted as money. */
     __('points · %s average order', 'yayloyalty'),
-    parseWPCurrency(totals.avg_order_subtotal),
+    formatWPCurrency(totals.avg_order_subtotal),
   );
 }
 
@@ -67,14 +67,14 @@ export function CampaignPerformanceTiles({
       {trigger === 'purchase' && (
         <StatTile
           label={__('Orders affected', 'yayloyalty')}
-          value={formatPoints(totals.orders_affected ?? 0)}
+          value={formatCount(totals.orders_affected ?? 0)}
           subline={ordersSubline(totals, hasData)}
         />
       )}
       {trigger !== 'purchase' && (
         <StatTile
           label={__('Customers earned', 'yayloyalty')}
-          value={formatPoints(totals.customers_earned_count ?? 0)}
+          value={formatCount(totals.customers_earned_count ?? 0)}
           subline={hasData ? __('earned points from this campaign', 'yayloyalty') : __('none yet', 'yayloyalty')}
         />
       )}

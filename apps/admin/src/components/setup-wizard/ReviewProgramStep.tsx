@@ -1,6 +1,6 @@
 import { __, sprintf } from '@wordpress/i18n';
 
-import { parseWPCurrency } from '@/lib/helpers/format.helper';
+import { formatWPCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import type { WizardStep, WizardStepProps } from './setup-wizard.form';
 import { WizardSection, WizardStepHeading } from './WizardStepParts';
@@ -25,7 +25,7 @@ export function ReviewProgramStep({ form, onEdit }: ReviewProgramStepProps) {
       value: sprintf(
         __('%1$s points per %2$s spent', 'yayloyalty'),
         formatPoints(v.earnPoints),
-        parseWPCurrency(v.earnSpend),
+        formatWPCurrency(v.earnSpend),
       ),
       step: 2,
     },
@@ -51,7 +51,7 @@ export function ReviewProgramStep({ form, onEdit }: ReviewProgramStepProps) {
       value: sprintf(
         __('%1$s points = %2$s off', 'yayloyalty'),
         formatPoints(v.worthPoints),
-        parseWPCurrency(v.worthAmount),
+        formatWPCurrency(v.worthAmount),
       ),
       step: 3,
     },

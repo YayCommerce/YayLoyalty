@@ -85,7 +85,7 @@ describe('resolveRewardsScreen', () => {
 
     const screen = resolveRewardsScreen([builtin]);
 
-    expect(screen.isInitCase).toBe(true);
+    expect(screen.hasNoCatalogRewards).toBe(true);
     expect(screen.catalogRows).toHaveLength(0);
     expect(screen.rows).toEqual([builtin]);
   });
@@ -96,7 +96,7 @@ describe('resolveRewardsScreen', () => {
 
     const screen = resolveRewardsScreen([catalogReward, builtin]);
 
-    expect(screen.isInitCase).toBe(false);
+    expect(screen.hasNoCatalogRewards).toBe(false);
     expect(screen.catalogRows).toEqual([catalogReward]);
   });
 
@@ -118,7 +118,7 @@ describe('resolveRewardsScreen', () => {
     expect(screen.rows).toEqual([builtin]);
     expect(screen.catalogRows).toHaveLength(0);
     // An archived reward is not a reason to show the empty state; it once had a catalog.
-    expect(screen.isInitCase).toBe(true);
+    expect(screen.hasNoCatalogRewards).toBe(true);
   });
 
   it('collects archived rewards, in display order, for the Archived view', () => {

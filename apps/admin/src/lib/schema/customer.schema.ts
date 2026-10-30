@@ -161,7 +161,7 @@ export type AdjustPointsPreview = z.infer<typeof adjustPointsPreviewSchema>;
 
 /**
  * `filters` only for "select all matching" (a ticked list knows its own
- * count). Typed structurally, not as `RowFilters`, so this lib-level module
+ * count). Typed structurally, not as `CustomerListFilters`, so this lib-level module
  * never imports from `pages/customers/`.
  */
 export type AdjustPointsPreviewInput = {

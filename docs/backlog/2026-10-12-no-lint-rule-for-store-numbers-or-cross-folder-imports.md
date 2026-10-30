@@ -11,7 +11,7 @@
 `apps/admin/eslint.config.js` sets no rule for either convention:
 
 - [docs/conventions.md § Money](../conventions.md) says numbers use the store's separators through `formatStoreNumber`, `formatStoreDecimal`, `formatPercent` or `formatPoints` (`apps/admin/src/lib/helpers/format.helper.ts`), never `toLocaleString()`. The only remaining calls are in vendored UI kit files: `formatMonthDropdown` in `apps/admin/src/components/ui/calendar.tsx`, and the tooltip value in `apps/admin/src/components/ui/chart.tsx`.
-- `.claude/rules/react-admin.md` says imports are relative inside a page or Pro feature folder, and use `@/` for anything outside it. Climbing imports inside one page are allowed: `AdjustPointsBulkPanels.tsx` imports `'../../customers-page.filter-rows'` within `apps/admin/src/pages/customers/`.
+- `.claude/rules/react-admin.md` says imports are relative inside a page or Pro feature folder, and use `@/` for anything outside it. Climbing imports inside one page are allowed: `AdjustPointsBulkPanels.tsx` imports `'../../customers-page.filters'` within `apps/admin/src/pages/customers/`.
 
 ## Why it matters
 

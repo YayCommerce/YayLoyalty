@@ -72,7 +72,7 @@ export function getManagerRouter() {
           element: guarded(CAP.MANAGE_CAMPAIGNS, <CampaignAddPage />),
         },
         {
-          path: 'campaigns/new/:templateId',
+          path: 'campaigns/new/:trigger',
           element: guarded(CAP.MANAGE_CAMPAIGNS, <CampaignCreatePage />),
         },
         {

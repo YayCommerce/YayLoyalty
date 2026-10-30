@@ -1,7 +1,7 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { parseWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
-import { formatPoints, spendPairFromRate } from '@/lib/helpers/points.helper';
+import { formatWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
+import { formatPoints, ratePair } from '@/lib/helpers/points.helper';
 import { MIN_BELOW_INCREMENT_MESSAGE, RedemptionMode, RewardConfigOf } from '@/lib/schema/reward.schema';
 import { AMOUNT_INPUT_WIDTH, OptionalCountInput, PointsInput } from '@/components/ui/custom/amount-inputs';
 import { ConfigField } from '@/components/ui/custom/config-field';
@@ -45,7 +45,7 @@ export function FlexibleDiscountFields({
             {sprintf(
               /* translators: 1: one unit of the store currency, formatted; 2: the site's currency code, e.g. USD. */
               __('= %1$s (%2$s) off', 'yayloyalty'),
-              parseWPCurrency(1),
+              formatWPCurrency(1),
               currency,
             )}
           </span>
@@ -167,9 +167,9 @@ function RadioChoice({ value, label, description }: { value: string; label: stri
 
 /** What points are worth at a rate, as a whole-points pair and 100 times it: "1 point = 1,000 ₫ off · 100 points = 100,000 ₫ off". */
 function pointsWorth(rate: number): string {
-  const pair = spendPairFromRate(rate);
+  const pair = ratePair(rate);
   // A rate with no whole pair reads as what 1 point buys, as the storefront shows it.
-  const { points, spend } = Number.isInteger(pair.points) ? pair : { points: 1, spend: 1 / rate };
+  const { points, amount } = Number.isInteger(pair.points) ? pair : { points: 1, amount: 1 / rate };
 
   return [1, 100]
     .map((times) =>
@@ -177,7 +177,7 @@ function pointsWorth(rate: number): string {
         /* translators: 1: a points amount, formatted; 2: the discount it buys, formatted in the store currency. */
         _n('%1$s point = %2$s off', '%1$s points = %2$s off', points * times, 'yayloyalty'),
         formatPoints(points * times),
-        parseWPCurrency(spend * times),
+        formatWPCurrency(amount * times),
       ),
     )
     .join(' · ');

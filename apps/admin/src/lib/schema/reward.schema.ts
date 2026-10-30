@@ -1,12 +1,7 @@
 import { z } from 'zod';
 import { __ } from '@wordpress/i18n';
 
-import {
-  campaignDeleteResponseSchema,
-  CampaignStatus,
-  campaignStatusSchema,
-  resolveCampaignDisplayStatus,
-} from '@/lib/schema/campaign.schema';
+import { deleteResponseSchema, resolveDisplayStatus, Status, statusSchema } from '@/lib/schema/campaign.schema';
 
 /** Mirrors RewardRestController::define_item_schema(), the source of truth. */
 
@@ -33,9 +28,9 @@ export function isCatalogRewardType(type: string): type is CatalogRewardType {
 }
 
 /** Reuses the shared Status vocabulary and display-status resolver: rewards.status follows the same rules as campaigns.status (Enums\Status on the PHP side). */
-export const rewardStatusSchema = campaignStatusSchema;
-export type RewardStatus = CampaignStatus;
-export const resolveRewardDisplayStatus = resolveCampaignDisplayStatus;
+export const rewardStatusSchema = statusSchema;
+export type RewardStatus = Status;
+export const resolveRewardDisplayStatus = resolveDisplayStatus;
 
 /** Claim figures from RedemptionRepository::summary_by_rewards(); zeros and nulls for a reward with no claims. */
 export const rewardRedemptionSummarySchema = z.object({
@@ -82,7 +77,7 @@ export const rewardSchema = z.object({
 export type Reward = z.infer<typeof rewardSchema>;
 
 /** Same `{ deleted, id }` body the campaigns DELETE answers. */
-export const rewardDeleteResponseSchema = campaignDeleteResponseSchema;
+export const rewardDeleteResponseSchema = deleteResponseSchema;
 
 /** App-side list params; reward.api.ts maps them to the wire. */
 export const rewardListParamsSchema = z.object({
@@ -141,6 +136,8 @@ export type RewardUpdateInput = z.infer<typeof rewardFieldsSchema>;
 export type RewardCreateInput = RewardUpdateInput & { type: CatalogRewardType };
 
 const moneySchema = z.number().min(0).nullable();
+/** A percent of the order; null is no cap. */
+const percentCapSchema = z.number().min(0).nullable();
 /** A cap: null is no cap, and a set cap is above 0 (the PHP spec's `exclusive_min: 0`). */
 const moneyCapSchema = z.number().positive().nullable();
 const couponExpiryDaysSchema = z.number().int().min(1).nullable();
@@ -168,7 +165,7 @@ export const REWARD_CONFIG_SCHEMAS = {
       points_per_currency_unit: z.number().positive(),
       min_points: z.number().int().min(0),
       max_points_per_order: pointsCapSchema,
-      max_percent_of_discountable: moneySchema,
+      max_percent_of_discountable: percentCapSchema,
       increment: z.number().int().min(1),
       show_on: z.array(z.enum(['cart', 'checkout'])),
       refund_policy: z.enum(['proportional', 'full', 'none']),

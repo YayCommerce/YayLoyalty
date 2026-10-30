@@ -182,7 +182,7 @@ final class CustomerSegmentsHelper {
 
     /**
      * Whitelists and coerces; always returns every key so the SPA reads a
-     * complete RowFilters patch. is_scalar() guards the cast: the REST arg is
+     * complete CustomerListFilters patch. is_scalar() guards the cast: the REST arg is
      * an open object, so a value can arrive as an array.
      *
      * @param array<string, mixed> $filters

@@ -16,8 +16,8 @@ import type {
   Campaign,
   CampaignCreateInput,
   CampaignListParams,
-  CampaignStatus,
   CampaignUpdateInput,
+  Status,
 } from '@/lib/schema/campaign.schema';
 
 export const CAMPAIGN_QUERIES = {
@@ -77,7 +77,7 @@ export function useUpdateCampaignStatusMutation(id: number) {
 
   return useMutation({
     mutationKey: ['campaign', 'status', id],
-    mutationFn: (status: CampaignStatus) => updateCampaignStatus(id, status),
+    mutationFn: (status: Status) => updateCampaignStatus(id, status),
     // The response is the decorated row, the list's own shape, and a restore's new top priority moves no other row.
     onSuccess: (saved) => {
       queryClient.setQueryData(CAMPAIGN_QUERIES.detail(id).queryKey, saved);
@@ -135,7 +135,7 @@ export function useDeleteCampaignMutation(id: number) {
 
 /** What one bulk action writes: a status PUT per entry in `statuses`, a DELETE per id in `deletes`. */
 export interface CampaignBulkWrites {
-  statuses: { id: number; status: CampaignStatus }[];
+  statuses: { id: number; status: Status }[];
   deletes: number[];
 }
 
@@ -150,7 +150,7 @@ export function useBulkCampaignWritesMutation() {
   return useMutation({
     mutationKey: ['campaign', 'bulk'],
     mutationFn: async ({ statuses, deletes }: CampaignBulkWrites) => {
-      const writes: ({ id: number; status: CampaignStatus } | { id: number; status?: never })[] = [
+      const writes: ({ id: number; status: Status } | { id: number; status?: never })[] = [
         ...statuses,
         ...deletes.map((id) => ({ id })),
       ];

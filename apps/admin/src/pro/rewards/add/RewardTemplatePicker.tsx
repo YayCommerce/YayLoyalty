@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BackLink } from '@/components/ui/custom/back-link';
 import PageLayout from '@/components/layout/PageLayout';
 import { templateExample } from '../editor/reward-editor.form';
-import { REWARD_TEMPLATE_ORDER, templateDescription, templateTitle } from '../reward-labels';
+import { CREATABLE_REWARD_TYPES, templateDescription, templateTitle } from '../reward-labels';
 
 /**
  * "Add a reward" chooser: one card per catalog type, each opening the editor
@@ -29,7 +29,7 @@ export function RewardTemplatePicker() {
         )}
       >
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-          {REWARD_TEMPLATE_ORDER.map((type) => (
+          {CREATABLE_REWARD_TYPES.map((type) => (
             <RewardTemplateCard key={type} type={type} onSelect={() => navigate(`/rewards/new/${type}`)} />
           ))}
         </div>

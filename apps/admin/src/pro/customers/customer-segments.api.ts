@@ -1,15 +1,15 @@
 import { z } from 'zod';
 
 import { api } from '@/lib/api/api';
-import { BALANCE_RANGE_OPTIONS, EXPIRING_SOON_OPTIONS } from '@/pages/customers/customers-page.filter-rows';
+import { BALANCE_RANGE_OPTIONS, EXPIRING_SOON_OPTIONS } from '@/pages/customers/customers-page.filters';
 
 /**
  * Mirrors YayLoyalty\Pro\Helpers\CustomerSegmentsHelper::FILTER_SCHEMA, the source of truth.
  * Client for POST/DELETE /customers/segments. The two converters below are the one place the
- * wire shape meets the app's camelCase RowFilters.
+ * wire shape meets the app's camelCase CustomerListFilters.
  */
 
-/** Keeps the value union, not `string`, so SavedSegment['filters'] is assignable to RowFilters. */
+/** Keeps the value union, not `string`, so SavedSegment['filters'] is assignable to CustomerListFilters. */
 function enumOfOptions<T extends string>(options: readonly { value: T }[]) {
   return z.enum(options.map((option) => option.value) as [T, ...T[]]);
 }

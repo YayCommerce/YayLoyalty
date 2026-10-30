@@ -1,4 +1,4 @@
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatCount } from '@/lib/helpers/points.helper';
 import type { Customer } from '@/lib/schema/customer.schema';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProGate } from '@/components/pro/ProGate';
@@ -36,7 +36,7 @@ function DrawerTab({
         <ProGate inline />
       ) : (
         <span className="text-muted-foreground group-data-[state=active]:text-primary text-xs font-normal tabular-nums">
-          {formatPoints(count)}
+          {formatCount(count)}
         </span>
       )}
     </TabsTrigger>

@@ -5,14 +5,14 @@ import { useAdjustPointsPreviewQuery, useCustomerQuery } from '@/lib/queries/cus
 import type { AdjustPointsPreviewInput, CustomerListRow } from '@/lib/schema/customer.schema';
 import { Card, CardContent } from '@/components/ui/card';
 import { useCustomersBulkActions } from '../customers-page.bulk-actions';
-import { DEFAULT_ROW_FILTERS, type RowFilters } from '../customers-page.filter-rows';
 import {
   countActiveFilters,
   patchForSuggestion,
   type FilterDropSuggestion,
 } from '../customers-page.filter-suggestions';
+import { DEFAULT_CUSTOMER_LIST_FILTERS, type CustomerListFilters } from '../customers-page.filters';
 import { useCustomerRowSelection } from '../customers-page.selection';
-import type { SortDirection, SortKey } from '../customers-page.sort-rows';
+import type { SortDirection, SortKey } from '../customers-page.sort';
 import { CustomersAdjustPointsDialog } from './CustomersAdjustPointsDialog';
 import { CustomersBulkActionBar } from './CustomersBulkActionBar';
 import { CustomersFilterBar } from './CustomersFilterBar';
@@ -47,11 +47,11 @@ export function CustomersScreen({
     suggestions: FilterDropSuggestion[];
   };
   filters: {
-    value: RowFilters;
-    onChange: (patch: Partial<RowFilters>) => void;
+    value: CustomerListFilters;
+    onChange: (patch: Partial<CustomerListFilters>) => void;
   };
   /** The committed (debounced) filters the current list reflects; bulk actions and selection reset key off this. */
-  queryFilters: RowFilters;
+  queryFilters: CustomerListFilters;
   sort: {
     by: SortKey;
     dir: SortDirection;
@@ -136,7 +136,7 @@ export function CustomersScreen({
                   activeCount={countActiveFilters(filters)}
                   suggestions={suggestions}
                   onUseSuggestion={(suggestion) => onFiltersChange(patchForSuggestion(suggestion, filters))}
-                  onClearAll={() => onFiltersChange(DEFAULT_ROW_FILTERS)}
+                  onClearAll={() => onFiltersChange(DEFAULT_CUSTOMER_LIST_FILTERS)}
                 />
               ) : undefined
             }

@@ -1,6 +1,6 @@
 import { __, sprintf } from '@wordpress/i18n';
 
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatCount, formatPoints } from '@/lib/helpers/points.helper';
 import type { CampaignPerformance } from '@/lib/schema/campaign-performance.schema';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -38,14 +38,14 @@ function SkippedCard({ skipped }: { skipped: NonNullable<Skipped> }) {
           {sprintf(
             /* translators: %s: number of orders that earned nothing from this campaign. */
             __('Where the other %s orders went', 'yayloyalty'),
-            formatPoints(total),
+            formatCount(total),
           )}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
         {skipped.map((skip) => (
           <div key={skip.reason} className="flex gap-3 text-sm">
-            <span className="w-9 shrink-0 text-right font-semibold tabular-nums">{formatPoints(skip.count)}</span>
+            <span className="w-9 shrink-0 text-right font-semibold tabular-nums">{formatCount(skip.count)}</span>
             <span className="text-foreground">{skipReasonLabel(skip)}</span>
           </div>
         ))}
@@ -77,7 +77,7 @@ function estimateSentence(estimate: NonNullable<Estimate>): string {
       'Based on the %1$s orders in the same week of %2$s, this campaign would have issued about %3$s points.',
       'yayloyalty',
     ),
-    formatPoints(estimate.orders),
+    formatCount(estimate.orders),
     estimate.from.slice(0, 4),
     formatPoints(estimate.points),
   );

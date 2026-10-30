@@ -3,7 +3,7 @@ import { ChevronDown } from 'lucide-react';
 import { useSearchParams } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { parseWPDate, parseWPRelativeDate } from '@/lib/helpers/format.helper';
+import { formatWPDate, formatWPRelativeDate } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
 import { cn } from '@/lib/utils';
@@ -52,7 +52,7 @@ function summaryLine(customer: CustomerListRow, negative: boolean): string {
     ? sprintf(
         /* translators: %s: how long ago the customer was last active, such as "2 days ago". */
         __('active %s', 'yayloyalty'),
-        parseWPRelativeDate(customer.last_activity_at),
+        formatWPRelativeDate(customer.last_activity_at),
       )
     : null;
 
@@ -84,7 +84,7 @@ function CardDetailsPopover({ customer, negative }: { customer: CustomerListRow;
           <PointsValue value={customer.lifetime_earned} />
         </DetailRow>
         <DetailRow label={__('Expires', 'yayloyalty')}>
-          {!negative && customer.expires_at ? parseWPDate(customer.expires_at) : '—'}
+          {!negative && customer.expires_at ? formatWPDate(customer.expires_at) : '—'}
         </DetailRow>
       </PopoverContent>
     </Popover>

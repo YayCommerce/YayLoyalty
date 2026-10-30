@@ -1,4 +1,4 @@
-import { parseWPDay } from '@/lib/helpers/format.helper';
+import { formatWPDay } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import type { DrawerExpiry } from '@/lib/schema/customer.schema';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -41,11 +41,11 @@ export function CustomerDrawerLotBatches({ batches }: { batches: DrawerExpiry['b
             {batches.map((batch, index) => (
               <TableRow key={index}>
                 <TableCell>
-                  {parseWPDay(batch.earned_from)} – {parseWPDay(batch.earned_to)}
+                  {formatWPDay(batch.earned_from)} – {formatWPDay(batch.earned_to)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">{formatPoints(batch.points)}</TableCell>
                 <TableCell className="text-muted-foreground text-right tabular-nums">
-                  {parseWPDay(batch.expires_at)}
+                  {formatWPDay(batch.expires_at)}
                 </TableCell>
               </TableRow>
             ))}

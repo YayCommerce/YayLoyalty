@@ -1,7 +1,7 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { formatStoredDate, parseWPCurrency } from '@/lib/helpers/format.helper';
-import { formatPoints, shortPoints } from '@/lib/helpers/points.helper';
+import { formatStoredDate, formatWPCurrency } from '@/lib/helpers/format.helper';
+import { formatCount, formatPoints, shortPoints } from '@/lib/helpers/points.helper';
 import { flexibleDiscountSubtitle, numberConfig } from '@/lib/helpers/reward.helper';
 import { CatalogRewardType, Reward } from '@/lib/schema/reward.schema';
 
@@ -15,7 +15,7 @@ export interface RewardsScreen {
   /** Archived rows in display order: the Archived view, out of the catalog and never dragged. */
   archivedRows: Reward[];
   /** No catalog reward exists yet (2a). */
-  isInitCase: boolean;
+  hasNoCatalogRewards: boolean;
 }
 
 /** The one place a case is detected, from the plain list the API returns. */
@@ -29,7 +29,7 @@ export function resolveRewardsScreen(rewards: Reward[]): RewardsScreen {
     rows,
     catalogRows,
     archivedRows: rewards.filter((reward) => reward.status === 'archived'),
-    isInitCase: catalogRows.length === 0,
+    hasNoCatalogRewards: catalogRows.length === 0,
   };
 }
 
@@ -69,7 +69,7 @@ export function defaultRewardName(type: CatalogRewardType, config: Reward['confi
 
     if (amount !== null) {
       /* translators: %s: discount amount, formatted as money. */
-      return sprintf(__('%s Off', 'yayloyalty'), parseWPCurrency(amount));
+      return sprintf(__('%s Off', 'yayloyalty'), formatWPCurrency(amount));
     }
   }
 
@@ -82,7 +82,7 @@ export function defaultRewardName(type: CatalogRewardType, config: Reward['confi
         /* translators: 1: discount percent, 2: maximum discount, formatted as money. */
         __('%1$s%% Off - Max %2$s', 'yayloyalty'),
         String(percent),
-        parseWPCurrency(maxDiscount),
+        formatWPCurrency(maxDiscount),
       );
     }
 
@@ -100,10 +100,10 @@ export function defaultRewardName(type: CatalogRewardType, config: Reward['confi
  * a merchant can create. Free shipping and free product are left out of this release: their existing rewards
  * still list and edit, but no new one can be created or duplicated.
  */
-export const REWARD_TEMPLATE_ORDER: CatalogRewardType[] = ['fixed_coupon', 'percent_coupon'];
+export const CREATABLE_REWARD_TYPES: CatalogRewardType[] = ['fixed_coupon', 'percent_coupon'];
 
 export function isCreatableRewardType(type: string): type is CatalogRewardType {
-  return (REWARD_TEMPLATE_ORDER as readonly string[]).includes(type);
+  return (CREATABLE_REWARD_TYPES as readonly string[]).includes(type);
 }
 
 /** What a catalog type gives the customer, for the "Add a reward" cards. */
@@ -179,7 +179,7 @@ function flexibleDiscountAvailability(config: Reward['config']): string {
     maxPercent === null
       ? __('up to 100% of the order', 'yayloyalty')
       : /* translators: %s: maximum percent of the order total after other discounts, formatted. */
-        sprintf(__('up to %s%% of the order', 'yayloyalty'), formatPoints(maxPercent)),
+        sprintf(__('up to %s%% of the order', 'yayloyalty'), formatCount(maxPercent)),
   );
 
   return parts.join(' · ');
@@ -197,7 +197,7 @@ export function availabilityLabel(reward: Reward): string {
 
   if (minOrder !== null && minOrder > 0) {
     /* translators: %s: minimum order amount, formatted as money. */
-    parts.push(sprintf(__('minimum order %s', 'yayloyalty'), parseWPCurrency(minOrder)));
+    parts.push(sprintf(__('minimum order %s', 'yayloyalty'), formatWPCurrency(minOrder)));
   }
 
   if (reward.starts_at || reward.ends_at) {
@@ -235,7 +235,7 @@ function scheduleWindowLabel(startsAt: string | null, endsAt: string | null): st
  * `redemption_summary`, the figure the archive dialog already shows.
  */
 export function headerSubtitle(screen: RewardsScreen): { count: string; detail: string } {
-  if (screen.isInitCase) {
+  if (screen.hasNoCatalogRewards) {
     return {
       count: __('One reward', 'yayloyalty'),
       detail: __('Nothing has been redeemed yet.', 'yayloyalty'),

@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from 'react';
 import { __ } from '@wordpress/i18n';
 
-import { parseWPDay } from '@/lib/helpers/format.helper';
+import { formatWPDay } from '@/lib/helpers/format.helper';
 import { formatCompactPoints, formatPoints } from '@/lib/helpers/points.helper';
 import type { DashboardSeriesPoint } from '@/lib/schema/dashboard.schema';
 import { cn } from '@/lib/utils';
@@ -74,9 +74,9 @@ export function DashboardPointsChart({
             grid
             empty={empty}
             minTickGap={32}
-            xTickFormat={(value) => parseWPDay(value, 'j M')}
+            xTickFormat={(value) => formatWPDay(value, 'j M')}
             yTickFormat={(value) => formatCompactPoints(value)}
-            tooltipLabel={(value) => parseWPDay(value, 'j M Y')}
+            tooltipLabel={(value) => formatWPDay(value, 'j M Y')}
             tooltipValue={(value) => formatPoints(value)}
           />
         </ChartContainer>

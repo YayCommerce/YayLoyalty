@@ -1,6 +1,6 @@
 import { __, sprintf } from '@wordpress/i18n';
 
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatCount } from '@/lib/helpers/points.helper';
 
 /**
  * Strings for the drawer's deleted, expiring and negative-balance panels.
@@ -46,7 +46,7 @@ export const LOOSE_END_NOT_TRACKED_YET = () => __('Not tracked yet', 'yayloyalty
 export function voidCouponsValue(voidCoupons: { count: number; example: string | null } | null): string {
   if (!voidCoupons) return LOOSE_END_NOT_TRACKED_YET();
 
-  const count = formatPoints(voidCoupons.count);
+  const count = formatCount(voidCoupons.count);
   return voidCoupons.example
     ? sprintf(
         /* translators: 1: number of void coupons, formatted; 2: one coupon's label, such as "$5 off". */

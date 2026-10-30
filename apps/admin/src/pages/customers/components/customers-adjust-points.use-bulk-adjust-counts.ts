@@ -4,7 +4,7 @@ import { MAX_MATCHING_ROWS } from '../customers-page.matching-customers';
 import { bulkEffectiveCount } from './customers-adjust-points.form-state';
 
 /** Bulk-only derived counts and the liability acknowledgement checkbox. */
-export function useBulkSelection({
+export function useBulkAdjustCounts({
   isSingle,
   count,
   previewCount,

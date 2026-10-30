@@ -2,7 +2,7 @@ import type { MouseEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
-import { parseWPDate, parseWPRelativeDate } from '@/lib/helpers/format.helper';
+import { formatWPDate, formatWPRelativeDate } from '@/lib/helpers/format.helper';
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -65,10 +65,10 @@ export function CustomerTableRow({
         <PointsValue value={customer.lifetime_earned} />
       </TableCell>
       <TableCell className="text-muted-foreground text-right">
-        {customer.last_activity_at ? parseWPRelativeDate(customer.last_activity_at) : '—'}
+        {customer.last_activity_at ? formatWPRelativeDate(customer.last_activity_at) : '—'}
       </TableCell>
       <TableCell className="text-muted-foreground text-right">
-        {!negative && customer.expires_at ? parseWPDate(customer.expires_at) : '—'}
+        {!negative && customer.expires_at ? formatWPDate(customer.expires_at) : '—'}
       </TableCell>
     </TableRow>
   );

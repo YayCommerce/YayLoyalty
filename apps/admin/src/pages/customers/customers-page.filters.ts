@@ -6,13 +6,13 @@ import type { CustomerBalanceRange, CustomerExpiringSoon } from '@/lib/schema/cu
 export type BalanceRangeValue = CustomerBalanceRange;
 export type ExpiringSoonValue = CustomerExpiringSoon;
 
-export interface RowFilters {
+export interface CustomerListFilters {
   search: string;
   balanceRange: BalanceRangeValue;
   expiringSoon: ExpiringSoonValue;
 }
 
-export const DEFAULT_ROW_FILTERS: RowFilters = {
+export const DEFAULT_CUSTOMER_LIST_FILTERS: CustomerListFilters = {
   search: '',
   balanceRange: 'any',
   expiringSoon: 'off',
@@ -34,15 +34,15 @@ export const EXPIRING_SOON_OPTIONS: { value: ExpiringSoonValue; label: string }[
 ];
 
 /** Initial filters from the route's search params (the dashboard's deep link); unknown values fall back to defaults. */
-export function initialFiltersFromSearch(params: URLSearchParams): RowFilters {
+export function initialFiltersFromSearch(params: URLSearchParams): CustomerListFilters {
   const pick = <T extends string>(key: string, options: { value: T }[], fallback: T): T => {
     const raw = params.get(key);
     return options.some((o) => o.value === raw) ? (raw as T) : fallback;
   };
 
   return {
-    ...DEFAULT_ROW_FILTERS,
-    balanceRange: pick('balance_range', BALANCE_RANGE_OPTIONS, DEFAULT_ROW_FILTERS.balanceRange),
-    expiringSoon: pick('expiring_soon', EXPIRING_SOON_OPTIONS, DEFAULT_ROW_FILTERS.expiringSoon),
+    ...DEFAULT_CUSTOMER_LIST_FILTERS,
+    balanceRange: pick('balance_range', BALANCE_RANGE_OPTIONS, DEFAULT_CUSTOMER_LIST_FILTERS.balanceRange),
+    expiringSoon: pick('expiring_soon', EXPIRING_SOON_OPTIONS, DEFAULT_CUSTOMER_LIST_FILTERS.expiringSoon),
   };
 }

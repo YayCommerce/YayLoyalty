@@ -1,6 +1,6 @@
 import { __, sprintf } from '@wordpress/i18n';
 
-import { parseWPDay } from '@/lib/helpers/format.helper';
+import { formatWPDay } from '@/lib/helpers/format.helper';
 import { formatCompactPoints, formatPoints } from '@/lib/helpers/points.helper';
 import type { CampaignPerformance } from '@/lib/schema/campaign-performance.schema';
 import { cn } from '@/lib/utils';
@@ -50,9 +50,9 @@ export function CampaignPerformanceChart({ window, daily }: { window: CampaignPe
             }
             empty={empty}
             minTickGap={24}
-            xTickFormat={(value) => parseWPDay(value, 'j M')}
+            xTickFormat={(value) => formatWPDay(value, 'j M')}
             yTickFormat={(value) => formatCompactPoints(value)}
-            tooltipLabel={(value) => parseWPDay(value, 'j M Y')}
+            tooltipLabel={(value) => formatWPDay(value, 'j M Y')}
             tooltipValue={(value) => formatPoints(value)}
           />
         </ChartContainer>

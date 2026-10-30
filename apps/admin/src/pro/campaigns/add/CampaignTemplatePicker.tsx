@@ -8,7 +8,7 @@ import { CampaignTemplate, getCampaignTemplates } from './campaign-templates';
 
 /**
  * "Add a campaign" chooser: one card per kind opens the editor in create mode via
- * campaigns/new/:templateId. No Duplicate card: CampaignTable's row menu duplicates a specific
+ * campaigns/new/:trigger. No Duplicate card: CampaignTable's row menu duplicates a specific
  * campaign, which this page cannot pick.
  */
 export function CampaignTemplatePicker() {

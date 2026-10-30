@@ -1,6 +1,6 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import type { Campaign, CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
+import type { Campaign, DisplayStatus } from '@/lib/schema/campaign.schema';
 import type { CampaignArchiveCase } from './campaign-archive.copy';
 
 /** Copy for CampaignBulkArchiveDialog. */
@@ -8,7 +8,7 @@ import type { CampaignArchiveCase } from './campaign-archive.copy';
 /** One selected campaign, placed by resolveArchiveCase() exactly as its own dialog would place it. */
 export interface BulkArchiveRow {
   campaign: Campaign;
-  displayStatus: CampaignDisplayStatus;
+  displayStatus: DisplayStatus;
   archiveCase: CampaignArchiveCase;
 }
 

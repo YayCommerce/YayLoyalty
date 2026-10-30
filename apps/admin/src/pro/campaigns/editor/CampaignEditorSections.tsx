@@ -6,7 +6,7 @@ import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from '@
 import { Input } from '@/components/ui/input';
 import { CampaignFormValues } from './campaign-editor.form';
 import { CampaignEditorConditions } from './CampaignEditorConditions';
-import { CampaignEditorReward } from './CampaignEditorReward';
+import { CampaignEditorEarn } from './CampaignEditorEarn';
 
 /** The editor's three sections in order. Status and schedule sit in the rail; see CampaignEditorSummaryRail. */
 export function CampaignEditorSections() {
@@ -17,7 +17,7 @@ export function CampaignEditorSections() {
       </EditorSection>
 
       <EditorSection step={2} title={__('Reward', 'yayloyalty')}>
-        <CampaignEditorReward />
+        <CampaignEditorEarn />
       </EditorSection>
 
       <EditorSection step={3} title={__('Conditions', 'yayloyalty')}>

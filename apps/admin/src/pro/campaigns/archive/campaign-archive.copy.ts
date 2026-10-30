@@ -1,7 +1,7 @@
 import { __, sprintf } from '@wordpress/i18n';
 
-import { parseWPDate } from '@/lib/helpers/format.helper';
-import type { Campaign, CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
+import { formatWPDate } from '@/lib/helpers/format.helper';
+import type { Campaign, DisplayStatus } from '@/lib/schema/campaign.schema';
 
 /** Case resolution and copy for CampaignArchiveDialog. */
 
@@ -13,7 +13,7 @@ export type CampaignArchiveCase = 'delete' | 'finished' | 'live';
  * infer it from a points total: a fully refunded campaign nets 0 points but still has ledger rows,
  * and a permanent delete is the one mistake this dialog cannot undo.
  */
-export function resolveArchiveCase(displayStatus: CampaignDisplayStatus, isDeletable: boolean): CampaignArchiveCase {
+export function resolveArchiveCase(displayStatus: DisplayStatus, isDeletable: boolean): CampaignArchiveCase {
   if (isDeletable) {
     return 'delete';
   }
@@ -25,7 +25,7 @@ export function resolveArchiveCase(displayStatus: CampaignDisplayStatus, isDelet
  * The archive dialog's body, one sentence per line. The last line carries <link> for
  * createInterpolateElement, pointing at the Archived view.
  */
-export function archiveBodyLines(campaign: Campaign, displayStatus: CampaignDisplayStatus): string[] {
+export function archiveBodyLines(campaign: Campaign, displayStatus: DisplayStatus): string[] {
   const lines: string[] = [];
 
   if (displayStatus === 'active') {
@@ -35,7 +35,7 @@ export function archiveBodyLines(campaign: Campaign, displayStatus: CampaignDisp
       sprintf(
         /* translators: %s: the date the campaign starts. */
         __('It is scheduled to start %s. Archiving stops it from starting.', 'yayloyalty'),
-        parseWPDate(campaign.starts_at ?? undefined),
+        formatWPDate(campaign.starts_at ?? undefined),
       ),
     );
   }

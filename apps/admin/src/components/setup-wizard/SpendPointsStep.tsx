@@ -1,7 +1,7 @@
 import { Controller, useWatch } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { parseWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
+import { formatWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import { MoneyInput, PointsInput } from '@/components/ui/custom/amount-inputs';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
@@ -48,7 +48,7 @@ export function SpendPointsStep({ form }: WizardStepProps) {
             /* translators: 1: a points amount, formatted; 2: the discount it buys, formatted. */
             __('%1$s points = %2$s off', 'yayloyalty'),
             formatPoints(samplePoints),
-            parseWPCurrency(5),
+            formatWPCurrency(5),
           )}
         </WizardPreview>
         <div className="grid grid-cols-2 gap-5 border-t pt-4">
@@ -63,7 +63,7 @@ export function SpendPointsStep({ form }: WizardStepProps) {
                 )}
               />
               <span className="text-muted-foreground text-xs">
-                = {parseWPCurrency(valueOfPoints(worth, minPoints))}
+                = {formatWPCurrency(valueOfPoints(worth, minPoints))}
               </span>
             </div>
           </div>

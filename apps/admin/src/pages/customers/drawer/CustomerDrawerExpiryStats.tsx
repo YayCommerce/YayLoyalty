@@ -1,9 +1,9 @@
 import { utcToDate } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import type { DrawerExpiry } from '@/lib/schema/customer.schema';
-import { CustomerDrawerStat } from './CustomerDrawerStat';
-import { daysUntil } from './customer-drawer.money';
+import { daysUntil } from './customer-drawer.days-until';
 import { expiringInDaysLabel, safeBeyondLabel } from './customer-drawer.panels.copy';
+import { CustomerDrawerStat } from './CustomerDrawerStat';
 
 /** The expiry panel's two stats: Expiring in N days and Safe beyond {year}. Balance and Pending sit in the main stats. */
 export function CustomerDrawerExpiryStats({ expiry }: { expiry: DrawerExpiry }) {

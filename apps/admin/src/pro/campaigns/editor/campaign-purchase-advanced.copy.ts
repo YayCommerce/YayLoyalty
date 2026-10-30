@@ -1,6 +1,6 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { parseWPCurrency } from '@/lib/helpers/format.helper';
+import { formatWPCurrency } from '@/lib/helpers/format.helper';
 import { shortPoints } from '@/lib/helpers/points.helper';
 
 /** What a purchase reward is set to, phrased short for the closed Advanced toggle. */
@@ -10,8 +10,8 @@ interface PurchaseAdvancedFacts {
   includeTax: boolean;
   minSubtotal: number;
   maxPointsPerOrder: number;
-  excludedProducts: number;
-  excludedCategories: number;
+  excludedProductCount: number;
+  excludedCategoryCount: number;
 }
 
 function purchaseAdvancedFacts(config: Record<string, unknown>): PurchaseAdvancedFacts {
@@ -22,8 +22,8 @@ function purchaseAdvancedFacts(config: Record<string, unknown>): PurchaseAdvance
     includeTax: config.include_tax === true,
     minSubtotal: positive(config.min_subtotal),
     maxPointsPerOrder: positive(config.max_points_per_order),
-    excludedProducts: count(config.excluded_product_ids),
-    excludedCategories: count(config.excluded_category_ids),
+    excludedProductCount: count(config.excluded_product_ids),
+    excludedCategoryCount: count(config.excluded_category_ids),
   };
 }
 
@@ -37,7 +37,7 @@ export function purchaseAdvancedPhrases(config: Record<string, unknown>): string
       sprintf(
         /* translators: %s: minimum order subtotal in the store format, e.g. "$500.00". */
         __('Min %s', 'yayloyalty'),
-        parseWPCurrency(facts.minSubtotal),
+        formatWPCurrency(facts.minSubtotal),
       ),
     );
   }
@@ -46,12 +46,12 @@ export function purchaseAdvancedPhrases(config: Record<string, unknown>): string
     phrases.push(__('Tax included', 'yayloyalty'));
   }
 
-  if (facts.excludedProducts > 0) {
-    phrases.push(productsExcluded(facts.excludedProducts));
+  if (facts.excludedProductCount > 0) {
+    phrases.push(productsExcluded(facts.excludedProductCount));
   }
 
-  if (facts.excludedCategories > 0) {
-    phrases.push(categoriesExcluded(facts.excludedCategories));
+  if (facts.excludedCategoryCount > 0) {
+    phrases.push(categoriesExcluded(facts.excludedCategoryCount));
   }
 
   if (facts.maxPointsPerOrder > 0) {

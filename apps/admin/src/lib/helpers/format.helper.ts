@@ -6,19 +6,19 @@ import { dateI18n, getSettings, humanTimeDiff } from '@wordpress/date';
  * string as browser-local and so shifts a midnight instant to the previous
  * day for any viewer east of the site zone.
  */
-export function parseWPDate(date: Date | string | undefined) {
+export function formatWPDate(date: Date | string | undefined) {
   const { formats } = getSettings();
   return dateI18n(formats.date, typeof date === 'string' ? utcToDate(date) : date);
 }
 
 /** "2 days ago" for a stored UTC datetime. Parsed as UTC explicitly: a bare new Date() reads it as local. */
-export function parseWPRelativeDate(date: string) {
+export function formatWPRelativeDate(date: string) {
   return humanTimeDiff(utcToDate(date));
 }
 
-/** A stored UTC datetime in the site's date format; the same as parseWPDate(), typed for strings only. */
+/** A stored UTC datetime in the site's date format; the same as formatWPDate(), typed for strings only. */
 export function formatStoredDate(utc: string) {
-  return parseWPDate(utc);
+  return formatWPDate(utc);
 }
 
 /** A stored UTC MySQL datetime as a Date; the one parsing rule. */
@@ -36,13 +36,13 @@ export function dateToStored(date: Date = new Date()): string {
  * bare date as browser-local midnight, which moves it a day; pinning to
  * noon UTC keeps the day the server meant.
  */
-export function parseWPDay(day: string, format?: string) {
+export function formatWPDay(day: string, format?: string) {
   const { formats } = getSettings();
   return dateI18n(format ?? formats.date, `${day}T12:00:00Z`, 'UTC');
 }
 
-/** A stored UTC datetime, or a Date, in the site's time format; strings are parsed as UTC, as in parseWPDate(). */
-export function parseWPTime(date: Date | string) {
+/** A stored UTC datetime, or a Date, in the site's time format; strings are parsed as UTC, as in formatWPDate(). */
+export function formatWPTime(date: Date | string) {
   const { formats } = getSettings();
   return dateI18n(formats.time, typeof date === 'string' ? utcToDate(date) : date);
 }
@@ -98,7 +98,7 @@ export function formatPercent(value: number, maxDecimals: number): string {
  * already rounded by its owner, since `toFixed`
  * rounds the binary float and can land a half-cent the wrong way.
  */
-export function parseWPCurrency(price: string | number) {
+export function formatWPCurrency(price: string | number) {
   if (typeof price === 'string') {
     price = parseFloat(price);
   }

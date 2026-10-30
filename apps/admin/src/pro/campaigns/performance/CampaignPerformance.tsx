@@ -8,7 +8,7 @@ import {
   CampaignPerformanceTrigger,
   hasPerformancePage,
 } from '@/lib/schema/campaign-performance.schema';
-import { Campaign, CampaignDisplayStatus, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
+import { Campaign, DisplayStatus, resolveDisplayStatus } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { BackLink } from '@/components/ui/custom/back-link';
@@ -62,7 +62,7 @@ export function CampaignPerformance({ id }: { id: number }) {
   }
 
   const trigger = campaign.trigger;
-  const displayStatus = resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at);
+  const displayStatus = resolveDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at);
 
   const metaLine = [
     givesLabel(campaign.trigger, campaign.config),
@@ -113,7 +113,7 @@ function CampaignPerformanceBody({
 }: {
   campaign: Campaign;
   trigger: CampaignPerformanceTrigger;
-  displayStatus: CampaignDisplayStatus;
+  displayStatus: DisplayStatus;
   data: CampaignPerformanceData;
 }) {
   const navigate = useNavigate();

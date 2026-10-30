@@ -23,7 +23,7 @@ A merchant who opens YayLoyalty for the first time sets up the program in five s
 - **SPA:**
   - Data: ky `api` (`apps/admin/src/lib/api/api.ts`), TanStack Query, react-hook-form with zod, and `Dialog` (`components/ui/dialog.tsx`).
   - Inputs: `PointsInput` and `MoneyInput` (`components/ui/custom/amount-inputs.tsx`), `ColorPicker` (`components/ui/color-picker.tsx`).
-  - Rate helpers: `rateFromSpend` and `spendPairFromRate` (`lib/helpers/points.helper.ts`).
+  - Rate helpers: `rateFromSpend` and `ratePair` (`lib/helpers/points.helper.ts`).
   - The app shell is `AppLayout.tsx`.
 
 ## Scope

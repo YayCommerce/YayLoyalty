@@ -23,7 +23,7 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { PurchaseRateInput, RoundingSegmented } from '@/pages/campaigns/PurchaseConfigControls';
 import { CampaignFormValues } from './campaign-editor.form';
-import { purchaseAdvancedPhrases } from './campaign-reward.copy';
+import { purchaseAdvancedPhrases } from './campaign-purchase-advanced.copy';
 
 type PatchPurchaseConfig = (patch: Partial<PurchaseConfig>) => void;
 
@@ -33,7 +33,7 @@ interface PurchaseFieldsProps {
 }
 
 /** The campaign's rate, then the Advanced block. */
-export function RewardFieldsPurchase() {
+export function CampaignEditorEarnPurchase() {
   const { watch, setValue } = useFormContext<CampaignFormValues>();
   const config = watch('config') as PurchaseConfig;
 

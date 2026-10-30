@@ -17,11 +17,11 @@ import {
 import { hasPerformancePage } from '@/lib/schema/campaign-performance.schema';
 import {
   Campaign,
-  CAMPAIGN_DISPLAY_STATUSES,
-  CampaignDisplayStatus,
+  DISPLAY_STATUSES,
+  DisplayStatus,
   findBuiltinCampaign,
   LITE_CAMPAIGN_TRIGGERS,
-  resolveCampaignDisplayStatus,
+  resolveDisplayStatus,
 } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -59,8 +59,8 @@ import {
 import { CampaignPointsSummary, CampaignPointsSummarySkeleton } from './CampaignPointsSummary';
 import { CampaignStatusBadge } from './CampaignStatusBadge';
 
-/** Groups larger than this collapse to the default plus this many, highest-priority first. */
-const VISIBLE_NON_DEFAULT_ROWS = 4;
+/** Groups larger than this collapse to the built-in plus this many, highest-priority first. */
+const VISIBLE_NON_BUILTIN_ROWS = 4;
 
 /** Above this many campaigns, finding one by scrolling stops being reasonable. */
 const SEARCH_THRESHOLD = 20;
@@ -83,7 +83,7 @@ interface DisplayCampaign extends Campaign {
   gives: string;
   conditionsLabel: string;
   scheduleLabel: string;
-  displayStatus: CampaignDisplayStatus;
+  displayStatus: DisplayStatus;
 }
 
 /** One trigger group as rendered; hiddenRows sit behind "Show the other … campaigns". */
@@ -111,7 +111,7 @@ export function CampaignTable() {
   const { data, isPending, isError, refetch } = useCampaignsQuery({ perPage: 100 });
   const allRows = useMemo(() => (data?.data ?? []).map(toDisplayCampaign), [data]);
 
-  const [statusFilter, setStatusFilter] = useState<CampaignDisplayStatus | undefined>();
+  const [statusFilter, setStatusFilter] = useState<DisplayStatus | undefined>();
   const [searchQuery, setSearchQuery] = useState('');
   // Shows a drop at once while its save is in flight. Ignored once the query's own data changes,
   // so every refetch replaces it with the stored order.
@@ -136,11 +136,11 @@ export function CampaignTable() {
 
   // The one-click fix the "aren't earning points" alert below offers. Read off allRows, never
   // the toggled/filtered rows: the real built-in, regardless of dev preview state.
-  const defaultPurchaseCampaign = findBuiltinCampaign(allRows, 'purchase');
-  const reactivatePurchaseMutation = useUpdateCampaignStatusMutation(defaultPurchaseCampaign?.id ?? 0);
+  const builtinPurchaseCampaign = findBuiltinCampaign(allRows, 'purchase');
+  const reactivatePurchaseMutation = useUpdateCampaignStatusMutation(builtinPurchaseCampaign?.id ?? 0);
 
-  async function reactivateDefaultPurchase() {
-    if (!defaultPurchaseCampaign) {
+  async function reactivateBuiltinPurchase() {
+    if (!builtinPurchaseCampaign) {
       return;
     }
 
@@ -177,7 +177,7 @@ export function CampaignTable() {
     selectedRows.length === 0 ? false : selectedRows.length === selectableRows.length ? true : 'indeterminate';
 
   // The rows on screen change, so picks made against the old ones no longer apply.
-  function changeStatusFilter(next: CampaignDisplayStatus | undefined) {
+  function changeStatusFilter(next: DisplayStatus | undefined) {
     setStatusFilter(next);
     setSelectedIds(new Set());
   }
@@ -339,9 +339,7 @@ export function CampaignTable() {
             {!newStore && (
               <Select
                 value={statusFilter ?? 'all'}
-                onValueChange={(value) =>
-                  changeStatusFilter(value === 'all' ? undefined : (value as CampaignDisplayStatus))
-                }
+                onValueChange={(value) => changeStatusFilter(value === 'all' ? undefined : (value as DisplayStatus))}
               >
                 <SelectTrigger size="sm">
                   <span className="text-muted-foreground">{__('Status:', 'yayloyalty')}</span>
@@ -349,7 +347,7 @@ export function CampaignTable() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{__('All', 'yayloyalty')}</SelectItem>
-                  {CAMPAIGN_DISPLAY_STATUSES.map((status) => (
+                  {DISPLAY_STATUSES.map((status) => (
                     <SelectItem key={status} value={status}>
                       {statusLabel(status)}
                     </SelectItem>
@@ -383,13 +381,13 @@ export function CampaignTable() {
                     'yayloyalty',
                   )}
                 </p>
-                {defaultPurchaseCampaign && (
+                {builtinPurchaseCampaign && (
                   <div className="flex flex-wrap items-center gap-3 pt-1">
                     <Button
                       variant="primary"
                       size="sm"
                       disabled={reactivatePurchaseMutation.isPending}
-                      onClick={reactivateDefaultPurchase}
+                      onClick={reactivateBuiltinPurchase}
                     >
                       {reactivatePurchaseMutation.isPending
                         ? __('Switching on…', 'yayloyalty')
@@ -892,12 +890,12 @@ function SortableCampaignRow({
   );
 }
 
-/** The default stays visible regardless of rank; the rest cap at VISIBLE_NON_DEFAULT_ROWS until expanded. */
+/** The built-in stays visible regardless of rank; the rest cap at VISIBLE_NON_BUILTIN_ROWS until expanded. */
 function splitCollapsedRows(
   groupRows: DisplayCampaign[],
   expanded: boolean,
 ): Pick<CampaignGroup, 'visibleRows' | 'hiddenRows'> {
-  const hiddenRows = expanded ? [] : groupRows.filter((row) => !row.is_builtin).slice(VISIBLE_NON_DEFAULT_ROWS);
+  const hiddenRows = expanded ? [] : groupRows.filter((row) => !row.is_builtin).slice(VISIBLE_NON_BUILTIN_ROWS);
   const hiddenIds = new Set(hiddenRows.map((row) => row.id));
 
   return { visibleRows: groupRows.filter((row) => !hiddenIds.has(row.id)), hiddenRows };
@@ -936,6 +934,6 @@ function toDisplayCampaign(campaign: Campaign): DisplayCampaign {
     gives: givesLabel(campaign.trigger, campaign.config),
     conditionsLabel: conditionsLabel(campaign.conditions),
     scheduleLabel: scheduleLabel(campaign.starts_at, campaign.ends_at),
-    displayStatus: resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at),
+    displayStatus: resolveDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at),
   };
 }

@@ -1,6 +1,6 @@
-import { formatStoredDate, parseWPDate, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
+import { formatStoredDate, formatWPDate, formatWPTime, utcToDate } from '@/lib/helpers/format.helper';
 import { formatSignedPoints } from '@/lib/helpers/ledger.helper';
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatCount, formatPoints } from '@/lib/helpers/points.helper';
 import type { ActivityEntry, ActivityEventType } from '@/lib/schema/activity.schema';
 import {
   ACTIVITY_TITLE_ACCOUNT_DELETED,
@@ -41,8 +41,8 @@ export function toActivityRow(entry: ActivityEntry): ActivityRow {
   const occurred = utcToDate(entry.occurred_at);
 
   return {
-    date: parseWPDate(occurred),
-    time: parseWPTime(occurred),
+    date: formatWPDate(occurred),
+    time: formatWPTime(occurred),
     title: titleFor(entry.event_type),
     subLine: subLineFor(entry, occurred),
     actorLabel: actorLabelFor(entry),
@@ -111,7 +111,7 @@ function subLineFor(entry: ActivityEntry, occurred: Date): string {
       const reminderDays = num(data, 'reminder_days');
       const deadline = new Date(occurred.getTime() + reminderDays * 24 * 60 * 60 * 1000);
 
-      return activityExpiringSoonEmailSubLine(formatPoints(reminderDays), parseWPDate(deadline));
+      return activityExpiringSoonEmailSubLine(formatCount(reminderDays), formatWPDate(deadline));
     }
     case 'earning_limited': {
       // Data keys from CustomerActivityService::record_earning_limited().
