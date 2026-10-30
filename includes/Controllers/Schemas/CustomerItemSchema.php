@@ -103,7 +103,7 @@ final class CustomerItemSchema {
                 ],
             ],
             'expiry'            => [
-                'description' => __( 'Points about to expire, the batch breakdown (lots, oldest first), and the reminder schedule. Always null for now — needs lots, which do not exist yet.', 'yayloyalty' ),
+                'description' => __( 'Points about to expire, the batch breakdown (lots, oldest first), and the reminder schedule. Always null for now: the lots exist, but CustomerItemFormatter does not build this summary from them yet.', 'yayloyalty' ),
                 'type'        => [ 'object', 'null' ],
                 'context'     => [ 'view' ],
                 'readonly'    => true,

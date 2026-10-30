@@ -310,7 +310,7 @@ function RewardProductCard({ productId, onChange }: { productId: number; onChang
   const details = [
     product.sku && sprintf(/* translators: %s: product SKU. */ __('SKU %s', 'yayloyalty'), product.sku),
     product.price,
-    product.categories,
+    product.category_names,
   ]
     .filter(Boolean)
     .join(' · ');

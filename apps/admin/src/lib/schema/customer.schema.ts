@@ -31,7 +31,7 @@ export const looseEndsSchema = z.object({
 export type LooseEnds = z.infer<typeof looseEndsSchema>;
 
 /**
- * The expiring-batch summary. Always null until the `lots` table exists.
+ * The expiring-batch summary. Always null until `CustomerItemFormatter` builds it from the lots.
  * `batches: null` means the inactivity model, which has no batches at all, not zero of them.
  * It carries figures only: percentages and money are derived client-side.
  */
@@ -136,7 +136,7 @@ export type NoMatchSuggestion = z.infer<typeof noMatchSuggestionSchema>;
 
 /** Filter/sort value unions, here because customer.api.ts needs them and lib/ must not import pages/. */
 export type CustomerBalanceRange = 'any' | 'negative' | '0-1000' | '1000-10000' | '10000-plus';
-export type CustomerExpiringSoon = 'off' | '30' | '90' | 'none';
+export type CustomerExpiringSoon = 'off' | '30' | '90' | 'no_expiry';
 export type CustomerSortKey = 'name' | 'balance' | 'pending' | 'lifetime' | 'last_activity' | 'expires';
 export type CustomerSortDirection = 'asc' | 'desc';
 

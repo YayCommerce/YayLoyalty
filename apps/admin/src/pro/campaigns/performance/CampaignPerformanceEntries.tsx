@@ -112,7 +112,7 @@ export function CampaignPerformanceEntries({
 
   const columns = COLUMNS[trigger];
   const rows = query.data?.data ?? [];
-  const totalPage = Math.max(1, query.data?.totalPage ?? 1);
+  const totalPages = Math.max(1, query.data?.totalPages ?? 1);
   const showSearch = entriesTotal > 30;
 
   return (
@@ -141,9 +141,7 @@ export function CampaignPerformanceEntries({
           {entriesTotal > 0 && (
             // Inert: no export endpoint yet.
             <Button type="button" onClick={() => {}}>
-              {sprintf(
-                __('Export all', 'yayloyalty'),
-              )}
+              {sprintf(__('Export all', 'yayloyalty'))}
             </Button>
           )}
         </div>
@@ -198,14 +196,14 @@ export function CampaignPerformanceEntries({
                 </TableBody>
               </Table>
             </div>
-            {totalPage > 1 && (
+            {totalPages > 1 && (
               <Pagination
                 pageIndex={page - 1}
-                pageCount={totalPage}
+                pageCount={totalPages}
                 canPreviousPage={page > 1}
-                canNextPage={page < totalPage}
+                canNextPage={page < totalPages}
                 onPreviousPage={() => setPage((current) => Math.max(1, current - 1))}
-                onNextPage={() => setPage((current) => Math.min(totalPage, current + 1))}
+                onNextPage={() => setPage((current) => Math.min(totalPages, current + 1))}
                 onPageChange={(pageIndex) => setPage(pageIndex + 1)}
                 className="ml-auto"
               />

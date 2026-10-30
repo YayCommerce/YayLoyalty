@@ -30,7 +30,7 @@ export const EXPIRING_SOON_OPTIONS: { value: ExpiringSoonValue; label: string }[
   { value: 'off', label: __('Off', 'yayloyalty') },
   { value: '30', label: __('Within 30 days', 'yayloyalty') },
   { value: '90', label: __('Within 90 days', 'yayloyalty') },
-  { value: 'none', label: __('No expiry date', 'yayloyalty') },
+  { value: 'no_expiry', label: __('No expiry date', 'yayloyalty') },
 ];
 
 /** Initial filters from the route's search params (the dashboard's deep link); unknown values fall back to defaults. */

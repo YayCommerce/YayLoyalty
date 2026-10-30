@@ -88,13 +88,13 @@ final class LedgerQueryArgs {
                 'type'              => 'string',
                 'sanitize_callback' => 'sanitize_text_field',
             ],
-            'after'  => [
+            'from'   => [
                 'description'       => __( 'Only entries on or after this date (Y-m-d).', 'yayloyalty' ),
                 'type'              => 'string',
                 'sanitize_callback' => 'sanitize_text_field',
                 'validate_callback' => [ self::class, 'validate_date' ],
             ],
-            'before' => [
+            'to'     => [
                 'description'       => __( 'Only entries on or before this date (Y-m-d).', 'yayloyalty' ),
                 'type'              => 'string',
                 'sanitize_callback' => 'sanitize_text_field',

@@ -17,15 +17,15 @@ function ordersSubline(totals: Totals, hasData: boolean): string {
   if (!hasData) {
     return __('none yet', 'yayloyalty');
   }
-  // Unreachable today: PHP always sets orders_total for purchase, the only trigger this tile
+  // Unreachable today: PHP always sets orders_count_all_time for purchase, the only trigger this tile
   // renders. The type is nullable for the other triggers, so this guards against that drifting.
-  if (totals.orders_total === null) {
+  if (totals.orders_count_all_time === null) {
     return '';
   }
   return sprintf(
     /* translators: %s: total number of completed orders the store has ever had. */
     __('of %s completed orders', 'yayloyalty'),
-    formatPoints(totals.orders_total),
+    formatPoints(totals.orders_count_all_time),
   );
 }
 
@@ -74,7 +74,7 @@ export function CampaignPerformanceTiles({
       {trigger !== 'purchase' && (
         <StatTile
           label={__('Customers earned', 'yayloyalty')}
-          value={formatPoints(totals.customers_earned ?? 0)}
+          value={formatPoints(totals.customers_earned_count ?? 0)}
           subline={hasData ? __('earned points from this campaign', 'yayloyalty') : __('none yet', 'yayloyalty')}
         />
       )}

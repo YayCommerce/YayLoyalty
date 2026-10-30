@@ -68,7 +68,7 @@ final class LookupRestController extends AbstractRestController {
      * stock, for an editor that shows what a stored product id points at.
      * 404 once the product is gone or trashed.
      *
-     * @return array{id: int, name: string, sku: string, price: string, categories: string, image_url: string|null, stock_status: string, stock_quantity: int|null}|\WP_Error
+     * @return array{id: int, name: string, sku: string, price: string, category_names: string, image_url: string|null, stock_status: string, stock_quantity: int|null}|\WP_Error
      */
     public function product_summary( \WP_REST_Request $request ) {
         $product = function_exists( 'wc_get_product' ) ? wc_get_product( (int) $request['id'] ) : null;
@@ -87,7 +87,7 @@ final class LookupRestController extends AbstractRestController {
             'name'           => Text::plain( $product->get_name() ),
             'sku'            => (string) $product->get_sku(),
             'price'          => '' === (string) $product->get_price() ? '' : Text::plain( wc_price( (float) $product->get_price() ) ),
-            'categories'     => Text::plain( (string) wc_get_product_category_list( $product->get_id(), ', ' ) ),
+            'category_names' => Text::plain( (string) wc_get_product_category_list( $product->get_id(), ', ' ) ),
             'image_url'      => false === $image_url ? null : $image_url,
             'stock_status'   => (string) $product->get_stock_status(),
             // Null when WooCommerce tracks no count for it: the status is all there is.

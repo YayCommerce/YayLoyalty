@@ -419,8 +419,8 @@ class LedgerRepository extends AbstractRepository {
      * search can only reach what is stored: a bare or `#`-prefixed number is
      * also an exact `order_id`, and any text matches the admin's `note`.
      *
-     * @param array{types?: string[], search?: string, after?: string, before?: string} $args
-     *        `after`/`before` are site-calendar `Y-m-d` days, both inclusive.
+     * @param array{types?: string[], search?: string, from?: string, to?: string} $args
+     *        `from`/`to` are site-calendar `Y-m-d` days, both inclusive.
      * @return string[] Already-prepared fragments, for AbstractRepository::paginate()'s `where`.
      */
     public function history_where( array $args ): array {
@@ -434,7 +434,7 @@ class LedgerRepository extends AbstractRepository {
             $where[] = $wpdb->prepare( 'type IN (' . Sql::in_placeholders( $types ) . ')', $types );
         }
 
-        $where = array_merge( $where, $this->site_day_range_where( $args['after'] ?? '', $args['before'] ?? '' ) );
+        $where = array_merge( $where, $this->site_day_range_where( $args['from'] ?? '', $args['to'] ?? '' ) );
 
         $search = trim( $args['search'] ?? '' );
 

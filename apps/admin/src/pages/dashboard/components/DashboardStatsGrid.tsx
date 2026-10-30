@@ -70,7 +70,7 @@ export function DashboardStatsGrid({
       <DashboardStatTile
         label={rate}
         value={stats.redemption_rate.rate === null ? '—' : formatPercent(stats.redemption_rate.rate, 1)}
-        subline={ordersSubline(stats.redemption_rate.orders_with_points, stats.redemption_rate.orders_total)}
+        subline={ordersSubline(stats.redemption_rate.orders_with_redemption, stats.redemption_rate.orders_total)}
         delta={stats.redemption_rate.prev_delta_pct}
         range={range}
         deltaOverride={deltaOverrides.redemption_rate}

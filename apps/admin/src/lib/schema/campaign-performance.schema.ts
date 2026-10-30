@@ -58,9 +58,9 @@ export const campaignPerformanceSchema = z.object({
     /** Purchase only. */
     orders_affected: z.number().int().nullable(),
     /** Purchase only. The store's lifetime count of completed orders, not scoped to this campaign: the denominator for `orders_affected`. */
-    orders_total: z.number().int().nullable(),
+    orders_count_all_time: z.number().int().nullable(),
     /** Signup / review only: distinct customers who earned from this campaign. */
-    customers_earned: z.number().int().nullable(),
+    customers_earned_count: z.number().int().nullable(),
     /** Purchase with real data only. */
     avg_points_per_order: z.number().int().nullable(),
     /** Always null until the earning engine stores the scored base amount. */
@@ -94,7 +94,7 @@ export type CampaignPerformance = z.infer<typeof campaignPerformanceSchema>;
  */
 export const campaignPerformanceEntrySchema = z.object({
   id: z.number().int(),
-  customer_id: z.number().int(),
+  user_id: z.number().int(),
   customer_name: z.string(),
   points: z.number().int(),
   /** UTC, `Y-m-d H:i:s`. */

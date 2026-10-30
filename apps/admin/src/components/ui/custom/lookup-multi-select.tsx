@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { useLookupLabelsQuery, useLookupSearchQuery } from '@/lib/queries/lookup.queries';
-import { LOOKUP_PAGE_SIZE, LookupEntity } from '@/lib/schema/lookup.schema';
+import { LOOKUP_LIMIT, LookupEntity } from '@/lib/schema/lookup.schema';
 import { useDebouncedSearchCommit } from '@/hooks/useDebouncedSearchCommit';
 import { MultiSelectCombobox } from '@/components/ui/custom/multi-select-combobox';
 
@@ -79,11 +79,11 @@ export function LookupMultiSelect({
 }
 
 function footerText(resultCount: number, max: number | undefined): string | undefined {
-  if (resultCount >= LOOKUP_PAGE_SIZE) {
+  if (resultCount >= LOOKUP_LIMIT) {
     return sprintf(
       /* translators: %d: how many matches are listed. */
       __('Showing the first %d matches — type to narrow the list.', 'yayloyalty'),
-      LOOKUP_PAGE_SIZE,
+      LOOKUP_LIMIT,
     );
   }
 

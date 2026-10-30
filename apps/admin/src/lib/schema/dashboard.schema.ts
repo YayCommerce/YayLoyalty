@@ -33,9 +33,9 @@ export const dashboardLiabilitySchema = z.object({
 export type DashboardLiability = z.infer<typeof dashboardLiabilitySchema>;
 
 export const dashboardRateSchema = z.object({
-  /** `orders_with_points / orders_total` as a percentage, 1 dp; `null` when no orders. */
+  /** `orders_with_redemption / orders_total` as a percentage, 1 dp; `null` when no orders. */
   rate: z.number().nullable(),
-  orders_with_points: z.number().int(),
+  orders_with_redemption: z.number().int(),
   /** Completed orders only. */
   orders_total: z.number().int(),
   prev_delta_pct: prevDeltaPct,
@@ -62,13 +62,13 @@ export const dashboardSeriesPointSchema = z.object({
 
 export type DashboardSeriesPoint = z.infer<typeof dashboardSeriesPointSchema>;
 
-export const dashboardTopEarnerSchema = z.object({
+export const dashboardTopBalanceSchema = z.object({
   user_id: z.number().int(),
   name: z.string(),
   balance: z.number().int(),
 });
 
-export type DashboardTopEarner = z.infer<typeof dashboardTopEarnerSchema>;
+export type DashboardTopBalance = z.infer<typeof dashboardTopBalanceSchema>;
 
 /** A ledger row joined to the user's display name. */
 export const dashboardActivityRowSchema = ledgerEntrySchema.extend({
@@ -129,7 +129,7 @@ export const dashboardResponseSchema = z.object({
   stats: dashboardStatsSchema,
   series: z.array(dashboardSeriesPointSchema),
   /** Max 3, balance desc. */
-  top_earners: z.array(dashboardTopEarnerSchema),
+  top_balances: z.array(dashboardTopBalanceSchema),
   recent_activity: dashboardRecentActivitySchema,
   notices: z.array(dashboardNoticeSchema),
 });

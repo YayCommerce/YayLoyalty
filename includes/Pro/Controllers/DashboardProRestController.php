@@ -112,8 +112,8 @@ final class DashboardProRestController extends AbstractRestController {
         foreach ( $ids as $id ) {
             $own = array_values( array_filter( $rows, static fn( array $r ): bool => (int) $r['campaign_id'] === $id ) );
 
-            foreach ( DashboardMath::fill_series( $own, $window->days(), [ 'issued' ] ) as $point ) {
-                $series[] = $point + [ 'campaign_id' => $id ];
+            foreach ( DashboardMath::fill_series( $own, $window->days(), [ 'issued' ] ) as $day_row ) {
+                $series[] = $day_row + [ 'campaign_id' => $id ];
             }
         }
 

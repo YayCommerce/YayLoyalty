@@ -46,7 +46,7 @@ export function DashboardAnomalyPanel({ data }: { data: PointsJumpData }) {
               yKey="issued"
               radius={3}
               barOpacity={(d) => (d.date === data.yesterday ? 1 : 0.35)}
-              referenceY={data.daily_average}
+              referenceY={data.active_day_average}
               minTickGap={24}
               xTickFormat={(v) => parseWPDay(v, 'j M')}
               yTickFormat={(v) => formatCompactPoints(v)}
@@ -59,7 +59,7 @@ export function DashboardAnomalyPanel({ data }: { data: PointsJumpData }) {
               {sprintf(
                 /* translators: %s: average points issued per day, formatted. */
                 __('Typical day — about %s', 'yayloyalty'),
-                formatPoints(data.daily_average),
+                formatPoints(data.active_day_average),
               )}
             </span>
             <span className="text-foreground font-medium">

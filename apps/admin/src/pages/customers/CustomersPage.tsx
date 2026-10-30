@@ -43,8 +43,8 @@ export default function CustomersPage() {
   });
   const rows = customersQuery.data?.data ?? [];
   const totalItems = customersQuery.data?.totalItems ?? 0;
-  const serverPageCount = customersQuery.data?.totalPage;
-  // Zero matches gives totalPage 0; clamp so the footer reads "1 of 1".
+  const serverPageCount = customersQuery.data?.totalPages;
+  // Zero matches gives totalPages 0; clamp so the footer reads "1 of 1".
   const pageCount = Math.max(1, serverPageCount ?? 1);
 
   // A sort change can leave `page` past the new last page; placeholderData would show stale rows silently.

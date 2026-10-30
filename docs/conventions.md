@@ -42,7 +42,7 @@ The layering rules live in [architecture.md](architecture.md#server-layers-and-w
   - Config whitelists keep Pro keys.
   - Config for a value this build doesn't know is saved back untouched.
   - A missing Pro evaluator fails open.
-  - Lite names Pro values for the domain (`BIRTHDAY`), never for the edition. A localized key, design and settings keys included, never has the whole word `pro` or `premium`: the validator's boot check fails it in either edition (`product_message` passes).
+  - Lite names Pro values for the domain (`BIRTHDAY`), never for the edition. A localized key, design and settings keys included, never has the whole word `pro` or `premium`: the validator's boot check fails it in either edition (`show_product_message` passes).
 - **Why:** "'unknown' must never mean 'delete' on a downgrade". Failing closed "would silently disable every conditional campaign the moment a site downgraded from Pro".
 - **In code:** `includes/Enums/CampaignTrigger.php`, `includes/Models/Campaign.php`, `includes/Models/Reward.php`, `includes/Engine/Points/PointsEngine.php`, `includes/Helpers/DesignSchema.php`, `apps/admin/src/lib/schema/campaign.schema.ts`.
 

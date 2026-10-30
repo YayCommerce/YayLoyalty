@@ -56,11 +56,11 @@ export function deltaLine(
 }
 
 /** "212 of 1,190 orders" */
-export function ordersSubline(withPoints: number, total: number): string {
+export function ordersSubline(withRedemption: number, total: number): string {
   return sprintf(
-    /* translators: 1: orders that earned points, formatted; 2: all orders in the range, formatted. */
+    /* translators: 1: orders on which points were redeemed, formatted; 2: all orders in the range, formatted. */
     __('%1$s of %2$s orders', 'yayloyalty'),
-    formatPoints(withPoints),
+    formatPoints(withRedemption),
     formatPoints(total),
   );
 }

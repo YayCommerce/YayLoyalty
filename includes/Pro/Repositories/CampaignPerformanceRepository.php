@@ -24,7 +24,7 @@ class CampaignPerformanceRepository {
     /**
      * Lifetime totals, with no date bound.
      *
-     * @return array{points_issued: int, entries_total: int, orders_affected: int, customers_earned: int}
+     * @return array{points_issued: int, entries_total: int, orders_affected: int, customers_earned_count: int}
      */
     public function totals( int $campaign_id ): array {
         global $wpdb;
@@ -37,7 +37,7 @@ class CampaignPerformanceRepository {
                 'SELECT COALESCE(SUM(points), 0) AS points_issued,
                         COUNT(*) AS entries_total,
                         COUNT(DISTINCT order_id) AS orders_affected,
-                        COUNT(DISTINCT user_id) AS customers_earned
+                        COUNT(DISTINCT user_id) AS customers_earned_count
                  FROM `' . esc_sql( Table::name( 'ledger' ) ) . "`
                  WHERE campaign_id = %d AND {$issued}",
                 array_merge( [ $campaign_id ], $types )
@@ -47,10 +47,10 @@ class CampaignPerformanceRepository {
         // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 
         return [
-            'points_issued'    => (int) ( $row['points_issued'] ?? 0 ),
-            'entries_total'    => (int) ( $row['entries_total'] ?? 0 ),
-            'orders_affected'  => (int) ( $row['orders_affected'] ?? 0 ),
-            'customers_earned' => (int) ( $row['customers_earned'] ?? 0 ),
+            'points_issued'          => (int) ( $row['points_issued'] ?? 0 ),
+            'entries_total'          => (int) ( $row['entries_total'] ?? 0 ),
+            'orders_affected'        => (int) ( $row['orders_affected'] ?? 0 ),
+            'customers_earned_count' => (int) ( $row['customers_earned_count'] ?? 0 ),
         ];
     }
 
@@ -140,7 +140,7 @@ class CampaignPerformanceRepository {
 
         return [
             'id'            => (int) $row['id'],
-            'customer_id'   => (int) $row['user_id'],
+            'user_id'       => (int) $row['user_id'],
             // LEFT JOIN: a deleted member's rows stay in totals(), so they stay listed too.
             'customer_name' => null !== $row['customer_name'] ? (string) $row['customer_name'] : $this->customer_meta->deleted_identity( (int) $row['user_id'] )['name'],
             'points'        => (int) $row['points'],

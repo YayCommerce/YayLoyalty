@@ -66,7 +66,7 @@ final class ThankYouPoints {
 
             $design = DesignHelper::get_design();
 
-            if ( ! DesignHelper::surface_enabled( $design, 'thankyou_message' ) ) {
+            if ( ! DesignHelper::surface_enabled( $design, 'show_thankyou_message' ) ) {
                 return '';
             }
 

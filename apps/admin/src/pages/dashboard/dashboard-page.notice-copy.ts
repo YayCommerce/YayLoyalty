@@ -82,7 +82,7 @@ function copyFor(n: TypedNotice): NoticeCopy {
         __('%1$s points on %2$s against a 30-day average of %3$s.', 'yayloyalty'),
         formatPoints(n.data.yesterday_points),
         parseWPDay(n.data.yesterday),
-        formatPoints(n.data.daily_average),
+        formatPoints(n.data.active_day_average),
       );
       const cause =
         edits.length === 0

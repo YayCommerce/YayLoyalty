@@ -118,7 +118,7 @@ final class ProductEarnMessage {
      * A variable product speaks for its cheapest variation that earns, until the shopper picks one.
      */
     public static function sentence( \WC_Product $product ): string {
-        if ( ! DesignHelper::surface_enabled( self::design(), 'product_message' ) ) {
+        if ( ! DesignHelper::surface_enabled( self::design(), 'show_product_message' ) ) {
             return '';
         }
 

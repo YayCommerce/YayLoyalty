@@ -25,7 +25,7 @@ class StoreLedgerRepository {
     /**
      * Ordered by id, which the primary key serves; the table has no standalone created_at index.
      *
-     * @param array{page?: int, per_page?: int, order?: string, types?: string[], search?: string, after?: string, before?: string, campaign_id?: int} $args
+     * @param array{page?: int, per_page?: int, order?: string, types?: string[], search?: string, from?: string, to?: string, campaign_id?: int} $args
      * @return array{items: array<int, array<string, mixed>>, total: int, page: int, per_page: int}
      */
     public function paginate( array $args ): array {
@@ -37,9 +37,9 @@ class StoreLedgerRepository {
 
         $where = $this->ledger->history_where(
             [
-                'types'  => $args['types'] ?? [],
-                'after'  => $args['after'] ?? '',
-                'before' => $args['before'] ?? '',
+                'types' => $args['types'] ?? [],
+                'from'  => $args['from'] ?? '',
+                'to'    => $args['to'] ?? '',
             ]
         );
 

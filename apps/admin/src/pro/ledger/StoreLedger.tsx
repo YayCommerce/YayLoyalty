@@ -64,8 +64,8 @@ export function StoreLedger() {
 
   const filters = {
     search: state.pageParams.search,
-    after: state.pageParams.after,
-    before: state.pageParams.before,
+    from: state.pageParams.from,
+    to: state.pageParams.to,
     type: state.filter,
     campaignId: campaign === ALL_CAMPAIGNS ? undefined : Number(campaign),
   };
@@ -74,7 +74,7 @@ export function StoreLedger() {
   const campaignNames = useLedgerCampaignNames();
   const campaignOptions = useMemo(() => campaignFilterOptions(campaignNames), [campaignNames]);
 
-  const totalPage = Math.max(1, query.data?.totalPage ?? 1);
+  const totalPages = Math.max(1, query.data?.totalPages ?? 1);
   const { setPage } = state;
 
   // react-router keeps the scroll position across navigations, so the page would open wherever the Dashboard left it.
@@ -84,8 +84,8 @@ export function StoreLedger() {
 
   // Rows can vanish between requests; a page past the end would show an empty table with no way back.
   useEffect(() => {
-    if (state.page > totalPage) setPage(totalPage);
-  }, [state.page, totalPage, setPage]);
+    if (state.page > totalPages) setPage(totalPages);
+  }, [state.page, totalPages, setPage]);
 
   const { isExporting, start: startExport } = useCsvExport({
     fetchRows: (signal) => fetchFilteredLedger(filters, signal),
@@ -174,14 +174,14 @@ export function StoreLedger() {
                     skeletonRows={PAGE_SIZE / 2}
                   />
                 </div>
-                {totalPage > 1 && (
+                {totalPages > 1 && (
                   <Pagination
                     pageIndex={state.page - 1}
-                    pageCount={totalPage}
+                    pageCount={totalPages}
                     canPreviousPage={state.page > 1}
-                    canNextPage={state.page < totalPage}
+                    canNextPage={state.page < totalPages}
                     onPreviousPage={() => setPage(Math.max(1, state.page - 1))}
-                    onNextPage={() => setPage(Math.min(totalPage, state.page + 1))}
+                    onNextPage={() => setPage(Math.min(totalPages, state.page + 1))}
                     onPageChange={(pageIndex) => setPage(pageIndex + 1)}
                     className="ml-auto"
                   />

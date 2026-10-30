@@ -119,7 +119,7 @@ final class CustomerRowFilters {
      * @return array{0: string|null, 1: string|null, 2: bool} [from, to, is_null].
      */
     private static function expiry_window( string $option ): array {
-        if ( 'none' === $option ) {
+        if ( 'no_expiry' === $option ) {
             return [ null, null, true ];
         }
 

@@ -13,9 +13,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
 import { ProGate } from '@/components/pro/ProGate';
-import { DesignPanelSection, DesignTypographySection } from '@/pro';
+import { DesignCustomCssSection, DesignPanelSection } from '@/pro';
 import {
   CANCEL_LABEL,
+  CUSTOM_CSS_SECTION_TITLE,
+  CUSTOM_CSS_SECTION_UPSELL,
   PANEL_SECTION_TITLE,
   PANEL_SECTION_UPSELL,
   RESET_CONFIRM_LABEL,
@@ -27,8 +29,6 @@ import {
   SAVE_BUTTON_LABEL,
   SAVE_ERROR_FALLBACK,
   SAVE_SUCCESS_TOAST,
-  TYPOGRAPHY_SECTION_TITLE,
-  TYPOGRAPHY_SECTION_UPSELL,
 } from './design-settings.copy';
 import { DesignFormValues, designToFormValues } from './design-settings.form';
 import { DesignLauncherPreview } from './DesignLauncherPreview';
@@ -116,9 +116,9 @@ export default function DesignSettingsPage() {
               <DesignUpsellCard title={PANEL_SECTION_TITLE()} description={PANEL_SECTION_UPSELL()} />
             )}
             {IS_PRO_BUILD ? (
-              <DesignTypographySection />
+              <DesignCustomCssSection />
             ) : (
-              <DesignUpsellCard title={TYPOGRAPHY_SECTION_TITLE()} description={TYPOGRAPHY_SECTION_UPSELL()} />
+              <DesignUpsellCard title={CUSTOM_CSS_SECTION_TITLE()} description={CUSTOM_CSS_SECTION_UPSELL()} />
             )}
 
             <div className="flex items-center justify-end gap-2">

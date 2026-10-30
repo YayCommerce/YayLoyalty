@@ -18,7 +18,7 @@ import { DashboardRangeControl } from './components/DashboardRangeControl';
 import { DashboardRecentActivity } from './components/DashboardRecentActivity';
 import { DashboardSkeleton } from './components/DashboardSkeleton';
 import { DashboardStatsGrid } from './components/DashboardStatsGrid';
-import { DashboardTopEarners } from './components/DashboardTopEarners';
+import { DashboardTopBalances } from './components/DashboardTopBalances';
 import { noticeTileOverrides, rangeSubline } from './dashboard-page.copy';
 import type { DashboardProSlots } from './dashboard-page.pro-slots';
 
@@ -121,7 +121,7 @@ function DashboardBody({
           {slots.chartControls}
         </DashboardPointsChart>
         <div className="flex flex-col gap-4">
-          <DashboardTopEarners earners={data.top_earners} />
+          <DashboardTopBalances balances={data.top_balances} />
           {slots.sidePanels}
         </div>
       </div>
