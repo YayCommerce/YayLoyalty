@@ -40,14 +40,6 @@ final class ContextFactory {
             }
         }
 
-        $loyalty_discount = 0.0;
-
-        foreach ( $order->get_items( 'coupon' ) as $coupon ) {
-            if ( $coupon instanceof \WC_Order_Item_Coupon && Context::is_loyalty_code( (string) $coupon->get_code() ) ) {
-                $loyalty_discount += (float) $coupon->get_discount();
-            }
-        }
-
         return new Context(
             $user_id > 0 ? $user_id : null,
             $occurred_at,
@@ -56,7 +48,6 @@ final class ContextFactory {
             $line_items,
             (float) $order->get_subtotal(),
             (float) $order->get_total_discount(),
-            $loyalty_discount,
             (array) $order->get_coupon_codes(),
             self::user_roles( $user_id ),
             $order_id,
@@ -86,7 +77,6 @@ final class ContextFactory {
             $currency,
             self::to_base_factor( $currency, null ),
             [],
-            0.0,
             0.0,
             0.0,
             [],
@@ -122,7 +112,6 @@ final class ContextFactory {
             $currency,
             self::to_base_factor( $currency, null ),
             [],
-            0.0,
             0.0,
             0.0,
             [],
@@ -222,7 +211,6 @@ final class ContextFactory {
             [ $line ],
             $subtotal,
             0.0,
-            0.0,
             [],
             self::user_roles( (int) $user_id )
         );
@@ -257,15 +245,8 @@ final class ContextFactory {
             );
         }
 
-        $coupon_codes     = (array) $cart->get_applied_coupons();
-        $currency         = get_woocommerce_currency();
-        $loyalty_discount = 0.0;
-
-        foreach ( $coupon_codes as $code ) {
-            if ( Context::is_loyalty_code( (string) $code ) ) {
-                $loyalty_discount += (float) $cart->get_coupon_discount_amount( $code );
-            }
-        }
+        $coupon_codes = (array) $cart->get_applied_coupons();
+        $currency     = get_woocommerce_currency();
 
         return new Context(
             $user_id,
@@ -275,7 +256,6 @@ final class ContextFactory {
             $line_items,
             (float) $cart->get_subtotal(),
             (float) $cart->get_discount_total(),
-            $loyalty_discount,
             $coupon_codes,
             self::user_roles( (int) $user_id )
         );

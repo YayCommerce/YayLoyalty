@@ -289,54 +289,6 @@ export type DeleteResponse = z.infer<typeof deleteResponseSchema>;
 
 // Per-trigger config fields
 
-/** `limit`: a whole number of at least 1, or null for no limit. */
-type CampaignConfigFieldType = 'bool' | 'string' | 'int' | 'number' | 'enum' | 'int_list' | 'limit';
-
-interface CampaignConfigFieldSpec {
-  type: CampaignConfigFieldType;
-  /** Lower bound; int and number only. */
-  min?: number;
-  /** Strict lower bound: the value must be above it; number only. */
-  exclusiveMin?: number;
-  /** Fixed value set; enum only. */
-  values?: readonly string[];
-}
-
-/**
- * Mirrors Campaign::config_schema(), the source of truth. A per-trigger config
- * field map for the three Lite triggers. UI metadata, not validation: `config` stays z.record
- * so this can never become a second whitelist. Pro triggers have no Lite
- * schema and so no entry here.
- */
-export const CAMPAIGN_CONFIG_FIELDS: Record<
-  'purchase' | 'signup' | 'review',
-  Record<string, CampaignConfigFieldSpec>
-> = {
-  purchase: {
-    points_per_unit: { type: 'number', exclusiveMin: 0 },
-    base: { type: 'enum', values: ['after_discounts', 'before_discounts'] },
-    // Never read by the calculator; kept so a downgrade/upgrade round trip does not lose it.
-    include_shipping: { type: 'bool' },
-    include_tax: { type: 'bool' },
-    rounding: { type: 'enum', values: ['down', 'nearest', 'up'] },
-    min_subtotal: { type: 'number', min: 0 },
-    exclude_coupon_orders: { type: 'bool' },
-    excluded_product_ids: { type: 'int_list' },
-    excluded_category_ids: { type: 'int_list' },
-    max_points_per_order: { type: 'limit' },
-  },
-  signup: {
-    points: { type: 'int', min: 0 },
-  },
-  review: {
-    points: { type: 'int', min: 0 },
-    require_verified: { type: 'bool' },
-    one_per_product: { type: 'bool' },
-    // Absent from default_config(); the form defaults it to 0.
-    media_bonus_points: { type: 'int', min: 0 },
-  },
-};
-
 /**
  * Mirrors Campaign::default_config(), the source of truth. Used only when creating: the chooser's
  * templates start from these, and switching the trigger in the builder
@@ -346,12 +298,9 @@ export const CAMPAIGN_CONFIG_FIELDS: Record<
 export const DEFAULT_CAMPAIGN_CONFIG: Record<LiteCampaignTrigger, Record<string, unknown>> = {
   purchase: {
     points_per_unit: 1,
-    base: 'after_discounts',
-    include_shipping: false,
     include_tax: false,
     rounding: 'down',
     min_subtotal: 0,
-    exclude_coupon_orders: false,
     excluded_product_ids: [],
     excluded_category_ids: [],
   },
@@ -365,12 +314,9 @@ export const DEFAULT_CAMPAIGN_CONFIG: Record<LiteCampaignTrigger, Record<string,
  */
 export interface PurchaseConfig {
   points_per_unit?: number;
-  base?: 'after_discounts' | 'before_discounts';
-  include_shipping?: boolean;
   include_tax?: boolean;
   rounding?: RoundingMode;
   min_subtotal?: number;
-  exclude_coupon_orders?: boolean;
   excluded_product_ids?: number[];
   excluded_category_ids?: number[];
   max_points_per_order?: number | null;

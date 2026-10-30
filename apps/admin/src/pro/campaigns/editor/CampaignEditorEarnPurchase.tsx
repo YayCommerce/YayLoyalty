@@ -38,7 +38,6 @@ export function CampaignEditorEarnPurchase() {
   const config = watch('config') as PurchaseConfig;
 
   function patchConfig(patch: Partial<PurchaseConfig>) {
-    // Spread the stored config: keys with no control here, such as include_shipping, must survive a save.
     setValue('config', { ...config, ...patch }, { shouldDirty: true, shouldValidate: true });
   }
 

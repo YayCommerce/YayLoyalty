@@ -11,10 +11,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Context {
 
-    /**
-     * Every reward's stored coupon code is this prefix plus COUPON_CODE_LENGTH characters of COUPON_CODE_ALPHABET. Codes of
-     * that shape are our own virtual coupons and never count as "used a coupon".
-     */
+    /** Every reward's stored coupon code is this prefix plus COUPON_CODE_LENGTH characters of COUPON_CODE_ALPHABET. */
     public const COUPON_CODE_PREFIX   = 'yayloyalty-';
     public const COUPON_CODE_LENGTH   = 8;
     public const COUPON_CODE_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -47,9 +44,6 @@ final class Context {
 
     /** @var float All coupons, order currency. */
     private $order_discount_total;
-
-    /** @var float Our own redemption coupon's amount, order currency. */
-    private $loyalty_discount;
 
     /** @var string[] Every applied code, ours included. */
     private $coupon_codes;
@@ -89,7 +83,6 @@ final class Context {
         array $line_items,
         float $order_subtotal,
         float $order_discount_total,
-        float $loyalty_discount,
         array $coupon_codes,
         array $user_roles,
         ?int $order_id = null,
@@ -108,7 +101,6 @@ final class Context {
         $this->line_items           = array_values( $line_items );
         $this->order_subtotal       = $order_subtotal;
         $this->order_discount_total = $order_discount_total;
-        $this->loyalty_discount     = $loyalty_discount;
         $this->coupon_codes         = array_values( array_map( 'strval', $coupon_codes ) );
         $this->user_roles           = array_values( array_map( 'strval', $user_roles ) );
         $this->order_id             = $order_id;
@@ -119,7 +111,7 @@ final class Context {
 
     /** A guest with an empty cart and no event, at $at (UTC MySQL), for advertising what a campaign pays. */
     public static function advert( string $at, string $currency, float $to_base_factor ): self {
-        $ctx         = new self( null, $at, $currency, $to_base_factor, [], 0.0, 0.0, 0.0, [], [] );
+        $ctx         = new self( null, $at, $currency, $to_base_factor, [], 0.0, 0.0, [], [] );
         $ctx->advert = true;
 
         return $ctx;
@@ -159,30 +151,9 @@ final class Context {
         return $this->order_discount_total;
     }
 
-    public function get_loyalty_discount(): float {
-        return $this->loyalty_discount;
-    }
-
     /** @return string[] */
     public function get_coupon_codes(): array {
         return $this->coupon_codes;
-    }
-
-    /**
-     * Excludes our redemption coupon and every reward coupon, or exclude_coupon_orders would stop earning
-     * for anyone who redeems.
-     *
-     * @return string[]
-     */
-    public function get_real_coupon_codes(): array {
-        return array_values(
-            array_filter(
-                $this->coupon_codes,
-                static function ( $code ): bool {
-                    return ! self::is_loyalty_code( (string) $code );
-                }
-            )
-        );
     }
 
     /** True for a code of a reward's stored shape: COUPON_CODE_PREFIX plus COUPON_CODE_LENGTH of COUPON_CODE_ALPHABET. */

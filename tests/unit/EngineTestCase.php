@@ -72,7 +72,6 @@ abstract class EngineTestCase extends TestCase {
      */
     protected function context(
         array $lines,
-        float $loyalty_discount = 0.0,
         array $coupons = [],
         float $to_base_factor = 1.0,
         ?int $user_id = 7,
@@ -96,7 +95,6 @@ abstract class EngineTestCase extends TestCase {
             $lines,
             $subtotal,
             $subtotal - $total,
-            $loyalty_discount,
             $coupons,
             [ 'customer' ],
             555,
