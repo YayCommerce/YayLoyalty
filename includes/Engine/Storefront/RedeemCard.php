@@ -184,7 +184,7 @@ final class RedeemCard {
 
                 self::enqueue_assets();
 
-                return self::template( self::view( null, $guest, $guest, 0 ) + self::chrome() );
+                return self::template( self::view( null, $guest, $guest, 0, wc_get_price_decimals() ) + self::chrome() );
             }
 
             $balance = (int) $this->balance_of( $user_id );
@@ -239,7 +239,7 @@ final class RedeemCard {
      *                              refused), balance, min, effective_step (Clamp::effective_step()), max (the ceiling's
      *                              points), max_value, rate, is_disabled and bound_by.
      */
-    public static function view( ?int $balance, Result $quote, Result $ceiling, int $requested, int $decimals = 2, float $currency_rate = 1.0 ): array {
+    public static function view( ?int $balance, Result $quote, Result $ceiling, int $requested, int $decimals, float $currency_rate = 1.0 ): array {
         if ( null === $balance ) {
             return [ 'state' => 'guest' ];
         }
