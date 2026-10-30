@@ -43,6 +43,11 @@ final class CurrencyRate {
         return is_numeric( $rate ) && (float) $rate > 0;
     }
 
+    /** The base currency's decimals. Not wc_get_price_decimals(), which YayCurrency filters to the charged currency. */
+    public static function base_decimals(): int {
+        return absint( get_option( 'woocommerce_price_num_decimals', 2 ) );
+    }
+
     /** A base-currency amount in $currency, the current one by default. */
     public static function from_base( float $amount, ?string $currency = null ): float {
         return $amount * self::rate( null === $currency ? self::current() : $currency );

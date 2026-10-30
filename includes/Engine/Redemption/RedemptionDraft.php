@@ -52,7 +52,7 @@ final class RedemptionDraft {
 
     /**
      * `flexible_discount` for a row of the flexible discount's reward, reward_qualifier() for any other. A null $reward is never
-     * the flexible discount's: neither the built-in nor a reward with redemption rows can be deleted.
+     * the flexible discount's, because the built-in reward can't be deleted.
      */
     public static function qualifier_for( Redemption $row, ?Reward $reward ): string {
         return RedemptionService::is_flexible_discount( $reward ) ? RewardType::FLEXIBLE_DISCOUNT : self::reward_qualifier( $row->get_reward_id() );

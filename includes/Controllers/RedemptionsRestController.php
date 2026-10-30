@@ -5,7 +5,6 @@ use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Models\Redemption;
 use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Repositories\RewardRepository;
-use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -60,7 +59,6 @@ final class RedemptionsRestController extends AbstractRestController {
             ]
         );
 
-        $now   = Dates::now();
         $names = [];
         $items = [];
 
@@ -85,7 +83,7 @@ final class RedemptionsRestController extends AbstractRestController {
                 'points'      => -$redemption->get_points(),
                 'value'       => $redemption->get_value(),
                 'currency'    => $redemption->get_currency(),
-                'status'      => $redemption->display_status( $now ),
+                'status'      => $redemption->get_status(),
                 'created_at'  => $redemption->get_created_at(),
             ];
         }
@@ -140,7 +138,7 @@ final class RedemptionsRestController extends AbstractRestController {
                 ],
                 'status'      => [
                     'type'     => 'string',
-                    'enum'     => array_merge( Redemption::STORED_STATUSES, [ Redemption::STATUS_EXPIRED ] ),
+                    'enum'     => Redemption::STORED_STATUSES,
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],

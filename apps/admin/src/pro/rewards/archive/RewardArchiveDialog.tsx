@@ -4,7 +4,7 @@ import { useDeleteRewardMutation, useUpdateRewardStatusMutation } from '@/lib/qu
 import type { Reward } from '@/lib/schema/reward.schema';
 import { ArchiveOrDeleteDialog } from '@/pro/shared/ArchiveOrDeleteDialog';
 import {
-  archiveBodyLines,
+  archiveBodyLine,
   deleteBodyLine,
   failureMessage,
   resolveRewardArchiveCase,
@@ -46,7 +46,7 @@ export function RewardArchiveDialog({
           ? /* translators: %s: the reward's name. */ sprintf(__('Delete “%s”?', 'yayloyalty'), reward.name)
           : /* translators: %s: the reward's name. */ sprintf(__('Archive “%s”?', 'yayloyalty'), reward.name)
       }
-      lines={isDelete ? [deleteBodyLine()] : archiveBodyLines(reward.redemption_summary)}
+      lines={[isDelete ? deleteBodyLine() : archiveBodyLine()]}
       note={
         discardsUnsavedChanges && (
           <p className="text-muted-foreground text-xs">

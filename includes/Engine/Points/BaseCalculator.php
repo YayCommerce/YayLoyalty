@@ -6,15 +6,13 @@ use YayLoyalty\Models\Campaign;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The base-currency amount a purchase campaign earns on: included lines'
- * totals per `base`. After discounts, every coupon on the line lowers it,
- * merchant coupons and our own points discount and reward coupons alike.
+ * The base-currency amount a purchase campaign earns on: included lines' totals after every
+ * discount, merchant coupons and our own points discount and reward coupons alike.
  */
 final class BaseCalculator {
 
     public function compute( Campaign $campaign, Context $ctx ): float {
-        $config           = $campaign->get_config();
-        $before_discounts = 'before_discounts' === ( $config['base'] ?? 'after_discounts' );
+        $config = $campaign->get_config();
 
         $included = 0.0; // What we earn on, order currency.
 
@@ -23,7 +21,7 @@ final class BaseCalculator {
                 continue;
             }
 
-            $included += $before_discounts ? $item->get_subtotal() : $item->get_total();
+            $included += $item->get_total();
 
             if ( ! empty( $config['include_tax'] ) ) {
                 $included += $item->get_tax_total();

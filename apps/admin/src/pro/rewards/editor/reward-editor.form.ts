@@ -53,7 +53,6 @@ function seedConfig(type: CatalogRewardType, currency: string): Record<string, u
         currency,
         amount: 5,
         min_order: 25,
-        coupon_expiry_days: 60,
         exclude_sale_items: false,
       };
     case 'percent_coupon':
@@ -62,13 +61,12 @@ function seedConfig(type: CatalogRewardType, currency: string): Record<string, u
         max_discount: 50,
         currency,
         min_order: null,
-        coupon_expiry_days: 30,
         exclude_sale_items: false,
       };
     case 'free_shipping':
-      return { min_order: 25, currency, coupon_expiry_days: 30 };
+      return { min_order: 25, currency };
     case 'free_product':
-      return { product_id: null, variation_id: null, qty: 1, coupon_expiry_days: 60 };
+      return { product_id: null, variation_id: null, qty: 1 };
   }
 }
 

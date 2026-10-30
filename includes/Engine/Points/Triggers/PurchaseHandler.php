@@ -41,10 +41,6 @@ final class PurchaseHandler implements TriggerHandler {
             return false;
         }
 
-        if ( ! empty( $config['exclude_coupon_orders'] ) && ! empty( $ctx->get_real_coupon_codes() ) ) {
-            return false;
-        }
-
         return true;
     }
 

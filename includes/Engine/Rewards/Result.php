@@ -8,7 +8,8 @@ defined( 'ABSPATH' ) || exit;
 /**
  * The quote: whether a claim may go ahead, what the customer asked for and gets, its worth and which
  * limit bound. `reason` is '' when allowed, else a REASON_* constant or a gate's or handler's own string.
- * `rate_snapshot` keeps the quoted rate, so a refund reverses at that rate rather than today's.
+ * `rate_snapshot` is the quoted rate, which CommitWriter stores on the redemption row as a record. Nothing
+ * reads it back: Reversal works from the row's points.
  */
 final class Result {
 

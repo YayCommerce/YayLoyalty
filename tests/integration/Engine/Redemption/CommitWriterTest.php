@@ -7,9 +7,11 @@ use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Rewards\Clamp;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Enums\Status;
+use YayLoyalty\Integrations\YayCurrency\OrderRateSnapshot;
 use YayLoyalty\Models\Redemption;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
+use YayLoyalty\Utils\CurrencyRate;
 use YayLoyalty\Utils\Dates;
 
 /** CommitWriter: the redemption row, the ledger row and the order meta land together, once, or not at all. */
@@ -91,6 +93,38 @@ final class CommitWriterTest extends IntegrationTestCase {
         $this->assertSame( '', (string) wc_get_order( $order->get_id() )->get_meta( CommitWriter::META_POINTS ) );
     }
 
+    /** At 1 point per base unit and 25,000 per base unit saved on the order, 100 points buy 2,500,000. */
+    public function test_a_non_base_currency_redemption_stores_the_base_value_and_the_full_rate(): void {
+        // CurrencyRate reads the saved rate only through the YayCurrency integration, which tests don't load.
+        $rate = static function ( $rate, $currency, $order ) {
+            $saved = $order instanceof \WC_Order ? OrderRateSnapshot::read( $order ) : null;
+
+            return null === $saved ? $rate : (float) $saved;
+        };
+        add_filter( 'yayloyalty_currency_rate', $rate, 10, 3 );
+
+        try {
+            $currency = 'VND' === get_option( 'woocommerce_currency' ) ? 'EUR' : 'VND';
+            $this->ledger_service()->earn( $this->earn_draft( 7, 100, 1000 ) );
+            $order = $this->order_with_points_discount( 7, 5000000.0, 2500000.0, self::FLEXIBLE_DISCOUNT_CODE );
+            $order->set_currency( $currency );
+            $order->update_meta_data( OrderRateSnapshot::META_KEY, '25000.0000000000' );
+            $order->save();
+
+            $outcome = $this->commit_writer()->commit( $order, $this->reward( [ 'points_per_currency_unit' => 1 ] ) );
+
+            $this->assertSame( Outcome::REDEEMED, $outcome->get_status() );
+            $rows = $this->redemption_rows( 7 );
+            $this->assertSame( 100, (int) $rows[0]['points'] );
+            $this->assertSame( $currency, $rows[0]['currency'] );
+            $this->assertSame( 2500000.0, (float) $rows[0]['value'] );
+            $this->assertSame( (float) wc_format_decimal( 2500000 / 25000, CurrencyRate::base_decimals() ), (float) $rows[0]['base_value'] );
+            $this->assertSame( '0.0000400000', $rows[0]['rate_snapshot'] );
+        } finally {
+            remove_filter( 'yayloyalty_currency_rate', $rate, 10 );
+        }
+    }
+
     /**
      * User 7's rewards A ($5 off, 500) and B (15% off capped at 10, 1,500), and an order of 100.00 carrying both lines.
      *
@@ -134,7 +168,6 @@ final class CommitWriterTest extends IntegrationTestCase {
         $this->assertSame( [ 500, 1500 ], array_map( 'intval', array_column( $rows, 'points' ) ) );
         $this->assertSame( [ 5.0, 10.0 ], array_map( 'floatval', array_column( $rows, 'value' ) ) );
         $this->assertSame( [ 'applied', 'applied' ], array_column( $rows, 'status' ) );
-        $this->assertNull( $rows[0]['coupon_id'] );
         $keys = array_column( array_slice( $this->ledger_rows( 7 ), 1 ), 'idempotency_key' );
         $this->assertSame( [ sprintf( 'redeem:7:order:%d:reward_%d', $order->get_id(), $a->get_id() ), sprintf( 'redeem:7:order:%d:reward_%d', $order->get_id(), $b->get_id() ) ], $keys );
         $saved = wc_get_order( $order->get_id() );

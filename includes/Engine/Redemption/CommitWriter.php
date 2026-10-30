@@ -14,6 +14,7 @@ use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Services\LedgerService;
+use YayLoyalty\Utils\CurrencyRate;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
@@ -391,10 +392,11 @@ final class CommitWriter {
         return $rows;
     }
 
-    /** A reward line's redemptions row: the full cost, the line's discount as value and base_value, no rate, no catalog coupon. */
+    /** A reward line's redemptions row: the full cost, the line's discount as value, no rate. */
     private function reward_row( \WC_Order $order, Reward $reward, int $points, float $value, string $code ): Redemption {
-        $value = $this->money( $value );
-        $now   = Dates::now();
+        $value    = $this->money( $value );
+        $currency = (string) $order->get_currency();
+        $now      = Dates::now();
 
         return new Redemption(
             null,
@@ -403,14 +405,12 @@ final class CommitWriter {
             (int) $order->get_id(),
             $points,
             $value,
-            (string) $order->get_currency(),
-            $value,
+            $currency,
+            $this->base_value( $value, $currency, $order ),
             '0',
             $code,
-            null,
             Redemption::STATUS_APPLIED,
             0,
-            null,
             $now,
             $now
         );
@@ -426,10 +426,16 @@ final class CommitWriter {
         return (string) wc_format_decimal( $amount, wc_get_price_decimals() );
     }
 
-    /** The redemptions row a quote becomes. Precondition: $quote is allowed with points > 0. `base_value` equals `value`: there is no currency conversion. */
+    /** $value in the base currency, at the order's saved rate when it has one, rounded to the base currency's decimals. */
+    private function base_value( string $value, string $currency, \WC_Order $order ): string {
+        return (string) wc_format_decimal( CurrencyRate::to_base( (float) $value, $currency, $order ), CurrencyRate::base_decimals() );
+    }
+
+    /** The redemptions row a quote becomes. Precondition: $quote is allowed with points > 0. */
     private function redemption_from( Result $quote, \WC_Order $order ): Redemption {
-        $value = $this->decimal( $quote );
-        $now   = Dates::now();
+        $value    = $this->decimal( $quote );
+        $currency = (string) $quote->get_currency();
+        $now      = Dates::now();
 
         return new Redemption(
             null,
@@ -438,14 +444,12 @@ final class CommitWriter {
             (int) $order->get_id(),
             $quote->get_points(),
             $value,
-            (string) $quote->get_currency(),
-            $value,
-            (string) $quote->get_rate_snapshot(),
+            $currency,
+            $this->base_value( $value, $currency, $order ),
+            (string) wc_format_decimal( $quote->get_rate_snapshot(), 10 ),
             $quote->get_reward()->get_coupon_code(),
-            null,
             Redemption::STATUS_APPLIED,
             0,
-            null,
             $now,
             $now
         );

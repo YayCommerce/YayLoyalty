@@ -161,7 +161,7 @@ final class Clamp {
      * apply() never reads it: RedemptionService::quote() turns it into the request, so the commit re-checks the line.
      */
     public static function is_auto_max( Reward $reward ): bool {
-        return Reward::REDEMPTION_MODE_AUTO_MAX === ( $reward->get_config()['redemption_mode'] ?? Reward::REDEMPTION_MODE_FREE_INPUT );
+        return Reward::REDEMPTION_MODE_AUTO_MAX === ( $reward->get_config()['redemption_mode'] ?? Reward::REDEMPTION_MODE_AUTO_MAX );
     }
 
     /** The fewest points one order may take. Not rounded to the step. */

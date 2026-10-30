@@ -8,7 +8,7 @@ import { useProductSummaryQuery } from '@/lib/queries/lookup.queries';
 import { isCatalogRewardType, RewardType } from '@/lib/schema/reward.schema';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { MoneyInput, OptionalCountInput, OptionalMoneyInput, PointsInput } from '@/components/ui/custom/amount-inputs';
+import { MoneyInput, OptionalMoneyInput, PointsInput } from '@/components/ui/custom/amount-inputs';
 import { EditorSection } from '@/components/ui/custom/editor-section';
 import { LookupMultiSelect } from '@/components/ui/custom/lookup-multi-select';
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
@@ -21,7 +21,7 @@ import { rewardCouponCodeCopy } from '@/pages/rewards/reward-coupon-code.copy';
 import { RewardFormValues } from './reward-editor.form';
 
 /**
- * The editor's sections for one reward type: the built-in's rate settings, or a catalog reward's cost and coupon.
+ * The editor's sections for one reward type: the built-in's rate settings, or a catalog reward's cost and value.
  * Status and schedule live in the side area. `couponCode` is the saved reward's, absent while creating.
  */
 export function RewardEditorSections({ type, couponCode }: { type: RewardType; couponCode?: string }) {
@@ -41,12 +41,6 @@ export function RewardEditorSections({ type, couponCode }: { type: RewardType; c
       >
         {isCatalog ? <RewardEditorValue type={type} /> : <RewardEditorFlexibleDiscount />}
       </EditorSection>
-
-      {isCatalog && (
-        <EditorSection contentClassName="gap-5" step={3} title={__('Coupon', 'yayloyalty')}>
-          <RewardEditorCoupon />
-        </EditorSection>
-      )}
     </div>
   );
 }
@@ -366,31 +360,6 @@ function productStockLabel(status: string, quantity: number | null): { label: st
   }
 
   return { label: __('In stock', 'yayloyalty'), isAvailable: true };
-}
-
-// Coupon
-
-function RewardEditorCoupon() {
-  const { config, patchConfig, configErrors } = useRewardConfig();
-  const days = numberConfig(config, 'coupon_expiry_days');
-
-  return (
-    <RewardField
-      label={__('Expires', 'yayloyalty')}
-      error={configErrors.coupon_expiry_days}
-      description={__(
-        'Days after claiming. Points are spent when the coupon is claimed, and an expired coupon does not return them. Leave empty for a coupon that never expires.',
-        'yayloyalty',
-      )}
-    >
-      <OptionalCountInput
-        value={days}
-        unit={_n('day', 'days', days ?? 0, 'yayloyalty')}
-        placeholder={__('Never', 'yayloyalty')}
-        onValueChange={(coupon_expiry_days) => patchConfig({ coupon_expiry_days })}
-      />
-    </RewardField>
-  );
 }
 
 /* ─── field atoms ────────────────────────────────────────────────────── */

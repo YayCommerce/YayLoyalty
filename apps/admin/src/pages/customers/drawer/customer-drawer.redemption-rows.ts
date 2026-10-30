@@ -4,10 +4,7 @@ import type { RedemptionEntry } from '@/lib/schema/redemption.schema';
 import {
   REDEMPTION_STATUS_APPLIED,
   REDEMPTION_STATUS_CANCELLED,
-  REDEMPTION_STATUS_EXPIRED,
-  REDEMPTION_STATUS_ISSUED,
   REDEMPTION_STATUS_REFUNDED,
-  REDEMPTION_STATUS_USED,
 } from './customer-drawer.copy';
 
 export type RedemptionRow = {
@@ -35,15 +32,9 @@ function statusLabel(status: RedemptionEntry['status']): string {
   switch (status) {
     case 'applied':
       return REDEMPTION_STATUS_APPLIED();
-    case 'issued':
-      return REDEMPTION_STATUS_ISSUED();
-    case 'used':
-      return REDEMPTION_STATUS_USED();
     case 'refunded':
       return REDEMPTION_STATUS_REFUNDED();
     case 'cancelled':
       return REDEMPTION_STATUS_CANCELLED();
-    case 'expired':
-      return REDEMPTION_STATUS_EXPIRED();
   }
 }

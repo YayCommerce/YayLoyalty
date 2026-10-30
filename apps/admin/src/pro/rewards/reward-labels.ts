@@ -110,19 +110,13 @@ export function isCreatableRewardType(type: string): type is CatalogRewardType {
 export function templateDescription(type: CatalogRewardType): string {
   switch (type) {
     case 'fixed_coupon':
-      return __(
-        'A set amount off a later order, issued as a single-use coupon when the customer claims it.',
-        'yayloyalty',
-      );
+      return __('A set amount off an order, applied as a coupon at checkout.', 'yayloyalty');
     case 'percent_coupon':
-      return __('A percentage off a later order, with an optional cap so a large order cannot drain it.', 'yayloyalty');
+      return __('A percentage off an order, with an optional cap so a large order cannot drain it.', 'yayloyalty');
     case 'free_shipping':
-      return __(
-        'Free shipping on a later order, issued as a single-use coupon when the customer claims it.',
-        'yayloyalty',
-      );
+      return __('Free shipping on an order, applied as a coupon at checkout.', 'yayloyalty');
     case 'free_product':
-      return __('A product of your choice for free, added to a later order with a single-use coupon.', 'yayloyalty');
+      return __('A product of your choice for free, added to an order with a coupon at checkout.', 'yayloyalty');
   }
 }
 
@@ -132,21 +126,7 @@ export function rewardSubtitle(reward: Reward): string {
     return flexibleDiscountSubtitle(reward.config);
   }
 
-  if (reward.type === 'free_product') {
-    return __('Free product · claim a coupon, then order the product', 'yayloyalty');
-  }
-
-  const expiryDays = numberConfig(reward.config, 'coupon_expiry_days');
-
-  if (expiryDays === null) {
-    return __('Single-use coupon', 'yayloyalty');
-  }
-
-  return sprintf(
-    /* translators: %d: number of days the coupon stays valid after being claimed. */
-    __('Single-use coupon, valid %d days after claiming', 'yayloyalty'),
-    expiryDays,
-  );
+  return __('Applied as a coupon at checkout', 'yayloyalty');
 }
 
 /** "any" for the flexible discount — the customer picks the amount — otherwise the fixed point cost. */
@@ -232,7 +212,7 @@ function scheduleWindowLabel(startsAt: string | null, endsAt: string | null): st
  * "{n} archived" link between them: the row count, then the sentence after
  * it. On the init case the sentence says nothing has been redeemed yet —
  * Redeemed stays "—" until redemption ships and defines it; its source is then
- * `redemption_summary`, the figure the archive dialog already shows.
+ * `redemption_summary`.
  */
 export function headerSubtitle(screen: RewardsScreen): { count: string; detail: string } {
   if (screen.hasNoCatalogRewards) {

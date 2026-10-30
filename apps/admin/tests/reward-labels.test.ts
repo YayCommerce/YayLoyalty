@@ -42,20 +42,15 @@ describe('costLabel', () => {
 });
 
 describe('rewardSubtitle', () => {
-  it('is the fixed flexible discount copy for flexible_discount', () => {
+  it('reads a flexible discount without a redemption mode as auto max', () => {
     expect(rewardSubtitle(reward({ type: 'flexible_discount' }))).toBe(
-      'The customer chooses how many points to use at checkout',
+      'The most points the order allows are applied at checkout',
     );
   });
 
-  it('names the coupon expiry when the config carries one', () => {
-    expect(rewardSubtitle(reward({ type: 'fixed_coupon', config: { coupon_expiry_days: 60 } }))).toBe(
-      'Single-use coupon, valid 60 days after claiming',
-    );
-  });
-
-  it('falls back to a generic line when no expiry is configured', () => {
-    expect(rewardSubtitle(reward({ type: 'free_shipping', config: {} }))).toBe('Single-use coupon');
+  it('is the coupon line for every catalog type', () => {
+    expect(rewardSubtitle(reward({ type: 'fixed_coupon' }))).toBe('Applied as a coupon at checkout');
+    expect(rewardSubtitle(reward({ type: 'free_product' }))).toBe('Applied as a coupon at checkout');
   });
 });
 
