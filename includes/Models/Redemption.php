@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Redemption extends AbstractModel {
 
-    /** Flexible discount lifecycle: applied (order exists, points debited) → cancelled | refunded. */
+    /** Every row: applied (order exists, points debited) → cancelled | refunded. */
     public const STATUS_APPLIED   = 'applied';
     public const STATUS_CANCELLED = 'cancelled';
     public const STATUS_REFUNDED  = 'refunded';

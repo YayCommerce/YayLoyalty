@@ -4,8 +4,8 @@ namespace YayLoyalty\Database\Schema;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * yayloyalty_redemptions: one row per reward claim. The flexible discount's double-debit guard is the ledger's
- * idempotency key, not an index here, so one order can carry several rows of one reward.
+ * yayloyalty_redemptions: one row per reward on an order. The double-debit guard is the ledger's idempotency
+ * key, one per customer, order and reward, not an index here.
  */
 final class RedemptionsTable extends AbstractTableSchema {
 
