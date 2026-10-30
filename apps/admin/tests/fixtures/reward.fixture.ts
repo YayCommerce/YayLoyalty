@@ -22,11 +22,7 @@ export function reward(overrides: Partial<Reward> = {}): Reward {
     is_deletable: true,
     redemption_summary: {
       claimed: 0,
-      outstanding: 0,
-      outstanding_customers: 0,
-      outstanding_points: 0,
       first_claimed_at: null,
-      last_expires_at: null,
     },
     ...overrides,
   };

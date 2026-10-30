@@ -32,16 +32,11 @@ export const rewardStatusSchema = statusSchema;
 export type RewardStatus = Status;
 export const resolveRewardDisplayStatus = resolveDisplayStatus;
 
-/** Claim figures from RedemptionRepository::summary_by_rewards(); zeros and nulls for a reward with no claims. */
+/** Claim figures from RedemptionRepository::summary_by_rewards(); zero and null for a reward with no claims. */
 export const rewardRedemptionSummarySchema = z.object({
   /** Every claim row in any status — what decides `is_deletable`. */
   claimed: z.number().int(),
-  /** Issued coupons not yet expired. */
-  outstanding: z.number().int(),
-  outstanding_customers: z.number().int(),
-  outstanding_points: z.number().int(),
   first_claimed_at: z.string().nullable(),
-  last_expires_at: z.string().nullable(),
 });
 
 export type RewardRedemptionSummary = z.infer<typeof rewardRedemptionSummarySchema>;

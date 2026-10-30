@@ -134,7 +134,6 @@ final class CommitWriterTest extends IntegrationTestCase {
         $this->assertSame( [ 500, 1500 ], array_map( 'intval', array_column( $rows, 'points' ) ) );
         $this->assertSame( [ 5.0, 10.0 ], array_map( 'floatval', array_column( $rows, 'value' ) ) );
         $this->assertSame( [ 'applied', 'applied' ], array_column( $rows, 'status' ) );
-        $this->assertNull( $rows[0]['coupon_id'] );
         $keys = array_column( array_slice( $this->ledger_rows( 7 ), 1 ), 'idempotency_key' );
         $this->assertSame( [ sprintf( 'redeem:7:order:%d:reward_%d', $order->get_id(), $a->get_id() ), sprintf( 'redeem:7:order:%d:reward_%d', $order->get_id(), $b->get_id() ) ], $keys );
         $saved = wc_get_order( $order->get_id() );

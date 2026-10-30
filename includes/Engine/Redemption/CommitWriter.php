@@ -391,7 +391,7 @@ final class CommitWriter {
         return $rows;
     }
 
-    /** A reward line's redemptions row: the full cost, the line's discount as value and base_value, no rate, no catalog coupon. */
+    /** A reward line's redemptions row: the full cost, the line's discount as value and base_value, no rate. */
     private function reward_row( \WC_Order $order, Reward $reward, int $points, float $value, string $code ): Redemption {
         $value = $this->money( $value );
         $now   = Dates::now();
@@ -407,10 +407,8 @@ final class CommitWriter {
             $value,
             '0',
             $code,
-            null,
             Redemption::STATUS_APPLIED,
             0,
-            null,
             $now,
             $now
         );
@@ -442,10 +440,8 @@ final class CommitWriter {
             $value,
             (string) $quote->get_rate_snapshot(),
             $quote->get_reward()->get_coupon_code(),
-            null,
             Redemption::STATUS_APPLIED,
             0,
-            null,
             $now,
             $now
         );

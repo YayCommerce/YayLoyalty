@@ -24,9 +24,8 @@ defined( 'ABSPATH' ) || exit;
  * `restored_points` under the customer lock, so a repeated event finds
  * nothing to move and part refunds add up without summing the ledger.
  * Cancel restores twice and un-cancel debits once, because the key has no
- * cycle part: a second un-cancel answers REASON_KEY_SPENT. Rows with a
- * `coupon_id` are not touched; catalog reward rows (no `coupon_id`) follow
- * the same rules as the flexible discount, keyed per reward.
+ * cycle part: a second un-cancel answers REASON_KEY_SPENT. Catalog reward
+ * rows follow the same rules as the flexible discount, keyed per reward.
  * Never writes an ADJUST row: LedgerRepository::sum_refunded_for() reads
  * one that references a refund as an earn give-back.
  */
@@ -155,7 +154,7 @@ final class Reversal {
     }
 
     /**
-     * Runs $event once per flexible discount redemption row of the order, each in its own transaction holding the
+     * Runs $event once per redemption row of the order, each in its own transaction holding the
      * customer lock and then the row lock. The lock is on the row's user, not the order's customer:
      * an admin may have reassigned the order. A row that is gone, or whose locked status the event does not
      * act on, answers REASON_NOTHING_TO_MOVE.
@@ -168,10 +167,6 @@ final class Reversal {
         $outcomes = [];
 
         foreach ( $this->redemptions->for_order( $order_id ) as $stale ) {
-            if ( null !== $stale->get_coupon_id() ) {
-                continue;
-            }
-
             $outcomes[] = Transaction::run(
                 function () use ( $stale, $statuses, $event ): Outcome {
                     $this->customers->ensure_and_lock( $stale->get_user_id() );

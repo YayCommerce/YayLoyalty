@@ -15,14 +15,7 @@ final class Redemption extends AbstractModel {
     public const STATUS_CANCELLED = 'cancelled';
     public const STATUS_REFUNDED  = 'refunded';
 
-    /** Catalog coupon lifecycle: issued → used → refunded; used → issued when its order is cancelled; issued reads as expired past `expires_at`. */
-    public const STATUS_ISSUED = 'issued';
-    public const STATUS_USED   = 'used';
-
-    /** Derived by display_status(), never stored. */
-    public const STATUS_EXPIRED = 'expired';
-
-    public const STORED_STATUSES = [ self::STATUS_APPLIED, self::STATUS_ISSUED, self::STATUS_USED, self::STATUS_REFUNDED, self::STATUS_CANCELLED ];
+    public const STORED_STATUSES = [ self::STATUS_APPLIED, self::STATUS_REFUNDED, self::STATUS_CANCELLED ];
 
     private ?int $id;
 
@@ -30,7 +23,7 @@ final class Redemption extends AbstractModel {
 
     private int $reward_id;
 
-    /** Null for a catalog coupon not yet used. */
+    /** The order the discount was applied to. Nullable in the table, though CommitWriter always sets it. */
     private ?int $order_id;
 
     /** Points spent, positive. */
@@ -50,15 +43,10 @@ final class Redemption extends AbstractModel {
     /** The reward's stored coupon code, the code of the virtual coupon the order carries. */
     private ?string $coupon_code;
 
-    /** `shop_coupon` post id for catalog rewards, or null for the virtual coupon. */
-    private ?int $coupon_id;
-
     private string $status;
 
     /** Points already returned through refunds. Never exceeds `points`. */
     private int $restored_points;
-
-    private ?string $expires_at;
 
     private string $created_at;
 
@@ -75,10 +63,8 @@ final class Redemption extends AbstractModel {
         string $base_value,
         string $rate_snapshot,
         ?string $coupon_code,
-        ?int $coupon_id,
         string $status,
         int $restored_points,
-        ?string $expires_at,
         string $created_at,
         string $updated_at
     ) {
@@ -92,10 +78,8 @@ final class Redemption extends AbstractModel {
         $this->base_value      = $base_value;
         $this->rate_snapshot   = $rate_snapshot;
         $this->coupon_code     = $coupon_code;
-        $this->coupon_id       = $coupon_id;
         $this->status          = $status;
         $this->restored_points = $restored_points;
-        $this->expires_at      = $expires_at;
         $this->created_at      = $created_at;
         $this->updated_at      = $updated_at;
     }
@@ -112,10 +96,8 @@ final class Redemption extends AbstractModel {
             self::cast_decimal( $row['base_value'] ?? null, '0' ),
             self::cast_decimal( $row['rate_snapshot'] ?? null, '0' ),
             self::cast_string( $row['coupon_code'] ?? null ),
-            self::cast_int( $row['coupon_id'] ?? null ),
             (string) ( $row['status'] ?? self::STATUS_APPLIED ),
             self::cast_int_default( $row['restored_points'] ?? 0 ),
-            self::cast_datetime( $row['expires_at'] ?? null ),
             (string) ( $row['created_at'] ?? '' ),
             (string) ( $row['updated_at'] ?? '' )
         );
@@ -133,17 +115,15 @@ final class Redemption extends AbstractModel {
             'base_value'      => $this->base_value,
             'rate_snapshot'   => $this->rate_snapshot,
             'coupon_code'     => $this->coupon_code,
-            'coupon_id'       => $this->coupon_id,
             'status'          => $this->status,
             'restored_points' => $this->restored_points,
-            'expires_at'      => $this->expires_at,
             'created_at'      => $this->created_at,
             'updated_at'      => $this->updated_at,
         ];
     }
 
     public function get_format(): array {
-        return [ '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s', '%s', '%s' ];
+        return [ '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s' ];
     }
 
     public function to_array(): array {
@@ -198,29 +178,12 @@ final class Redemption extends AbstractModel {
         return $this->coupon_code;
     }
 
-    public function get_coupon_id(): ?int {
-        return $this->coupon_id;
-    }
-
     public function get_status(): string {
-        return $this->status;
-    }
-
-    /** The status to show at $now (UTC): an issued coupon past `expires_at` reads as expired. */
-    public function display_status( string $now ): string {
-        if ( self::STATUS_ISSUED === $this->status && null !== $this->expires_at && $this->expires_at < $now ) {
-            return self::STATUS_EXPIRED;
-        }
-
         return $this->status;
     }
 
     public function get_restored_points(): int {
         return $this->restored_points;
-    }
-
-    public function get_expires_at(): ?string {
-        return $this->expires_at;
     }
 
     public function get_created_at(): string {
