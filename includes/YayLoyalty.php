@@ -62,6 +62,7 @@ class YayLoyalty {
             \YayLoyalty\Engine\Storefront\Launcher::register();
         } else {
             \YayLoyalty\Engine\Admin\ReviewPointsNote::register();
+            \YayLoyalty\Engine\Admin\OrderPointsMetabox::register();
         }
     }
 
