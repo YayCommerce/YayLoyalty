@@ -34,10 +34,10 @@ final class Redemption extends AbstractModel {
 
     private string $currency;
 
-    /** The same value in the store's base currency, for reports. */
+    /** `value` in the store's base currency, converted at the order's saved rate when it has one, rounded to the base decimals. */
     private string $base_value;
 
-    /** Points per currency unit at redemption time. */
+    /** Points per unit of the order's currency at redemption, to 10 decimals; 0 for a reward line. */
     private string $rate_snapshot;
 
     /** The reward's stored coupon code, the code of the virtual coupon the order carries. */

@@ -25,7 +25,7 @@ final class RedemptionsTable extends AbstractTableSchema {
             value decimal(19,4) NOT NULL DEFAULT 0,
             currency varchar(3) NOT NULL DEFAULT '',
             base_value decimal(19,4) NOT NULL DEFAULT 0,
-            rate_snapshot decimal(19,4) NOT NULL DEFAULT 0,
+            rate_snapshot decimal(19,10) NOT NULL DEFAULT 0,
             coupon_code varchar(100) DEFAULT NULL,
             status varchar(12) NOT NULL,
             restored_points bigint unsigned NOT NULL DEFAULT 0,
