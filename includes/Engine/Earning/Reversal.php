@@ -195,7 +195,10 @@ final class Reversal {
     private function bases( array $lines, array $refunded_by_line, LedgerEntry $earn ): array {
         $campaign = null === $earn->get_campaign_id() ? null : $this->campaigns->find_campaign( (int) $earn->get_campaign_id() );
 
-        if ( null === $campaign ) {
+        // A recovery row has no campaign by design: every line counts, and nothing is gone.
+        $is_recovery = null === $earn->get_campaign_id() && IdempotencyKey::RECOVERY === IdempotencyKey::qualifier_of( (string) $earn->get_idempotency_key() );
+
+        if ( null === $campaign && ! $is_recovery ) {
             Log::warning( 'Reversal', 'campaign of ledger row #' . $earn->get_id() . ' is gone; every line counts toward its refund share' );
         }
 
