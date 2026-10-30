@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
-import type { RowFilters } from './customers-page.filter-rows';
+import type { CustomerListFilters } from './customers-page.filters';
 
 /**
  * Row-selection math for CustomersScreen. Selection is either picked ids
@@ -90,7 +90,7 @@ export function useCustomerRowSelection({
 }: {
   rows: CustomerListRow[];
   /** Committed filters, not the per-keystroke value, so typing does not reset the selection. */
-  queryFilters: RowFilters;
+  queryFilters: CustomerListFilters;
   totalItems: number;
   pageCount: number;
 }) {

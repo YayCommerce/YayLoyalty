@@ -28,6 +28,6 @@ class PointsExpiringSoonYayMailEmail extends LoyaltyYayMailEmail {
     protected function default_body(): string {
         $greeting = LoyaltyEmail::greeting_text( LoyaltyEmailShortcodes::tag( 'customer_name' ) );
 
-        return '<p>' . $greeting . '</p><p>' . LoyaltyEmailShortcodes::tag( 'expiring_points' ) . '</p><p>' . LoyaltyEmailShortcodes::tag( 'points_value_text' ) . '</p>';
+        return '<p>' . $greeting . '</p><p>' . LoyaltyEmailShortcodes::tag( 'expiring_message' ) . '</p><p>' . LoyaltyEmailShortcodes::tag( 'points_value_text' ) . '</p>';
     }
 }

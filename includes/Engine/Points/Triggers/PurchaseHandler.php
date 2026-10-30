@@ -37,11 +37,7 @@ final class PurchaseHandler implements TriggerHandler {
 
         // Snapped, so float error at an exact converted boundary ($10.00 at 0.00004 is 249999.99999999997 ₫)
         // never fails the minimum.
-        if ( $min > 0 && PointsMath::snap( $ctx->get_order_subtotal() * $ctx->get_base_rate() ) < $min ) {
-            return false;
-        }
-
-        if ( ! empty( $config['exclude_coupon_orders'] ) && ! empty( $ctx->get_real_coupon_codes() ) ) {
+        if ( $min > 0 && PointsMath::snap( $ctx->get_order_subtotal() * $ctx->get_to_base_factor() ) < $min ) {
             return false;
         }
 
@@ -72,7 +68,7 @@ final class PurchaseHandler implements TriggerHandler {
     }
 
     /** Points per currency unit. */
-    public function advertised_value( Campaign $campaign ): float {
+    public function advertised_points( Campaign $campaign ): float {
         return self::rate_of( $campaign->get_config() );
     }
 

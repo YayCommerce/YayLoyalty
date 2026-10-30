@@ -7,27 +7,29 @@ use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Rewards\Clamp;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Enums\Status;
+use YayLoyalty\Integrations\YayCurrency\OrderRateSnapshot;
 use YayLoyalty\Models\Redemption;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
+use YayLoyalty\Utils\CurrencyRate;
 use YayLoyalty\Utils\Dates;
 
 /** CommitWriter: the redemption row, the ledger row and the order meta land together, once, or not at all. */
 final class CommitWriterTest extends IntegrationTestCase {
 
-    /** reward()'s coupon code: the slider's line on every order here. */
-    private const SLIDER_CODE = 'yayloyalty-slider00';
+    /** reward()'s coupon code: the flexible discount's line on every order here. */
+    private const FLEXIBLE_DISCOUNT_CODE = 'yayloyalty-flexdisc';
 
-    /** The seeded slider reward: 100 points per currency unit, minimum 100, step 100. */
+    /** The seeded flexible discount reward: 100 points per currency unit, minimum 100, step 100. */
     private function reward( array $config = [] ): Reward {
         $now = Dates::now();
 
-        return new Reward( 9, 'Cart discount', 'cart-discount', RewardType::FLEXIBLE_DISCOUNT, Status::ACTIVE, 0, null, array_merge( Reward::default_config( RewardType::FLEXIBLE_DISCOUNT ), $config ), [], null, null, true, null, null, $now, $now, null, self::SLIDER_CODE );
+        return new Reward( 9, 'Cart discount', 'cart-discount', RewardType::FLEXIBLE_DISCOUNT, Status::ACTIVE, 0, null, array_merge( Reward::default_config( RewardType::FLEXIBLE_DISCOUNT ), $config ), [], null, null, true, null, null, $now, $now, null, self::FLEXIBLE_DISCOUNT_CODE );
     }
 
     public function test_one_order_writes_the_redemption_row_the_ledger_row_and_the_order_meta(): void {
         $this->ledger_service()->earn( $this->earn_draft( 7, 100, 1000 ) );
-        $order = $this->order_with_points_discount( 7, 20.0, 5.0, self::SLIDER_CODE );
+        $order = $this->order_with_points_discount( 7, 20.0, 5.0, self::FLEXIBLE_DISCOUNT_CODE );
 
         $outcome = $this->commit_writer()->commit( $order, $this->reward() );
 
@@ -41,7 +43,7 @@ final class CommitWriterTest extends IntegrationTestCase {
         $this->assertSame( 500, (int) $rows[0]['points'] );
         $this->assertSame( 5.0, (float) $rows[0]['value'] );
         $this->assertSame( $order->get_id(), (int) $rows[0]['order_id'] );
-        $this->assertSame( self::SLIDER_CODE, $rows[0]['coupon_code'] );
+        $this->assertSame( self::FLEXIBLE_DISCOUNT_CODE, $rows[0]['coupon_code'] );
         $this->assertSame( 0, (int) $rows[0]['restored_points'] );
 
         $ledger = $this->ledger_rows( 7 )[1];
@@ -56,7 +58,7 @@ final class CommitWriterTest extends IntegrationTestCase {
     /** Auto max is a cart-time request: the commit debits the line it finds, never the most the balance could take. */
     public function test_an_auto_max_order_debits_exactly_its_line(): void {
         $this->ledger_service()->earn( $this->earn_draft( 7, 100, 1000 ) );
-        $order = $this->order_with_points_discount( 7, 20.0, 5.0, self::SLIDER_CODE );
+        $order = $this->order_with_points_discount( 7, 20.0, 5.0, self::FLEXIBLE_DISCOUNT_CODE );
 
         $outcome = $this->commit_writer()->commit( $order, $this->reward( [ 'redemption_mode' => Reward::REDEMPTION_MODE_AUTO_MAX ] ) );
 
@@ -67,7 +69,7 @@ final class CommitWriterTest extends IntegrationTestCase {
 
     public function test_a_second_commit_writes_nothing(): void {
         $this->ledger_service()->earn( $this->earn_draft( 7, 100, 1000 ) );
-        $order = $this->order_with_points_discount( 7, 20.0, 5.0, self::SLIDER_CODE );
+        $order = $this->order_with_points_discount( 7, 20.0, 5.0, self::FLEXIBLE_DISCOUNT_CODE );
 
         $this->commit_writer()->commit( $order, $this->reward() );
         $second = $this->commit_writer()->commit( $order, $this->reward() );
@@ -80,7 +82,7 @@ final class CommitWriterTest extends IntegrationTestCase {
 
     public function test_a_balance_that_dropped_fails_with_nothing_written(): void {
         $this->ledger_service()->earn( $this->earn_draft( 7, 100, 300 ) );
-        $order = $this->order_with_points_discount( 7, 20.0, 5.0, self::SLIDER_CODE );
+        $order = $this->order_with_points_discount( 7, 20.0, 5.0, self::FLEXIBLE_DISCOUNT_CODE );
 
         $outcome = $this->commit_writer()->commit( $order, $this->reward() );
 
@@ -89,6 +91,38 @@ final class CommitWriterTest extends IntegrationTestCase {
         $this->assertSame( [ 300 ], $this->ledger_points( 7 ) );
         $this->assertCount( 0, $this->redemption_rows( 7 ) );
         $this->assertSame( '', (string) wc_get_order( $order->get_id() )->get_meta( CommitWriter::META_POINTS ) );
+    }
+
+    /** At 1 point per base unit and 25,000 per base unit saved on the order, 100 points buy 2,500,000. */
+    public function test_a_non_base_currency_redemption_stores_the_base_value_and_the_full_rate(): void {
+        // CurrencyRate reads the saved rate only through the YayCurrency integration, which tests don't load.
+        $rate = static function ( $rate, $currency, $order ) {
+            $saved = $order instanceof \WC_Order ? OrderRateSnapshot::read( $order ) : null;
+
+            return null === $saved ? $rate : (float) $saved;
+        };
+        add_filter( 'yayloyalty_currency_rate', $rate, 10, 3 );
+
+        try {
+            $currency = 'VND' === get_option( 'woocommerce_currency' ) ? 'EUR' : 'VND';
+            $this->ledger_service()->earn( $this->earn_draft( 7, 100, 1000 ) );
+            $order = $this->order_with_points_discount( 7, 5000000.0, 2500000.0, self::FLEXIBLE_DISCOUNT_CODE );
+            $order->set_currency( $currency );
+            $order->update_meta_data( OrderRateSnapshot::META_KEY, '25000.0000000000' );
+            $order->save();
+
+            $outcome = $this->commit_writer()->commit( $order, $this->reward( [ 'points_per_currency_unit' => 1 ] ) );
+
+            $this->assertSame( Outcome::REDEEMED, $outcome->get_status() );
+            $rows = $this->redemption_rows( 7 );
+            $this->assertSame( 100, (int) $rows[0]['points'] );
+            $this->assertSame( $currency, $rows[0]['currency'] );
+            $this->assertSame( 2500000.0, (float) $rows[0]['value'] );
+            $this->assertSame( (float) wc_format_decimal( 2500000 / 25000, CurrencyRate::base_decimals() ), (float) $rows[0]['base_value'] );
+            $this->assertSame( '0.0000400000', $rows[0]['rate_snapshot'] );
+        } finally {
+            remove_filter( 'yayloyalty_currency_rate', $rate, 10 );
+        }
     }
 
     /**
@@ -134,7 +168,6 @@ final class CommitWriterTest extends IntegrationTestCase {
         $this->assertSame( [ 500, 1500 ], array_map( 'intval', array_column( $rows, 'points' ) ) );
         $this->assertSame( [ 5.0, 10.0 ], array_map( 'floatval', array_column( $rows, 'value' ) ) );
         $this->assertSame( [ 'applied', 'applied' ], array_column( $rows, 'status' ) );
-        $this->assertNull( $rows[0]['coupon_id'] );
         $keys = array_column( array_slice( $this->ledger_rows( 7 ), 1 ), 'idempotency_key' );
         $this->assertSame( [ sprintf( 'redeem:7:order:%d:reward_%d', $order->get_id(), $a->get_id() ), sprintf( 'redeem:7:order:%d:reward_%d', $order->get_id(), $b->get_id() ) ], $keys );
         $saved = wc_get_order( $order->get_id() );
@@ -182,7 +215,7 @@ final class CommitWriterTest extends IntegrationTestCase {
     }
 
     /**
-     * A and B as in order_with_a_and_b(), plus our slider's line of 5.00 (500 points), on an order of 100.00.
+     * A and B as in order_with_a_and_b(), plus our flexible discount's line of 5.00 (500 points), on an order of 100.00.
      *
      * @return array{0: \WC_Order, 1: array<string, Reward>}
      */
@@ -190,9 +223,9 @@ final class CommitWriterTest extends IntegrationTestCase {
         list( , $rewards ) = $this->order_with_a_and_b();
         list( $a, $b )     = array_keys( $rewards );
         $lines             = [
-            $a                => 5.0,
-            $b                => 10.0,
-            self::SLIDER_CODE => 5.0,
+            $a                           => 5.0,
+            $b                           => 10.0,
+            self::FLEXIBLE_DISCOUNT_CODE => 5.0,
         ];
 
         return [ $this->order_with_reward_lines( 7, 100.0, $lines ), $rewards ];
@@ -211,7 +244,7 @@ final class CommitWriterTest extends IntegrationTestCase {
         $rows = $this->redemption_rows( 7 );
         $this->assertSame( [ 500, 1500, 500 ], array_map( 'intval', array_column( $rows, 'points' ) ) );
         $this->assertSame( [ 5.0, 10.0, 5.0 ], array_map( 'floatval', array_column( $rows, 'value' ) ) );
-        $this->assertSame( self::SLIDER_CODE, $rows[2]['coupon_code'] );
+        $this->assertSame( self::FLEXIBLE_DISCOUNT_CODE, $rows[2]['coupon_code'] );
         $keys = array_column( array_slice( $this->ledger_rows( 7 ), 1 ), 'idempotency_key' );
         $this->assertSame(
             [

@@ -60,7 +60,7 @@ final class Launcher {
         }
 
         wp_enqueue_style( ScriptName::STOREFRONT_STYLE, YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH, [], self::asset_version( self::STYLE_PATH ) );
-        // The panel prints the Rewards tab's partials (AccountRewards::register_style() registers it on init).
+        // The panel prints the My Points tab's partials (AccountMyPoints::register_style() registers it on init).
         wp_enqueue_style( ScriptName::ACCOUNT_STYLE );
         wp_enqueue_script(
             ScriptName::STOREFRONT_SCRIPT,
@@ -175,7 +175,7 @@ final class Launcher {
             $payload['seen_url']     = rest_url( StorefrontActivityRestController::REST_NAMESPACE . StorefrontActivityRestController::SEEN_ROUTE );
             $payload['nonce']        = wp_create_nonce( 'wp_rest' );
 
-            $payload['member']['new_points'] = NewPointsNotice::points_since_seen( get_current_user_id() );
+            $payload['member']['new_points'] = NewPointsNotice::points_since_seen_or_start( get_current_user_id() );
         }
 
         return $payload;

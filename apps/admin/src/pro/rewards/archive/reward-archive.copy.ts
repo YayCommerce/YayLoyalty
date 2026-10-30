@@ -1,7 +1,6 @@
-import { __, _n, sprintf } from '@wordpress/i18n';
+import { __ } from '@wordpress/i18n';
 
-import { formatPoints } from '@/lib/helpers/points.helper';
-import type { Reward, RewardRedemptionSummary } from '@/lib/schema/reward.schema';
+import type { Reward } from '@/lib/schema/reward.schema';
 
 /** Case resolution and copy for RewardArchiveDialog; same split as campaign-archive.copy.ts. */
 
@@ -26,36 +25,12 @@ export function resolveRewardArchiveCase(reward: Reward): RewardArchiveCase {
   return reward.status === 'archived' ? 'delete-only' : 'delete';
 }
 
-/**
- * The archive dialog's body, one sentence per line. The last line carries <link> for
- * createInterpolateElement, pointing at the Archived view.
- */
-export function archiveBodyLines(summary: RewardRedemptionSummary): string[] {
-  const lines: string[] = [];
-
-  if (summary.outstanding > 0) {
-    lines.push(
-      sprintf(
-        /* translators: %s: number of unused coupons, formatted. */
-        _n(
-          '%s unused coupon from this reward keeps working until it expires.',
-          '%s unused coupons from this reward keep working until they expire.',
-          summary.outstanding,
-          'yayloyalty',
-        ),
-        formatPoints(summary.outstanding),
-      ),
-    );
-  }
-
-  lines.push(
-    __(
-      'Customers can no longer claim it. Past redemptions and customer history are kept. You can restore it from <link>Archived</link>.',
-      'yayloyalty',
-    ),
+/** The archive dialog's body. It carries <link> for createInterpolateElement, pointing at the Archived view. */
+export function archiveBodyLine(): string {
+  return __(
+    'Customers can no longer claim it. Past redemptions and customer history are kept. You can restore it from <link>Archived</link>.',
+    'yayloyalty',
   );
-
-  return lines;
 }
 
 export function deleteBodyLine(): string {

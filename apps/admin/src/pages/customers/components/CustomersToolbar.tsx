@@ -4,15 +4,15 @@ import { __ } from '@wordpress/i18n';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { countActiveFilters } from '../customers-page.filter-suggestions';
 import {
   BALANCE_RANGE_OPTIONS,
-  DEFAULT_ROW_FILTERS,
+  DEFAULT_CUSTOMER_LIST_FILTERS,
   EXPIRING_SOON_OPTIONS,
   type BalanceRangeValue,
+  type CustomerListFilters,
   type ExpiringSoonValue,
-  type RowFilters,
-} from '../customers-page.filter-rows';
-import { countActiveFilters } from '../customers-page.filter-suggestions';
+} from '../customers-page.filters';
 
 /**
  * Search and filter row.
@@ -25,8 +25,8 @@ export function CustomersToolbar({
   disabled,
   exportSlot,
 }: {
-  filters: RowFilters;
-  onFiltersChange: (patch: Partial<RowFilters>) => void;
+  filters: CustomerListFilters;
+  onFiltersChange: (patch: Partial<CustomerListFilters>) => void;
   disabled: boolean;
   exportSlot?: ReactNode;
 }) {
@@ -54,7 +54,12 @@ export function CustomersToolbar({
         disabled={disabled}
       />
       {countActiveFilters(filters) > 0 && (
-        <Button variant="link" size="sm" disabled={disabled} onClick={() => onFiltersChange(DEFAULT_ROW_FILTERS)}>
+        <Button
+          variant="link"
+          size="sm"
+          disabled={disabled}
+          onClick={() => onFiltersChange(DEFAULT_CUSTOMER_LIST_FILTERS)}
+        >
           {__('Clear all', 'yayloyalty')}
         </Button>
       )}

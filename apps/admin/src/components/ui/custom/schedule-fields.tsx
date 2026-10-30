@@ -2,9 +2,9 @@ import { getSettings } from '@wordpress/date';
 import { __, sprintf } from '@wordpress/i18n';
 
 import {
+  formatWPDate,
+  formatWPTime,
   joinStoredDateTime,
-  parseWPDate,
-  parseWPTime,
   splitStoredDateTime,
   utcToDate,
 } from '@/lib/helpers/format.helper';
@@ -196,7 +196,7 @@ function localDateToDateString(date: Date | undefined): string {
 
 /** Formats a stored moment for the sentence. A real UTC instant, so dateI18n's own site-tz conversion is not double-shifted. */
 function formatStoredMoment(stored: string): string {
-  return `${parseWPDate(stored)} ${parseWPTime(stored)}`;
+  return `${formatWPDate(stored)} ${formatWPTime(stored)}`;
 }
 
 /**
@@ -210,7 +210,7 @@ function formatDayBeforeStoredMoment(stored: string): string {
   const isSiteLocalMidnight = utcStringToSiteLocalParts(stored).time === '00:00';
   const lastDayInstant = isSiteLocalMidnight ? utcInstant - 24 * 60 * 60 * 1000 : utcInstant;
 
-  return parseWPDate(new Date(lastDayInstant));
+  return formatWPDate(new Date(lastDayInstant));
 }
 
 /**

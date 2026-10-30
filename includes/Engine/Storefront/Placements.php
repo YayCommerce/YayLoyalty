@@ -9,7 +9,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * What a merchant places on a page: the points card, "Ways to earn" and "Ways to redeem", as shortcodes and blocks.
- * Both print the Rewards tab's own partials, so the theme styles them once.
+ * Both print the My Points tab's own partials, so the theme styles them once.
  */
 final class Placements {
 
@@ -70,7 +70,7 @@ final class Placements {
     public static function balance(): string {
         return self::render(
             static function (): void {
-                $yayloyalty_card = AccountRewards::card_view( get_current_user_id() );
+                $yayloyalty_card = AccountMyPoints::card_view( get_current_user_id() );
 
                 require __DIR__ . '/templates/points-card.php';
             }

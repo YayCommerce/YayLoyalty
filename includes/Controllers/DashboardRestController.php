@@ -178,10 +178,10 @@ final class DashboardRestController extends AbstractRestController {
                         'redemption_rate' => [
                             'type'       => 'object',
                             'properties' => [
-                                'rate'               => [ 'type' => [ 'number', 'null' ] ],
-                                'orders_with_points' => [ 'type' => 'integer' ],
-                                'orders_total'       => [ 'type' => 'integer' ],
-                                'prev_delta_pct'     => [ 'type' => [ 'number', 'null' ] ],
+                                'rate'                   => [ 'type' => [ 'number', 'null' ] ],
+                                'orders_with_redemption' => [ 'type' => 'integer' ],
+                                'orders_total'           => [ 'type' => 'integer' ],
+                                'prev_delta_pct'         => [ 'type' => [ 'number', 'null' ] ],
                             ],
                         ],
                     ],
@@ -191,7 +191,7 @@ final class DashboardRestController extends AbstractRestController {
                     'readonly'    => true,
                     'description' => __( 'One row per site-timezone calendar day in the range.', 'yayloyalty' ),
                 ],
-                'top_earners'     => [
+                'top_balances'    => [
                     'type'     => 'array',
                     'readonly' => true,
                 ],

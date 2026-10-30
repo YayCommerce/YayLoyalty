@@ -67,7 +67,7 @@ abstract class IntegrationTestCase extends TestCase {
         );
     }
 
-    /** A slider REDEEM draft for one order, keyed as CommitWriter keys it, written at $created_at ('' for now). */
+    /** A flexible discount REDEEM draft for one order, keyed as CommitWriter keys it, written at $created_at ('' for now). */
     protected function redeem_draft( int $user_id, int $order_id, int $points, string $created_at = '' ): LedgerEntry {
         return new LedgerEntry(
             null,
@@ -166,7 +166,7 @@ abstract class IntegrationTestCase extends TestCase {
         );
     }
 
-    /** The slider reward in free input as a stored row, so the reversal can read its refund_policy. */
+    /** The flexible discount reward in free input as a stored row, so the reversal can read its refund_policy. */
     protected function seeded_reward( array $config = [] ): Reward {
         $now     = Dates::now();
         $rewards = new RewardRepository();
@@ -175,7 +175,7 @@ abstract class IntegrationTestCase extends TestCase {
         return $rewards->find_reward( $id );
     }
 
-    /** An order with one line and the slider's coupon line under $code, as checkout leaves it. */
+    /** An order with one line and the flexible discount's coupon line under $code, as checkout leaves it. */
     protected function order_with_points_discount( int $user_id, float $subtotal, float $discount, string $code ): \WC_Order {
         $order = wc_create_order( [ 'customer_id' => $user_id ] );
 

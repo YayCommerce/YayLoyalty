@@ -1,6 +1,6 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatCount, formatPoints } from '@/lib/helpers/points.helper';
 import type { PointsJumpData, PointsJumpWhatChanged } from '@/lib/schema/dashboard-notice.schema';
 import { formatMultiple } from '../dashboard-page.notice-copy';
 
@@ -15,7 +15,7 @@ export function DashboardAnomalySettlements({
   threshold,
 }: {
   edits: PointsJumpWhatChanged[];
-  /** Formatted site-calendar day (`parseWPDay`). */
+  /** Formatted site-calendar day (`formatWPDay`). */
   day: string;
   threshold: PointsJumpData['threshold'];
 }) {
@@ -24,7 +24,7 @@ export function DashboardAnomalySettlements({
   const orders = sprintf(
     /* translators: %s: number of orders, formatted. */
     _n('%s order', '%s orders', orderCount, 'yayloyalty'),
-    formatPoints(orderCount),
+    formatCount(orderCount),
   );
   const issued = sprintf(
     /* translators: 1: points, 2: order count phrase, 3: day. */

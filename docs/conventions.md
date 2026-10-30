@@ -13,7 +13,7 @@ The layering rules live in [architecture.md](architecture.md#server-layers-and-w
   - Computed money, such as a points value or a report total, is rounded once, to the store currency's decimals, never to a fixed 2.
   - Points are integers at every layer.
   - A storefront amount is converted from the base currency to the shopper's where it is computed (a payload, a view or a copy builder), with `CurrencyRate` (`includes/Utils/CurrencyRate.php`). `LauncherCopy::money()` formats an amount already in the current currency and never converts, because some callers pass amounts that already are, such as quote values. A converted points rate is rounded to 4 significant digits for display when it is 1 or more (`LauncherCopy::converted_rate()`), and any rate below 1, converted or not, is printed per point ("1 Point = 25,000 ₫"). Emails, admin reports and the admin SPA stay in the base currency.
-  - Points, point rates and percentages are shown with WooCommerce's price separators, as money is: `formatStoreNumber`, `formatStoreDecimal`, `formatPercent` and `formatPoints` in the SPA, `SettingsHelper::format_number()` and `points_text()` in PHP. Never `toLocaleString()` or `number_format_i18n()`, which follow the browser or WordPress locale instead.
+  - Points, point rates and percentages are shown with WooCommerce's price separators, as money is: `formatStoreNumber`, `formatStoreDecimal`, `formatPercent`, `formatPoints` and `formatCount` in the SPA, `SettingsHelper::format_number()` and `points_text()` in PHP. Never `toLocaleString()` or `number_format_i18n()`, which follow the browser or WordPress locale instead.
 - **Why:** "a float loses precision exactly where it is a financial defect". A fixed 2 "would drop a digit from a 3-decimal currency (KWD) and round a 0-decimal one (VND) twice". [The decision record](decisions/2026-10-01-money-as-decimal-strings.md) has the context and the costs.
 - **In code:** `includes/Models/AbstractModel.php`, `includes/Utils/PointsMath.php`, `includes/Utils/CurrencyRate.php`, `includes/Helpers/SettingsHelper.php`, `apps/admin/src/lib/helpers/format.helper.ts`, `apps/admin/src/lib/helpers/points.helper.ts`.
 
@@ -42,7 +42,7 @@ The layering rules live in [architecture.md](architecture.md#server-layers-and-w
   - Config whitelists keep Pro keys.
   - Config for a value this build doesn't know is saved back untouched.
   - A missing Pro evaluator fails open.
-  - Lite names Pro values for the domain (`BIRTHDAY`), never for the edition. A localized key, design and settings keys included, never has the whole word `pro` or `premium`: the validator's boot check fails it in either edition (`product_message` passes).
+  - Lite names Pro values for the domain (`BIRTHDAY`), never for the edition. A localized key, design and settings keys included, never has the whole word `pro` or `premium`: the validator's boot check fails it in either edition (`show_product_message` passes).
 - **Why:** "'unknown' must never mean 'delete' on a downgrade". Failing closed "would silently disable every conditional campaign the moment a site downgraded from Pro".
 - **In code:** `includes/Enums/CampaignTrigger.php`, `includes/Models/Campaign.php`, `includes/Models/Reward.php`, `includes/Engine/Points/PointsEngine.php`, `includes/Helpers/DesignSchema.php`, `apps/admin/src/lib/schema/campaign.schema.ts`.
 

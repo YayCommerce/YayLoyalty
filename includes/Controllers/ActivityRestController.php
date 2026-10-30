@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * GET /yayloyalty/v1/customers/{id}/activity: paginated activity-log rows from `yayloyalty_customer_meta`.
- * Activity from before the log existed is not backfilled. `after` and `before` are site-timezone
+ * Activity from before the log existed is not backfilled. `from` and `to` are site-timezone
  * calendar days, as on the ledger tab.
  */
 final class ActivityRestController extends AbstractRestController {
@@ -54,8 +54,8 @@ final class ActivityRestController extends AbstractRestController {
             [
                 'event_types' => $types,
                 'search'      => (string) ( $request['search'] ?? '' ),
-                'after'       => (string) ( $request['after'] ?? '' ),
-                'before'      => (string) ( $request['before'] ?? '' ),
+                'from'        => (string) ( $request['from'] ?? '' ),
+                'to'          => (string) ( $request['to'] ?? '' ),
                 'page'        => (int) $request['page'],
                 'per_page'    => (int) $request['per_page'],
             ]

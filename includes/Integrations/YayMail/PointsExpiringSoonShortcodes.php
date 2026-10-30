@@ -16,11 +16,11 @@ class PointsExpiringSoonShortcodes extends LoyaltyEmailShortcodes {
     use SingletonTrait;
 
     protected const VALUE_KEYS = [
-        'expiring_points' => 'expiring_text',
-        'points_url'      => 'cta_url',
+        'expiring_message' => 'expiring_text',
+        'points_url'       => 'cta_url',
     ];
 
-    protected const HTML_KEYS = [ 'expiring_points', 'points_value', 'points_value_text' ];
+    protected const HTML_KEYS = [ 'expiring_message', 'points_value', 'points_value_text' ];
 
     public $available_email_ids = [ PointsExpiringSoonEmail::ID ];
 
@@ -30,8 +30,8 @@ class PointsExpiringSoonShortcodes extends LoyaltyEmailShortcodes {
 
     protected function descriptions(): array {
         return [
-            'expiring_points' => __( 'Points Expiring Message', 'yayloyalty' ),
-            'points'          => __( 'Points Expiring', 'yayloyalty' ),
+            'expiring_message' => __( 'Points Expiring Message', 'yayloyalty' ),
+            'points'           => __( 'Points Expiring', 'yayloyalty' ),
         ] + self::shared_descriptions( 'points_label' ) + [
             'expiry_date'       => __( 'Expiry Date', 'yayloyalty' ),
             'points_value'      => __( 'Points Value', 'yayloyalty' ),

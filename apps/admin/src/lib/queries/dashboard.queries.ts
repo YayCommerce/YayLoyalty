@@ -52,7 +52,7 @@ export function useDismissNoticeMutation() {
 }
 
 /** "Refresh now": one request with refresh=1, then the normal query refetches. */
-export function useRefreshDashboard(range: DashboardRange) {
+export function useRefreshDashboardMutation(range: DashboardRange) {
   const queryClient = useQueryClient();
 
   return useMutation({

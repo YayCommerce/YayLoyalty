@@ -2,7 +2,7 @@
  * My Account → Rewards, and what reuses its partials: the launcher panel and the placements ([yayloyalty_balance], [yayloyalty_ways_to_earn]).
  * Hand-written and shipped as-is: no build step, and nothing from the launcher's stylesheet or the Design tab.
  *
- * This is the one file WordPress enqueues (AccountRewards::STYLE_PATH). It imports one file per template in
+ * This is the one file WordPress enqueues (AccountMyPoints::STYLE_PATH). It imports one file per template in
  * includes/Engine/Storefront/templates/, named after it, and ../storefront-tokens.css, which holds the tokens they
  * all read. A new template's file goes in the list below; never enqueue it on its own. ways-to-redeem.php and panel-member.php have none:
  * they only arrange other partials, and add nothing of their own. Nor do card-art.php (points-card.css styles it)

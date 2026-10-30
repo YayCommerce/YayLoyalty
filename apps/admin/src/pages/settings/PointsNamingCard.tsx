@@ -1,7 +1,7 @@
 import { useFormContext, useWatch } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { parseWPCurrency } from '@/lib/helpers/format.helper';
+import { formatWPCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldContent, FieldError, FieldLabel } from '@/components/ui/field';
@@ -49,7 +49,7 @@ export function PointsNamingCard() {
     /* translators: 1: number of points, 2: the store's plural points label. */
     sprintf(__('You have %1$s %2$s', 'yayloyalty'), formatPoints(9850), plural),
     /* translators: 1: the store's singular points label, 2: one unit of the store currency. */
-    sprintf(__('Earn 1 %1$s per %2$s you spend', 'yayloyalty'), singular, parseWPCurrency(1)),
+    sprintf(__('Earn 1 %1$s per %2$s you spend', 'yayloyalty'), singular, formatWPCurrency(1)),
   ];
 
   return (

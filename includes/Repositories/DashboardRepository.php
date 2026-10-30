@@ -94,7 +94,7 @@ class DashboardRepository {
     }
 
     /** Distinct orders on which points were redeemed. */
-    public function orders_with_points( string $from, string $to ): int {
+    public function orders_with_redemption( string $from, string $to ): int {
         return $this->count_distinct_orders( 'type = %s', [ LedgerType::REDEEM ], $from, $to );
     }
 
@@ -110,7 +110,7 @@ class DashboardRepository {
      *
      * @return array{orders: int, points: int}
      */
-    public function campaign_points_on_day( int $campaign_id, string $from, string $to ): array {
+    public function campaign_points_between( int $campaign_id, string $from, string $to ): array {
         global $wpdb;
 
         list( $issued, $types ) = LedgerRepository::issued_row_sql();
@@ -133,7 +133,7 @@ class DashboardRepository {
     }
 
     /** @return array<int, array{user_id: int, name: string, balance: int}> */
-    public function top_earners( int $limit ): array {
+    public function top_balances( int $limit ): array {
         global $wpdb;
 
         $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.

@@ -21,7 +21,7 @@ The storefront launcher's "Ways to earn" never promises a rate the engine won't 
 **In:**
 - One private selection loop in `PointsEngine`, used by `evaluate()` and a new public `advertised()`.
 - An advertising Context: `Context::advert()`, `Context::is_advert()`, `ContextFactory::for_advert()`.
-- `TriggerHandler::advertised_value()` on the interface and the three Lite handlers.
+- `TriggerHandler::advertised_points()` on the interface and the three Lite handlers.
 - `LauncherEarnRules::advertise()` and `LauncherPayload` switched to `PointsEngine::advertised()`; the launcher's own loop removed.
 - Unit test `tests/unit/Engine/Points/PointsEngineAdvertisedTest.php`.
 - Deleting the backlog item in the implementing PR, since both Done when boxes are met.
@@ -57,15 +57,15 @@ The storefront launcher's "Ways to earn" never promises a rate the engine won't 
 
 **Chosen:** advertising Context through the engine's own loop.
 
-**Architecture:** `PointsEngine` gains a private `pick( TriggerHandler $handler, string $trigger, Context $ctx ): ?Campaign` holding today's loop: candidates filter, matches filter, then eligibility, returning the first campaign that passes. Eligibility is `$handler->is_eligible( $campaign, $ctx )` for an event Context and `null !== $handler->advertised_value( $campaign )` for an advertising one; `conditions_match()` returns `applies_to_everyone()` for an advertising Context without calling Pro's evaluator. `evaluate()` becomes `pick()` then compute and caps, unchanged in behaviour. `advertised()` becomes `pick()` then `advertised_value()`, returning `null` at a value ≤ 0: the engine's zero-points stop.
+**Architecture:** `PointsEngine` gains a private `pick( TriggerHandler $handler, string $trigger, Context $ctx ): ?Campaign` holding today's loop: candidates filter, matches filter, then eligibility, returning the first campaign that passes. Eligibility is `$handler->is_eligible( $campaign, $ctx )` for an event Context and `null !== $handler->advertised_points( $campaign )` for an advertising one; `conditions_match()` returns `applies_to_everyone()` for an advertising Context without calling Pro's evaluator. `evaluate()` becomes `pick()` then compute and caps, unchanged in behaviour. `advertised()` becomes `pick()` then `advertised_points()`, returning `null` at a value ≤ 0: the engine's zero-points stop.
 
 **Components:**
 - `includes/Engine/Points/PointsEngine.php`: `pick()` (private), `advertised( string $trigger, Context $ctx ): ?array` returning `array{campaign: Campaign, value: float}` or `null`; throws `\InvalidArgumentException` when `! $ctx->is_advert()` or no handler owns the trigger.
-- `includes/Engine/Points/Context.php`: `public static function advert( string $at, string $currency, float $base_rate ): self` (guest, no lines, 0 amounts, no coupons, no roles, no customer facts) and `is_advert(): bool`, backed by a private `$advert` property set only by `advert()`.
-- `includes/Engine/Points/ContextFactory.php`: `for_advert( string $at ): Context`, reading `get_woocommerce_currency()` and `base_rate()` like `from_product()`.
-- `includes/Engine/Points/Triggers/TriggerHandler.php`: `advertised_value( Campaign $campaign ): ?float`. `null` = skipped whatever the event (the engine falls through); `0` = pays nothing (the engine stops); above 0 = points per currency unit (purchase) or flat points.
-- `PurchaseHandler::advertised_value()`: `null` when `is_multiplier( $config )` and `multiplier_default( find_default_purchase() )` is null; otherwise `rate_of( $config, find_default_purchase() )`.
-- `SignupHandler::advertised_value()`, `ReviewHandler::advertised_value()`: `(float) $campaign->flat_points()`.
+- `includes/Engine/Points/Context.php`: `public static function advert( string $at, string $currency, float $to_base_factor ): self` (guest, no lines, 0 amounts, no coupons, no roles, no customer facts) and `is_advert(): bool`, backed by a private `$advert` property set only by `advert()`.
+- `includes/Engine/Points/ContextFactory.php`: `for_advert( string $at ): Context`, reading `get_woocommerce_currency()` and `to_base_factor()` like `from_product()`.
+- `includes/Engine/Points/Triggers/TriggerHandler.php`: `advertised_points( Campaign $campaign ): ?float`. `null` = skipped whatever the event (the engine falls through); `0` = pays nothing (the engine stops); above 0 = points per currency unit (purchase) or flat points.
+- `PurchaseHandler::advertised_points()`: `null` when `is_multiplier( $config )` and `multiplier_default( find_default_purchase() )` is null; otherwise `rate_of( $config, find_default_purchase() )`.
+- `SignupHandler::advertised_points()`, `ReviewHandler::advertised_points()`: `(float) $campaign->flat_points()`.
 - `includes/Engine/Storefront/LauncherEarnRules.php`: `advertise( PointsEngine $engine, Context $ctx, bool $can_register ): array` with the same return shape; calls `$engine->advertised()` per trigger in `TRIGGERS`. Removes `winners()`, `purchase_rate()`, `flat_points()` and the `$default_purchase` parameter.
 - `includes/Engine/Storefront/LauncherPayload.php`: builds `PointsEngine::build( $this->campaigns )` once per `for_balance()` and shares it with `product_estimate()`; passes `ContextFactory::for_advert( $now )`; wraps `advertise()` in `try/catch ( \Throwable )` with `Log::warning`. Removes `live_campaigns()`.
 - `tests/unit/Engine/Points/PointsEngineAdvertisedTest.php`: criteria 1–5, extending `EngineTestCase`.

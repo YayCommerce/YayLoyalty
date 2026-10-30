@@ -1,7 +1,7 @@
 import { DashboardPointsChartSkeleton } from './DashboardPointsChartFrame';
 import { DashboardRecentActivitySkeleton } from './DashboardRecentActivity';
 import { DashboardStatsGridSkeleton } from './DashboardStatsGrid';
-import { DashboardTopEarnersSkeleton } from './DashboardTopEarners';
+import { DashboardTopBalancesSkeleton } from './DashboardTopBalances';
 
 /** First paint: chrome renders for real, only values are placeholders, at the loaded heights so nothing reflows. */
 export function DashboardSkeleton() {
@@ -10,7 +10,7 @@ export function DashboardSkeleton() {
       <DashboardStatsGridSkeleton />
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <DashboardPointsChartSkeleton />
-        <DashboardTopEarnersSkeleton />
+        <DashboardTopBalancesSkeleton />
       </div>
       <DashboardRecentActivitySkeleton />
     </>

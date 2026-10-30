@@ -7,10 +7,10 @@ import { cn } from '@/lib/utils';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbSeparator } from '../ui/breadcrumb';
 
 export default function Footer({
-  currentMenu,
+  pathSegments,
   onBackToDefault,
 }: {
-  currentMenu: string[];
+  pathSegments: string[];
   onBackToDefault: () => void;
 }) {
   const [hasReviewed, setHasReviewed] = useState(window.yayLoyaltyMeta.loyaltyMeta.reviewed || false);
@@ -108,11 +108,11 @@ export default function Footer({
                 YayLoyalty
               </span>
             </BreadcrumbItem>
-            {currentMenu.map((menu, index) => (
+            {pathSegments.map((menu, index) => (
               <>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem key={menu}>
-                  <span className={cn('text-foreground', index < currentMenu.length - 1 && 'text-muted-foreground')}>
+                  <span className={cn('text-foreground', index < pathSegments.length - 1 && 'text-muted-foreground')}>
                     {formatMenuLabel(menu)}
                   </span>
                 </BreadcrumbItem>

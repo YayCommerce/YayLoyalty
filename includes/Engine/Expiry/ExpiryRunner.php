@@ -29,7 +29,7 @@ final class ExpiryRunner {
     public const BATCH_SIZE = 100;
 
     /** ExpiryPolicy::signature() the stored dates were last computed from. */
-    public const OPTION_APPLIED = 'yayloyalty_expiry_applied';
+    public const OPTION_APPLIED = 'yayloyalty_expiry_applied_signature';
 
     public function register(): void {
         self::register_daily( self::RUN_ACTION, [ $this, 'schedule' ], [ $this, 'run' ] );

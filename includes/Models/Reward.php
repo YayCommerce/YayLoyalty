@@ -24,7 +24,7 @@ class Reward extends AbstractModel {
     public const REFUND_POLICY_FULL         = 'full';
     public const REFUND_POLICY_NONE         = 'none';
 
-    /** How the shopper spends points on a flexible discount: `config.redemption_mode`. A missing key reads as free input. */
+    /** How the shopper spends points on a flexible discount: `config.redemption_mode`. A missing key reads as auto max, as default_config() gives. */
     public const REDEMPTION_MODE_AUTO_MAX   = 'auto_max';
     public const REDEMPTION_MODE_FREE_INPUT = 'free_input';
 
@@ -230,42 +230,42 @@ class Reward extends AbstractModel {
     public static function config_schema(): array {
         $schema = [
             RewardType::FLEXIBLE_DISCOUNT => [
-                'currency'                 => [
+                'currency'                    => [
                     'type'     => 'currency',
                     'required' => true,
                 ],
-                'points_per_currency_unit' => [
+                'points_per_currency_unit'    => [
                     'type'          => 'number',
                     'exclusive_min' => 0,
                 ],
-                'min_points'               => [
+                'min_points'                  => [
                     'type' => 'int',
                     'min'  => 0,
                 ],
                 // Points, so whole: null is no cap, as the purchase campaign's own cap.
-                'max_points_per_order'     => [ 'type' => 'limit' ],
-                'max_percent_of_subtotal'  => [
+                'max_points_per_order'        => [ 'type' => 'limit' ],
+                'max_percent_of_discountable' => [
                     'type' => 'nullable_number',
                     'min'  => 0,
                 ],
-                'increment'                => [
+                'increment'                   => [
                     'type' => 'int',
                     'min'  => 1,
                 ],
-                'show_on'                  => [
+                'show_on'                     => [
                     'type'   => 'enum_list',
                     'values' => [ 'cart', 'checkout' ],
                 ],
-                'refund_policy'            => [
+                'refund_policy'               => [
                     'type'   => 'enum',
                     'values' => [ self::REFUND_POLICY_PROPORTIONAL, self::REFUND_POLICY_FULL, self::REFUND_POLICY_NONE ],
                 ],
-                'redemption_mode'          => [
+                'redemption_mode'             => [
                     'type'   => 'enum',
                     'values' => [ self::REDEMPTION_MODE_AUTO_MAX, self::REDEMPTION_MODE_FREE_INPUT ],
                 ],
                 // Global redemption cap, null for unlimited. Stored, but nothing enforces it yet.
-                'max_total'                => [
+                'max_total'                   => [
                     'type'          => 'nullable_number',
                     'exclusive_min' => 0,
                 ],
@@ -387,16 +387,16 @@ class Reward extends AbstractModel {
         switch ( $type ) {
             case RewardType::FLEXIBLE_DISCOUNT:
                 return [
-                    'currency'                 => function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : 'USD',
-                    'points_per_currency_unit' => 100,
-                    'min_points'               => 100,
-                    'max_points_per_order'     => null,
-                    'max_percent_of_subtotal'  => null,
-                    'increment'                => 100,
-                    'show_on'                  => [ 'cart', 'checkout' ],
-                    'refund_policy'            => self::REFUND_POLICY_PROPORTIONAL,
-                    'redemption_mode'          => self::REDEMPTION_MODE_AUTO_MAX,
-                    'max_total'                => null,
+                    'currency'                    => function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : 'USD',
+                    'points_per_currency_unit'    => 100,
+                    'min_points'                  => 100,
+                    'max_points_per_order'        => null,
+                    'max_percent_of_discountable' => null,
+                    'increment'                   => 100,
+                    'show_on'                     => [ 'cart', 'checkout' ],
+                    'refund_policy'               => self::REFUND_POLICY_PROPORTIONAL,
+                    'redemption_mode'             => self::REDEMPTION_MODE_AUTO_MAX,
+                    'max_total'                   => null,
                 ];
 
             default:
@@ -491,7 +491,7 @@ class Reward extends AbstractModel {
         return $this->is_builtin;
     }
 
-    /** Whether this reward may be archived: never the built-in, which the Free UI and DashboardRepository find by slug. */
+    /** Whether this reward may be archived: never the built-in, which the Lite UI and DashboardRepository find by slug. */
     public function can_archive(): bool {
         return ! $this->is_builtin;
     }

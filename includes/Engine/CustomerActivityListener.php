@@ -130,14 +130,14 @@ final class CustomerActivityListener {
      * @param mixed $user_id
      * @param mixed $points
      * @param mixed $expires_at
-     * @param mixed $window_days
+     * @param mixed $reminder_days
      */
-    public static function on_expiring_soon_email_sent( $user_id, $points, $expires_at, $window_days ): void {
+    public static function on_expiring_soon_email_sent( $user_id, $points, $expires_at, $reminder_days ): void {
         ListenerGuard::run(
             self::SOURCE,
             'expiring_soon_email_sent row failed for user #' . (int) $user_id,
-            static function () use ( $user_id, $points, $expires_at, $window_days ) {
-                self::service()->record_expiring_soon_email_sent( (int) $user_id, (int) $points, (string) $expires_at, (int) $window_days );
+            static function () use ( $user_id, $points, $expires_at, $reminder_days ) {
+                self::service()->record_expiring_soon_email_sent( (int) $user_id, (int) $points, (string) $expires_at, (int) $reminder_days );
             }
         );
     }

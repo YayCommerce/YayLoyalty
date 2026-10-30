@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
-import { useDashboardQuery, useRefreshDashboard } from '@/lib/queries/dashboard.queries';
+import { useDashboardQuery, useRefreshDashboardMutation } from '@/lib/queries/dashboard.queries';
 import { findPointsJump } from '@/lib/schema/dashboard-notice.schema';
 import type { DashboardRange, DashboardResponse, DashboardStats } from '@/lib/schema/dashboard.schema';
 import { cn } from '@/lib/utils';
@@ -18,7 +18,7 @@ import { DashboardRangeControl } from './components/DashboardRangeControl';
 import { DashboardRecentActivity } from './components/DashboardRecentActivity';
 import { DashboardSkeleton } from './components/DashboardSkeleton';
 import { DashboardStatsGrid } from './components/DashboardStatsGrid';
-import { DashboardTopEarners } from './components/DashboardTopEarners';
+import { DashboardTopBalances } from './components/DashboardTopBalances';
 import { noticeTileOverrides, rangeSubline } from './dashboard-page.copy';
 import type { DashboardProSlots } from './dashboard-page.pro-slots';
 
@@ -27,7 +27,7 @@ export default function DashboardPage() {
   const [range, setRange] = useState<DashboardRange>(30);
 
   const query = useDashboardQuery(range);
-  const refresh = useRefreshDashboard(range);
+  const refresh = useRefreshDashboardMutation(range);
   const data = query.data;
 
   const pointsJump = data ? findPointsJump(data.notices) : null;
@@ -121,7 +121,7 @@ function DashboardBody({
           {slots.chartControls}
         </DashboardPointsChart>
         <div className="flex flex-col gap-4">
-          <DashboardTopEarners earners={data.top_earners} />
+          <DashboardTopBalances balances={data.top_balances} />
           {slots.sidePanels}
         </div>
       </div>

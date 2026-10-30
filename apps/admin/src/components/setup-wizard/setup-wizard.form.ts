@@ -1,7 +1,7 @@
 import type { UseFormReturn } from 'react-hook-form';
 import { __ } from '@wordpress/i18n';
 
-import { rateFromSpend, spendPairFromRate } from '@/lib/helpers/points.helper';
+import { rateFromSpend, ratePair } from '@/lib/helpers/points.helper';
 import { ROUNDING, roundPoints } from '@/lib/points-math/points-math';
 import { DEFAULT_CAMPAIGN_CONFIG } from '@/lib/schema/campaign.schema';
 import type { Setup } from '@/lib/schema/setup.schema';
@@ -48,13 +48,13 @@ export type WizardStepProps = { form: UseFormReturn<SetupForm> };
  * The first-run values. Earning comes from DEFAULT_CAMPAIGN_CONFIG.
  */
 export function setupDefaults(): SetupForm {
-  const earn = spendPairFromRate(DEFAULT_CAMPAIGN_CONFIG.purchase.points_per_unit as number);
+  const earn = ratePair(DEFAULT_CAMPAIGN_CONFIG.purchase.points_per_unit as number);
 
   return {
     pointsLabelSingular: __('point', 'yayloyalty'),
     pointsLabelPlural: __('points', 'yayloyalty'),
     earnPoints: earn.points,
-    earnSpend: earn.spend,
+    earnSpend: earn.amount,
     signupEnabled: true,
     signupPoints: DEFAULT_CAMPAIGN_CONFIG.signup.points as number,
     reviewEnabled: true,
@@ -75,10 +75,10 @@ export function toSetupPayload(form: SetupForm): Setup {
     purchase: { points_per_unit: rateFromSpend(form.earnSpend, form.earnPoints) ?? 0 },
     signup: { enabled: form.signupEnabled, points: form.signupPoints },
     review: { enabled: form.reviewEnabled, points: form.reviewPoints },
-    cart_discount: {
+    flexible_discount: {
       points_per_currency_unit: rateFromSpend(form.worthAmount, form.worthPoints) ?? 0,
       min_points: form.minPoints,
-      max_percent_of_subtotal: form.maxPercent >= 100 ? null : form.maxPercent,
+      max_percent_of_discountable: form.maxPercent >= 100 ? null : form.maxPercent,
     },
     brand_color: form.brandColor,
   };

@@ -33,7 +33,7 @@ export const pointsJumpDataSchema = z.object({
   /** Site-timezone `Y-m-d`. */
   yesterday: z.string(),
   yesterday_points: z.number().int(),
-  daily_average: z.number().int(),
+  active_day_average: z.number().int(),
   multiple: z.number(),
   /** 13 days ending yesterday. */
   daily: z.array(z.object({ date: z.string(), issued: z.number().int() })),

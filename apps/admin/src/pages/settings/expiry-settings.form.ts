@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { parseWPDate } from '@/lib/helpers/format.helper';
+import { formatWPDate } from '@/lib/helpers/format.helper';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { Settings, settingsSchema, SettingsUpdate } from '@/lib/schema/settings.schema';
 
@@ -49,7 +49,7 @@ export function buildExpirySettingsUpdate(values: ExpirySettingsFormValues): Set
  */
 export function graceFloorText(expiry: Expiry): string {
   const days = Math.min(window.yayLoyaltyMeta.loyaltyMeta.expiryGraceDays, windowDays(expiry));
-  const floor = parseWPDate(new Date(Date.now() + days * 86_400_000));
+  const floor = formatWPDate(new Date(Date.now() + days * 86_400_000));
 
   /* translators: 1: a date, 2: number of days */
   return sprintf(_n('%1$s, %2$d day from today', '%1$s, %2$d days from today', days, 'yayloyalty'), floor, days);
@@ -59,7 +59,7 @@ export function graceFloorText(expiry: Expiry): string {
  * Which confirmation a save needs before it goes out: the one-way switch to batch, turning expiry on,
  * or a shorter window, where the admin also picks what happens to stored dates. Null when none.
  */
-export function needsConfirmation(saved: Expiry, next: Expiry): 'enable' | 'shorten' | 'batch' | null {
+export function confirmationKind(saved: Expiry, next: Expiry): 'enable' | 'shorten' | 'batch' | null {
   if (next.mode === 'batch' && saved.mode !== 'batch') {
     return 'batch';
   }

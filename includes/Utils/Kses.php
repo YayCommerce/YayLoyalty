@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Kses {
 
-    /** The inline icons (LauncherIcon, AccountRewardsIcon), gradients included. */
+    /** The inline icons (LauncherIcon, AccountMyPointsIcon), gradients included. */
     public static function svg(): array {
         $paint = [
             'fill'            => true,

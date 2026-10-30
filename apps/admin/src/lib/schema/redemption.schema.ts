@@ -7,8 +7,8 @@ import { paginatedSchema } from '@/lib/api/paginated';
  * The server reads the redemptions table, newest first.
  */
 
-/** Matches `RedemptionsRestController`'s `status` enum: the five stored statuses, plus `expired`, which the server derives. */
-export const REDEMPTION_STATUSES = ['applied', 'issued', 'used', 'refunded', 'cancelled', 'expired'] as const;
+/** Matches `RedemptionsRestController`'s `status` enum, `Redemption::STORED_STATUSES`. */
+export const REDEMPTION_STATUSES = ['applied', 'refunded', 'cancelled'] as const;
 export const redemptionStatusSchema = z.enum(REDEMPTION_STATUSES);
 export type RedemptionStatus = z.infer<typeof redemptionStatusSchema>;
 

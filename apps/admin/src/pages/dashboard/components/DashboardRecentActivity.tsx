@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
-import { parseWPRelativeDate } from '@/lib/helpers/format.helper';
+import { formatWPRelativeDate } from '@/lib/helpers/format.helper';
 import { describeLedgerEntry, formatSignedPoints } from '@/lib/helpers/ledger.helper';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import type { DashboardRecentActivity as Activity } from '@/lib/schema/dashboard.schema';
@@ -82,7 +82,7 @@ export function DashboardRecentActivity({ activity }: { activity: Activity }) {
                 {formatSignedPoints(row.points)}
               </TableCell>
               <TableCell className="text-muted-foreground text-right text-xs whitespace-nowrap">
-                {parseWPRelativeDate(row.created_at)}
+                {formatWPRelativeDate(row.created_at)}
               </TableCell>
             </TableRow>
           );

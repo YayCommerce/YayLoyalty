@@ -32,7 +32,6 @@ final class RewardValidationTest extends TestCase {
                 'currency'           => 'USD',
                 'amount'             => 5,
                 'min_order'          => 25,
-                'coupon_expiry_days' => 60,
                 'exclude_sale_items' => false,
             ],
             $overrides
@@ -49,7 +48,6 @@ final class RewardValidationTest extends TestCase {
                     'max_discount'       => null,
                     'currency'           => 'USD',
                     'min_order'          => 0,
-                    'coupon_expiry_days' => 30,
                     'exclude_sale_items' => true,
                 ]
             )
@@ -79,7 +77,6 @@ final class RewardValidationTest extends TestCase {
         $this->assertFalse( Reward::config_is_valid( RewardType::FIXED_COUPON, $this->fixed_coupon( [ 'amount' => 0 ] ) ) );
         $this->assertFalse( Reward::config_is_valid( RewardType::FIXED_COUPON, $this->fixed_coupon( [ 'amount' => 'five' ] ) ) );
         $this->assertFalse( Reward::config_is_valid( RewardType::FIXED_COUPON, $this->fixed_coupon( [ 'min_order' => -1 ] ) ) );
-        $this->assertFalse( Reward::config_is_valid( RewardType::FIXED_COUPON, $this->fixed_coupon( [ 'coupon_expiry_days' => 0 ] ) ) );
         $this->assertFalse( Reward::config_is_valid( RewardType::FIXED_COUPON, $this->fixed_coupon( [ 'exclude_sale_items' => 'yes' ] ) ) );
 
         $percent = [

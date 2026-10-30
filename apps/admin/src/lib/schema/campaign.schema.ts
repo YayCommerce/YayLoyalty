@@ -44,33 +44,33 @@ export const CAMPAIGN_TRIGGERS = IS_PRO_BUILD
   : LITE_CAMPAIGN_TRIGGERS;
 
 /** Mirrors Enums\Status::all(), the source of truth. The stored statuses. No scheduled/ended: liveness is derived. */
-export const CAMPAIGN_STATUSES = ['active', 'paused', 'draft', 'archived'] as const;
+export const STATUSES = ['active', 'paused', 'draft', 'archived'] as const;
 
 /** Parses the full known vocabulary, in both builds. */
 export const campaignTriggerSchema = z.enum(ALL_KNOWN_CAMPAIGN_TRIGGERS);
-export const campaignStatusSchema = z.enum(CAMPAIGN_STATUSES);
+export const statusSchema = z.enum(STATUSES);
 
 export type CampaignTrigger = z.infer<typeof campaignTriggerSchema>;
 
 /** A trigger this build can offer, as opposed to one it merely recognises. */
 export type OfferableCampaignTrigger = (typeof CAMPAIGN_TRIGGERS)[number];
-export type CampaignStatus = z.infer<typeof campaignStatusSchema>;
+export type Status = z.infer<typeof statusSchema>;
 
-/** Mirrors Enums\Status::resolve_display(), the source of truth. CampaignStatus plus the two derived, never-stored labels. */
-export const CAMPAIGN_DISPLAY_STATUSES = [...CAMPAIGN_STATUSES, 'scheduled', 'ended'] as const;
+/** Mirrors Enums\Status::resolve_display(), the source of truth. Status plus the two derived, never-stored labels. */
+export const DISPLAY_STATUSES = [...STATUSES, 'scheduled', 'ended'] as const;
 
-export type CampaignDisplayStatus = (typeof CAMPAIGN_DISPLAY_STATUSES)[number];
+export type DisplayStatus = (typeof DISPLAY_STATUSES)[number];
 
 /**
  * Mirrors Enums\Status::resolve_display(), the source of truth. `at` is UTC in the stored shape;
  * pass the campaign's dates through unconverted.
  */
-export function resolveCampaignDisplayStatus(
-  status: CampaignStatus,
+export function resolveDisplayStatus(
+  status: Status,
   startsAt: string | null,
   endsAt: string | null,
   at: string = dateToStored(),
-): CampaignDisplayStatus {
+): DisplayStatus {
   if (status !== 'active') {
     return status;
   }
@@ -92,7 +92,7 @@ export const campaignSchema = z.object({
   /** Generated server-side and immutable after create. */
   slug: z.string(),
   trigger: campaignTriggerSchema,
-  status: campaignStatusSchema,
+  status: statusSchema,
   priority: z.number().int(),
   /** Loose on purpose: the per-trigger whitelist lives in PHP and would drift if duplicated. */
   config: z.record(z.string(), z.unknown()),
@@ -126,7 +126,7 @@ export const campaignListParamsSchema = z.object({
   page: z.number().int().optional(),
   perPage: z.number().int().optional(),
   trigger: campaignTriggerSchema.optional(),
-  status: campaignStatusSchema.optional(),
+  status: statusSchema.optional(),
   search: z.string().optional(),
 });
 
@@ -152,7 +152,7 @@ export const CAMPAIGN_CONDITION_TYPES = [
   'lifetime_spend',
 ] as const;
 
-export type CampaignConditionKind = (typeof CAMPAIGN_CONDITION_TYPES)[number];
+export type CampaignConditionType = (typeof CAMPAIGN_CONDITION_TYPES)[number];
 
 /** Mirrors the operators CampaignConditionType::schema() recognises, the source of truth. */
 type CampaignConditionOperator = 'in' | 'not_in' | 'gte' | 'lte' | 'gt' | 'lt' | 'eq' | 'between';
@@ -180,7 +180,7 @@ export const COUNTRY_SOURCE_VALUES = ['shipping', 'billing', 'any'] as const;
  * UI metadata, not a validator: CampaignConditionSet enforces on save, and
  * a duplicate here would only drift from it.
  */
-export const CAMPAIGN_CONDITION_SCHEMA: Record<CampaignConditionKind, CampaignConditionSpec> = {
+export const CAMPAIGN_CONDITION_SCHEMA: Record<CampaignConditionType, CampaignConditionSpec> = {
   user_role: {
     operators: ['in', 'not_in'],
     value: 'string_list',
@@ -249,7 +249,7 @@ export type CampaignCondition = z.infer<typeof campaignConditionSchema>;
 export const campaignUpdateInputSchema = z
   .object({
     name: z.string().trim().min(1, __('A campaign needs a name.', 'yayloyalty')),
-    status: campaignStatusSchema,
+    status: statusSchema,
     /** Loose on purpose; see campaignSchema.config. */
     config: z.record(z.string(), z.unknown()),
     conditions: z.array(campaignConditionSchema),
@@ -257,7 +257,7 @@ export const campaignUpdateInputSchema = z
     /** Exclusive; see campaignSchema.ends_at. */
     ends_at: z.string().nullable(),
   })
-  .refine((data) => isCampaignScheduleInOrder(data.starts_at, data.ends_at), {
+  .refine((data) => isScheduleInOrder(data.starts_at, data.ends_at), {
     message: __('The campaign must end after it starts.', 'yayloyalty'),
     path: ['ends_at'],
   });
@@ -269,7 +269,7 @@ export type CampaignUpdateInput = z.infer<typeof campaignUpdateInputSchema>;
  * set dates must run forward (ends_at is exclusive, so equal is an empty run).
  * String comparison is correct: both are fixed-width UTC YYYY-MM-DD HH:mm:ss.
  */
-export function isCampaignScheduleInOrder(startsAt: string | null, endsAt: string | null): boolean {
+export function isScheduleInOrder(startsAt: string | null, endsAt: string | null): boolean {
   return !startsAt || !endsAt || startsAt < endsAt;
 }
 
@@ -280,62 +280,14 @@ export function isCampaignScheduleInOrder(startsAt: string | null, endsAt: strin
 export type CampaignCreateInput = CampaignUpdateInput & { trigger: CreatableCampaignTrigger };
 
 /** Mirrors CampaignRestController::delete_item(), the source of truth. The response of DELETE campaigns/{id}. */
-export const campaignDeleteResponseSchema = z.object({
+export const deleteResponseSchema = z.object({
   deleted: z.boolean(),
   id: z.number().int(),
 });
 
-export type CampaignDeleteResponse = z.infer<typeof campaignDeleteResponseSchema>;
+export type DeleteResponse = z.infer<typeof deleteResponseSchema>;
 
 // Per-trigger config fields
-
-/** `limit`: a whole number of at least 1, or null for no limit. */
-type CampaignConfigFieldType = 'bool' | 'string' | 'int' | 'number' | 'enum' | 'int_list' | 'limit';
-
-interface CampaignConfigFieldSpec {
-  type: CampaignConfigFieldType;
-  /** Lower bound; int and number only. */
-  min?: number;
-  /** Strict lower bound: the value must be above it; number only. */
-  exclusiveMin?: number;
-  /** Fixed value set; enum only. */
-  values?: readonly string[];
-}
-
-/**
- * Mirrors Campaign::config_schema(), the source of truth. A per-trigger config
- * field map for the three Lite triggers. UI metadata, not validation: `config` stays z.record
- * so this can never become a second whitelist. Pro triggers have no Lite
- * schema and so no entry here.
- */
-export const CAMPAIGN_CONFIG_FIELDS: Record<
-  'purchase' | 'signup' | 'review',
-  Record<string, CampaignConfigFieldSpec>
-> = {
-  purchase: {
-    points_per_unit: { type: 'number', exclusiveMin: 0 },
-    base: { type: 'enum', values: ['after_discounts', 'before_discounts'] },
-    // Never read by the calculator; kept so a downgrade/upgrade round trip does not lose it.
-    include_shipping: { type: 'bool' },
-    include_tax: { type: 'bool' },
-    rounding: { type: 'enum', values: ['down', 'nearest', 'up'] },
-    min_subtotal: { type: 'number', min: 0 },
-    exclude_coupon_orders: { type: 'bool' },
-    excluded_product_ids: { type: 'int_list' },
-    excluded_category_ids: { type: 'int_list' },
-    max_points_per_order: { type: 'limit' },
-  },
-  signup: {
-    points: { type: 'int', min: 0 },
-  },
-  review: {
-    points: { type: 'int', min: 0 },
-    require_verified: { type: 'bool' },
-    one_per_product: { type: 'bool' },
-    // Absent from default_config(); the form defaults it to 0.
-    media_bonus_points: { type: 'int', min: 0 },
-  },
-};
 
 /**
  * Mirrors Campaign::default_config(), the source of truth. Used only when creating: the chooser's
@@ -346,12 +298,9 @@ export const CAMPAIGN_CONFIG_FIELDS: Record<
 export const DEFAULT_CAMPAIGN_CONFIG: Record<LiteCampaignTrigger, Record<string, unknown>> = {
   purchase: {
     points_per_unit: 1,
-    base: 'after_discounts',
-    include_shipping: false,
     include_tax: false,
     rounding: 'down',
     min_subtotal: 0,
-    exclude_coupon_orders: false,
     excluded_product_ids: [],
     excluded_category_ids: [],
   },
@@ -365,12 +314,9 @@ export const DEFAULT_CAMPAIGN_CONFIG: Record<LiteCampaignTrigger, Record<string,
  */
 export interface PurchaseConfig {
   points_per_unit?: number;
-  base?: 'after_discounts' | 'before_discounts';
-  include_shipping?: boolean;
   include_tax?: boolean;
   rounding?: RoundingMode;
   min_subtotal?: number;
-  exclude_coupon_orders?: boolean;
   excluded_product_ids?: number[];
   excluded_category_ids?: number[];
   max_points_per_order?: number | null;

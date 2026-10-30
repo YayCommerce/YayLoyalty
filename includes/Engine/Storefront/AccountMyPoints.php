@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * The My Account "My Points" tab: the shopper's balance, the programme's rules and their points history.
  */
-final class AccountRewards {
+final class AccountMyPoints {
 
     public const ENDPOINT = 'my-points';
 
@@ -184,7 +184,7 @@ final class AccountRewards {
 
                 include __DIR__ . '/templates/account-rewards.php';
             },
-            'AccountRewards'
+            'AccountMyPoints'
         );
 
         if ( null === $html ) {

@@ -21,8 +21,8 @@ export const designSchema = z.object({
     include_page_ids: z.array(z.number().int().positive()),
     hide_on_mobile: z.boolean(),
     hide_for_roles: z.array(z.string()),
-    product_message: z.boolean(),
-    thankyou_message: z.boolean(),
+    show_product_message: z.boolean(),
+    show_thankyou_message: z.boolean(),
   }),
   /** Pro. */
   panel: z.object({
@@ -30,7 +30,7 @@ export const designSchema = z.object({
     show_reward_catalog: z.boolean(),
   }),
   /** Pro. */
-  typography: z.object({
+  custom_css: z.object({
     custom_css: z.string(),
   }),
   /** Stamped by DesignHelper on save; a design never saved reports the current version. */

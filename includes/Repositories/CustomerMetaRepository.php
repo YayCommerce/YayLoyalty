@@ -89,7 +89,7 @@ class CustomerMetaRepository extends AbstractRepository {
      * One customer's activity log, filtered by group, search and date range, and paginated.
      * An empty $event_types returns an empty page before any SQL is built, so `IN ()` is never reached.
      *
-     * @param array{event_types: string[], search?: string, after?: string, before?: string, page?: int, per_page?: int} $args
+     * @param array{event_types: string[], search?: string, from?: string, to?: string, page?: int, per_page?: int} $args
      * @return array{items: CustomerMeta[], total: int, page: int, per_page: int}
      */
     public function paginate_activity( int $user_id, array $args = [] ): array {
@@ -118,7 +118,7 @@ class CustomerMetaRepository extends AbstractRepository {
 
         $where = array_merge(
             $where,
-            $this->site_day_range_where( (string) ( $args['after'] ?? '' ), (string) ( $args['before'] ?? '' ) )
+            $this->site_day_range_where( (string) ( $args['from'] ?? '' ), (string) ( $args['to'] ?? '' ) )
         );
 
         $search = trim( (string) ( $args['search'] ?? '' ) );

@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
 final class CustomerFacts {
 
     /** lifetime_earned, not balance: spending must not drop a customer below a threshold. */
-    private int $lifetime_points;
+    private int $lifetime_earned;
 
     private int $order_count;
 
@@ -24,15 +24,15 @@ final class CustomerFacts {
     /**
      * @param array<string, float> $spend_by_currency
      */
-    public function __construct( int $lifetime_points, int $order_count, array $spend_by_currency, ?int $tier_id = null ) {
-        $this->lifetime_points   = $lifetime_points;
+    public function __construct( int $lifetime_earned, int $order_count, array $spend_by_currency, ?int $tier_id = null ) {
+        $this->lifetime_earned   = $lifetime_earned;
         $this->order_count       = $order_count;
         $this->spend_by_currency = $spend_by_currency;
         $this->tier_id           = $tier_id;
     }
 
-    public function get_lifetime_points(): int {
-        return $this->lifetime_points;
+    public function get_lifetime_earned(): int {
+        return $this->lifetime_earned;
     }
 
     public function get_order_count(): int {

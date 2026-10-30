@@ -38,7 +38,7 @@ final class CustomerItemFormatter {
                 'redemptions' => $redemption_count,
             ],
             'loose_ends'       => self::loose_ends( $deletion ),
-            // Needs the `lots` table: designed, not built yet.
+            // The lots exist, but this summary is not built from them yet.
             'expiry'           => null,
             // Needs a backwards walk of the ledger, a separate feature not built yet.
             'negative_balance' => null,

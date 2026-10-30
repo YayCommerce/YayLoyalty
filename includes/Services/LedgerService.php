@@ -71,7 +71,7 @@ final class LedgerService {
      *
      * @param bool $adjust_lifetime True writes an ADJUST row: lifetime_earned
      *             moves by the same signed amount as the balance, so a
-     *             deduction can undo a mistaken grant's tier progress. False
+     *             deduction can undo a mistaken grant's lifetime total. False
      *             writes a CORRECTION row: balance only.
      * @param string|null $customer_note Shown to the customer in place of "Adjustment by {store}"; blank stores NULL.
      *
@@ -438,7 +438,7 @@ final class LedgerService {
      *
      * Preconditions: $draft is a REDEEM row with points < 0 and an
      * idempotency key composed by the caller
-     * (`redeem:{user}:order:{order_id}:flexible_discount` for the slider).
+     * (`redeem:{user}:order:{order_id}:flexible_discount` for the flexible discount).
      * `order_id` is optional. Nothing slow or externally fallible may run inside.
      *
      * Returns exactly one of: Outcome::awarded( persisted row ), with

@@ -22,7 +22,7 @@ final class AccountHistoryAjax {
 
     /**
      * GET `history_page` and `points_type`, as the tab's own links. A read of the viewer's own history, so it
-     * needs only the login cookie; the same gates as AccountRewards::render(). Answers `{ html }`.
+     * needs only the login cookie; the same gates as AccountMyPoints::render(). Answers `{ html }`.
      */
     public static function respond(): void {
         $user_id = get_current_user_id();
@@ -34,7 +34,7 @@ final class AccountHistoryAjax {
         $page = max( 1, absint( wp_unslash( $_GET[ self::PAGE_QUERY_ARG ] ?? 1 ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- a read-only view.
         $html = OutputCapture::capture(
             static function () use ( $user_id, $page ): void {
-                $yayloyalty_history = AccountRewards::history_view( $user_id, $page );
+                $yayloyalty_history = AccountMyPoints::history_view( $user_id, $page );
 
                 include __DIR__ . '/templates/points-history.php';
             },

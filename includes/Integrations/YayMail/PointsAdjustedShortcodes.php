@@ -16,11 +16,11 @@ class PointsAdjustedShortcodes extends LoyaltyEmailShortcodes {
     use SingletonTrait;
 
     protected const VALUE_KEYS = [
-        'adjusted_points' => 'adjusted_text',
-        'balance_points'  => 'balance_text',
+        'adjusted_message' => 'adjusted_text',
+        'balance_points'   => 'balance_text',
     ];
 
-    protected const HTML_KEYS = [ 'adjusted_points' ];
+    protected const HTML_KEYS = [ 'adjusted_message' ];
 
     public $available_email_ids = [ PointsAdjustedEmail::ID ];
 
@@ -30,9 +30,9 @@ class PointsAdjustedShortcodes extends LoyaltyEmailShortcodes {
 
     protected function descriptions(): array {
         return [
-            'adjusted_points' => __( 'Points Adjusted Message', 'yayloyalty' ),
-            'points'          => __( 'Points Adjusted', 'yayloyalty' ),
-            'customer_note'   => __( 'Note For Customer', 'yayloyalty' ),
+            'adjusted_message' => __( 'Points Adjusted Message', 'yayloyalty' ),
+            'points'           => __( 'Points Adjusted', 'yayloyalty' ),
+            'customer_note'    => __( 'Note For Customer', 'yayloyalty' ),
         ] + self::shared_descriptions( 'points_label', 'balance', 'balance_points', 'balance_value', 'balance_value_text' );
     }
 }

@@ -52,7 +52,7 @@ export async function adjustCustomerPoints(userId: number, input: AdjustPointsIn
 }
 
 /**
- * `POST /customers/adjust/preview`: the bulk adjust dialog's count, liability and rate.
+ * `POST /customers/adjust/preview`: the bulk adjust dialog's count and liability.
  * This only respells camelCase as snake_case.
  */
 export async function previewAdjustPoints(

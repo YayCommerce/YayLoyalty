@@ -69,7 +69,7 @@ export const CUSTOMER_QUERIES = {
       retry: 1,
     }),
 
-  /** The bulk adjust dialog's count/liability/rate. staleTime 0: each open reads the store as it is now. */
+  /** The bulk adjust dialog's count/liability. staleTime 0: each open reads the store as it is now. */
   adjustPreview: (input: AdjustPointsPreviewInput, enabled: boolean) =>
     queryOptions({
       queryKey: ['customer', 'adjust-preview', input],

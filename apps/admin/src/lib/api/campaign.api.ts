@@ -3,11 +3,11 @@ import { parsePaginated } from '@/lib/api/paginated';
 import {
   Campaign,
   CampaignCreateInput,
-  campaignDeleteResponseSchema,
   CampaignListParams,
   campaignSchema,
-  CampaignStatus,
   CampaignUpdateInput,
+  deleteResponseSchema,
+  Status,
 } from '@/lib/schema/campaign.schema';
 
 export async function getCampaigns(params: CampaignListParams = {}) {
@@ -40,7 +40,7 @@ export async function updateCampaign(id: number, input: Partial<CampaignUpdateIn
 }
 
 /** PUT campaigns/{id} with only `status`. update_item() applies only the fields the body carries, so this is a true partial write. */
-export async function updateCampaignStatus(id: number, status: CampaignStatus): Promise<Campaign> {
+export async function updateCampaignStatus(id: number, status: Status): Promise<Campaign> {
   return campaignSchema.parse(await api.put(`campaigns/${id}`, { json: { status } }).json());
 }
 
@@ -56,5 +56,5 @@ export async function reorderCampaigns(ids: number[]) {
 
 /** DELETE campaigns/{id}. 409s if the campaign has ledger rows; see Campaign.is_deletable. */
 export async function deleteCampaign(id: number) {
-  return campaignDeleteResponseSchema.parse(await api.delete(`campaigns/${id}`).json());
+  return deleteResponseSchema.parse(await api.delete(`campaigns/${id}`).json());
 }

@@ -61,26 +61,26 @@ abstract class LedgerEntryEmail extends LoyaltyEmail {
      *
      * @return array<string, string>
      */
-    abstract protected function amounts( LedgerEntry $entry ): array;
+    abstract protected function placeholder_values( LedgerEntry $entry ): array;
 
     /**
-     * Every template variable for $entry, amounts() included.
+     * Every template variable for $entry, placeholder_values() included.
      *
      * @return array<string, mixed>
      */
     abstract protected function build_values( LedgerEntry $entry ): array;
 
     /**
-     * amounts() plus the template variables every ledger email shares: the row, greeting and balance.
+     * placeholder_values() plus the template variables every ledger email shares: the row, greeting and balance.
      *
      * @return array<string, mixed>
      */
-    protected function balance_values( LedgerEntry $entry ): array {
+    protected function shared_values( LedgerEntry $entry ): array {
         $greeting_name = self::greeting_name( $entry->get_user_id() );
         $balance_text  = SettingsHelper::points_text( $entry->get_balance_after() );
-        $balance_value = self::balance_value( $entry->get_balance_after() );
+        $balance_value = self::points_worth_html( $entry->get_balance_after() );
 
-        return $this->amounts( $entry ) + [
+        return $this->placeholder_values( $entry ) + [
             'entry'              => $entry,
             'greeting_name'      => $greeting_name,
             'greeting_text'      => self::greeting_text( esc_html( $greeting_name ) ),
@@ -95,7 +95,7 @@ abstract class LedgerEntryEmail extends LoyaltyEmail {
     protected function prepare( LedgerEntry $entry ): void {
         $this->object = $entry;
 
-        foreach ( $this->amounts( $entry ) as $key => $value ) {
+        foreach ( $this->placeholder_values( $entry ) as $key => $value ) {
             $this->placeholders[ '{' . $key . '}' ] = $value;
         }
     }

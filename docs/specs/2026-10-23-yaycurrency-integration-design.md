@@ -9,15 +9,15 @@ On a store running YayCurrency, a point keeps the same value in every currency t
 
 ## Context
 
-- **Earning seam.** `Engine\Points\ContextFactory::base_rate()` applies `yayloyalty_context_base_rate` (event currency → base currency multiplier, default `1.0`). `BaseCalculator::compute()` and `PurchaseHandler::is_eligible()` multiply by it. Nothing subscribes, so a $1 order earns as if it were 1 ₫.
-- **Advertised earn rate.** `PurchaseHandler::advertised_value()` returns the campaign's raw `points_per_unit`. `LauncherEarnRules::advertise()` passes it and `PurchaseHandler::min_subtotal()` to `LauncherCopy::earn_rate()` without the context's base rate.
+- **Earning seam.** `Engine\Points\ContextFactory::to_base_factor()` applies `yayloyalty_context_to_base_factor` (event currency → base currency multiplier, default `1.0`). `BaseCalculator::compute()` and `PurchaseHandler::is_eligible()` multiply by it. Nothing subscribes, so a $1 order earns as if it were 1 ₫.
+- **Advertised earn rate.** `PurchaseHandler::advertised_points()` returns the campaign's raw `points_per_unit`. `LauncherEarnRules::advertise()` passes it and `PurchaseHandler::min_subtotal()` to `LauncherCopy::earn_rate()` without the context's base rate.
 - **Redemption.** It's live in Lite (`includes/Engine/Redemption/`, `includes/Engine/Rewards/`).
   - `Rewards\ContextFactory::from_cart()` builds the quote context with `get_woocommerce_currency()` and a cart subtotal from `get_price()`. YayCurrency has converted both into the shopper's currency.
   - `Clamp::apply()` reads `points_per_currency_unit`, which is set in base currency, as if it were per shopper unit.
   - `CouponProvider::virtual_coupon_data()` emits `yayloyalty-redeem`. Pro reward coupons `yayloyalty-reward-{id}` get their amount, minimum and cap from `RewardHandler::coupon_props()` (`Pro\Services\DiscountRewardHandler`) through `RedemptionService::coupon_props_of()` and `RewardCoupons`.
   - `CommitWriter` re-quotes from the order's coupon line (`Rewards\ContextFactory::from_order()`, `Clamp::points_for()`). It rejects a slider discount that differs from the quote by half a smallest currency unit or more.
 - **Display.** `LauncherPayload::worth()` and `::redeem_rule()`, `LauncherCopy::coupon_reward_line()`, `earn_rate()` and `redeem_rate()`, and `Pro\Storefront\RewardsPanel` (the "spend X more" line, removed since by the dev/edd redeem card v2) print base-currency numbers. `wc_price()` adds the symbol of the shopper's currency, because YayCurrency filters `woocommerce_currency`. Templates: `panel-member.php`, `panel-guest.php`, `account-rewards.php`, `points-card.php`, `redeem-card.php`.
-- **Emails.** `LoyaltyEmail::balance_value()` passes `get_option( 'woocommerce_currency' )` explicitly, so emails already show the base currency.
+- **Emails.** `LoyaltyEmail::points_worth_html()` passes `get_option( 'woocommerce_currency' )` explicitly, so emails already show the base currency.
 - **YayCurrency Pro 3.3.5** (sibling folder `../YayCurrency`, read only):
   - Currencies are `yay-currency-manage` posts, read through `YayCurrencyHelper::converted_currency()` and `::get_currency_by_currency_code()`. A currency's `rate` is currency units per 1 base unit.
   - `YayCurrencyHelper::get_rate_fee( $currency )` adds the fee, either `percentage` or `fixed`. Product prices always use the rate after fee (`calculate_price_by_currency()`).
@@ -74,7 +74,7 @@ Unless stated otherwise: YayCurrency active, base ₫ (0 decimals), USD with `ra
 4. **Launcher earn rate.** The launcher's "Ways to earn" purchase row reads "1 Point / $1" (amended 2026-10-26: dev/edd fixed the earn-rate line's format and removed the Design tab's `earn_rate_line`). A campaign minimum of 250,000 ₫ appears as "on orders of $10 or more". The product page for a 25,000 ₫ product shows that it earns 1 point.
 5. **Points value.** A member with 3 points sees "worth $3" in the launcher, "You could take $3 off today." in My Account, and "worth $3 off your next order" on the balance placement. "Ways to redeem" reads "1 Point = $1".
 6. **Slider.** Applying 1 point on a $5.00 cart shows "$1 off" on the card, a $1.00 totals row and a $1.00 coupon line on the order. At checkout 1 point is debited, on classic and on block checkout.
-7. **Slider limits in the shopper's currency.** With `max_percent_of_subtotal` `50` on a $5.00 cart and a balance of 10, the slider allows at most 2 points ($2.00): the $2.50 ceiling is 2.5 points, which rounds down to 2.
+7. **Slider limits in the shopper's currency.** With `max_percent_of_discountable` `50` on a $5.00 cart and a balance of 10, the slider allows at most 2 points ($2.00): the $2.50 ceiling is 2.5 points, which rounds down to 2.
 8. **Fixed reward.** A Pro `fixed_coupon` reward with `amount` `25000` and `min_order` `250000` shows "On orders over $10" and gives $1.00 off a $12.00 cart.
 9. **Percent reward.** A Pro `percent_coupon` reward with `percent` `10` and `max_discount` `25000` gives $1.00 off a $20.00 cart (capped) and $0.50 off a $5.00 cart. The percentage itself isn't converted.
 10. **No double conversion.** For `yayloyalty-redeem` and every `yayloyalty-reward-{id}`, the amount, minimum and maximum WooCommerce reads after priority 20 equal the values YayLoyalty set. Every other coupon's amounts are unchanged, so YayCurrency still converts them.
@@ -128,7 +128,7 @@ Unless stated otherwise: YayCurrency active, base ₫ (0 decimals), USD with `ra
 **Architecture:**
 - **One helper.** `CurrencyRate` (Lite) is the only place the plugin asks for a rate. Without YayCurrency it answers `1.0`, so behaviour is exactly today's.
 - **The integration supplies the rate.** `YayCurrencyIntegration`, booted from `includes/YayLoyalty.php` right after `YayMailIntegration`, answers the new `yayloyalty_currency_rate` filter. It resolves the rate through the pure `CurrencyRateMath`: saved order rate, then YayCurrency's live rate (after fee only when `currency_include_fee` is on), then `1.0`.
-- **Earning** gets `1 / rate` through the existing `yayloyalty_context_base_rate` default, so every engine consumer converts without a change of its own.
+- **Earning** gets `1 / rate` through the existing `yayloyalty_context_to_base_factor` default, so every engine consumer converts without a change of its own.
 - **Redemption.** `Clamp` divides the reward's base-currency `points_per_currency_unit` by the rate, so the card, the cart, the order line and `CommitWriter`'s re-check all work in one currency. Reward coupon props are multiplied by the rate before WooCommerce sees them.
 - **Display** converts base amounts at their source with the same rate. The switcher needs nothing from us: its page reload makes the next request's `get_woocommerce_currency()` return the new currency.
 
@@ -140,7 +140,7 @@ Unless stated otherwise: YayCurrency active, base ₫ (0 decimals), USD with `ra
   - `to_base( float $amount, string $currency, ?\WC_Order $order = null ): float` is `$amount ÷ rate( $currency, $order )`, not rounded.
 - **`includes/Integrations/YayCurrency/YayCurrencyIntegration.php`** is a singleton like `YayMailIntegration`. It returns early unless `defined( 'YAY_CURRENCY_VERSION' )`. Its `is_active(): bool` answers the same check. It hooks:
   - `yayloyalty_currency_rate` (priority 10, 3 args), which resolves through `YayCurrencyRates` and `CurrencyRateMath`;
-  - `woocommerce_checkout_create_order` (priority 20, 1 arg) and `woocommerce_store_api_checkout_update_order_meta` (priority 20, 1 arg). Both call `OrderRateSnapshot::save( $order )`;
+  - `woocommerce_checkout_create_order` (priority 20, 1 arg) and `woocommerce_store_api_checkout_update_order_meta` (priority 20, 1 arg). Both call `OrderRateSnapshot::stage( $order )`;
   - `woocommerce_coupon_get_amount`, `woocommerce_coupon_get_minimum_amount` and `woocommerce_coupon_get_maximum_amount` (priority 20, 2 args). Each returns the coupon's `'edit'`-context value when `Engine\Points\Context::is_loyalty_code( $coupon->get_code() )`, and the incoming value otherwise;
   - `YayCurrency/ConvertPrice/NotPermitted`, which returns `true` when the request URI targets the `yayloyalty/v1` REST namespace (pretty `/{rest_get_url_prefix()}/yayloyalty/v1/` or `?rest_route=/yayloyalty/v1/`), and the incoming value otherwise.
 - **`includes/Integrations/YayCurrency/YayCurrencyRates.php`** is the only class that calls YayCurrency.
@@ -148,17 +148,17 @@ Unless stated otherwise: YayCurrency active, base ₫ (0 decimals), USD with `ra
   - `base_currency(): string`: `Helper::default_currency_code()`.
 - **`includes/Integrations/YayCurrency/CurrencyRateMath.php`** is pure, with no WordPress. `resolve( ?string $saved, ?float $live ): float` returns the first candidate above 0 that is numeric, else `1.0`. `fee_rate( float $rate, array $fee, bool $include ): float` mirrors `YayCurrencyHelper::get_rate_fee()` for the unit test.
 - **`includes/Integrations/YayCurrency/OrderRateSnapshot.php`**
-  - `save( \WC_Order $order ): void` writes meta `_yayloyalty_currency_rate` = `wc_format_decimal( CurrencyRate::rate( $order->get_currency() ), 10 )`, but only when the order currency isn't the base currency and the meta is absent. It never overwrites.
+  - `stage( \WC_Order $order ): void` writes meta `_yayloyalty_currency_rate` = `wc_format_decimal( CurrencyRate::rate( $order->get_currency() ), 10 )`, but only when the order currency isn't the base currency and the meta is absent. It never overwrites.
   - `read( \WC_Order $order ): ?string` returns it.
 - **`includes/YayLoyalty.php`** constructs `YayCurrencyIntegration::get_instance()` right after `YayMailIntegration::get_instance()`.
-- **`includes/Engine/Points/ContextFactory.php`**: `base_rate()`'s filter default becomes `1 / CurrencyRate::rate( $currency, $order )`. `yayloyalty_context_base_rate` is still applied on top, unchanged.
+- **`includes/Engine/Points/ContextFactory.php`**: `to_base_factor()`'s filter default becomes `1 / CurrencyRate::rate( $currency, $order )`. `yayloyalty_context_to_base_factor` is still applied on top, unchanged.
 - **`includes/Engine/Storefront/LauncherEarnRules.php`**, `advertise()`:
-  - the purchase value becomes `$advert['value'] * $ctx->get_base_rate()`;
-  - `purchase_min` becomes `PurchaseHandler::min_subtotal(…) / $ctx->get_base_rate()`;
+  - the purchase value becomes `$advert['value'] * $ctx->get_to_base_factor()`;
+  - `purchase_min` becomes `PurchaseHandler::min_subtotal(…) / $ctx->get_to_base_factor()`;
   - the converted rate is rounded per Constraints.
 - **`includes/Engine/Rewards/Context.php`** gains `float $currency_rate = 1.0` as its last constructor argument, and `get_currency_rate()`.
 - **`includes/Engine/Rewards/ContextFactory.php`**: `from_cart()` passes `CurrencyRate::rate( CurrencyRate::current() )`. `from_order()` and `from_order_line()` pass `CurrencyRate::rate( $order->get_currency(), $order )`, and `from_order()` calls `Clamp::points_for( $ours, $reward, $rate )`.
-- **`includes/Engine/Rewards/Clamp.php`**: `apply( …, int $decimals, float $currency_rate = 1.0 )` and `points_for( float $value, Reward $reward, float $currency_rate = 1.0 )`. The effective rate is `points_per_currency_unit / $currency_rate`, and a `$currency_rate` ≤ 0 reads as `1.0`. The docblock states that `$cart_subtotal` and the result are in the charged currency.
+- **`includes/Engine/Rewards/Clamp.php`**: `apply( …, int $decimals, float $currency_rate = 1.0 )` and `points_for( float $value, Reward $reward, float $currency_rate = 1.0 )`. The effective rate is `points_per_currency_unit / $currency_rate`, and a `$currency_rate` ≤ 0 reads as `1.0`. The docblock states that `$discountable_amount` and the result are in the charged currency.
 - **`includes/Engine/Rewards/Handlers/FlexibleDiscountHandler.php`** passes `$ctx->get_currency_rate()` to `Clamp::apply()`.
 - **`includes/Engine/Redemption/RewardCoupons.php`** gains `in_currency( array $props, float $rate ): array`. It multiplies `amount` (for `fixed_cart` only), `minimum_amount` and `max_discount` by `$rate` when set, and leaves `percent` amounts unchanged.
 - **`includes/Engine/Redemption/RedemptionService.php`**: `coupon_props_of()` returns `RewardCoupons::in_currency( $props, CurrencyRate::rate( CurrencyRate::current() ) )`.
@@ -188,7 +188,7 @@ Unless stated otherwise: YayCurrency active, base ₫ (0 decimals), USD with `ra
 **Integration points:**
 - **Filters.**
   - `yayloyalty_currency_rate` (new, Lite) takes `( float $rate, string $currency, ?\WC_Order $order )`. Docblock: currency units per 1 base unit, default `1.0`.
-  - `yayloyalty_context_base_rate` (existing, unchanged signature; default now derived from `CurrencyRate`).
+  - `yayloyalty_context_to_base_factor` (existing, unchanged signature; default now derived from `CurrencyRate`).
   - `woocommerce_coupon_get_amount`, `woocommerce_coupon_get_minimum_amount` and `woocommerce_coupon_get_maximum_amount` at priority 20.
   - `YayCurrency/ConvertPrice/NotPermitted`.
 - **Actions:** `woocommerce_checkout_create_order` and `woocommerce_store_api_checkout_update_order_meta` at priority 20.
@@ -217,7 +217,7 @@ Unless stated otherwise: YayCurrency active, base ₫ (0 decimals), USD with `ra
 - **Cache mode:** cached pages show base-currency launcher amounts until the deferred work ships. My Account, cart and checkout are never cached by YayCurrency (`YayCurrency/Caching/NoCachePages`).
 - **A refund or cancellation:** clawback stays proportional in the order's currency (`ClawbackMath::owed()`), and redemption restores are in points, so no rate is involved.
 
-**Decision record:** None. This builds on the existing `yayloyalty_context_base_rate` seam and the virtual-coupon decision ([2026-10-14](../decisions/2026-10-14-loyalty-discounts-as-virtual-coupons.md)), and reverses no architectural choice.
+**Decision record:** None. This builds on the existing `yayloyalty_context_to_base_factor` seam and the virtual-coupon decision ([2026-10-14](../decisions/2026-10-14-loyalty-discounts-as-virtual-coupons.md)), and reverses no architectural choice.
 
 ## Alternatives considered
 

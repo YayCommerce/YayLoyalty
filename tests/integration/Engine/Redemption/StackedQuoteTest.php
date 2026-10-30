@@ -54,7 +54,7 @@ final class StackedQuoteTest extends IntegrationTestCase {
         parent::tearDown();
     }
 
-    public function test_the_slider_alone_is_unchanged(): void {
+    public function test_the_flexible_discount_alone_is_unchanged(): void {
         $this->ledger_service()->earn( $this->earn_draft( 7, 100, 9850 ) );
         $cart = $this->cart_for( 100.0 );
         $this->intent->set( 500 );
@@ -63,7 +63,7 @@ final class StackedQuoteTest extends IntegrationTestCase {
         $this->assertSame( 500, $this->service->quote( $cart, 7 )->get_points() );
     }
 
-    public function test_the_slider_quotes_what_the_rewards_leave(): void {
+    public function test_the_flexible_discount_quotes_what_the_rewards_leave(): void {
         $this->ledger_service()->earn( $this->earn_draft( 7, 100, 9850 ) );
         $cart = $this->cart_for( 100.0 );
         $this->intent->set_rewards( [ $this->a->get_id(), $this->b->get_id() ] );

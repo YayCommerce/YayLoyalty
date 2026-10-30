@@ -1,13 +1,13 @@
 import type { VariantProps } from 'class-variance-authority';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { parseWPDate } from '@/lib/helpers/format.helper';
+import { formatWPDate } from '@/lib/helpers/format.helper';
 import { pointsPerCurrencyLabel } from '@/lib/helpers/points.helper';
 import {
   CAMPAIGN_CONDITION_TYPES,
-  CampaignConditionKind,
-  CampaignDisplayStatus,
+  CampaignConditionType,
   CampaignTrigger,
+  DisplayStatus,
 } from '@/lib/schema/campaign.schema';
 import type { badgeVariants } from '@/components/ui/badge';
 
@@ -83,7 +83,7 @@ function humanizeConditionType(type: string): string {
 }
 
 /** Label per offerable type; `tier` is absent, matching CAMPAIGN_CONDITION_TYPES. */
-export function conditionTypeLabel(type: CampaignConditionKind): string {
+export function conditionTypeLabel(type: CampaignConditionType): string {
   switch (type) {
     case 'user_role':
       return __('Customer role', 'yayloyalty');
@@ -116,25 +116,25 @@ export function scheduleLabel(startsAt: string | null, endsAt: string | null): s
   }
 
   if (startsAt && endsAt) {
-    return `${parseWPDate(startsAt)} – ${parseWPDate(endsAt)}`;
+    return `${formatWPDate(startsAt)} – ${formatWPDate(endsAt)}`;
   }
 
   if (startsAt) {
     return sprintf(
       /* translators: %s: a formatted date. */
       __('From %s', 'yayloyalty'),
-      parseWPDate(startsAt),
+      formatWPDate(startsAt),
     );
   }
 
   return sprintf(
     /* translators: %s: a formatted date. */
     __('Until %s', 'yayloyalty'),
-    parseWPDate(endsAt as string),
+    formatWPDate(endsAt as string),
   );
 }
 
-export function statusLabel(status: CampaignDisplayStatus): string {
+export function statusLabel(status: DisplayStatus): string {
   switch (status) {
     case 'active':
       return __('Active', 'yayloyalty');
@@ -152,9 +152,7 @@ export function statusLabel(status: CampaignDisplayStatus): string {
 }
 
 /** The badge colour for a campaign status; the one reading CampaignStatusBadge renders. */
-export function campaignStatusBadgeVariant(
-  status: CampaignDisplayStatus,
-): VariantProps<typeof badgeVariants>['variant'] {
+export function campaignStatusBadgeVariant(status: DisplayStatus): VariantProps<typeof badgeVariants>['variant'] {
   switch (status) {
     case 'active':
       return 'success';

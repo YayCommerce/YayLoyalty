@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
 final class RewardRepository extends AbstractRepository {
 
     /** The built-in flexible-discount reward the installer seeds. Its config holds the one points→money rate. */
-    public const CART_DISCOUNT_SLUG = 'cart-discount';
+    public const FLEXIBLE_DISCOUNT_SLUG = 'cart-discount';
 
     /** Draws before giving up and letting the unique key refuse the insert. */
     private const COUPON_CODE_ATTEMPTS = 5;
@@ -132,14 +132,14 @@ final class RewardRepository extends AbstractRepository {
 
     /** The built-in flexible-discount reward's `points_per_currency_unit`, or 0 unless that reward is live. */
     public function live_points_per_currency_unit(): float {
-        return self::rate_of( $this->find_live_cart_discount( Dates::now() ) );
+        return self::rate_of( $this->find_live_flexible_discount( Dates::now() ) );
     }
 
     /**
      * The built-in reward only while it is live at $now: active, and inside its start and end dates.
      */
-    public function find_live_cart_discount( string $now ): ?Reward {
-        $reward = $this->find_by_slug( self::CART_DISCOUNT_SLUG );
+    public function find_live_flexible_discount( string $now ): ?Reward {
+        $reward = $this->find_by_slug( self::FLEXIBLE_DISCOUNT_SLUG );
 
         return null !== $reward && $reward->is_live_at( $now ) ? $reward : null;
     }

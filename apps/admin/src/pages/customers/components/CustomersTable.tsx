@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { HeaderSelectionState } from '../customers-page.selection';
-import type { SortDirection, SortKey } from '../customers-page.sort-rows';
+import type { SortDirection, SortKey } from '../customers-page.sort';
 import { CustomersCardList } from './CustomersCardList';
 import { CustomersEmptyState } from './CustomersEmptyState';
 import { CustomersSkeletonRows } from './CustomersSkeletonRows';

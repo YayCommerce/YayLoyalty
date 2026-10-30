@@ -19,15 +19,6 @@ class Campaign extends AbstractModel {
     /** config/conditions blob version. Bump when the shape changes. */
     public const CONFIG_SCHEMA_VERSION = 1;
 
-    /**
-     * Purchase config keys fixed whatever is stored or sent: every discount, ours included, lowers
-     * the base, and an order with a coupon still earns. The admin no longer shows either setting.
-     */
-    private const FIXED_PURCHASE_CONFIG = [
-        'base'                  => 'after_discounts',
-        'exclude_coupon_orders' => false,
-    ];
-
     /** @var int|null */
     private $id;
 
@@ -100,7 +91,7 @@ class Campaign extends AbstractModel {
         $this->trigger     = $trigger;
         $this->status      = $status;
         $this->priority    = $priority;
-        $this->config      = self::with_fixed_config( $trigger, $config );
+        $this->config      = self::validate_config( $trigger, $config );
         $this->conditions  = $conditions;
         $this->starts_at   = $starts_at;
         $this->ends_at     = $ends_at;
@@ -217,11 +208,6 @@ class Campaign extends AbstractModel {
                     'type'          => 'number',
                     'exclusive_min' => 0,
                 ],
-                'base'                  => [
-                    'type'   => 'enum',
-                    'values' => [ 'after_discounts', 'before_discounts' ],
-                ],
-                'include_shipping'      => [ 'type' => 'bool' ],
                 'include_tax'           => [ 'type' => 'bool' ],
                 'rounding'              => [
                     'type'   => 'enum',
@@ -231,7 +217,6 @@ class Campaign extends AbstractModel {
                     'type' => 'number',
                     'min'  => 0,
                 ],
-                'exclude_coupon_orders' => [ 'type' => 'bool' ],
                 'excluded_product_ids'  => [ 'type' => 'int_list' ],
                 'excluded_category_ids' => [ 'type' => 'int_list' ],
                 'max_points_per_order'  => [ 'type' => 'limit' ],
@@ -326,7 +311,10 @@ class Campaign extends AbstractModel {
         return CampaignConditionSet::is_valid( $conditions );
     }
 
-    /** Drops config keys that do not belong to the trigger. Type checking is config_is_valid()'s job. */
+    /**
+     * Drops config keys that do not belong to the trigger. The constructor runs it too, so a stored key
+     * the schema has since dropped never reaches a save. Type checking is config_is_valid()'s job.
+     */
     public static function validate_config( string $trigger, array $config ): array {
         $whitelist = self::config_whitelist()[ $trigger ] ?? null;
 
@@ -353,12 +341,9 @@ class Campaign extends AbstractModel {
             case CampaignTrigger::PURCHASE:
                 return [
                     'points_per_unit'       => 1,
-                    'base'                  => self::FIXED_PURCHASE_CONFIG['base'],
-                    'include_shipping'      => false,
                     'include_tax'           => false,
                     'rounding'              => 'down',
                     'min_subtotal'          => 0,
-                    'exclude_coupon_orders' => self::FIXED_PURCHASE_CONFIG['exclude_coupon_orders'],
                     'excluded_product_ids'  => [],
                     'excluded_category_ids' => [],
                 ];
@@ -444,7 +429,7 @@ class Campaign extends AbstractModel {
         return (int) ( $this->config['points'] ?? 0 );
     }
 
-    /** Whether this campaign may be archived: never a built-in, since the engine and the Free UI assume they exist. */
+    /** Whether this campaign may be archived: never a built-in, since the engine and the Lite UI assume they exist. */
     public function can_archive(): bool {
         return ! $this->is_builtin;
     }
@@ -486,12 +471,7 @@ class Campaign extends AbstractModel {
     }
 
     public function set_config( array $config ): void {
-        $this->config = self::with_fixed_config( $this->trigger, self::validate_config( $this->trigger, $config ) );
-    }
-
-    /** $config with FIXED_PURCHASE_CONFIG over it for a purchase campaign; other triggers unchanged. */
-    private static function with_fixed_config( string $trigger, array $config ): array {
-        return CampaignTrigger::PURCHASE === $trigger ? array_merge( $config, self::FIXED_PURCHASE_CONFIG ) : $config;
+        $this->config = self::validate_config( $this->trigger, $config );
     }
 
     /** Normalises a conditions list and stores it. Rejection is conditions_are_valid()'s job. */

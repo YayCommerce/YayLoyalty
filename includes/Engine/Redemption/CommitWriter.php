@@ -14,6 +14,7 @@ use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Services\LedgerService;
+use YayLoyalty\Utils\CurrencyRate;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
@@ -98,7 +99,7 @@ final class CommitWriter {
                     return $this->ledger->redeem( $this->draft_from( $user_id, $order_id, $existing->get_points(), (int) $existing->get_id() ) );
                 }
 
-                $quote = $this->requote_slider( $order, $reward, $customer->get_balance() );
+                $quote = $this->requote_flexible_discount( $order, $reward, $customer->get_balance() );
 
                 if ( $quote instanceof Outcome ) {
                     return $quote;
@@ -122,7 +123,7 @@ final class CommitWriter {
 
     /**
      * Preconditions: $order is saved, its totals frozen, and it carries reward
-     * coupon lines and no slider line; $rewards maps each of its reward codes
+     * coupon lines and no flexible discount line; $rewards maps each of its reward codes
      * to the reward, or to null when the service found it missing or not
      * offered. Any number of firings.
      *
@@ -192,16 +193,16 @@ final class CommitWriter {
 
     /**
      * Preconditions: $order is saved, its totals frozen, and it carries reward
-     * coupon lines and our slider's line; $rewards as commit_rewards() takes
+     * coupon lines and our flexible discount's line; $rewards as commit_rewards() takes
      * it; $flexible is the flexible reward. Any number of firings.
      *
      * One Transaction::run() under the customer lock, exactly one of:
-     * - Outcome::redeemed (the slider's debit): commit_rewards()'s rows for
-     *   the reward lines, then commit()'s for the slider's, quoted against
+     * - Outcome::redeemed (the flexible discount's debit): commit_rewards()'s rows for
+     *   the reward lines, then commit()'s for the flexible discount's, quoted against
      *   the locked balance less the rewards' cost, then the summed meta.
      * - Outcome::duplicate: every line already has its row; nothing written.
      * - Outcome::skipped( reason ), nothing written: what commit_rewards()
-     *   skips for, then what commit() skips the slider's line for.
+     *   skips for, then what commit() skips the flexible discount's line for.
      * - A debit that is not AWARDED: the whole commit is rolled back and that
      *   debit's Outcome answered.
      *
@@ -221,12 +222,12 @@ final class CommitWriter {
                         return Outcome::skipped( ProgramGate::REASON_NO_CUSTOMER );
                     }
 
-                    $customer = $this->customers->ensure_and_lock( $user_id );
-                    $slider   = $this->redemptions->find_by_order( $order_id, (int) $flexible->get_id() );
+                    $customer     = $this->customers->ensure_and_lock( $user_id );
+                    $flexible_row = $this->redemptions->find_by_order( $order_id, (int) $flexible->get_id() );
 
-                    if ( null !== $slider && count( $this->existing_rows( $order_id, array_keys( $rewards ) ) ) === count( $rewards ) ) {
-                        // Every key is already in the ledger, so this answers duplicate with the slider's row and writes nothing.
-                        return $this->ledger->redeem( $this->draft_from( $user_id, $order_id, $slider->get_points(), (int) $slider->get_id() ) );
+                    if ( null !== $flexible_row && count( $this->existing_rows( $order_id, array_keys( $rewards ) ) ) === count( $rewards ) ) {
+                        // Every key is already in the ledger, so this answers duplicate with the flexible discount's row and writes nothing.
+                        return $this->ledger->redeem( $this->draft_from( $user_id, $order_id, $flexible_row->get_points(), (int) $flexible_row->get_id() ) );
                     }
 
                     $lines   = [];
@@ -237,7 +238,7 @@ final class CommitWriter {
                         return $skipped;
                     }
 
-                    $quote = $this->requote_slider( $order, $flexible, $customer->get_balance() - $cost );
+                    $quote = $this->requote_flexible_discount( $order, $flexible, $customer->get_balance() - $cost );
 
                     if ( $quote instanceof Outcome ) {
                         return $quote;
@@ -272,13 +273,13 @@ final class CommitWriter {
     }
 
     /**
-     * The slider's line re-quoted against $balance: the quote when it buys exactly the line, otherwise why not.
+     * The flexible discount's line re-quoted against $balance: the quote when it buys exactly the line, otherwise why not.
      * Skipped when the line costs nothing (REASON_NO_INTENT), a gate denies, the balance or a limit covers fewer
      * points than the line costs (the bound that bit), or the value is not the line's amount (BOUND_CART).
      *
      * @return Result|Outcome
      */
-    private function requote_slider( \WC_Order $order, Reward $reward, int $balance ) {
+    private function requote_flexible_discount( \WC_Order $order, Reward $reward, int $balance ) {
         $ctx    = $this->contexts->from_order( $order, $reward, $balance );
         $frozen = (int) $ctx->get_points_requested();
 
@@ -391,10 +392,11 @@ final class CommitWriter {
         return $rows;
     }
 
-    /** A reward line's redemptions row: the full cost, the line's discount as value and base_value, no rate, no catalog coupon. */
+    /** A reward line's redemptions row: the full cost, the line's discount as value, no rate. */
     private function reward_row( \WC_Order $order, Reward $reward, int $points, float $value, string $code ): Redemption {
-        $value = $this->money( $value );
-        $now   = Dates::now();
+        $value    = $this->money( $value );
+        $currency = (string) $order->get_currency();
+        $now      = Dates::now();
 
         return new Redemption(
             null,
@@ -403,14 +405,12 @@ final class CommitWriter {
             (int) $order->get_id(),
             $points,
             $value,
-            (string) $order->get_currency(),
-            $value,
+            $currency,
+            $this->base_value( $value, $currency, $order ),
             '0',
             $code,
-            null,
             Redemption::STATUS_APPLIED,
             0,
-            null,
             $now,
             $now
         );
@@ -426,10 +426,16 @@ final class CommitWriter {
         return (string) wc_format_decimal( $amount, wc_get_price_decimals() );
     }
 
-    /** The redemptions row a quote becomes. Precondition: $quote is allowed with points > 0. `base_value` equals `value`: there is no currency conversion. */
+    /** $value in the base currency, at the order's saved rate when it has one, rounded to the base currency's decimals. */
+    private function base_value( string $value, string $currency, \WC_Order $order ): string {
+        return (string) wc_format_decimal( CurrencyRate::to_base( (float) $value, $currency, $order ), CurrencyRate::base_decimals() );
+    }
+
+    /** The redemptions row a quote becomes. Precondition: $quote is allowed with points > 0. */
     private function redemption_from( Result $quote, \WC_Order $order ): Redemption {
-        $value = $this->decimal( $quote );
-        $now   = Dates::now();
+        $value    = $this->decimal( $quote );
+        $currency = (string) $quote->get_currency();
+        $now      = Dates::now();
 
         return new Redemption(
             null,
@@ -438,14 +444,12 @@ final class CommitWriter {
             (int) $order->get_id(),
             $quote->get_points(),
             $value,
-            (string) $quote->get_currency(),
-            $value,
-            (string) $quote->get_rate_snapshot(),
+            $currency,
+            $this->base_value( $value, $currency, $order ),
+            (string) wc_format_decimal( $quote->get_rate_snapshot(), 10 ),
             $quote->get_reward()->get_coupon_code(),
-            null,
             Redemption::STATUS_APPLIED,
             0,
-            null,
             $now,
             $now
         );

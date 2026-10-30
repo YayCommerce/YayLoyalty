@@ -51,10 +51,10 @@ final class SetupService {
             'purchase'              => [ 'points_per_unit' => $purchase['points_per_unit'] ],
             'signup'                => self::toggle_of( $rows['signup'] ),
             'review'                => self::toggle_of( $rows['review'] ),
-            'cart_discount'         => [
-                'points_per_currency_unit' => $discount['points_per_currency_unit'],
-                'min_points'               => $discount['min_points'],
-                'max_percent_of_subtotal'  => $discount['max_percent_of_subtotal'] ?? null,
+            'flexible_discount'     => [
+                'points_per_currency_unit'    => $discount['points_per_currency_unit'],
+                'min_points'                  => $discount['min_points'],
+                'max_percent_of_discountable' => $discount['max_percent_of_discountable'] ?? null,
             ],
             'brand_color'           => $design['launcher']['brand_color'] ?? '',
         ];
@@ -142,7 +142,7 @@ final class SetupService {
                 'purchase' => $this->campaigns->find_by_slug( CampaignRepository::DEFAULT_PURCHASE_SLUG ),
                 'signup'   => $this->campaigns->find_by_slug( CampaignRepository::SIGNUP_SLUG ),
                 'review'   => $this->campaigns->find_by_slug( CampaignRepository::REVIEW_SLUG ),
-                'discount' => $this->rewards->find_by_slug( RewardRepository::CART_DISCOUNT_SLUG ),
+                'discount' => $this->rewards->find_by_slug( RewardRepository::FLEXIBLE_DISCOUNT_SLUG ),
             ];
         }
 
@@ -155,7 +155,7 @@ final class SetupService {
      * @return array{purchase: array, signup: array, review: array, discount: array}
      */
     private function merged_configs( array $rows, array $input ): array {
-        $discount = (array) ( $input['cart_discount'] ?? [] );
+        $discount = (array) ( $input['flexible_discount'] ?? [] );
 
         return [
             'purchase' => array_merge( $rows['purchase']->get_config(), [ 'points_per_unit' => $input['purchase']['points_per_unit'] ?? null ] ),
@@ -164,10 +164,10 @@ final class SetupService {
             'discount' => array_merge(
                 $rows['discount']->get_config(),
                 [
-                    'points_per_currency_unit' => $discount['points_per_currency_unit'] ?? null,
-                    'min_points'               => $discount['min_points'] ?? null,
+                    'points_per_currency_unit'    => $discount['points_per_currency_unit'] ?? null,
+                    'min_points'                  => $discount['min_points'] ?? null,
                     // Absent and null both mean no limit.
-                    'max_percent_of_subtotal'  => $discount['max_percent_of_subtotal'] ?? null,
+                    'max_percent_of_discountable' => $discount['max_percent_of_discountable'] ?? null,
                 ]
             ),
         ];

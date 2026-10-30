@@ -54,7 +54,7 @@ class BirthdayPointsEmail extends LedgerEntryEmail {
     }
 
     /** @return array{points: string, points_label: string, balance: string} */
-    protected function amounts( LedgerEntry $entry ): array {
+    protected function placeholder_values( LedgerEntry $entry ): array {
         return self::earned_amounts( $entry );
     }
 
@@ -65,7 +65,7 @@ class BirthdayPointsEmail extends LedgerEntryEmail {
 
     /** @return array<string, mixed> */
     protected function build_values( LedgerEntry $entry ): array {
-        return $this->balance_values( $entry ) + [
+        return $this->shared_values( $entry ) + [
             'birthday_text' => $this->birthday_text( $entry ),
         ];
     }

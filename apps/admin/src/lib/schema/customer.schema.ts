@@ -31,7 +31,7 @@ export const looseEndsSchema = z.object({
 export type LooseEnds = z.infer<typeof looseEndsSchema>;
 
 /**
- * The expiring-batch summary. Always null until the `lots` table exists.
+ * The expiring-batch summary. Always null until `CustomerItemFormatter` builds it from the lots.
  * `batches: null` means the inactivity model, which has no batches at all, not zero of them.
  * It carries figures only: percentages and money are derived client-side.
  */
@@ -49,7 +49,7 @@ export const drawerExpirySchema = z.object({
   reminders: z.object({
     sent_at: z.string().nullable(),
     next_due_at: z.string().nullable(),
-    window_days: z.number().int(),
+    reminder_days: z.number().int(),
   }),
   batches: z.array(drawerExpiryBatchSchema).nullable(),
 });
@@ -97,7 +97,7 @@ export const customerListRowSchema = z.object({
   /** Signed: a clawback after a refund can legitimately push this below zero. */
   balance: z.number().int(),
   pending_points: z.number().int(),
-  /** Signed. Unaffected by redemptions, so spending never demotes a tier. */
+  /** Signed. Unaffected by redemptions, so spending never lowers it. */
   lifetime_earned: z.number().int(),
   last_activity_at: z.string().nullable(),
   expires_at: z.string().nullable(),
@@ -136,7 +136,7 @@ export type NoMatchSuggestion = z.infer<typeof noMatchSuggestionSchema>;
 
 /** Filter/sort value unions, here because customer.api.ts needs them and lib/ must not import pages/. */
 export type CustomerBalanceRange = 'any' | 'negative' | '0-1000' | '1000-10000' | '10000-plus';
-export type CustomerExpiringSoon = 'off' | '30' | '90' | 'none';
+export type CustomerExpiringSoon = 'off' | '30' | '90' | 'no_expiry';
 export type CustomerSortKey = 'name' | 'balance' | 'pending' | 'lifetime' | 'last_activity' | 'expires';
 export type CustomerSortDirection = 'asc' | 'desc';
 
@@ -161,7 +161,7 @@ export type AdjustPointsPreview = z.infer<typeof adjustPointsPreviewSchema>;
 
 /**
  * `filters` only for "select all matching" (a ticked list knows its own
- * count). Typed structurally, not as `RowFilters`, so this lib-level module
+ * count). Typed structurally, not as `CustomerListFilters`, so this lib-level module
  * never imports from `pages/customers/`.
  */
 export type AdjustPointsPreviewInput = {

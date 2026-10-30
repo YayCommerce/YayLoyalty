@@ -141,7 +141,7 @@ final class RewardRouteTest extends IntegrationTestCase {
             'POST',
             '/yayloyalty/v1/rewards',
             [
-                'name'   => 'Second slider',
+                'name'   => 'Second flexible discount',
                 'type'   => RewardType::FLEXIBLE_DISCOUNT,
                 'config' => Reward::default_config( RewardType::FLEXIBLE_DISCOUNT ),
             ]
@@ -316,32 +316,26 @@ final class RewardRouteTest extends IntegrationTestCase {
     public function test_a_claimed_reward_is_not_deletable_and_delete_answers_409(): void {
         $this->act_as_admin();
         $id = $this->insert_reward( 'Claimed', 'reward-route-claimed', RewardType::FIXED_COUPON, 1, 500 );
-        // Used, not outstanding: any claim row at all blocks the delete.
-        $this->insert_redemption( $id, 7, 500, Redemption::STATUS_USED, null );
+        // Refunded, so nothing spent remains: any claim row at all blocks the delete.
+        $this->insert_redemption( $id, 7, 500, Redemption::STATUS_REFUNDED );
 
         $this->assertFalse( $this->send( 'GET', '/yayloyalty/v1/rewards/' . $id )->get_data()['is_deletable'] );
         $this->assertSame( 409, $this->send( 'DELETE', '/yayloyalty/v1/rewards/' . $id )->get_status() );
         $this->assertNotNull( ( new RewardRepository() )->find_reward( $id ) );
     }
 
-    public function test_the_summary_counts_only_unexpired_issued_coupons_as_outstanding(): void {
+    public function test_the_summary_counts_claims_in_every_status_and_the_first_claim_date(): void {
         $this->act_as_admin();
         $id = $this->insert_reward( 'Counted', 'reward-route-counted', RewardType::FIXED_COUPON, 1, 500 );
 
-        $future = gmdate( 'Y-m-d H:i:s', time() + DAY_IN_SECONDS );
-        $this->insert_redemption( $id, 7, 500, Redemption::STATUS_ISSUED, $future, '2026-01-02 00:00:00' );
-        $this->insert_redemption( $id, 8, 500, Redemption::STATUS_ISSUED, null );
-        $this->insert_redemption( $id, 9, 500, Redemption::STATUS_ISSUED, '2020-01-01 00:00:00' );
-        $this->insert_redemption( $id, 7, 500, Redemption::STATUS_USED, null );
+        $this->insert_redemption( $id, 7, 500, Redemption::STATUS_APPLIED, '2026-01-02 00:00:00' );
+        $this->insert_redemption( $id, 8, 500, Redemption::STATUS_REFUNDED );
+        $this->insert_redemption( $id, 9, 500, Redemption::STATUS_CANCELLED );
 
         $this->assertSame(
             [
-                'claimed'               => 4,
-                'outstanding'           => 2,
-                'outstanding_customers' => 2,
-                'outstanding_points'    => 1000,
-                'first_claimed_at'      => '2026-01-02 00:00:00',
-                'last_expires_at'       => $future,
+                'claimed'          => 3,
+                'first_claimed_at' => '2026-01-02 00:00:00',
             ],
             $this->send( 'GET', '/yayloyalty/v1/rewards/' . $id )->get_data()['redemption_summary']
         );
@@ -532,7 +526,6 @@ final class RewardRouteTest extends IntegrationTestCase {
                 'currency'           => get_woocommerce_currency(),
                 'amount'             => 5,
                 'min_order'          => 25,
-                'coupon_expiry_days' => 60,
                 'exclude_sale_items' => false,
             ],
             'conditions'  => [
@@ -564,9 +557,9 @@ final class RewardRouteTest extends IntegrationTestCase {
         }
     }
 
-    private function insert_redemption( int $reward_id, int $user_id, int $points, string $status, ?string $expires_at, string $created_at = '2026-03-01 00:00:00' ): void {
+    private function insert_redemption( int $reward_id, int $user_id, int $points, string $status, string $created_at = '2026-03-01 00:00:00' ): void {
         ( new RedemptionRepository() )->insert(
-            new Redemption( null, $user_id, $reward_id, null, $points, '0', 'USD', '0', '0', null, null, $status, 0, $expires_at, $created_at, $created_at )
+            new Redemption( null, $user_id, $reward_id, null, $points, '0', 'USD', '0', '0', null, $status, 0, $created_at, $created_at )
         );
     }
 

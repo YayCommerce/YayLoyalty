@@ -6,10 +6,10 @@ use YayLoyalty\Enums\CampaignTrigger;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The Rewards tab's and the launcher panel's inline SVG icons, from lucide or the design, in currentColor and decorative (aria-hidden).
+ * The My Points tab's and the launcher panel's inline SVG icons, from lucide or the design, in currentColor and decorative (aria-hidden).
  * No `yl:` class: the launcher's Tailwind scan would build it into the launcher's stylesheet.
  */
-final class AccountRewardsIcon {
+final class AccountMyPointsIcon {
 
     private const PATHS = [
         'gift'     => '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>',
@@ -124,7 +124,7 @@ final class AccountRewardsIcon {
         return self::with_ids( self::EMPTY_HISTORY );
     }
 
-    /** Gradient ids take a per-call suffix, since the launcher and the Rewards tab can both draw one on a page. */
+    /** Gradient ids take a per-call suffix, since the launcher and the My Points tab can both draw one on a page. */
     private static function with_ids( string $svg ): string {
         static $count = 0;
         ++$count;

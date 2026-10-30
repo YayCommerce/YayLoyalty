@@ -7,7 +7,7 @@ use YayLoyalty\Enums\ActorKind;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The args `GET /customers/{id}/activity` takes. `search`, `after` and `before` match
+ * The args `GET /customers/{id}/activity` takes. `search`, `from` and `to` match
  * LedgerQueryArgs' args field for field, so the two tabs' filter rows behave the same.
  *
  * `group` is a lens over the eight `event_type`s, not a partition: `expiring_soon_email_sent`
@@ -35,13 +35,13 @@ final class ActivityQueryArgs {
                 'type'              => 'string',
                 'sanitize_callback' => 'sanitize_text_field',
             ],
-            'after'  => [
+            'from'   => [
                 'description'       => __( 'Only events on or after this date (Y-m-d).', 'yayloyalty' ),
                 'type'              => 'string',
                 'sanitize_callback' => 'sanitize_text_field',
                 'validate_callback' => [ LedgerQueryArgs::class, 'validate_date' ],
             ],
-            'before' => [
+            'to'     => [
                 'description'       => __( 'Only events on or before this date (Y-m-d).', 'yayloyalty' ),
                 'type'              => 'string',
                 'sanitize_callback' => 'sanitize_text_field',

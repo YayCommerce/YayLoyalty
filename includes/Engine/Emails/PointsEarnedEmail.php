@@ -44,7 +44,7 @@ class PointsEarnedEmail extends LedgerEntryEmail {
     }
 
     /** @return array{points: string, points_label: string, balance: string} */
-    protected function amounts( LedgerEntry $entry ): array {
+    protected function placeholder_values( LedgerEntry $entry ): array {
         return self::earned_amounts( $entry );
     }
 
@@ -58,7 +58,7 @@ class PointsEarnedEmail extends LedgerEntryEmail {
         $order        = $entry->get_order_id() ? wc_get_order( $entry->get_order_id() ) : null;
         $order_number = $order ? (string) $order->get_order_number() : '';
 
-        return $this->balance_values( $entry ) + [
+        return $this->shared_values( $entry ) + [
             'earned_text'  => $this->earned_text( $entry, $order_number ),
             'order_number' => $order_number,
             /**

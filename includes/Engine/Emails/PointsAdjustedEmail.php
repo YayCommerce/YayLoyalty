@@ -60,7 +60,7 @@ class PointsAdjustedEmail extends LedgerEntryEmail {
     }
 
     /** @return array{points: string, points_label: string, balance: string} */
-    protected function amounts( LedgerEntry $entry ): array {
+    protected function placeholder_values( LedgerEntry $entry ): array {
         $points = abs( $entry->get_points() );
 
         return [
@@ -77,7 +77,7 @@ class PointsAdjustedEmail extends LedgerEntryEmail {
 
     /** @return array<string, mixed> */
     protected function build_values( LedgerEntry $entry ): array {
-        return $this->balance_values( $entry ) + [
+        return $this->shared_values( $entry ) + [
             'adjusted_text' => self::adjusted_text( $entry ),
             // sanitize_text_field() stores a bare "<" as "&lt;"; the templates escape it once more.
             'customer_note' => Text::plain( (string) $entry->get_customer_note() ),

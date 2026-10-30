@@ -9,7 +9,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { SortDirection, SortKey } from '../customers-page.sort-rows';
+import type { SortDirection, SortKey } from '../customers-page.sort';
 
 /**
  * The mobile stand-in for the desktop table's sortable headers. It calls the same `sort.onChange(key)`,

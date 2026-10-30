@@ -59,8 +59,8 @@ final class LedgerRestController extends AbstractRestController {
                 'order'    => $request['order'] ? (string) $request['order'] : 'desc',
                 'types'    => LedgerQueryArgs::types_of( $request['type'] ),
                 'search'   => (string) $request['search'],
-                'after'    => (string) $request['after'],
-                'before'   => (string) $request['before'],
+                'from'     => (string) $request['from'],
+                'to'       => (string) $request['to'],
             ]
         );
 

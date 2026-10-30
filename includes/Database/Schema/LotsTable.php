@@ -4,7 +4,7 @@ namespace YayLoyalty\Database\Schema;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Which earnings make up each balance, FIFO: one lot per positive ledger row (uniq_ledger_id), sized
+ * Which earnings make up each balance: one lot per positive ledger row (uniq_ledger_id), sized
  * to the part of the row above zero. `remaining` is the only mutable counter. Invariant: after every
  * committed LedgerService write, a user's SUM(remaining) over `open` lots equals max(0, balance).
  * Only Services\LotService writes it, and only LedgerService calls LotService, inside its transaction.

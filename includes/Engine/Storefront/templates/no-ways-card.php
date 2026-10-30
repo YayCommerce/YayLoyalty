@@ -1,7 +1,7 @@
 <?php
 /**
  * The card printed in place of "Ways to earn" and "Ways to redeem" when there is nothing to list: both on the
- * Rewards tab and in the launcher panels, one of them in its own placement.
+ * My Points tab and in the launcher panels, one of them in its own placement.
  * Styled by assets/storefront/account/account-rewards-state.css, whose card it borrows.
  *
  * @var string $yayloyalty_no_ways Which lists are empty: 'both', 'earn' or 'redeem'.

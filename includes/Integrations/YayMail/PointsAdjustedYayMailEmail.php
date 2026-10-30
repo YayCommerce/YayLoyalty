@@ -29,6 +29,6 @@ class PointsAdjustedYayMailEmail extends LoyaltyYayMailEmail {
         $greeting = LoyaltyEmail::greeting_text( LoyaltyEmailShortcodes::tag( 'customer_name' ) );
         $balance  = LoyaltyEmail::balance_sentence( LoyaltyEmailShortcodes::tag( 'balance_points' ) );
 
-        return '<p>' . $greeting . '</p><p>' . LoyaltyEmailShortcodes::tag( 'adjusted_points' ) . '</p><p>' . LoyaltyEmailShortcodes::tag( 'customer_note' ) . '</p><p>' . $balance . '</p><p>' . LoyaltyEmailShortcodes::tag( 'balance_value_text' ) . '</p>';
+        return '<p>' . $greeting . '</p><p>' . LoyaltyEmailShortcodes::tag( 'adjusted_message' ) . '</p><p>' . LoyaltyEmailShortcodes::tag( 'customer_note' ) . '</p><p>' . $balance . '</p><p>' . LoyaltyEmailShortcodes::tag( 'balance_value_text' ) . '</p>';
     }
 }

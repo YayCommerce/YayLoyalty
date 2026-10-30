@@ -20,18 +20,18 @@ class DesignSchema {
                 'corner_radius' => 8,
             ],
             'visibility' => [
-                'scope'            => self::SCOPE_ALL_PAGES,
-                'include_page_ids' => [],
-                'hide_on_mobile'   => false,
-                'hide_for_roles'   => [],
-                'product_message'  => true,
-                'thankyou_message' => true,
+                'scope'                 => self::SCOPE_ALL_PAGES,
+                'include_page_ids'      => [],
+                'hide_on_mobile'        => false,
+                'hide_for_roles'        => [],
+                'show_product_message'  => true,
+                'show_thankyou_message' => true,
             ],
             'panel'      => [ // Pro
                 'layout'              => 'compact',
                 'show_reward_catalog' => false,
             ],
-            'typography' => [ // Pro
+            'custom_css' => [ // Pro
                 // Stored and sanitised, but rendered nowhere yet.
                 // TODO(custom-css): close the CSS exfiltration risk before the storefront renders this field.
                 'custom_css' => '',
@@ -57,16 +57,16 @@ class DesignSchema {
                 ],
             ],
             'visibility' => [
-                'scope'            => [
+                'scope'                 => [
                     'type'    => 'choice',
                     'options' => [ self::SCOPE_ALL_PAGES, self::SCOPE_SHOP_AND_PRODUCT, self::SCOPE_CUSTOM_PAGES ],
                 ],
                 // Read only when scope is custom_pages: the pages the launcher shows on.
-                'include_page_ids' => [ 'type' => 'id_list' ],
-                'hide_on_mobile'   => [ 'type' => 'bool' ],
-                'hide_for_roles'   => [ 'type' => 'slug_list' ],
-                'product_message'  => [ 'type' => 'bool' ],
-                'thankyou_message' => [ 'type' => 'bool' ],
+                'include_page_ids'      => [ 'type' => 'id_list' ],
+                'hide_on_mobile'        => [ 'type' => 'bool' ],
+                'hide_for_roles'        => [ 'type' => 'slug_list' ],
+                'show_product_message'  => [ 'type' => 'bool' ],
+                'show_thankyou_message' => [ 'type' => 'bool' ],
             ],
             'panel'      => [ // Pro
                 'layout'              => [
@@ -75,7 +75,7 @@ class DesignSchema {
                 ],
                 'show_reward_catalog' => [ 'type' => 'bool' ],
             ],
-            'typography' => [ // Pro
+            'custom_css' => [ // Pro
                 'custom_css' => [ 'type' => 'textarea' ],
             ],
         ];

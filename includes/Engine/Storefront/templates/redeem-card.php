@@ -1,7 +1,7 @@
 <?php
 /**
  * The points card, in one of its shapes: a sign-in card for a guest (`guest`), or for a customer the header and
- * one list (`slider` or `hidden`): the Points discount row, then the rows RedeemCard::ROWS_FILTER adds. The row
+ * one list (`flexible` or `hidden`): the Points discount row, then the rows RedeemCard::ROWS_FILTER adds. The row
  * opens by `mode`: into a points field (`free_input`), or onto the most the cart allows, with no field (`auto_max`).
  * A customer's card also carries the checkout title, summary ("✓ 2 rewards selected"), Change and Update. The server
  * draws one markup for every page, because the blocks' card is shared by Cart and Checkout: redeem.js sets
@@ -25,12 +25,12 @@ use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
 
-$yayloyalty_state     = $view['state'];
-$yayloyalty_is_slider = 'slider' === $yayloyalty_state;
-$yayloyalty_is_auto   = $yayloyalty_is_slider && 'auto_max' === $view['mode'];
-$yayloyalty_money     = $view['money'];
-$yayloyalty_label     = SettingsHelper::points_label_plural();
-$yayloyalty_note      = '' !== ( $view['bound_by'] ?? '' ) ? RedemptionService::message_for( $view['bound_by'] ) : '';
+$yayloyalty_state       = $view['state'];
+$yayloyalty_is_flexible = 'flexible' === $yayloyalty_state;
+$yayloyalty_is_auto     = $yayloyalty_is_flexible && 'auto_max' === $view['mode'];
+$yayloyalty_money       = $view['money'];
+$yayloyalty_label       = SettingsHelper::points_label_plural();
+$yayloyalty_note        = '' !== ( $view['bound_by'] ?? '' ) ? RedemptionService::message_for( $view['bound_by'] ) : '';
 // Rounding to the step reads neutral; every other bound is a limit that lowered the amount.
 $yayloyalty_note_tone = Clamp::BOUND_STEP === ( $view['bound_by'] ?? '' ) ? '' : ' yayloyalty-redeem__note--warning';
 /* translators: 1: the store's points label, as "Points", 2: money amount. */
@@ -48,7 +48,7 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
     data-endpoint="<?php echo esc_url( $view['endpoint'] ); ?>"
     data-nonce="<?php echo esc_attr( $view['nonce'] ); ?>"
     <?php echo $yayloyalty_is_applied ? 'data-applied' : ''; ?>
-    <?php if ( $yayloyalty_is_slider ) : ?>
+    <?php if ( $yayloyalty_is_flexible ) : ?>
         data-rate="<?php echo esc_attr( (string) $view['rate'] ); ?>"
         data-decimals="<?php echo esc_attr( (string) $yayloyalty_money['decimals'] ); ?>"
         data-decimal-sep="<?php echo esc_attr( $yayloyalty_money['decimal_sep'] ); ?>"
@@ -93,7 +93,7 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
         <?php endif; ?>
 
         <div class="yayloyalty-redeem__list" data-yl-list id="<?php echo esc_attr( $yayloyalty_list_id ); ?>" data-balance="<?php echo esc_attr( (string) $view['heading_balance'] ); ?>">
-            <?php if ( $yayloyalty_is_slider ) : ?>
+            <?php if ( $yayloyalty_is_flexible ) : ?>
                 <?php
                 $yayloyalty_is_ticked  = $view['requested'] > 0;
                 $yayloyalty_is_stuck   = $view['max'] < $view['min'];
@@ -105,11 +105,11 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
                 /* translators: %s: points amount with the store's label, as "2,450 Points". */
                 $yayloyalty_max_note = sprintf( __( 'You can use up to %s on this order.', 'yayloyalty' ), SettingsHelper::points_text( $view['max'] ) );
                 /* translators: %s: points amount with the store's label, as "100 Points". */
-                $yayloyalty_step_note = sprintf( __( 'Rounded down to a multiple of %s.', 'yayloyalty' ), SettingsHelper::points_text( $view['step'] ) );
+                $yayloyalty_step_note = sprintf( __( 'Rounded down to a multiple of %s.', 'yayloyalty' ), SettingsHelper::points_text( $view['effective_step'] ) );
                 /* translators: %s: points amount with the store's label, as "100 Points". */
                 $yayloyalty_min_error = sprintf( __( 'Enter at least %s.', 'yayloyalty' ), SettingsHelper::points_text( $view['min'] ) );
                 ?>
-                <div class="yayloyalty-redeem__item" data-yl-slider>
+                <div class="yayloyalty-redeem__item" data-yl-flexible>
                     <label class="yayloyalty-redeem__option">
                         <span class="yayloyalty-redeem__option-body">
                             <span class="yayloyalty-redeem__name"><?php echo esc_html( $view['name'] ); ?></span>
@@ -122,14 +122,14 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
                         <input
                             type="checkbox"
                             class="yayloyalty-redeem__check"
-                            data-yl-slider-toggle
+                            data-yl-flexible-toggle
                             data-requested="<?php echo esc_attr( (string) $view['requested'] ); ?>"
                             data-max="<?php echo esc_attr( (string) $view['max'] ); ?>"
                             <?php checked( $yayloyalty_is_ticked ); ?>
                             <?php disabled( $view['is_disabled'] ); ?>
                         >
                     </label>
-                    <div class="yayloyalty-redeem__body" data-yl-slider-body<?php echo $yayloyalty_is_ticked ? '' : ' hidden'; ?>>
+                    <div class="yayloyalty-redeem__body" data-yl-flexible-body<?php echo $yayloyalty_is_ticked ? '' : ' hidden'; ?>>
                         <?php if ( $yayloyalty_is_auto ) : ?>
                             <p class="yayloyalty-redeem__auto">
                                 <?php
@@ -165,7 +165,7 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
                                         data-min-error="<?php echo esc_attr( $yayloyalty_min_error ); ?>"
                                         min="<?php echo esc_attr( (string) $view['min'] ); ?>"
                                         max="<?php echo esc_attr( (string) $view['max'] ); ?>"
-                                        step="<?php echo esc_attr( (string) $view['step'] ); ?>"
+                                        step="<?php echo esc_attr( (string) $view['effective_step'] ); ?>"
                                         value="<?php echo esc_attr( (string) $yayloyalty_value ); ?>"
                                         aria-label="<?php echo esc_attr( $yayloyalty_aria ); ?>"
                                         <?php disabled( $yayloyalty_is_stuck ); ?>

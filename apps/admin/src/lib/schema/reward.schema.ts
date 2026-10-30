@@ -1,16 +1,11 @@
 import { z } from 'zod';
 import { __ } from '@wordpress/i18n';
 
-import {
-  campaignDeleteResponseSchema,
-  CampaignStatus,
-  campaignStatusSchema,
-  resolveCampaignDisplayStatus,
-} from '@/lib/schema/campaign.schema';
+import { deleteResponseSchema, resolveDisplayStatus, Status, statusSchema } from '@/lib/schema/campaign.schema';
 
 /** Mirrors RewardRestController::define_item_schema(), the source of truth. */
 
-/** Mirrors RewardType::lite_types(), the source of truth. The built-in slider, offered in every build. */
+/** Mirrors RewardType::lite_types(), the source of truth. The built-in flexible discount, offered in every build. */
 export const LITE_REWARD_TYPES = ['flexible_discount'] as const;
 
 /** Mirrors YayLoyaltyPro::add_reward_types(), the source of truth. The catalog types Pro adds. */
@@ -25,7 +20,7 @@ export const ALL_KNOWN_REWARD_TYPES = [...LITE_REWARD_TYPES, ...PRO_REWARD_TYPES
 
 export const rewardTypeSchema = z.enum(ALL_KNOWN_REWARD_TYPES);
 export type RewardType = z.infer<typeof rewardTypeSchema>;
-/** Catalog rewards: every offerable type except the built-in slider, which is looked up by slug, not listed as a template. */
+/** Catalog rewards: every offerable type except the built-in flexible discount, which is looked up by slug, not listed as a template. */
 export type CatalogRewardType = (typeof PRO_REWARD_TYPES)[number];
 
 export function isCatalogRewardType(type: string): type is CatalogRewardType {
@@ -33,20 +28,15 @@ export function isCatalogRewardType(type: string): type is CatalogRewardType {
 }
 
 /** Reuses the shared Status vocabulary and display-status resolver: rewards.status follows the same rules as campaigns.status (Enums\Status on the PHP side). */
-export const rewardStatusSchema = campaignStatusSchema;
-export type RewardStatus = CampaignStatus;
-export const resolveRewardDisplayStatus = resolveCampaignDisplayStatus;
+export const rewardStatusSchema = statusSchema;
+export type RewardStatus = Status;
+export const resolveRewardDisplayStatus = resolveDisplayStatus;
 
-/** Claim figures from RedemptionRepository::summary_by_rewards(); zeros and nulls for a reward with no claims. */
+/** Claim figures from RedemptionRepository::summary_by_rewards(); zero and null for a reward with no claims. */
 export const rewardRedemptionSummarySchema = z.object({
   /** Every claim row in any status — what decides `is_deletable`. */
   claimed: z.number().int(),
-  /** Issued coupons not yet expired. */
-  outstanding: z.number().int(),
-  outstanding_customers: z.number().int(),
-  outstanding_points: z.number().int(),
   first_claimed_at: z.string().nullable(),
-  last_expires_at: z.string().nullable(),
 });
 
 export type RewardRedemptionSummary = z.infer<typeof rewardRedemptionSummarySchema>;
@@ -54,7 +44,7 @@ export type RewardRedemptionSummary = z.infer<typeof rewardRedemptionSummarySche
 export const rewardSchema = z.object({
   id: z.number().int(),
   name: z.string(),
-  /** Built-in is RewardRepository::CART_DISCOUNT_SLUG. */
+  /** Built-in is RewardRepository::FLEXIBLE_DISCOUNT_SLUG. */
   slug: z.string(),
   /** Set once when the reward is created (RewardRepository::insert()); never changes. */
   coupon_code: z.string(),
@@ -82,7 +72,7 @@ export const rewardSchema = z.object({
 export type Reward = z.infer<typeof rewardSchema>;
 
 /** Same `{ deleted, id }` body the campaigns DELETE answers. */
-export const rewardDeleteResponseSchema = campaignDeleteResponseSchema;
+export const rewardDeleteResponseSchema = deleteResponseSchema;
 
 /** App-side list params; reward.api.ts maps them to the wire. */
 export const rewardListParamsSchema = z.object({
@@ -141,9 +131,10 @@ export type RewardUpdateInput = z.infer<typeof rewardFieldsSchema>;
 export type RewardCreateInput = RewardUpdateInput & { type: CatalogRewardType };
 
 const moneySchema = z.number().min(0).nullable();
+/** A percent of the order; null is no cap. */
+const percentCapSchema = z.number().min(0).nullable();
 /** A cap: null is no cap, and a set cap is above 0 (the PHP spec's `exclusive_min: 0`). */
 const moneyCapSchema = z.number().positive().nullable();
-const couponExpiryDaysSchema = z.number().int().min(1).nullable();
 /** Mirrors ConfigSpec's `limit`: null is no cap, and a set cap is a whole number of points from 1. */
 const pointsCapSchema = z.number().int().min(1).nullable();
 
@@ -168,12 +159,12 @@ export const REWARD_CONFIG_SCHEMAS = {
       points_per_currency_unit: z.number().positive(),
       min_points: z.number().int().min(0),
       max_points_per_order: pointsCapSchema,
-      max_percent_of_subtotal: moneySchema,
+      max_percent_of_discountable: percentCapSchema,
       increment: z.number().int().min(1),
       show_on: z.array(z.enum(['cart', 'checkout'])),
       refund_policy: z.enum(['proportional', 'full', 'none']),
-      // A row saved before the key existed reads as free input, as Clamp::is_auto_max() does.
-      redemption_mode: z.enum(REDEMPTION_MODES).default('free_input'),
+      // A row without the key reads as auto max, as Clamp::is_auto_max() does.
+      redemption_mode: z.enum(REDEMPTION_MODES).default('auto_max'),
       max_total: moneyCapSchema,
     })
     // Mirrors Reward::config_conflict().
@@ -185,7 +176,6 @@ export const REWARD_CONFIG_SCHEMAS = {
     currency: z.string(),
     amount: z.number().min(0.01, __('The discount must be more than zero.', 'yayloyalty')),
     min_order: moneySchema,
-    coupon_expiry_days: couponExpiryDaysSchema,
     exclude_sale_items: z.boolean(),
   }),
   percent_coupon: z.object({
@@ -196,13 +186,11 @@ export const REWARD_CONFIG_SCHEMAS = {
     max_discount: moneyCapSchema,
     currency: z.string(),
     min_order: moneySchema,
-    coupon_expiry_days: couponExpiryDaysSchema,
     exclude_sale_items: z.boolean(),
   }),
   free_shipping: z.object({
     min_order: moneySchema,
     currency: z.string(),
-    coupon_expiry_days: couponExpiryDaysSchema,
   }),
   free_product: z.object({
     product_id: z
@@ -211,7 +199,6 @@ export const REWARD_CONFIG_SCHEMAS = {
       .min(1, __('Choose a product.', 'yayloyalty')),
     variation_id: z.number().int().min(1).nullable(),
     qty: z.number().int().min(1),
-    coupon_expiry_days: couponExpiryDaysSchema,
   }),
 } satisfies Record<RewardType, z.ZodType>;
 

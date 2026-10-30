@@ -6,8 +6,8 @@ import type { Customer } from '@/lib/schema/customer.schema';
 import {
   BALANCE_AT_DELETION_LABEL,
   BALANCE_AT_DELETION_SUBLINE,
-  EXPIRY_STOPPED_SUBLINE,
   expiresInDays,
+  EXPIRY_STOPPED_SUBLINE,
   PENDING_SUBLINE,
   STAT_BALANCE,
   STAT_EXPIRES,
@@ -15,7 +15,7 @@ import {
   STAT_LIFETIME_REDEEMED,
   STAT_PENDING,
 } from './customer-drawer.copy';
-import { daysUntil } from './customer-drawer.money';
+import { daysUntil } from './customer-drawer.days-until';
 import { CustomerDrawerStat } from './CustomerDrawerStat';
 
 /** The drawer's stats, all derived from `customer`: Balance and Pending on top, then Expires and the lifetime totals. */

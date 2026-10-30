@@ -8,14 +8,14 @@ import type { AdjustPointsInput, CustomerListRow } from '@/lib/schema/customer.s
 import { useCsvExport } from '@/hooks/useCsvExport';
 import { bulkSelectionChanged } from './components/customers-adjust-points.bulk.copy';
 import { exportCustomersToCsv } from './customers-page.export';
-import type { RowFilters } from './customers-page.filter-rows';
+import type { CustomerListFilters } from './customers-page.filters';
 import {
   fetchAllMatchingCustomers,
   isSelectionFullyLoaded,
   resolveSelectedCustomers,
 } from './customers-page.matching-customers';
 import { EMPTY_SELECTION, type SelectionState } from './customers-page.selection';
-import type { SortDirection, SortKey } from './customers-page.sort-rows';
+import type { SortDirection, SortKey } from './customers-page.sort';
 
 /** Bulk Export and Adjust points. Both resolve the target rows through resolveSelectedRows() first. */
 export function useCustomersBulkActions({
@@ -27,7 +27,7 @@ export function useCustomersBulkActions({
 }: {
   /** The loaded page, for resolveSelectedRows()'s fast path. */
   rows: CustomerListRow[];
-  queryFilters: RowFilters;
+  queryFilters: CustomerListFilters;
   sort: { by: SortKey; dir: SortDirection };
   selection: SelectionState;
   setSelection: (selection: SelectionState) => void;

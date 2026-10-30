@@ -1,6 +1,6 @@
 import { __, sprintf } from '@wordpress/i18n';
 
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatCount } from '@/lib/helpers/points.helper';
 
 /**
  * Strings for the drawer's deleted, expiring and negative-balance panels.
@@ -46,7 +46,7 @@ export const LOOSE_END_NOT_TRACKED_YET = () => __('Not tracked yet', 'yayloyalty
 export function voidCouponsValue(voidCoupons: { count: number; example: string | null } | null): string {
   if (!voidCoupons) return LOOSE_END_NOT_TRACKED_YET();
 
-  const count = formatPoints(voidCoupons.count);
+  const count = formatCount(voidCoupons.count);
   return voidCoupons.example
     ? sprintf(
         /* translators: 1: number of void coupons, formatted; 2: one coupon's label, such as "$5 off". */
@@ -102,12 +102,12 @@ export function expiringBannerBody(days: number, points: string, sharePercent: s
     sharePercent,
   );
 }
-export function expiringReminderSentence(sentDate: string, dueDate: string, windowDays: string): string {
+export function expiringReminderSentence(sentDate: string, dueDate: string, reminderDays: string): string {
   return sprintf(
     /* translators: 1: the date the 30-day reminder was sent, formatted; 2: the next reminder's window in days; 3: the date it is due, formatted. */
     __('The 30-day reminder went out on %1$s; the %2$s-day one is due on %3$s.', 'yayloyalty'),
     sentDate,
-    windowDays,
+    reminderDays,
     dueDate,
   );
 }

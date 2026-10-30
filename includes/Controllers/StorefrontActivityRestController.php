@@ -45,7 +45,7 @@ final class StorefrontActivityRestController extends AbstractRestController {
                 [
                     'methods'             => \WP_REST_Server::READABLE,
                     'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_activity' ], $request ),
-                    'permission_callback' => [ $this, 'is_signed_in' ],
+                    'permission_callback' => [ $this, 'check_signed_in' ],
                 ],
                 'schema' => [ $this, 'get_item_schema' ],
             ]
@@ -57,7 +57,7 @@ final class StorefrontActivityRestController extends AbstractRestController {
             [
                 'methods'             => \WP_REST_Server::CREATABLE,
                 'callback'            => fn( $request ) => $this->exec_write( [ $this, 'mark_seen' ], $request ),
-                'permission_callback' => [ $this, 'is_signed_in' ],
+                'permission_callback' => [ $this, 'check_signed_in' ],
             ]
         );
     }
@@ -70,7 +70,7 @@ final class StorefrontActivityRestController extends AbstractRestController {
     }
 
     /** @return true|\WP_Error */
-    public function is_signed_in() {
+    public function check_signed_in() {
         return is_user_logged_in()
             ? true
             : $this->error_unauthorized( __( 'Sign in to see your points activity.', 'yayloyalty' ) );

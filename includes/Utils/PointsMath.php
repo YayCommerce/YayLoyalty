@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * The points arithmetic every layer shares. PHP is the source of truth; apps/admin/src/lib/points-math/ copies
  * SNAP_DECIMALS, round_points(), pct_delta() and pct_of(), the parts the admin SPA previews, and
- * spendPairFromRate() in apps/admin/src/lib/helpers/points.helper.ts copies whole_pair().
+ * ratePair() in apps/admin/src/lib/helpers/points.helper.ts copies whole_pair().
  * A zero denominator yields null, never 0, and the SPA renders "—" for null.
  */
 final class PointsMath {

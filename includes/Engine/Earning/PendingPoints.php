@@ -18,7 +18,7 @@ final class PendingPoints {
     public const META_PENDING = '_yayloyalty_points_pending';
 
     /** The release flag, separate from the figure: set exactly once, at award or cancel. */
-    public const META_RELEASED = '_yayloyalty_points_released';
+    public const META_RELEASED_AT = '_yayloyalty_points_released_at';
 
     /** Projections written at award for the order screen and emails; never read to compute a balance. */
     public const META_EARNED   = '_yayloyalty_points_earned';
@@ -53,7 +53,7 @@ final class PendingPoints {
     }
 
     /**
-     * Releases the staged figure once. META_RELEASED guards it, not the figure, so a later status
+     * Releases the staged figure once. META_RELEASED_AT guards it, not the figure, so a later status
      * bounce cannot release twice. Returns the amount released, or 0. The award calls it inside
      * its transaction, so the cache and the ledger move together.
      */
@@ -70,7 +70,7 @@ final class PendingPoints {
             return 0;
         }
 
-        $order->update_meta_data( self::META_RELEASED, Dates::now() );
+        $order->update_meta_data( self::META_RELEASED_AT, Dates::now() );
         $this->save_meta( $order );
 
         // The order's customer now, not at staging: a reassigned order releases from its new owner (floored at 0).
@@ -85,7 +85,7 @@ final class PendingPoints {
 
     /** The staged figure while the order has not been released, else 0. */
     public static function unreleased( \WC_Order $order ): int {
-        return '' === (string) $order->get_meta( self::META_RELEASED ) ? (int) $order->get_meta( self::META_PENDING ) : 0;
+        return '' === (string) $order->get_meta( self::META_RELEASED_AT ) ? (int) $order->get_meta( self::META_PENDING ) : 0;
     }
 
     /**

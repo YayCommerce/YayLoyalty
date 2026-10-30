@@ -8,7 +8,7 @@
  */
 
 use YayLoyalty\Controllers\StorefrontActivityRestController;
-use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
+use YayLoyalty\Engine\Storefront\AccountMyPointsIcon;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\UiClasses;
 use YayLoyalty\Helpers\SettingsHelper;
@@ -45,7 +45,7 @@ $yayloyalty_label    = SettingsHelper::points_label_plural();
         ?>
     </template>
     <div class="yayloyalty-account__activity-empty" data-yl-activity-empty<?php echo [] === $yayloyalty_activity ? '' : ' hidden'; ?>>
-        <span class="yayloyalty-account__activity-empty-icon"><?php echo wp_kses( AccountRewardsIcon::empty_activity(), Kses::svg() ); ?></span>
+        <span class="yayloyalty-account__activity-empty-icon"><?php echo wp_kses( AccountMyPointsIcon::empty_activity(), Kses::svg() ); ?></span>
         <p>
             <?php echo esc_html( LauncherCopy::no_activity() ); ?>
             <?php

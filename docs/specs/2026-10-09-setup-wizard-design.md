@@ -17,13 +17,13 @@ A merchant who opens YayLoyalty for the first time sets up the program in five s
   - `signup` config: `points`
   - `review` config: `points`, `require_verified` (default `true`)
   - Code: `includes/Repositories/CampaignRepository.php` (`find_by_slug`, `update`) and `includes/Models/Campaign.php` (`validate_config`).
-- **Spending:** the built-in reward with slug `cart-discount` (`RewardRepository::CART_DISCOUNT_SLUG`, type `flexible_discount`). Its config holds `points_per_currency_unit`, `min_points` and `max_percent_of_subtotal` (null means 100%). Validation is `Reward::validate_config`.
+- **Spending:** the built-in reward with slug `cart-discount` (`RewardRepository::FLEXIBLE_DISCOUNT_SLUG`, type `flexible_discount`). Its config holds `points_per_currency_unit`, `min_points` and `max_percent_of_discountable` (null means 100%). Validation is `Reward::validate_config`.
 - **Flags passed to the SPA:** `LocalizeHelper::get_meta()` sends `loyaltyMeta.reviewed` from `SettingsHelper::OPTION_REVIEWED`. The setup flag follows the same pattern.
 - **REST:** `AbstractRestController`, registered in `includes/Engine/RestAPI.php::controllers()`, with `requires( Capabilities::X )`. Writes go through `exec_write`, which runs in a transaction.
 - **SPA:**
   - Data: ky `api` (`apps/admin/src/lib/api/api.ts`), TanStack Query, react-hook-form with zod, and `Dialog` (`components/ui/dialog.tsx`).
   - Inputs: `PointsInput` and `MoneyInput` (`components/ui/custom/amount-inputs.tsx`), `ColorPicker` (`components/ui/color-picker.tsx`).
-  - Rate helpers: `rateFromSpend` and `spendPairFromRate` (`lib/helpers/points.helper.ts`).
+  - Rate helpers: `rateFromSpend` and `ratePair` (`lib/helpers/points.helper.ts`).
   - The app shell is `AppLayout.tsx`.
 
 ## Scope
@@ -56,7 +56,7 @@ A merchant who opens YayLoyalty for the first time sets up the program in five s
    - `design.launcher.brand_color` is saved.
    - `default-purchase.config.points_per_unit` is set to points ÷ spend.
    - The `signup` and `review` campaigns get their `points`. Each one's status is `active` if its toggle is on, otherwise `paused`.
-   - `cart-discount.config` gets `points_per_currency_unit` = points ÷ currency, `min_points`, and `max_percent_of_subtotal` (null when 100).
+   - `cart-discount.config` gets `points_per_currency_unit` = points ÷ currency, `min_points`, and `max_percent_of_discountable` (null when 100).
    - Option `yayloyalty_setup_completed` = `true`.
    - The modal closes and does not reopen on reload.
 7. End to end: on a site with the option deleted (`wp option delete yayloyalty_setup_completed`), open wp-admin → YayLoyalty. Set 2 points per $1, signup off, review 75, 200 points = $1, min 200, max 50%, colour `#ff0000`, then Turn on. Expected: Campaigns shows the purchase rate of 2 points per $1, Signup paused, Review active at 75. Rewards shows the cart discount at 200 points per $1, min 200, max 50%. Settings → Design shows the launcher colour `#ff0000`. Reloading shows no modal.
@@ -65,7 +65,7 @@ A merchant who opens YayLoyalty for the first time sets up the program in five s
 
 - Product PHP must run on PHP 7.4: no enums, `match`, `readonly`, promoted properties, `?->`, named arguments or union types.
 - Wire data is snake_case. Mapping to camelCase happens only in `*.api.ts`. Rates are JSON numbers; points are integers.
-- "No limit" is `null`, never 0, so 100% is sent as `max_percent_of_subtotal: null`.
+- "No limit" is `null`, never 0, so 100% is sent as `max_percent_of_discountable: null`.
 - Writes go controller → service → repository. A repository never opens a transaction.
 - Every TypeScript copy of a PHP shape opens with "Mirrors <PHP symbol>, the source of truth."
 - Files stay under 200 lines. Components are PascalCase `.tsx`; other modules are `<owner>.<role>.ts`.
@@ -110,7 +110,7 @@ A merchant who opens YayLoyalty for the first time sets up the program in five s
   "purchase": { "points_per_unit": 1 },
   "signup":   { "enabled": true, "points": 100 },
   "review":   { "enabled": true, "points": 50 },
-  "cart_discount": { "points_per_currency_unit": 100, "min_points": 100, "max_percent_of_subtotal": null },
+  "flexible_discount": { "points_per_currency_unit": 100, "min_points": 100, "max_percent_of_discountable": null },
   "brand_color": "#1f6fb2"
 }
 ```

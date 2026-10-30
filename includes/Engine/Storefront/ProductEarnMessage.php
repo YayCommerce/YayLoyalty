@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * "Earn 20 Points with this purchase" under the price on a single product page.
- * A member's figure goes through the earning gates; a guest's is the base rate, so cached pages hold nothing personal.
+ * A member's figure goes through the earning gates; a guest's is what campaigns pay any guest, so cached pages hold nothing personal.
  */
 final class ProductEarnMessage {
 
@@ -118,7 +118,7 @@ final class ProductEarnMessage {
      * A variable product speaks for its cheapest variation that earns, until the shopper picks one.
      */
     public static function sentence( \WC_Product $product ): string {
-        if ( ! DesignHelper::surface_enabled( self::design(), 'product_message' ) ) {
+        if ( ! DesignHelper::surface_enabled( self::design(), 'show_product_message' ) ) {
             return '';
         }
 
@@ -156,7 +156,7 @@ final class ProductEarnMessage {
         return $points > 0 ? LauncherCopy::points_sentence_html( __( 'Earn {points} {points_label} with this purchase', 'yayloyalty' ), $points ) : '';
     }
 
-    /** What one of this product earns a guest, at the base rate: no tier multiplier, since that belongs to members. 0 on failure. */
+    /** What one of this product earns a guest: only campaigns that pay a shopper with no account or history. 0 on failure. */
     public static function guest_points( \WC_Product $product ): int {
         try {
             return self::engine()->evaluate( CampaignTrigger::PURCHASE, ContextFactory::from_product( $product ) )->get_points();
@@ -219,7 +219,7 @@ final class ProductEarnMessage {
             '<div class="%1$s" data-default="%2$s"><p class="%1$s__line"><span class="%1$s__icon">%3$s</span><span class="%1$s__text">%4$s</span></p>%5$s</div>',
             esc_attr( self::CSS_CLASS ),
             esc_attr( $sentence ),
-            AccountRewardsIcon::get( 'gift' ),
+            AccountMyPointsIcon::get( 'gift' ),
             $sentence,
             $guest
         );
