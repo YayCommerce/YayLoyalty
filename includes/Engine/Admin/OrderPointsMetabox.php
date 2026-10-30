@@ -3,11 +3,11 @@ namespace YayLoyalty\Engine\Admin;
 
 use Automattic\WooCommerce\Utilities\OrderUtil;
 use YayLoyalty\Access\Capabilities;
+use YayLoyalty\Controllers\OrderPointsRestController;
 use YayLoyalty\Engine\Earning\OrderPointsState;
 use YayLoyalty\Engine\Earning\PendingPoints;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
-use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -77,13 +77,10 @@ final class OrderPointsMetabox {
     }
 
     private static function render_recovered( OrderPointsState $state ): void {
+        // resolve() gives RECOVERED only with its row, so the recovery is never null here.
         $recovery = $state->to_array()['recovery'];
 
-        if ( null === $recovery ) {
-            return;
-        }
-
-        if ( $state->is_recovery_reversed() ) {
+        if ( $recovery['reversed'] ) {
             /* translators: 1: points, 2: admin display name, 3: date */
             self::paragraph( sprintf( __( '%1$d points added manually by %2$s on %3$s were reversed; use YayLoyalty › Customers › Adjust points.', 'yayloyalty' ), $recovery['points'], $recovery['actor_name'], $recovery['created_at'] ) );
 
@@ -103,7 +100,7 @@ final class OrderPointsMetabox {
         self::paragraph( sprintf( __( 'This order should have earned %1$d points but they are not in %2$s\'s balance.', 'yayloyalty' ), $figure, $name ) );
         ?>
         <p>
-            <input type="text" class="widefat" name="yayloyalty_note" maxlength="500" placeholder="<?php echo esc_attr__( 'Recovered missing order points', 'yayloyalty' ); ?>" aria-label="<?php echo esc_attr__( 'Reason', 'yayloyalty' ); ?>" />
+            <input type="text" class="widefat" name="yayloyalty_note" maxlength="500" placeholder="<?php echo esc_attr( OrderPointsRestController::default_note() ); ?>" aria-label="<?php echo esc_attr__( 'Reason', 'yayloyalty' ); ?>" />
         </p>
         <p>
             <?php /* translators: %d: points */ ?>

@@ -39,18 +39,19 @@ final class OrderPointsColumn {
             return $columns;
         }
 
+        $title = __( 'Loyalty points', 'yayloyalty' );
         $added = [];
 
         foreach ( $columns as $key => $label ) {
             $added[ $key ] = $label;
 
             if ( 'order_status' === $key ) {
-                $added[ self::KEY ] = __( 'Loyalty points', 'yayloyalty' );
+                $added[ self::KEY ] = $title;
             }
         }
 
         if ( ! isset( $added[ self::KEY ] ) ) {
-            $added[ self::KEY ] = __( 'Loyalty points', 'yayloyalty' );
+            $added[ self::KEY ] = $title;
         }
 
         return $added;

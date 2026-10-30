@@ -2,7 +2,6 @@
 namespace YayLoyalty\Engine\Earning;
 
 use YayLoyalty\Database\Transaction;
-use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Services\LedgerService;
 
 defined( 'ABSPATH' ) || exit;
@@ -16,34 +15,27 @@ final class OrderPointsRecovery {
 
     private LedgerService $writer;
 
-    private LedgerRepository $ledger;
-
     private PendingPoints $pending;
 
     /** $writer is the LedgerService built in Engine\RestAPI::controllers(), a listed construction site. */
-    public function __construct( LedgerService $writer, LedgerRepository $ledger, PendingPoints $pending ) {
+    public function __construct( LedgerService $writer, PendingPoints $pending ) {
         $this->writer  = $writer;
-        $this->ledger  = $ledger;
         $this->pending = $pending;
     }
 
     /**
-     * Writes the recovery for $order's current customer. The caller has checked the order's
-     * OrderPointsState; the writer checks again under the customer lock.
+     * Writes the recovery for $order's current customer. The caller passes the order as the database
+     * holds it (read after PendingPoints::forget_cached()) and has checked its OrderPointsState; the
+     * writer checks again under the customer lock.
      *
-     * @param int $actor_id The admin, from the session.
+     * @param \WC_Order $order    A fresh read, so its customer is not a stale cached one.
+     * @param int       $actor_id The admin, from the session.
      * @return Outcome LedgerService::recover_order()'s: awarded, duplicate or skipped( REASON_ORDER_HAS_POINTS ).
      * @throws \InvalidArgumentException When points is outside 1 to 1,000,000.
      * @throws \YayLoyalty\Database\QueryException When a write fails (rolled back).
      */
     public function recover( \WC_Order $order, int $points, string $note, int $actor_id ): Outcome {
-        $order_id = (int) $order->get_id();
-
-        $this->pending->forget_cached( $order_id );
-
-        $fresh = wc_get_order( $order_id );
-        $order = $fresh instanceof \WC_Order ? $fresh : $order;
-
+        $order_id    = (int) $order->get_id();
         $customer_id = (int) $order->get_customer_id();
         $actor       = get_userdata( $actor_id );
         $actor_name  = $actor instanceof \WP_User ? $actor->display_name : '';

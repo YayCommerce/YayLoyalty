@@ -96,7 +96,7 @@ final class OrderPointsRestController extends AbstractRestController {
             case OrderPointsState::MISSING_KNOWN:
                 // Confirm mode: the figure as is, never the request's points.
                 $points = $state->get_figure();
-                $note   = '' === $note ? __( 'Recovered missing order points', 'yayloyalty' ) : $note;
+                $note   = '' === $note ? self::default_note() : $note;
                 break;
             default:
                 if ( null === $request['points'] ) {
@@ -124,6 +124,11 @@ final class OrderPointsRestController extends AbstractRestController {
         $fresh = $this->fresh_order( (int) $order->get_id() );
 
         return OrderPointsState::resolve( null === $fresh ? $order : $fresh, $this->ledger )->to_array();
+    }
+
+    /** The reason a Confirm-mode recovery records when the admin gives none; the box shows it as the placeholder. */
+    public static function default_note(): string {
+        return __( 'Recovered missing order points', 'yayloyalty' );
     }
 
     /** The order as the database holds it, past any cached copy, or null. */

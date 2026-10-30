@@ -81,7 +81,7 @@ class RestAPI {
             // $ledger and $redemptions are read-only here.
             new CustomerRestController( $customers, $ledger_service, $ledger, $customer_meta, $redemptions ),
             // $ledger is read-only here; the recovery writes through $ledger_service.
-            new OrderPointsRestController( new OrderPointsRecovery( $ledger_service, $ledger, $pending ), $ledger, $pending ),
+            new OrderPointsRestController( new OrderPointsRecovery( $ledger_service, $pending ), $ledger, $pending ),
             // $customers is read-only here too.
             new CustomerAdjustPreviewRestController( $customers, $dashboard ),
             new LedgerRestController( $ledger ),

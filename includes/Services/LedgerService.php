@@ -189,7 +189,7 @@ final class LedgerService {
             $note,
             $actor_id > 0 ? $actor_id : null,
             Dates::now(),
-            IdempotencyKey::compose( LedgerType::EARN, $user_id, ReferenceType::ORDER, $order_id, IdempotencyKey::RECOVERY )
+            self::recovery_key( $user_id, $order_id )
         );
 
         return $this->write_keyed(
@@ -408,9 +408,12 @@ final class LedgerService {
             return false;
         }
 
-        $recovery_key = IdempotencyKey::compose( LedgerType::EARN, $draft->get_user_id(), ReferenceType::ORDER, $order_id, IdempotencyKey::RECOVERY );
+        return null !== $this->ledger->find_by_idempotency_key( self::recovery_key( $draft->get_user_id(), $order_id ), true );
+    }
 
-        return null !== $this->ledger->find_by_idempotency_key( $recovery_key, true );
+    /** The key of an order's one recovery row: `earn:{user}:order:{order_id}:recovery`. */
+    private static function recovery_key( int $user_id, int $order_id ): string {
+        return IdempotencyKey::compose( LedgerType::EARN, $user_id, ReferenceType::ORDER, $order_id, IdempotencyKey::RECOVERY );
     }
 
     /**

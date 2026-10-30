@@ -75,25 +75,23 @@ final class OrderPointsState {
             return new self( self::EARNED, 0, $summary['net'], null, false );
         }
 
-        $unreleased = PendingPoints::unreleased( $order );
+        // The first known figure: the unreleased staged one; else, for an order reversed then restored, what its
+        // earn rows paid; else what the meta claims without a row (an award rolled back after its meta was cached).
+        $figure = PendingPoints::unreleased( $order );
 
-        if ( $unreleased > 0 ) {
-            return new self( self::MISSING_KNOWN, $unreleased, $summary['net'], null, false );
+        if ( $figure < 1 ) {
+            $figure = $summary['earned'];
         }
 
-        // Reversed, then restored to a paid status: the earn rows say what the order earned.
-        if ( $summary['earned'] > 0 ) {
-            return new self( self::MISSING_KNOWN, $summary['earned'], $summary['net'], null, false );
+        if ( $figure < 1 ) {
+            $figure = (int) $order->get_meta( PendingPoints::META_EARNED );
         }
 
-        // The meta claims points the ledger lacks: an award rolled back after its meta reached the object cache.
-        $claimed = (int) $order->get_meta( PendingPoints::META_EARNED );
-
-        if ( $claimed > 0 ) {
-            return new self( self::MISSING_KNOWN, $claimed, $summary['net'], null, false );
+        if ( $figure < 1 ) {
+            return new self( self::MISSING_UNKNOWN, 0, $summary['net'], null, false );
         }
 
-        return new self( self::MISSING_UNKNOWN, 0, $summary['net'], null, false );
+        return new self( self::MISSING_KNOWN, $figure, $summary['net'], null, false );
     }
 
     /** One of the class constants. */

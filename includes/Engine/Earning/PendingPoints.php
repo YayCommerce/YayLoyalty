@@ -96,19 +96,7 @@ final class PendingPoints {
      * per awarded row, never for a duplicate, or the sum double counts.
      */
     public function mark_awarded( int $order_id, LedgerEntry $entry ): void {
-        $order = wc_get_order( $order_id );
-
-        if ( ! $order instanceof \WC_Order ) {
-            return;
-        }
-
-        $order->update_meta_data( self::META_EARNED, (int) $order->get_meta( self::META_EARNED ) + $entry->get_points() );
-
-        if ( '' === (string) $order->get_meta( self::META_CAMPAIGN ) && null !== $entry->get_campaign_id() ) {
-            $order->update_meta_data( self::META_CAMPAIGN, $entry->get_campaign_id() );
-        }
-
-        $this->save_meta( $order );
+        $this->write_earned( $order_id, $entry, true );
     }
 
     /**
@@ -118,13 +106,23 @@ final class PendingPoints {
      * adding would double it.
      */
     public function restate_earned( int $order_id, LedgerEntry $entry ): void {
+        $this->write_earned( $order_id, $entry, false );
+    }
+
+    /**
+     * META_EARNED set to, or with $is_additive raised by, $entry's points; META_CAMPAIGN set to its
+     * campaign while the order has none.
+     */
+    private function write_earned( int $order_id, LedgerEntry $entry, bool $is_additive ): void {
         $order = wc_get_order( $order_id );
 
         if ( ! $order instanceof \WC_Order ) {
             return;
         }
 
-        $order->update_meta_data( self::META_EARNED, $entry->get_points() );
+        $earned = $is_additive ? (int) $order->get_meta( self::META_EARNED ) + $entry->get_points() : $entry->get_points();
+
+        $order->update_meta_data( self::META_EARNED, $earned );
 
         if ( '' === (string) $order->get_meta( self::META_CAMPAIGN ) && null !== $entry->get_campaign_id() ) {
             $order->update_meta_data( self::META_CAMPAIGN, $entry->get_campaign_id() );
