@@ -44,7 +44,7 @@ export function toActivityRow(entry: ActivityEntry): ActivityRow {
     date: formatWPDate(occurred),
     time: formatWPTime(occurred),
     title: titleFor(entry.event_type),
-    subLine: subLineFor(entry, occurred),
+    subLine: subLineFor(entry),
     actorLabel: actorLabelFor(entry),
     isStaffOnly: entry.staff_only,
     isEmail: EMAIL_EVENT_TYPES.has(entry.event_type),
@@ -84,7 +84,7 @@ function num(data: Record<string, unknown>, key: string): number {
   return typeof value === 'number' ? value : 0;
 }
 
-function subLineFor(entry: ActivityEntry, occurred: Date): string {
+function subLineFor(entry: ActivityEntry): string {
   const { data } = entry;
 
   switch (entry.event_type) {
@@ -106,13 +106,11 @@ function subLineFor(entry: ActivityEntry, occurred: Date): string {
       return activityRewardRedeemedSubLine(str(data, 'reward'), String(num(data, 'order_id')));
     case 'balance_email_sent':
       return activityBalanceEmailSubLine(str(data, 'subject'));
-    case 'expiring_soon_email_sent': {
-      // The API does not send a deadline: it is occurred_at plus reminder_days.
-      const reminderDays = num(data, 'reminder_days');
-      const deadline = new Date(occurred.getTime() + reminderDays * 24 * 60 * 60 * 1000);
-
-      return activityExpiringSoonEmailSubLine(formatCount(reminderDays), formatWPDate(deadline));
-    }
+    case 'expiring_soon_email_sent':
+      return activityExpiringSoonEmailSubLine(
+        formatCount(num(data, 'reminder_days')),
+        formatStoredDate(str(data, 'expires_at')),
+      );
     case 'earning_limited': {
       // Data keys from CustomerActivityService::record_earning_limited().
       // An order id is an id, not a points figure: no grouped-thousands formatting (see reward_redeemed).
