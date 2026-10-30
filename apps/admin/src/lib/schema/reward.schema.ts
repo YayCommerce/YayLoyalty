@@ -135,7 +135,6 @@ const moneySchema = z.number().min(0).nullable();
 const percentCapSchema = z.number().min(0).nullable();
 /** A cap: null is no cap, and a set cap is above 0 (the PHP spec's `exclusive_min: 0`). */
 const moneyCapSchema = z.number().positive().nullable();
-const couponExpiryDaysSchema = z.number().int().min(1).nullable();
 /** Mirrors ConfigSpec's `limit`: null is no cap, and a set cap is a whole number of points from 1. */
 const pointsCapSchema = z.number().int().min(1).nullable();
 
@@ -177,7 +176,6 @@ export const REWARD_CONFIG_SCHEMAS = {
     currency: z.string(),
     amount: z.number().min(0.01, __('The discount must be more than zero.', 'yayloyalty')),
     min_order: moneySchema,
-    coupon_expiry_days: couponExpiryDaysSchema,
     exclude_sale_items: z.boolean(),
   }),
   percent_coupon: z.object({
@@ -188,13 +186,11 @@ export const REWARD_CONFIG_SCHEMAS = {
     max_discount: moneyCapSchema,
     currency: z.string(),
     min_order: moneySchema,
-    coupon_expiry_days: couponExpiryDaysSchema,
     exclude_sale_items: z.boolean(),
   }),
   free_shipping: z.object({
     min_order: moneySchema,
     currency: z.string(),
-    coupon_expiry_days: couponExpiryDaysSchema,
   }),
   free_product: z.object({
     product_id: z
@@ -203,7 +199,6 @@ export const REWARD_CONFIG_SCHEMAS = {
       .min(1, __('Choose a product.', 'yayloyalty')),
     variation_id: z.number().int().min(1).nullable(),
     qty: z.number().int().min(1),
-    coupon_expiry_days: couponExpiryDaysSchema,
   }),
 } satisfies Record<RewardType, z.ZodType>;
 

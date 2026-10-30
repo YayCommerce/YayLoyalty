@@ -526,7 +526,6 @@ final class RewardRouteTest extends IntegrationTestCase {
                 'currency'           => get_woocommerce_currency(),
                 'amount'             => 5,
                 'min_order'          => 25,
-                'coupon_expiry_days' => 60,
                 'exclude_sale_items' => false,
             ],
             'conditions'  => [

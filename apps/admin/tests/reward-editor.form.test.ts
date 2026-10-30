@@ -89,7 +89,7 @@ describe('form values', () => {
 
     expect(values.config.amount).toBe(7);
     expect(values.config.currency).toBe('EUR');
-    expect(values.config.coupon_expiry_days).toBe(60);
+    expect(values.config.min_order).toBe(25);
   });
 
   it('builds create and update bodies with the resolved status and the stored conditions', () => {
@@ -115,7 +115,6 @@ describe('rewardFormSchema bounds mirror the PHP specs', () => {
     ['percent above 100', { config: { ...base.config, percent: 150 } }],
     ['percent below 1', { config: { ...base.config, percent: 0 } }],
     ['negative minimum order', { config: { ...base.config, min_order: -1 } }],
-    ['zero expiry', { config: { ...base.config, coupon_expiry_days: 0 } }],
     ['zero cost', { cost_points: 0 }],
     ['missing cost', { cost_points: null }],
     ['blank name', { name: '  ' }],

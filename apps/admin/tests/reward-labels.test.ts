@@ -48,14 +48,9 @@ describe('rewardSubtitle', () => {
     );
   });
 
-  it('names the coupon expiry when the config carries one', () => {
-    expect(rewardSubtitle(reward({ type: 'fixed_coupon', config: { coupon_expiry_days: 60 } }))).toBe(
-      'Single-use coupon, valid 60 days after claiming',
-    );
-  });
-
-  it('falls back to a generic line when no expiry is configured', () => {
-    expect(rewardSubtitle(reward({ type: 'free_shipping', config: {} }))).toBe('Single-use coupon');
+  it('is the coupon line for every catalog type', () => {
+    expect(rewardSubtitle(reward({ type: 'fixed_coupon' }))).toBe('Applied as a coupon at checkout');
+    expect(rewardSubtitle(reward({ type: 'free_product' }))).toBe('Applied as a coupon at checkout');
   });
 });
 
