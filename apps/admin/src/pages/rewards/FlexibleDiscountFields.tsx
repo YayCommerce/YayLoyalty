@@ -113,7 +113,7 @@ export function FlexibleDiscountFields({
       <ConfigField label={__('How customers redeem', 'yayloyalty')}>
         <RadioGroup
           className="gap-2.5 pt-1.5"
-          value={value.redemption_mode ?? 'free_input'}
+          value={value.redemption_mode ?? 'auto_max'}
           onValueChange={(redemption_mode) => onChange({ redemption_mode: redemption_mode as RedemptionMode })}
         >
           <RadioChoice

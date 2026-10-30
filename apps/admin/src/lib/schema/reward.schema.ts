@@ -163,8 +163,8 @@ export const REWARD_CONFIG_SCHEMAS = {
       increment: z.number().int().min(1),
       show_on: z.array(z.enum(['cart', 'checkout'])),
       refund_policy: z.enum(['proportional', 'full', 'none']),
-      // A row saved before the key existed reads as free input, as Clamp::is_auto_max() does.
-      redemption_mode: z.enum(REDEMPTION_MODES).default('free_input'),
+      // A row without the key reads as auto max, as Clamp::is_auto_max() does.
+      redemption_mode: z.enum(REDEMPTION_MODES).default('auto_max'),
       max_total: moneyCapSchema,
     })
     // Mirrors Reward::config_conflict().

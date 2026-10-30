@@ -42,9 +42,9 @@ describe('costLabel', () => {
 });
 
 describe('rewardSubtitle', () => {
-  it('is the fixed flexible discount copy for flexible_discount', () => {
+  it('reads a flexible discount without a redemption mode as auto max', () => {
     expect(rewardSubtitle(reward({ type: 'flexible_discount' }))).toBe(
-      'The customer chooses how many points to use at checkout',
+      'The most points the order allows are applied at checkout',
     );
   });
 

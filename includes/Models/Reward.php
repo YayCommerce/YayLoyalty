@@ -24,7 +24,7 @@ class Reward extends AbstractModel {
     public const REFUND_POLICY_FULL         = 'full';
     public const REFUND_POLICY_NONE         = 'none';
 
-    /** How the shopper spends points on a flexible discount: `config.redemption_mode`. A missing key reads as free input. */
+    /** How the shopper spends points on a flexible discount: `config.redemption_mode`. A missing key reads as auto max, as default_config() gives. */
     public const REDEMPTION_MODE_AUTO_MAX   = 'auto_max';
     public const REDEMPTION_MODE_FREE_INPUT = 'free_input';
 
