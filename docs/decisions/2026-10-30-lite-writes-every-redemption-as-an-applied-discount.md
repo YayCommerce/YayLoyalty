@@ -6,6 +6,8 @@
 
 ## Status
 
+Superseded by [Lite owns every redemption write, and an admin's Restore on the order screen is the only removal that returns points](2026-11-02-admin-removes-loyalty-coupon.md), 2026-11-02.
+
 Accepted, 2026-10-30, by Trace Bui. It supersedes [Lite owns every redemption write, and Pro supplies reward types](2026-10-07-lite-owns-redemption-writes.md) whole, and restates every rule of it that still holds.
 
 ## Context

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. Read the spec linked below before starting; the plan argues from it.
 
-**Status:** active
+**Status:** done 2026-11-02
 **Goal:** Removing a loyalty coupon line on the order edit screen asks whether to return its points, and no loyalty code can be put on an order that did not debit it.
 **Spec:** [docs/specs/2026-11-02-admin-remove-loyalty-coupon-design.md](../specs/2026-11-02-admin-remove-loyalty-coupon-design.md)
 **Architecture:** A dialog intercepts WooCommerce's own Remove click and, for "Restore", tags WooCommerce's own `woocommerce_remove_order_coupon` request. A priority-1 handler on that request listens once for the coupon item's delete and restores through `Reversal::coupon_removed()`, which moves the row to a new status `removed` that no other event touches. A `woocommerce_coupon_is_valid` guard in `CouponProvider` refuses a loyalty code on an order without an `applied` row for it. Riding WooCommerce's request avoids duplicating `WC_AJAX::remove_order_coupon()` (see the spec's Alternatives).
@@ -61,7 +61,7 @@
   - `Reversal::coupon_removed( \WC_Order $order, string $code ): ?Outcome`: null when no row matches. Otherwise it runs one `Transaction::run()` that locks the row's user and then the row. When the row is not `applied` it answers `Outcome::skipped( REASON_NOTHING_TO_MOVE )`. When `points − restored_points` is 0 it calls `record_restore( id, points, STATUS_REMOVED )` with no ledger row and answers `skipped( REASON_NOTHING_TO_MOVE )`. Otherwise it calls `restore( $row, $row->get_points(), STATUS_REMOVED, [ [ ReferenceType::REDEMPTION, id ] ], 'Coupon removed from order' )`.
   - TS: `REDEMPTION_STATUSES` gains `'removed'`; `REDEMPTION_STATUS_REMOVED = () => __('Removed by admin', 'yayloyalty')`.
 
-- [ ] **Step 1: Write the failing tests in `ReversalTest.php`**
+- [x] **Step 1: Write the failing tests in `ReversalTest.php`**
 
 Add `use YayLoyalty\Enums\ReferenceType;`.
 
@@ -152,38 +152,38 @@ public function test_removing_the_same_coupon_twice_writes_once(): void {
 }
 ```
 
-- [ ] **Step 2: Run them to confirm they fail**
+- [x] **Step 2: Run them to confirm they fail**
 
 Run: `composer test:integration -- --filter 'removing|removed|without_restore' tests/integration/Engine/Redemption/ReversalTest.php`
 Expected: 4 errors, `Call to undefined method …Reversal::coupon_removed()` / undefined constant `STATUS_REMOVED`. `test_a_line_removed_without_restore_leaves_the_row_for_the_cancel` passes already, since it pins behaviour that exists today.
 
-- [ ] **Step 3: Add `STATUS_REMOVED` to `includes/Models/Redemption.php`**
+- [x] **Step 3: Add `STATUS_REMOVED` to `includes/Models/Redemption.php`**
 
 Add it to `STORED_STATUSES`. The class docblock and the `STATUS_APPLIED` comment add `→ removed (an admin removed the line and restored what was left; final)`.
 
-- [ ] **Step 4: Add `RedemptionRepository::find_for_order_code()`** (signature in Interfaces). The class docblock's reader list gains the guard and the order screen.
+- [x] **Step 4: Add `RedemptionRepository::find_for_order_code()`** (signature in Interfaces). The class docblock's reader list gains the guard and the order screen.
 
-- [ ] **Step 5: Add `Reversal::coupon_removed()`** (contract in Interfaces)
+- [x] **Step 5: Add `Reversal::coupon_removed()`** (contract in Interfaces)
 
 Give the private `restore()` a trailing `?string $note = null` parameter that it passes on to `draft()`. The class docblock gains one sentence: an admin removing a line through the order screen restores what is left under `[ redemption, id ]` and makes the row `removed`, which no other event lists. The status lists of the existing events stay as they are.
 
-- [ ] **Step 6: Run the Reversal tests**
+- [x] **Step 6: Run the Reversal tests**
 
 Run: `composer test:integration -- tests/integration/Engine/Redemption/ReversalTest.php`
 Expected: `OK`, every existing test included.
 
-- [ ] **Step 7: Add `removed` to the SPA**
+- [x] **Step 7: Add `removed` to the SPA**
 
 `REDEMPTION_STATUSES` gains `'removed'`. `customer-drawer.copy.ts` gains `REDEMPTION_STATUS_REMOVED` (Interfaces). `statusLabel()` gains `case 'removed'`.
 Run: `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` and `pnpm --filter @yayloyalty/admin-page test`
 Expected: tsc exits 0, so the switch is exhaustive; Vitest passes.
 
-- [ ] **Step 8: Lint**
+- [x] **Step 8: Lint**
 
 Run: `composer lint -- includes/Models/Redemption.php includes/Repositories/RedemptionRepository.php includes/Engine/Redemption/Reversal.php tests/integration/Engine/Redemption/ReversalTest.php`
 Expected: no errors.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 Stage: the files above, the three SPA files and `ReversalTest.php`
 Message: `feat(redemption): restore a removed loyalty coupon's points into a final removed status`
@@ -201,7 +201,7 @@ Message: `feat(redemption): restore a removed loyalty coupon's points into a fin
   - `CouponProvider::__construct( RedemptionService $service, SessionIntent $intent, RedemptionRepository $redemptions )`.
   - `CouponProvider::only_redeemed_on_order( $valid, \WC_Coupon $coupon, \WC_Discounts $discounts )` on `woocommerce_coupon_is_valid` (priority 10, 3 args). It throws `\Exception( __( 'This loyalty discount can only be applied by the customer at checkout.', 'yayloyalty' ) )` when `$discounts->get_object()` is a `\WC_Order`, the code passes `EarnContext::is_loyalty_code()`, and `find_for_order_code()` returns no row whose status is `applied`. Otherwise it returns `$valid` unchanged.
 
-- [ ] **Step 1: Write the failing tests** in a new `LoyaltyCodeOnOrderTest extends IntegrationTestCase` (namespace `YayLoyalty\Tests\Integration\Engine\Redemption`)
+- [x] **Step 1: Write the failing tests** in a new `LoyaltyCodeOnOrderTest extends IntegrationTestCase` (namespace `YayLoyalty\Tests\Integration\Engine\Redemption`)
 
 ```php
 private const REFUSED = 'This loyalty discount can only be applied by the customer at checkout.';
@@ -261,31 +261,31 @@ public function test_recalculating_keeps_loyalty_lines_and_amounts(): void {
 }
 ```
 
-- [ ] **Step 2: Run them to confirm they fail**
+- [x] **Step 2: Run them to confirm they fail**
 
 Run: `composer test:integration -- tests/integration/Engine/Redemption/LoyaltyCodeOnOrderTest.php`
 Expected: `test_a_loyalty_code_the_order_did_not_debit_is_refused` and `test_a_removed_rows_code_is_refused` fail (`apply_coupon` returns `true`). The other two pass already, since they pin behaviour the guard must keep.
 
-- [ ] **Step 3: Add the parameter and `only_redeemed_on_order()` to `CouponProvider`** (Interfaces). `register()` attaches it, and the docblock's "six hooks" becomes "seven hooks", with one line on why: REST v3 and the admin "Apply coupon" validate through `WC_Discounts( $order )`, and checkout and `recalculate_coupons()` do not.
+- [x] **Step 3: Add the parameter and `only_redeemed_on_order()` to `CouponProvider`** (Interfaces). `register()` attaches it, and the docblock's "six hooks" becomes "seven hooks", with one line on why: REST v3 and the admin "Apply coupon" validate through `WC_Discounts( $order )`, and checkout and `recalculate_coupons()` do not.
 
-- [ ] **Step 4: Pass `new RedemptionRepository()`** as the third argument in `YayLoyalty::register_redemption()`, with its `use` line.
+- [x] **Step 4: Pass `new RedemptionRepository()`** as the third argument in `YayLoyalty::register_redemption()`, with its `use` line.
 
-- [ ] **Step 5: Run the redemption integration tests**
+- [x] **Step 5: Run the redemption integration tests**
 
 Run: `composer test:integration -- tests/integration/Engine/Redemption/`
 Expected: `OK`, `ClassicCheckoutAdapterTest` and `CommitWriterTest` included.
 
-- [ ] **Step 6: Verify checkout still redeems**
+- [x] **Step 6: Verify checkout still redeems**
 
 Run: `pnpm --filter @yayloyalty/e2e test specs/redemptions.spec.ts specs/reward-redemptions.spec.ts` (wp-env started, `pro` SPA built)
 Expected: all pass, so block and classic checkout still commit loyalty lines with the guard in place.
 
-- [ ] **Step 7: Verify the admin "Apply coupon" message**
+- [x] **Step 7: Verify the admin "Apply coupon" message**
 
 On the wp-env site (`http://localhost:8889/wp-admin`, admin / password), open any `on-hold` order with no loyalty line and click **Apply coupon**. Enter `yayloyalty-abc12345`.
 Expected: an alert with "This loyalty discount can only be applied by the customer at checkout." The order's totals don't change.
 
-- [ ] **Step 8: Lint and commit**
+- [x] **Step 8: Lint and commit**
 
 Run: `composer lint -- includes/Engine/Redemption/CouponProvider.php includes/YayLoyalty.php tests/integration/Engine/Redemption/LoyaltyCodeOnOrderTest.php`, expecting no errors.
 Stage: those three files.
@@ -320,18 +320,18 @@ Message: `fix(redemption): refuse a loyalty code on an order that did not debit 
   - Re-dispatch: `resending = true; jQuery( link ).trigger( 'click' ); resending = false`.
   - `jQuery( '#woocommerce-order-items' ).on( 'woocommerce_order_meta_box_remove_coupon_ajax_data', ( e, data ) => … )`. When `pending === data.coupon` (lowercased), it adds `yayloyalty_restore: 1` and `yayloyalty_nonce`, deletes the code from `coupons` and clears `pending`. It always returns `data`.
 
-- [ ] **Step 1: Implement `OrderCouponRemoval`** (Interfaces). Its docblock says it is Lite's order-screen half of the admin-removal restore and why it rides WooCommerce's request.
+- [x] **Step 1: Implement `OrderCouponRemoval`** (Interfaces). Its docblock says it is Lite's order-screen half of the admin-removal restore and why it rides WooCommerce's request.
 
-- [ ] **Step 2: Implement `assets/admin/order-coupon-removal.js`** (Interfaces). Its header comment names the PHP class that feeds it.
+- [x] **Step 2: Implement `assets/admin/order-coupon-removal.js`** (Interfaces). Its header comment names the PHP class that feeds it.
 
-- [ ] **Step 3: Register it** in the `is_admin()` branch: `( new \YayLoyalty\Engine\Admin\OrderCouponRemoval( $redemption->reversal(), new RedemptionRepository(), new RewardRepository() ) )->register();`, with the `use` lines.
+- [x] **Step 3: Register it** in the `is_admin()` branch: `( new \YayLoyalty\Engine\Admin\OrderCouponRemoval( $redemption->reversal(), new RedemptionRepository(), new RewardRepository() ) )->register();`, with the `use` lines.
 
-- [ ] **Step 4: Static checks**
+- [x] **Step 4: Static checks**
 
 Run: `composer lint -- includes/Engine/Admin/OrderCouponRemoval.php includes/YayLoyalty.php` and `node --check assets/admin/order-coupon-removal.js`
 Expected: no errors from either.
 
-- [ ] **Step 5: Verify criteria 1, 2, 3, 4 and 5 by hand** (wp-env, HPOS on, the default)
+- [x] **Step 5: Verify criteria 1, 2, 3, 4 and 5 by hand** (wp-env, HPOS on, the default)
 
 Setup: give a customer 2000 points (YayLoyalty › Customers › Adjust points). As that customer, check out with the "$5 off" reward (500 points) and the points discount at 500 points, paying by check, so the order is `on-hold` with two loyalty lines.
 - Click Remove on "$5 off". Expected: the dialog "Remove $5 off?" with "The customer spent 500 Points on this discount.", and "Restore 500 Points" focused, "Don't restore Points", "Cancel".
@@ -345,12 +345,12 @@ Setup: give a customer 2000 points (YayLoyalty › Customers › Adjust points).
 - Click Remove on the points discount, then "Don't restore Points". Expected: the line is gone, there's no new ledger row, and the row stays "Applied". Set the order to Cancelled. Expected: 500 come back and the row reads "Cancelled".
 - Criterion 5: on a fresh order of the same shape, refund 40% of the order total (restores 200 of 500), then click Remove. Expected: the dialog adds "300 Points of them have not been returned yet." and the button reads "Restore 300 Points". Restoring writes one row of 300.
 
-- [ ] **Step 6: Verify a replayed Restore**
+- [x] **Step 6: Verify a replayed Restore**
 
 In DevTools, find the Restore request (`action=woocommerce_remove_order_coupon` with `yayloyalty_restore=1`), copy it as fetch, and run it again.
 Expected: `success: true`, no new ledger row, and no new YayLoyalty note.
 
-- [ ] **Step 7: Verify criterion 8**
+- [x] **Step 7: Verify criterion 8**
 
 Run: `pnpm --filter @yayloyalty/e2e exec wp-env run tests-cli wp cap remove shop_manager yayloyalty_manage_points`, then log in as a shop manager and open an `on-hold` order with a loyalty line.
 - Expected: no dialog on Remove, and WooCommerce removes the line. The row stays `applied`.
@@ -363,12 +363,12 @@ Run: `pnpm --filter @yayloyalty/e2e exec wp-env run tests-cli wp cap remove shop
   Expected: `{ success: false, data: { error: "This page has expired…" } }`. After a reload, the line is still on the order.
 - Restore the cap with `… wp cap add shop_manager yayloyalty_manage_points`.
 
-- [ ] **Step 8: Verify criterion 12 on legacy storage**
+- [x] **Step 8: Verify criterion 12 on legacy storage**
 
 Run: `pnpm --filter @yayloyalty/e2e exec wp-env run tests-cli wp wc hpos disable` (run `wp wc hpos sync` first if it refuses). Repeat the Restore part of step 5 on `post.php?post=<id>&action=edit`.
 Expected: the same dialog, restore and note. Then run `wp wc hpos enable`.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 Stage: `includes/Engine/Admin/OrderCouponRemoval.php`, `assets/admin/order-coupon-removal.js`, `includes/YayLoyalty.php`
 Message: `feat(admin): ask whether to restore points when a loyalty coupon is removed from an order`
@@ -383,7 +383,7 @@ Message: `feat(admin): ask whether to restore points when a loyalty coupon is re
 **Interfaces:**
 - Consumes: the dialog, its copy and the note from Task 3; the `removed` status from Task 1.
 
-- [ ] **Step 1: Write the spec**
+- [x] **Step 1: Write the spec**
 
 ```ts
 test.describe('an admin removes a loyalty coupon', () => {
@@ -441,12 +441,12 @@ test.describe('an admin removes a loyalty coupon', () => {
 });
 ```
 
-- [ ] **Step 2: Run it** (rebuild first: `./scripts/run.sh build pro`)
+- [x] **Step 2: Run it** (rebuild first: `./scripts/run.sh build pro`)
 
 Run: `pnpm --filter @yayloyalty/e2e test specs/admin-remove-loyalty-coupon.spec.ts specs/reward-redemptions.spec.ts`
 Expected: all pass. Then run `pnpm --filter @yayloyalty/e2e typecheck`, expecting exit 0.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 Stage: the three e2e files.
 Message: `test(e2e): cover restoring points when an admin removes a loyalty coupon`
@@ -459,20 +459,20 @@ Message: `test(e2e): cover restoring points when an admin removes a loyalty coup
 - Modify: `docs/architecture.md` (the `Reversal` bullet near line 97 and the record link near line 105)
 - Modify: `readme.txt`
 
-- [ ] **Step 1: Write the decision record.** It follows [the decision-record practice](../decisions/2026-10-04-decision-record-practice.md) and the 2026-10-30 record's sections. It supersedes the 2026-10-30 record whole and restates every rule of it. Its statuses are four: `removed` is final and set only by an admin's explicit Restore. It adds the admin-removal rule: `points − restored_points` under `[ redemption, id ]`, and only through the order screen's Restore. "Don't restore" and every other removal path leave the row `applied`. It adds the guard rule, that a loyalty code goes on an order only while that order has an `applied` row for it. It also records the options the spec turned down.
+- [x] **Step 1: Write the decision record.** It follows [the decision-record practice](../decisions/2026-10-04-decision-record-practice.md) and the 2026-10-30 record's sections. It supersedes the 2026-10-30 record whole and restates every rule of it. Its statuses are four: `removed` is final and set only by an admin's explicit Restore. It adds the admin-removal rule: `points − restored_points` under `[ redemption, id ]`, and only through the order screen's Restore. "Don't restore" and every other removal path leave the row `applied`. It adds the guard rule, that a loyalty code goes on an order only while that order has an `applied` row for it. It also records the options the spec turned down.
 
-- [ ] **Step 2: Mark the old record** with `Superseded by [Admin removes a loyalty coupon](2026-11-02-admin-removes-loyalty-coupon.md), 2026-11-02.` under its `## Status`, keeping the acceptance line.
+- [x] **Step 2: Mark the old record** with a `Superseded by` line linking [the new record](../decisions/2026-11-02-admin-removes-loyalty-coupon.md), dated 2026-11-02, under its `## Status`, keeping the acceptance line.
 
-- [ ] **Step 3: Update `docs/architecture.md`.** The `Reversal` bullet gains the admin-removal event and `removed`. The record link points to the new record. `OrderCouponRemoval` gets one line among the admin classes.
+- [x] **Step 3: Update `docs/architecture.md`.** The `Reversal` bullet gains the admin-removal event and `removed`. The record link points to the new record. `OrderCouponRemoval` gets one line among the admin classes.
 
-- [ ] **Step 4: Add the release note** under `= 1.0.0 =` in `readme.txt`: `* Removing a loyalty discount from an order now asks whether to return the customer's points.`
+- [x] **Step 4: Add the release note** under `= 1.0.0 =` in `readme.txt`: `* Removing a loyalty discount from an order now asks whether to return the customer's points.`
 
-- [ ] **Step 5: Final verification (spec criterion 13)**
+- [x] **Step 5: Final verification (spec criterion 13)**
 
 Run: `composer test:integration` and `pnpm --filter @yayloyalty/e2e test`
 Expected: integration `OK`, and every Playwright spec passes, `admin-remove-loyalty-coupon.spec.ts` included. On the wp-env site, an `on-hold` order with a reward line shows the dialog on Remove. After "Restore …" the line is gone, the customer's balance on the Customers page has gone up by the reward's points, and the order notes show "… removed — … restored."
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Stage: the four docs files.
 Message: `docs(redemption): record the removed status and the admin-removal restore rule`
