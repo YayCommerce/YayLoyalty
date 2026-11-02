@@ -8,6 +8,7 @@ use YayLoyalty\Engine\Earning\OrderPointsState;
 use YayLoyalty\Engine\Earning\PendingPoints;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Services\LedgerService;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -114,7 +115,7 @@ final class OrderPointsMetabox {
         ?>
         <p>
             <label for="yayloyalty_points"><?php esc_html_e( 'Points', 'yayloyalty' ); ?></label>
-            <input type="number" class="widefat" id="yayloyalty_points" name="yayloyalty_points" min="1" max="1000000" step="1" />
+            <input type="number" class="widefat" id="yayloyalty_points" name="yayloyalty_points" min="1" max="<?php echo esc_attr( (string) LedgerService::MAX_RECOVERY_POINTS ); ?>" step="1" />
         </p>
         <p>
             <label for="yayloyalty_note"><?php esc_html_e( 'Reason', 'yayloyalty' ); ?></label>
@@ -132,7 +133,8 @@ final class OrderPointsMetabox {
     }
 
     private static function error_line(): void {
-        echo '<p class="yayloyalty-order-points__error" role="alert" hidden></p>';
+        // `inline` keeps WordPress's common.js from moving the notice to the top of the page.
+        echo '<div class="yayloyalty-order-points__error notice notice-error inline" role="alert" hidden><p></p></div>';
     }
 
     /** On the order edit screen only: HPOS gives the orders list the same screen id, so the id alone is not enough. */

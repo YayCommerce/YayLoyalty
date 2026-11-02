@@ -33,7 +33,7 @@
 
     if (error) {
       error.hidden = true;
-      error.textContent = "";
+      error.firstElementChild.textContent = "";
     }
 
     button.disabled = true;
@@ -49,7 +49,7 @@
       })
       .catch(function (failure) {
         if (error) {
-          error.textContent = failure && failure.message ? failure.message : String(failure);
+          error.firstElementChild.textContent = failure && failure.message ? failure.message : String(failure);
           error.hidden = false;
         }
 

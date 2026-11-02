@@ -13,11 +13,10 @@ final class OrderPointsRouteArgs {
      */
     public static function recover(): array {
         return [
+            // No minimum/maximum: core would refuse with a bare "Invalid parameter(s): points", so the controller checks the range.
             'points' => [
                 'description' => __( 'Points to give back, when the order has no known figure.', 'yayloyalty' ),
                 'type'        => 'integer',
-                'minimum'     => 1,
-                'maximum'     => 1000000,
                 'required'    => false,
             ],
             // A custom sanitize_callback replaces the default that enforces maxLength, so validate explicitly.

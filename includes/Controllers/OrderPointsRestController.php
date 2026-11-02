@@ -99,15 +99,20 @@ final class OrderPointsRestController extends AbstractRestController {
                 $note   = '' === $note ? self::default_note() : $note;
                 break;
             default:
-                if ( null === $request['points'] ) {
-                    return new \WP_Error( 'yayloyalty_invalid_points', __( 'Enter the points to add, from 1 to 1,000,000.', 'yayloyalty' ), [ 'status' => 400 ] );
+                $points = null === $request['points'] ? 0 : (int) $request['points'];
+
+                if ( $points < 1 || $points > LedgerService::MAX_RECOVERY_POINTS ) {
+                    return new \WP_Error(
+                        'yayloyalty_invalid_points',
+                        /* translators: %s: the most points allowed, formatted */
+                        sprintf( __( 'Enter the points to add, a whole number from 1 to %s.', 'yayloyalty' ), number_format_i18n( LedgerService::MAX_RECOVERY_POINTS ) ),
+                        [ 'status' => 400 ]
+                    );
                 }
 
                 if ( '' === $note ) {
                     return new \WP_Error( 'yayloyalty_invalid_note', __( 'Enter a reason for adding these points.', 'yayloyalty' ), [ 'status' => 400 ] );
                 }
-
-                $points = (int) $request['points'];
         }
 
         // actor_id comes from the session, never the request body.
