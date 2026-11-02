@@ -18,6 +18,7 @@ use YayLoyalty\Engine\Storefront\RedeemCard;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\RedemptionRepository;
+use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Utils\SingletonTrait;
 
 defined( 'ABSPATH' ) || exit;
@@ -63,6 +64,7 @@ class YayLoyalty {
             \YayLoyalty\Engine\Storefront\Launcher::register();
         } else {
             \YayLoyalty\Engine\Admin\ReviewPointsNote::register();
+            ( new \YayLoyalty\Engine\Admin\OrderCouponRemoval( $redemption->reversal(), new RedemptionRepository(), new RewardRepository() ) )->register();
         }
     }
 
