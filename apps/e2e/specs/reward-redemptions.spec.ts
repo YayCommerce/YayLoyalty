@@ -1,21 +1,16 @@
-import type { Locator, Page } from '@playwright/test';
-
 import { openOrder, setOrderStatusInAdmin, untilReloaded } from '../support/admin';
 import { test, expect } from '../support/fixtures';
-import { blockDiscounts, blockTotal, card, placedOrderId, pointsDiscountBox, redeemRows, setPoints } from '../support/storefront';
-
-/** A reward's checkbox, named by its row: "$5 off 500 Points …". */
-function rewardBox(page: Page, name: string): Locator {
-  return card(page).getByRole('checkbox', { name: new RegExp(`^${name.replace(/\$/g, '\\$')}`) });
-}
-
-/** Five E2E Widgets: a $100 cart. */
-async function addWidgetsToCart(page: Page): Promise<void> {
-  await page.goto('/product/e2e-widget/');
-  await page.locator('input.qty').fill('5');
-  await page.getByRole('button', { name: 'Add to cart', exact: true }).click();
-  await expect(page.getByText('have been added to your cart')).toBeVisible();
-}
+import {
+  addWidgetsToCart,
+  blockDiscounts,
+  blockTotal,
+  card,
+  placedOrderId,
+  pointsDiscountBox,
+  redeemRows,
+  rewardBox,
+  setPoints,
+} from '../support/storefront';
 
 test.describe('reward redemptions', () => {
   let rewardA = 0;
