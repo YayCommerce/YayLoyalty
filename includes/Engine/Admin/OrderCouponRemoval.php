@@ -5,6 +5,7 @@ use Automattic\WooCommerce\Utilities\OrderUtil;
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Redemption\Reversal;
+use YayLoyalty\Engine\Storefront\Launcher;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Redemption;
 use YayLoyalty\Repositories\RedemptionRepository;
@@ -15,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Lite's order-screen half of the admin-removal restore, for HPOS and legacy storage. Removing a loyalty
- * coupon line whose row still has points to return opens a dialog (assets/admin/order-coupon-removal.js).
+ * coupon line whose row still has points to return opens a dialog (assets/admin/order-coupon-removal.js and .css).
  * "Restore" tags WooCommerce's own `woocommerce_remove_order_coupon` request rather than sending one of
  * ours, so WooCommerce keeps doing the removal (taxes, usage count, totals, its note). Inside that request
  * a one-shot listener restores through Reversal::coupon_removed() when WooCommerce's save deletes the line.
@@ -76,7 +77,11 @@ final class OrderCouponRemoval {
             return;
         }
 
-        wp_enqueue_script( self::HANDLE, YAYLOYALTY_PLUGIN_URL . 'assets/admin/order-coupon-removal.js', [ 'jquery', 'wc-admin-order-meta-boxes' ], YAYLOYALTY_VERSION, true );
+        // The file's mtime in the version, so an edited script or stylesheet reaches the browser without a version bump.
+        $css = 'assets/admin/order-coupon-removal.css';
+        $js  = 'assets/admin/order-coupon-removal.js';
+        wp_enqueue_style( self::HANDLE, YAYLOYALTY_PLUGIN_URL . $css, [], Launcher::asset_version( $css ) );
+        wp_enqueue_script( self::HANDLE, YAYLOYALTY_PLUGIN_URL . $js, [ 'jquery', 'wc-admin-order-meta-boxes' ], Launcher::asset_version( $js ), true );
         wp_add_inline_script(
             self::HANDLE,
             'window.yayloyaltyCouponRemoval = ' . wp_json_encode(

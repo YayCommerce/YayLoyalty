@@ -41,12 +41,22 @@
     var element = document.createElement("dialog");
     element.className = "yayloyalty-coupon-removal";
     element.setAttribute("aria-labelledby", "yayloyalty-coupon-removal-title");
-    element.style.maxWidth = "420px";
     element.innerHTML =
-      '<h2 id="yayloyalty-coupon-removal-title" style="margin-top:0"></h2>' +
+      '<div class="yayloyalty-coupon-removal__header"><h2 id="yayloyalty-coupon-removal-title"></h2></div>' +
+      '<div class="yayloyalty-coupon-removal__body">' +
       '<p class="yayloyalty-coupon-removal__spent"></p>' +
       '<p class="yayloyalty-coupon-removal__unreturned"></p>' +
-      '<p class="yayloyalty-coupon-removal__actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:0"></p>';
+      "</div>" +
+      '<div class="yayloyalty-coupon-removal__footer">' +
+      '<span class="yayloyalty-coupon-removal__dismiss"></span>' +
+      '<span class="yayloyalty-coupon-removal__choices"></span>' +
+      "</div>";
+    // A click on the backdrop lands on the dialog element itself: treat it as Cancel.
+    element.addEventListener("click", function (event) {
+      if (event.target === element) {
+        element.close();
+      }
+    });
     document.body.appendChild(element);
     return element;
   }
@@ -75,8 +85,8 @@
     var restore = button("button button-primary", format(i18n.restore, coupon.remaining));
     var keep = button("button", i18n.keep);
     var cancel = button("button", i18n.cancel);
-    var actions = dialog.querySelector(".yayloyalty-coupon-removal__actions");
-    actions.replaceChildren(restore, keep, cancel);
+    dialog.querySelector(".yayloyalty-coupon-removal__dismiss").replaceChildren(cancel);
+    dialog.querySelector(".yayloyalty-coupon-removal__choices").replaceChildren(keep, restore);
 
     restore.addEventListener("click", function () {
       dialog.close();
