@@ -17,6 +17,7 @@ use YayLoyalty\Engine\Redemption\SessionIntent;
 use YayLoyalty\Engine\Storefront\RedeemCard;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Utils\SingletonTrait;
 
 defined( 'ABSPATH' ) || exit;
@@ -97,7 +98,7 @@ class YayLoyalty {
      * Not behind is_admin(): a Store API request is not an admin request, and the coupon provider and the card answer nothing without a cart.
      */
     private function register_redemption( RedemptionService $service, SessionIntent $intent ): void {
-        ( new CouponProvider( $service, $intent ) )->register();
+        ( new CouponProvider( $service, $intent, new RedemptionRepository() ) )->register();
 
         $card = new RedeemCard( $service, $intent, new CustomerRepository() );
         $card->register();
