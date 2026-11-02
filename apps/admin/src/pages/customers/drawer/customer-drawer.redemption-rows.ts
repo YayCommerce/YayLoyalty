@@ -4,6 +4,7 @@ import type { RedemptionEntry } from '@/lib/schema/redemption.schema';
 import {
   REDEMPTION_STATUS_APPLIED,
   REDEMPTION_STATUS_CANCELLED,
+  REDEMPTION_STATUS_REMOVED,
   REDEMPTION_STATUS_REFUNDED,
 } from './customer-drawer.copy';
 
@@ -36,5 +37,7 @@ function statusLabel(status: RedemptionEntry['status']): string {
       return REDEMPTION_STATUS_REFUNDED();
     case 'cancelled':
       return REDEMPTION_STATUS_CANCELLED();
+    case 'removed':
+      return REDEMPTION_STATUS_REMOVED();
   }
 }

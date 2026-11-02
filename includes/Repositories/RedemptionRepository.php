@@ -10,8 +10,8 @@ defined( 'ABSPATH' ) || exit;
 /**
  * yayloyalty_redemptions. Only Engine\Redemption\CommitWriter inserts rows,
  * under the customer's row lock; Engine\Redemption\Reversal moves only `status` and `restored_points`.
- * The commit's duplicate check, the customer drawer and the rewards
- * list's claim summary read them. The table is Schema\RedemptionsTable.
+ * The commit's duplicate check, the customer drawer, the rewards list's claim summary,
+ * the loyalty-code guard on orders and the order screen's remove dialog read them. The table is Schema\RedemptionsTable.
  */
 final class RedemptionRepository extends AbstractRepository {
 
@@ -72,6 +72,22 @@ final class RedemptionRepository extends AbstractRepository {
         );
 
         return array_map( [ Redemption::class, 'from_row' ], is_array( $rows ) ? $rows : [] );
+    }
+
+    /**
+     * The order's row for the coupon line $code, in any status, or null. Codes compare under
+     * wc_format_coupon_code(), as WooCommerce matches coupon lines.
+     */
+    public function find_for_order_code( int $order_id, string $code ): ?Redemption {
+        $code = wc_format_coupon_code( $code );
+
+        foreach ( $this->for_order( $order_id ) as $row ) {
+            if ( null !== $row->get_coupon_code() && wc_format_coupon_code( $row->get_coupon_code() ) === $code ) {
+                return $row;
+            }
+        }
+
+        return null;
     }
 
     /**

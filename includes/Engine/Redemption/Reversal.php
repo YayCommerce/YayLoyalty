@@ -26,6 +26,9 @@ defined( 'ABSPATH' ) || exit;
  * Cancel restores twice and un-cancel debits once, because the key has no
  * cycle part: a second un-cancel answers REASON_KEY_SPENT. Catalog reward
  * rows follow the same rules as the flexible discount, keyed per reward.
+ * An admin removing a line with Restore on the order screen returns what is
+ * left of that one row under `[ redemption, id ]` and makes it `removed`,
+ * a status no other event lists, so nothing moves it again.
  * Never writes an ADJUST row: LedgerRepository::sum_refunded_for() reads
  * one that references a refund as an earn give-back.
  */
@@ -154,6 +157,40 @@ final class Reversal {
     }
 
     /**
+     * An admin removed the coupon line $code with Restore: returns whatever of its row is not restored yet; the row becomes
+     * `removed`. Acts only on an `applied` row, under the same locks as settle_each().
+     *
+     * @return Outcome|null Null when the order has no row for $code.
+     */
+    public function coupon_removed( \WC_Order $order, string $code ): ?Outcome {
+        $stale = $this->redemptions->find_for_order_code( (int) $order->get_id(), $code );
+
+        if ( null === $stale ) {
+            return null;
+        }
+
+        return Transaction::run(
+            function () use ( $stale ): Outcome {
+                $this->customers->ensure_and_lock( $stale->get_user_id() );
+
+                $row = $this->redemptions->lock( (int) $stale->get_id() );
+
+                if ( null === $row || Redemption::STATUS_APPLIED !== $row->get_status() ) {
+                    return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
+                }
+
+                if ( $row->get_restored_points() >= $row->get_points() ) {
+                    $this->redemptions->record_restore( (int) $row->get_id(), $row->get_points(), Redemption::STATUS_REMOVED );
+
+                    return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
+                }
+
+                return $this->restore( $row, $row->get_points(), Redemption::STATUS_REMOVED, [ [ ReferenceType::REDEMPTION, (int) $row->get_id() ] ], 'Coupon removed from order' );
+            }
+        );
+    }
+
+    /**
      * Runs $event once per redemption row of the order, each in its own transaction holding the
      * customer lock and then the row lock. The lock is on the row's user, not the order's customer:
      * an admin may have reassigned the order. A row that is gone, or whose locked status the event does not
@@ -189,8 +226,9 @@ final class Reversal {
      * Raises the row's restored points to $target with one REFUND_REDEEM row, under the first key not in the ledger yet.
      *
      * @param array<int, array{0: string, 1: int}> $keys [ reference type, reference id ] pairs, in the order to try.
+     * @param string|null                          $note The ledger row's note.
      */
-    private function restore( Redemption $row, int $target, string $status, array $keys ): Outcome {
+    private function restore( Redemption $row, int $target, string $status, array $keys, ?string $note = null ): Outcome {
         $points = $target - $row->get_restored_points();
 
         if ( $points <= 0 ) {
@@ -198,7 +236,7 @@ final class Reversal {
         }
 
         foreach ( $keys as list( $reference_type, $reference_id ) ) {
-            $outcome = $this->ledger->refund_redeem( $this->draft( $row, LedgerType::REFUND_REDEEM, $points, $reference_type, $reference_id, null ) );
+            $outcome = $this->ledger->refund_redeem( $this->draft( $row, LedgerType::REFUND_REDEEM, $points, $reference_type, $reference_id, $note ) );
 
             if ( Outcome::AWARDED === $outcome->get_status() ) {
                 $this->redemptions->record_restore( (int) $row->get_id(), $target, $status );
