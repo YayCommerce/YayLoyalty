@@ -21,6 +21,9 @@ final class IdempotencyKey {
     /** Matches ledger.idempotency_key varchar(96): the longest, a reward qualifier with three BIGINT ids, is 94. */
     public const MAX_LENGTH = 96;
 
+    /** The qualifier of an order's one manual recovery earn (LedgerService::recover_order()) and its clawbacks. Not a CampaignTrigger. */
+    public const RECOVERY = 'recovery';
+
     private const SEPARATOR = ':';
 
     /**
@@ -28,7 +31,7 @@ final class IdempotencyKey {
      * @param int    $user_id        Whose balance moves.
      * @param string $reference_type A ReferenceType constant.
      * @param int    $reference_id   The id in that namespace (order id, comment id, user id, year, redemption id).
-     * @param string $qualifier      A CampaignTrigger for earn/refund_earn rows; a RewardType, or `reward_{id}` for one reward's row, for redeem/refund_redeem rows; and the UTC `Ymd` run day for expire rows. Any build's, so a Pro value still composes after a downgrade.
+     * @param string $qualifier      A CampaignTrigger, or RECOVERY, for earn/refund_earn rows (RECOVERY is unknown to any other type); a RewardType, or `reward_{id}` for one reward's row, for redeem/refund_redeem rows; and the UTC `Ymd` run day for expire rows. Any build's, so a Pro value still composes after a downgrade.
      * @throws \InvalidArgumentException When any part is outside its vocabulary or an id is not positive.
      */
     public static function compose( string $type, int $user_id, string $reference_type, int $reference_id, string $qualifier ): string {
@@ -52,7 +55,7 @@ final class IdempotencyKey {
             if ( 1 !== preg_match( '/^\d{8}$/', $qualifier ) ) {
                 throw new \InvalidArgumentException( esc_html( sprintf( 'YayLoyalty: an expire key needs a Ymd day, not "%s".', $qualifier ) ) );
             }
-        } elseif ( $is_redeem ? ! self::is_redeem_qualifier( $qualifier ) : ! CampaignTrigger::is_known( $qualifier ) ) {
+        } elseif ( $is_redeem ? ! self::is_redeem_qualifier( $qualifier ) : ! self::is_earn_qualifier( $type, $qualifier ) ) {
             throw new \InvalidArgumentException( esc_html( sprintf( 'YayLoyalty: unknown %s "%s".', $is_redeem ? 'reward type' : 'campaign trigger', $qualifier ) ) );
         }
 
@@ -63,6 +66,15 @@ final class IdempotencyKey {
         }
 
         return $key;
+    }
+
+    /** A CampaignTrigger, or RECOVERY on an earn or refund_earn row. */
+    private static function is_earn_qualifier( string $type, string $qualifier ): bool {
+        if ( self::RECOVERY === $qualifier ) {
+            return in_array( $type, [ LedgerType::EARN, LedgerType::REFUND_EARN ], true );
+        }
+
+        return CampaignTrigger::is_known( $qualifier );
     }
 
     /** A RewardType, or `reward_` followed by a positive reward id. */

@@ -2,6 +2,7 @@
 namespace YayLoyalty\Repositories;
 
 use YayLoyalty\Database\QueryException;
+use YayLoyalty\Engine\Earning\IdempotencyKey;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Models\LedgerEntry;
@@ -32,9 +33,59 @@ class LedgerRepository extends AbstractRepository {
      * AUTO_INCREMENT value on a duplicate the caller can already see under
      * its row lock: the unique index is the guarantee. After a collision it
      * names the row that won, which Outcome::duplicate carries.
+     *
+     * @param bool $is_locking Read the latest committed row and share-lock it, for a check that no index backs
+     *                         (LedgerService's recovered-order guard looks up a key other than the one it writes).
      */
-    public function find_by_idempotency_key( string $key ): ?LedgerEntry {
-        return $this->select_entries( '`idempotency_key` = %s', [ $key ], 1 )[0] ?? null;
+    public function find_by_idempotency_key( string $key, bool $is_locking = false ): ?LedgerEntry {
+        return $this->select_entries( '`idempotency_key` = %s', [ $key ], 1, false, $is_locking )[0] ?? null;
+    }
+
+    /**
+     * What one order earned, from its rows: `earned` sums its EARN rows, and `net` also nets out their
+     * clawbacks and the restores of deleted refunds (ADJUST rows referencing a refund). `net > 0` means
+     * the order still has live points.
+     *
+     * @param bool $is_locking Read the latest committed rows and share-lock them, for a check under the customer lock.
+     * @return array{earned: int, net: int}
+     */
+    public function order_points_summary( int $order_id, bool $is_locking = false ): array {
+        global $wpdb;
+
+        $lock_sql = $is_locking ? ' LOCK IN SHARE MODE' : '';
+
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $lock_sql is a literal from this method.
+        $row = $wpdb->get_row( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT COALESCE(SUM(CASE WHEN type = %s THEN points ELSE 0 END), 0) AS earned,
+                        COALESCE(SUM(CASE WHEN type IN (%s, %s) OR (type = %s AND reference_type = %s) THEN points ELSE 0 END), 0) AS net
+                 FROM `' . esc_sql( $this->table() ) . "` WHERE order_id = %d{$lock_sql}",
+                LedgerType::EARN,
+                LedgerType::EARN,
+                LedgerType::REFUND_EARN,
+                LedgerType::ADJUST,
+                ReferenceType::REFUND,
+                $order_id
+            ),
+            ARRAY_A
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+        return [
+            'earned' => is_array( $row ) ? (int) $row['earned'] : 0,
+            'net'    => is_array( $row ) ? (int) $row['net'] : 0,
+        ];
+    }
+
+    /** The order's manual recovery EARN row (LedgerService::recover_order()), or null. */
+    public function find_recovery_for_order( int $order_id ): ?LedgerEntry {
+        global $wpdb;
+
+        return $this->select_entries(
+            'type = %s AND order_id = %d AND idempotency_key LIKE %s',
+            [ LedgerType::EARN, $order_id, '%' . $wpdb->esc_like( ':' . IdempotencyKey::RECOVERY ) ],
+            1
+        )[0] ?? null;
     }
 
     /**
@@ -471,19 +522,21 @@ class LedgerRepository extends AbstractRepository {
     /**
      * Rows a prepared WHERE fragment matches, oldest first.
      *
-     * @param string $where Placeholders only. Every value arrives in $values.
-     * @param int    $limit 0 for no limit.
+     * @param string $where      Placeholders only. Every value arrives in $values.
+     * @param int    $limit      0 for no limit.
+     * @param bool   $is_locking Read the latest committed rows and share-lock them, for callers inside a transaction.
      * @return LedgerEntry[]
      */
-    private function select_entries( string $where, array $values, int $limit = 0, bool $is_newest_first = false ): array {
+    private function select_entries( string $where, array $values, int $limit = 0, bool $is_newest_first = false, bool $is_locking = false ): array {
         global $wpdb;
 
         $limit_sql = $limit > 0 ? ' LIMIT ' . $limit : '';
         $order_sql = $is_newest_first ? 'DESC' : 'ASC';
+        $lock_sql  = $is_locking ? ' LOCK IN SHARE MODE' : '';
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $where carries placeholders only; every value is bound here.
         $rows = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
-            $wpdb->prepare( 'SELECT * FROM `' . esc_sql( $this->table() ) . "` WHERE {$where} ORDER BY id {$order_sql}{$limit_sql}", $values ),
+            $wpdb->prepare( 'SELECT * FROM `' . esc_sql( $this->table() ) . "` WHERE {$where} ORDER BY id {$order_sql}{$limit_sql}{$lock_sql}", $values ),
             ARRAY_A
         );
         // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
