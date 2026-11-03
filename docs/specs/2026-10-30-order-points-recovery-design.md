@@ -2,77 +2,72 @@
 
 **Status:** accepted 2026-10-30
 **Related:** None
-**Amended:** 2026-10-30, with the user: case 4 (the award crashed, but the order meta says the points were earned). The ledger is the truth, the order cache is dropped before reading, `_yayloyalty_points_earned` is restated rather than added to, and `customers.pending_points` is recomputed from order meta.
-**Amended:** 2026-11-03, with the user: the order screen recovers only missing points whose figure is known (`missing_known`), with one click and no reason. There is no Manual entry flow: every other manual grant, including `missing_unknown`, goes to SPA Adjust points through a link in the box that opens the customer's drawer with the Adjust points dialog open (`#/customers/{id}?adjust=1`). An order earns points only through customer actions; the admin only repairs a missing award.
+**Amended:** 2026-10-30, with the user: case 4 (the award crashed, but the order meta says the points were earned). The ledger is the truth and the order cache is dropped before reading.
+**Amended:** 2026-11-03, with the user: one click, no reason field and no Manual entry flow. Every other manual grant goes to SPA Adjust points through a link in the box (`#/customers/{id}?adjust=1`). An order earns points only through customer actions; the admin only repairs an award that never completed.
+**Amended:** 2026-11-03, with the user: **retry the award.** The button re-runs the standard purchase award instead of writing a separate recovery row. "Missing" is decided by the order alone. A `processing` order and an order reversed then restored are not missing. The first version (a `…:recovery` EARN row) shipped on this branch and was replaced; see Alternatives.
 
 ## Goal
 
-On a paid WooCommerce order whose points never reached the customer's balance, and where the plugin knows how many points the order should have earned, a shop manager restores them from the order screen with one click. Any other manual grant goes through SPA Adjust points, which the box links to. The points are stored as that order's earning, so a later refund or cancellation claws them back like any purchase points.
+On a `completed` WooCommerce order whose award never completed, a shop manager re-runs that award from the order screen with one click. The points land as the order's normal purchase earning, so every later refund, cancellation and completion treats them like any purchase points. Any other manual grant goes through SPA Adjust points, which the box links to.
 
 ## Context
 
-- Only `completed` awards. `OrderListener::route()` (`includes/Engine/Earning/Listeners/OrderListener.php:104-127`) stages a pending figure on `pending`/`on-hold` and does nothing on `processing`. Every handler runs inside `ListenerGuard`, which logs an exception and swallows it.
-- The ledger has no row status. Pending points are only order meta, `_yayloyalty_points_pending` plus the release flag `_yayloyalty_points_released`, and the cached `customers.pending_points`. `PendingPoints` (`includes/Engine/Earning/PendingPoints.php`) is the only code that writes them. `release()` sets the flag and never deletes the figure.
-- A purchase earn row carries the key `earn:{user}:order:{order_id}:purchase` (`IdempotencyKey::compose()`), which sits under a UNIQUE index. Once the order is reversed, that key is used up, and `OrderListener::note()` tells the merchant to "adjust manually".
-- Reversals find earn rows with `LedgerRepository::earn_rows_for_order()` and key their clawbacks on the earn row's qualifier (`LedgerService::reversal_key()`).
-- Manual adjustments (`LedgerService::adjust()`, `POST yayloyalty/v1/customers/{id}/adjust`) write unkeyed ADJUST rows with no `order_id`.
-- The plugin adds no metabox, no order-list column and no admin script outside the SPA. On the order screen it writes only order notes.
-- Ledger single-writer record: `docs/decisions/2026-10-01-ledger-service-sole-writer.md`. A new kind of movement is a new `LedgerService` method.
+- Only `completed` awards. `OrderListener::route()` stages a pending figure on `pending`/`on-hold` and does nothing on `processing`. Every handler runs inside `ListenerGuard`, which logs an exception and swallows it.
+- The award (`OrderListener::on_awardable()`) awards each trigger from `yayloyalty_order_award_triggers` through `EarningService::award()`, notes each outcome on the order, then releases the staged figure, whatever the outcome. So on a `completed` order an unreleased staged figure means the award never finished.
+- Pending points are order meta, `_yayloyalty_points_pending` plus the release flag `_yayloyalty_points_released_at`, and the cached `customers.pending_points`. `PendingPoints` is the only code that writes them.
+- A purchase earn row carries the key `earn:{user}:order:{order_id}:purchase`, under a UNIQUE index. Once the order is reversed, that key is used up, and the order note tells the merchant to "adjust manually".
+- `EarningService::award()` evaluates campaigns live at the order's date (`ContextFactory::from_order()`), with each campaign's current status and configuration.
 
-### Four ways the points go missing
+### When an order is missing points
 
-| Case | Order meta and ledger left behind |
+An order is **missing** when it is `completed`, has a customer, has no EARN row for the order (any customer), is not fully refunded, and shows one of these signals:
+
+| Signal | What the order holds | Causes |
+|---|---|---|
+| A. Staged, never released | `_yayloyalty_points_pending = N`, no release flag | The award threw and `ListenerGuard` swallowed it; the plugin was inactive when the order completed; the status was changed without `woocommerce_order_status_changed` (import, direct SQL); the request died mid-award. |
+| C. Earned on paper only | `_yayloyalty_points_earned = N`, no EARN row | A persistent object cache (Redis, Memcached) kept order meta that the database rolled back; ledger rows deleted by hand. |
+
+Not missing:
+
+| Situation | Why |
 |---|---|
-| 1. Stuck pending | ~~Paid order left at `processing`.~~ Not a missing case since 2026-11-03: only `completed` awards, so a `processing` order with a staged figure is waiting (`awaiting_completion`), and completing it awards the points. |
-| 2. Award threw | Order is `completed`, the award failed and `ListenerGuard` swallowed it. The staged figure is unreleased and there is no earn row. |
-| 3. Reversed then restored | Order was cancelled or trashed, then restored to a paid status. Its earn rows are fully clawed back and the purchase key is used up. |
-| 4. Earned on paper only | The server failed while completing. `_yayloyalty_points_earned = N` (and possibly `_yayloyalty_points_released`) is visible on the order, but there is no EARN row, so the balance lacks N and `customers.pending_points` may still hold N. Causes: `Transaction` rolls back the database but not the object cache, so a persistent object cache (Redis, Memcached) can keep the rolled-back order meta; or the tables are not transactional. |
+| Paid, not `completed` (`processing`, `on-hold`) | Only `completed` awards: the points are waiting (`awaiting_completion`). |
+| Earned, then reversed (cancel, trash, refunded status), then restored | The reversal is final by design; the order note already says "adjust manually". The box links to Adjust points. |
+| Award skipped on purpose (no campaign, limit, excluded customer) | The figure was released and nothing was earned. |
+| Guest order assigned a customer after completion; order completed before the plugin was installed | Nothing was staged for that customer. |
+| Fully refunded | Nothing is owed. |
+
+Known false positive: an order duplicated or migrated by a tool that copies all meta carries the original's signals. Out of scope.
 
 ## Scope
 
 **In:**
-- A "Loyalty points" metabox on the order edit screen, for both HPOS and legacy storage, with a one-click Confirm flow, and a link to SPA Adjust points for any other manual grant.
-- One SPA change: `#/customers/{id}?adjust=1` opens the customer's drawer with the Adjust points dialog open.
-- A once-per-order recovery EARN row written by a new `LedgerService::recover_order()`.
-- A guard so the normal purchase award skips an order that already has a recovery row.
-- An order note on recovery.
-- Case 4: the ledger is the truth. Order meta that claims earned points without an EARN row counts as missing. Recovery drops the order's cached copy first, restates `_yayloyalty_points_earned`, and recomputes `customers.pending_points` from order meta.
-- A "Loyalty points" column on the orders list, for both HPOS and legacy storage.
-- Guest orders: the box asks the admin to assign a customer through WooCommerce's own Customer field first.
+- A "Loyalty points" metabox on the order edit screen (HPOS and legacy) with a one-click retry for a missing order, and a link to SPA Adjust points otherwise.
+- SPA: `#/customers/{id}?adjust=1[&points=N]` opens the customer's drawer with the Adjust points dialog open, the amount prefilled with N.
+- A "Loyalty points" column on the orders list (HPOS and legacy).
+- A guard so an order reassigned after it earned is not paid again to its new customer, and `pending_points` that follow a reassigned order's staged figure.
 - PHPUnit integration tests (below).
 
 **Out:**
-- Customer email on recovery.
-- A "Missing points" filter on the orders list.
-- Bulk recovery.
-- A customer picker in the box, or matching by billing email.
-- Recomputing points with the earning engine.
-- Editing the prefilled figure in Confirm mode.
+- Customer email on retry beyond what the award itself sends.
+- A "Missing points" filter, bulk retry, a customer picker for guests.
 - Deducting points from the order screen.
-- A second recovery on the same order. After that, the admin uses SPA Adjust points.
-- Any other SPA (React) change.
-- A Manual entry flow (points and reason typed on the order screen), and a reason on Confirm.
+- Detecting orders duplicated with copied meta.
 - Pro-specific behaviour.
 
 ## Acceptance criteria
 
-1. Given a `completed` order with a customer, no live earn row and `_yayloyalty_points_pending = 120` unreleased, when an admin with `yayloyalty_manage_points` opens the order, then the box says the order should have earned **120** points and shows a **Give 120 points** button. There is no reason field.
-2. When the admin clicks it, then in one transaction:
-   - one EARN row is written with `points=120`, `source=order`, `reference_type=order`, `reference_id=order_id`, `order_id` set, `campaign_id=NULL`, `actor_id=admin`, `note = "Recovered missing order points"` and `idempotency_key = earn:{user}:order:{order_id}:recovery`;
-   - the customer's `balance` and `lifetime_earned` rise by 120;
-   - `customers.pending_points` is recomputed from order meta, so it falls by 120;
-   - `_yayloyalty_points_released` is set and `_yayloyalty_points_earned` is set to 120 (restated, never added to).
-
-   After commit, the order note "120 points added manually by {admin display name}: Recovered missing order points." is added.
-3. Given an order whose earn rows are all fully clawed back (reversed then restored) and that is now `completed`, the Confirm figure is what the whole-order reversal (cancel, trash, the refunded status: clawbacks referencing the order) took back, when no unreleased staged figure exists. Clawbacks of WooCommerce refunds stay taken: an order that earned 40, had a 30-point line refunded and was then cancelled and restored offers 10. A fully refunded order (it has refunds that cover its total) offers no figure (`missing_unknown`). `_yayloyalty_points_earned` is read only when the order has no EARN row. Amended 2026-11-03.
-3a. Case 4: given a paid order with a customer, no EARN row, `_yayloyalty_points_earned = 40`, `_yayloyalty_points_released` set and `customers.pending_points = 40`, the state is `missing_known` with figure 40, and the column shows **Missing**. Recovery then writes one 40-point EARN row, leaves `_yayloyalty_points_earned` at 40 (not 80), and sets `customers.pending_points` to 0. The box and the REST route read the order after dropping its cached copy.
-4. Given a paid order with a customer, no live earn and no figure above 0 (`missing_unknown`), the box shows no button, only the link "Adjust points →" to `admin.php?page=yayloyalty#/customers/{customer_id}?adjust=1`. The `earned` and `recovered` boxes show the same link under their line. A POST for such an order returns 409 `yayloyalty_not_eligible` and writes nothing. The POST takes no body: no request field sets the points or the note. Opening the link shows the customer's drawer with the Adjust points dialog open, once: the `adjust` parameter is dropped from the URL, and the dialog does not open without `yayloyalty_manage_points` or for a deleted account.
-5. A second POST for an order that already has a recovery row writes nothing. It returns 409 `yayloyalty_already_recovered`, and the box then shows "N points added manually by {admin} on {date}: {note}." (older rows may carry a reason typed before 2026-11-03)
-6. A POST for an order with a live earn row (any EARN row whose clawbacks are below its points) returns 409 `yayloyalty_order_has_points` and writes nothing. The check runs under the customer lock.
-7. Given a recovery row exists, paid to any customer (the order may have been reassigned since), when the order later reaches `completed` or `completed` fires again, then no purchase EARN row is written. The award is skipped with reason `recovered_manually`, and the order note says "No points earned: points were recovered manually."
-8. Given a recovery row exists, when the order is cancelled, then a `refund_earn` row of −N is written with key `refund_earn:{user}:order:{order_id}:recovery`. A partial refund claws back by the share of every product line, and no "campaign is gone" warning is logged for recovery rows.
-9. The box shows "Points are added when the order is completed." for an unpaid order, "N points will be added when the order is completed." (or, with no staged figure, the line without N) for a paid order that is not `completed` and has no live earn, and "Assign a customer in the Customer field and update the order to add points." for a guest order. Neither shows a button or the Adjust points link. The box is not registered for users without `yayloyalty_manage_points`, and the REST route returns 403 for them.
-10. The orders list "Loyalty points" column shows the net earned points of an order with a live earn. It shows a **Missing** badge when the order is `completed`, has a customer, has no live earn, and either has an unreleased staged figure, had all its earn rows reversed, or has `_yayloyalty_points_earned > 0` with no EARN row. Otherwise it shows "–". An order whose award was skipped on purpose shows "–".
+1. Given a `completed` order with a customer, no EARN row and `_yayloyalty_points_pending = 120` unreleased, when an admin with `yayloyalty_manage_points` opens the order, then the box says the order should have earned N points, where N is what the purchase award gives now, and shows a **Give N points** button. When N differs from 120, the box also says "At checkout it was expected to earn 120 points."
+2. When the admin clicks it, the order's award runs as on completion: one purchase EARN row keyed `earn:{user}:order:{order_id}:purchase` with its campaign, `pending_points` released, `_yayloyalty_points_earned = N`, the usual award note, and the order note "Points award retried by {admin display name}."
+3. When the award gives 0 now (the campaign was paused, archived or changed), the box shows no button. It says "No campaign gives this order points any more. At checkout it was expected to earn 120 points." and links to Adjust points with `points=120`.
+3a. Signal C: given a `completed` order with a customer, no EARN row, `_yayloyalty_points_earned = 40`, the release flag set and `customers.pending_points = 40`, the order is missing. The retry writes one 40-point row, leaves `_yayloyalty_points_earned` at 40 (not 80) and sets `pending_points` to 0. The box and the REST route read the order after dropping its cached copy.
+4. An order that is paid, has a customer and is neither earned nor missing shows only the link "Adjust points →" to `admin.php?page=yayloyalty#/customers/{customer_id}?adjust=1`; an earned order shows "Earned N points." and the same link. A POST for it returns 409 `yayloyalty_not_eligible` (409 `yayloyalty_order_has_points` when earned) and writes nothing. The POST takes no body. Opening the link shows the drawer with the Adjust points dialog open once; the parameters are dropped from the URL, and the dialog does not open without `yayloyalty_manage_points` or for a deleted account.
+5. A second POST, or a POST racing a completion, writes nothing and returns 409 `yayloyalty_order_has_points`.
+6. A POST whose award gives nothing returns 409 `yayloyalty_not_awarded` with the reason and writes nothing.
+7. An order that earned 40, was cancelled and was set back to `completed` is not missing: the box shows the Adjust points link only and the column "–".
+8. An order reassigned to another customer after it earned, then completed again, writes nothing for the new customer and notes "No points earned: this order's points already went to another customer." Reassigning an order with an unreleased staged figure moves that figure's `pending_points` from the old customer to the new one.
+9. The box shows "Points are added when the order is completed." for an unpaid order, "N points will be added when the order is completed." (or the line without N) for a paid order that is not `completed`, and "Assign a customer in the Customer field and update the order to add points." for a guest order, with no button and no link. The box is not registered for users without `yayloyalty_manage_points`, and the REST route returns 403 for them.
+10. The orders list column shows the net earned points of an earned order, a **Missing** badge for a missing order, and "–" otherwise.
 11. End-to-end verification, on the local site:
     1. Add `add_filter( 'yayloyalty_award_points', function () { throw new \RuntimeException( 'test' ); } );` in a mu-plugin.
     2. Place an order as a registered customer, then complete it. Expect no points.
@@ -81,52 +76,47 @@ On a paid WooCommerce order whose points never reached the customer's balance, a
     5. Set the order to Processing, then back to Completed. The balance does not change.
     6. Cancel the order. The balance falls by N.
 
-    In addition, `composer test:integration` passes, including `tests/integration/Earning/OrderPointsRecoveryTest.php`. Per docs/known-issues.md, confirm the test count in the output, because exit 0 alone does not prove the suite ran.
+    In addition, `composer test:integration` passes, including `tests/integration/Earning/OrderPointsRetryTest.php`. Per docs/known-issues.md, confirm the test count in the output, because exit 0 alone does not prove the suite ran.
 
 ## Constraints
 
 - Product PHP runs on PHP 7.4 (CLAUDE.md hard rule 4 and `.claude/rules/php-standards.md`).
-- Only `LedgerService` writes ledger rows and balances. `OrderPointsRecovery` receives the `LedgerService` built in `Engine\RestAPI::controllers()`, which is an existing listed construction site. No new construction site.
+- Only `LedgerService` writes ledger rows and balances. The retry uses the `EarningService` from `EarningService::build()`, an existing construction site; no new `LedgerService` construction site.
 - Lite feature (core `includes/`). Nothing under `includes/Pro/`.
-- Orders are read and written only through the WooCommerce CRUD API. Order meta is written only through `PendingPoints`, which saves meta only and never does a full save.
-- The REST route uses `exec_write()` and `requires( Capabilities::MANAGE_POINTS )`. The actor comes from `get_current_user_id()`, never from the request.
-- Points are integers from 1 to 1,000,000, taken from the state's figure, never from the request. The note is always the default "Recovered missing order points".
+- Orders are read and written only through the WooCommerce CRUD API. Order meta is written only through `PendingPoints`, which saves meta only.
+- The REST route uses `exec_write()` and `requires( Capabilities::MANAGE_POINTS )`. The actor comes from `get_current_user_id()`. The POST takes no body.
 - Every string uses the `yayloyalty` text domain. Hooks and globals use the `yayloyalty_` prefix.
-- Order notes and hooks that call out are written from `Transaction::after_commit()`.
 - The script is plain JS with no build step, enqueued only on the order edit screen and depending on `wp-api-fetch`.
 
 ## Approach
 
-**Chosen:** a new ledger method, a recovery service and an order-screen metabox.
+**Chosen:** retry the order's own award.
 
 **Architecture:**
-- The metabox and the list column are rendered in PHP and read state from one read-only `OrderPointsState` resolver.
-- The metabox's button posts to a new REST route. `OrderPointsRecovery` runs `LedgerService::recover_order()` and the `PendingPoints` release and projection in one transaction.
-- The double-award guard sits inside `LedgerService`, under the customer lock, so it holds against a concurrent completion.
+- The award body moves from `OrderListener::on_awardable()` into `OrderAward::run()`. Completion and the retry both call it, so the retry writes exactly what completion writes and every guard, reversal and refund path applies unchanged.
+- The metabox and the list column read one read-only `OrderPointsState` resolver. The box previews what the award gives now with `EarningService::preview()`.
+- The double-pay guard for reassigned orders sits inside `LedgerService::write_keyed()`, under the customer lock.
 
 **Components:**
 
 | Path | Responsibility |
 |---|---|
-| `includes/Services/LedgerService.php` | New `recover_order( int $user_id, int $order_id, int $points, string $note, int $actor_id ): Outcome`. Under the lock it returns `skipped( REASON_ORDER_HAS_POINTS = 'order_has_points' )` when a live earn exists. It writes the keyed EARN row through `write_keyed()` and returns `duplicate` when the key exists. `earn()` gains the guard: for a draft with `order_id` and qualifier `purchase`, a recovery row for the order, whatever its user, gives `skipped( REASON_RECOVERED = 'recovered_manually' )`. |
-| `includes/Engine/Earning/IdempotencyKey.php` | Adds `RECOVERY = 'recovery'`, valid only for `earn`/`refund_earn`. Not added to `CampaignTrigger`. |
-| `includes/Engine/Earning/OrderPointsState.php` | New, read only. Given a `WC_Order`, returns state `not_paid`, `guest`, `earned`, `recovered`, `awaiting_completion` (paid, not `completed`, no live earn; amended 2026-11-03), `missing_known` or `missing_unknown`, plus the figure, net earned and recovery row. Uses `LedgerRepository`, `PendingPoints::unreleased()` and `_yayloyalty_points_earned`. The box and the REST route call `PendingPoints::forget_cached()` before resolving; the column does not. |
-| `includes/Engine/Earning/OrderPointsRecovery.php` | New. Calls `PendingPoints::forget_cached()` and re-reads the order. In one `Transaction::run` it runs `recover_order()`, `PendingPoints::release()`, `PendingPoints::restate_earned()` and `PendingPoints::resync_customer()`, then adds the order note after commit. |
-| `includes/Engine/Earning/PendingPoints.php` | New `forget_cached( int $order_id ): void`, which drops WooCommerce's cached copy of the order and its meta: `clean_post_cache()`, plus `OrderCache::remove()` when `OrderUtil::orders_cache_usage_is_enabled()`. New `restate_earned( int $order_id, LedgerEntry $entry ): void`, which sets `_yayloyalty_points_earned` to the entry's points and `_yayloyalty_campaign_id` as `mark_awarded()` does. New `resync_customer( int $user_id ): int`, which sets `customers.pending_points` to the sum of `_yayloyalty_points_pending` over that customer's orders without `_yayloyalty_points_released`, and returns it. |
-| `includes/Repositories/CustomerRepository.php` | New `set_pending_points( int $user_id, int $points ): void` (floored at 0), called only by `PendingPoints::resync_customer()`. |
-| `includes/Controllers/OrderPointsRestController.php` | New. `POST yayloyalty/v1/orders/(?P<id>\d+)/points` (no GET: the box renders in PHP). The POST takes no body and recovers only `missing_known`, with the state's figure and the default note. Errors: 404 `yayloyalty_order_not_found`, 409 `yayloyalty_not_eligible` (not paid, guest or `missing_unknown`), 409 `yayloyalty_order_has_points`, 409 `yayloyalty_already_recovered`. Registered in `Engine\RestAPI::controllers()`. |
-| `includes/Engine/Admin/OrderPointsMetabox.php` | New. `add_meta_boxes` registers id `yayloyalty-order-points` on `wc_get_page_screen_id( 'shop-order' )`, context `side`, only when the user has `yayloyalty_manage_points`. Enqueues the script on that screen. |
-| `includes/Engine/Admin/OrderPointsColumn.php` | New. Adds the column `yayloyalty_points` through the four list hooks (below). |
-| `assets/admin/order-points.js` | New. Posts through `wp.apiFetch`, shows the error inline, and reloads on success. |
-| `apps/admin/src/pages/customers/drawer/CustomerDrawerActions.tsx` | Opens the Adjust points dialog once when the URL has `adjust=1`, then drops the parameter. |
-| `includes/Engine/Earning/Listeners/OrderListener.php` | `note()` writes "No points earned: points were recovered manually." for `recovered_manually`. |
-| `includes/Engine/Earning/Reversal.php` | `bases()` skips the "campaign is gone" warning when the row's qualifier is `recovery`. |
-| Composition | The admin classes attach in their `register()`, called once from the existing admin composition root in `includes/YayLoyalty.php`. |
+| `includes/Engine/Earning/OrderAward.php` | New. `run( \WC_Order $order ): Outcome[]`: awards each order trigger, notes each outcome, releases the staged figure. |
+| `includes/Engine/Earning/Listeners/OrderListener.php` | `on_awardable()` calls `OrderAward::run()`. |
+| `includes/Engine/Earning/OrderPointsState.php` | New, read only. States `not_paid`, `guest`, `earned`, `awaiting_completion`, `missing` (figure: the staged figure, else the earned meta) and `no_points`. The box and the REST route call `PendingPoints::forget_cached()` before resolving; the column does not. |
+| `includes/Engine/Earning/OrderPointsRetry.php` | New. Drops the order's cache, clears the earned projection (`PendingPoints::forget_earned()`: the ledger has no EARN row, so it is wrong), runs `OrderAward::run()`, recomputes the customer's `pending_points`, and adds "Points award retried by {admin}." when anything was awarded. |
+| `includes/Engine/Earning/PendingPoints.php` | New `forget_cached()`, `forget_earned()` and `resync_customer()`. |
+| `includes/Engine/Earning/Listeners/OrderCustomerChangeListener.php` | New. Recomputes `pending_points` for the old and new customer when an order with an unreleased staged figure is reassigned. |
+| `includes/Services/LedgerService.php` | `write_keyed()` skips an order earn with `order_has_points` while another customer still holds live points from the order. |
+| `includes/Repositories/LedgerRepository.php` | New `order_points_summary()` (`earned`, `net`) and `net_points_of_others_for_order()`. |
+| `includes/Repositories/CustomerRepository.php` | New `set_pending_points()`, called only by `PendingPoints::resync_customer()`. |
+| `includes/Controllers/OrderPointsRestController.php` | New. `POST yayloyalty/v1/orders/(?P<id>\d+)/points`, no body. Errors: 404 `yayloyalty_order_not_found`, 409 `yayloyalty_order_has_points`, 409 `yayloyalty_not_eligible`, 409 `yayloyalty_not_awarded`. |
+| `includes/Engine/Admin/OrderPointsMetabox.php` | New. Box id `yayloyalty-order-points`, side context, only for `yayloyalty_manage_points`. |
+| `includes/Engine/Admin/OrderPointsColumn.php` | New. Column `yayloyalty_points` through the four list hooks. |
+| `assets/admin/order-points.js` | New. Posts through `wp.apiFetch`, shows the error inline, reloads on success. |
+| `apps/admin/src/pages/customers/drawer/CustomerDrawerActions.tsx`, `…/components/CustomersAdjustPointsDialog.tsx` | `adjust=1` opens Adjust points once; `points=N` prefills the amount. |
 
-**Data and storage:**
-- No new tables, options or migrations.
-- New ledger rows use existing columns. Order meta uses the existing keys `_yayloyalty_points_pending`, `_yayloyalty_points_released` and `_yayloyalty_points_earned`.
-- Nothing extra to remove on uninstall.
+**Data and storage:** no new tables, options, migrations or ledger qualifiers. Order meta uses the existing keys.
 
 **Integration points:**
 
@@ -136,60 +126,44 @@ On a paid WooCommerce order whose points never reached the customer's balance, a
 | Metabox | `add_meta_boxes` |
 | Orders list, legacy | `manage_edit-shop_order_columns`, `manage_shop_order_posts_custom_column` |
 | Orders list, HPOS | `manage_woocommerce_page_wc-orders_columns`, `manage_woocommerce_page_wc-orders_custom_column` |
-| Script | `admin_enqueue_scripts`, gated to the order edit screen |
-| Existing event | `yayloyalty_ledger_recorded` fires for the recovery row, so the dashboard cache and activity update |
-| Not fired | `yayloyalty_points_awarded`: the row came from no campaign evaluation |
-
-**UI:** the seven box states are in acceptance criteria 1, 4, 5, 9 and 10. Only `missing_known` has a button; `earned`, `recovered` and `missing_unknown` show the Adjust points link. The column cell is one line: "N", a **Missing** badge, or "–".
+| Order save | `woocommerce_before_order_object_save`, `woocommerce_after_order_object_save` |
+| Existing events | the award's own: `yayloyalty_ledger_recorded`, `yayloyalty_points_awarded` |
 
 **Edge cases and failure modes:**
 
 | Situation | Expected behaviour |
 |---|---|
-| Recovery and completion run at the same time | Both hold the customer lock. Whichever commits second gets `recovered_manually` or `order_has_points`. |
-| Customer reassigned after staging | Points go to the current customer, the same as `release()`. |
-| Customer reassigned after a recovery, then the order completes | No purchase row for the new customer: the guard finds the recovery by order, not by user. |
-| Customer reassigned after the order earned, then it completes again | No earn row for the new customer: `write_keyed()` skips any order earn with `order_has_points` while another customer still holds live points from the order, and the note says "No points earned: this order's points already went to another customer." Once those points are clawed back in full, the order earns for its new customer. Amended 2026-11-03. |
-| Customer reassigned while a staged figure is unreleased | `OrderCustomerChangeListener` recomputes `pending_points` for the old and the new customer from order meta after the save, so the figure moves with the order. Amended 2026-11-03. |
-| Double click | 409 `yayloyalty_already_recovered`. |
-| Pro order triggers other than `purchase` | Unaffected by the guard. |
-| Refund of a recovered order deleted | The clawback is restored like any order earn's: the restore row's key carries the `recovery` qualifier, which `IdempotencyKey` accepts for `adjust` rows too. Amended 2026-11-03. |
-| Recovery row clawed back, then the order restored | Box state `recovered`, with "…reversed; use YayLoyalty › Customers › Adjust points." No second recovery. |
-| Order trashed | Not paid, so no button. |
-| Column cost | One indexed `order_id` ledger query per row, at most the page size. |
-| Persistent object cache kept rolled-back order meta (case 4) | The box and REST read after `forget_cached()`, so they see the database. The column reads the cache, and stale "earned" meta with no EARN row still shows **Missing**. |
-| `pending_points` drifted from order meta | Recovery recomputes it for that customer from order meta (the truth per `PendingPoints`), so a release that really happened is never subtracted twice. |
-| Released staged figure with no EARN row and no earned meta (an award skipped on purpose) | `missing_unknown`: no button, the Adjust points link, and the column shows "–". |
+| Retry and completion at the same time | Both write the same purchase key; the second is a duplicate. |
+| Campaign changed since checkout | The button offers the award's figure now; the box states the checkout figure. |
+| Campaign paused or archived since checkout | No button; the link prefills Adjust points with the checkout figure. |
+| Earning limit reached today | The award holds back as on completion; its note says so. |
+| The cause of the original failure persists | The retry fails again; the POST reports the error and writes nothing. |
+| Persistent object cache kept rolled-back meta | The box and REST read after `forget_cached()`. |
+| Column cost | One indexed `order_id` ledger query per row, plus a refunds query for a `completed` order with no live earn. |
 
-**Decision record:** None. It adds a `LedgerService` method, which the single-writer record (`2026-10-01-ledger-service-sole-writer`) prescribes.
+**Decision record:** None. No new kind of ledger movement.
 
 ## Alternatives considered
 
 | Option | Why rejected |
 |---|---|
-| Re-run `EarningService::award()` with a force flag | The user chose the staged figure, not a recomputation. It cannot do free entry, and it fights the used purchase key on reversed orders. |
-| `LedgerService::adjust()` with `order_id` | Not idempotent, and refunds or cancellations never claw it back. Contradicts "stored as the order's earning". |
-| Repeatable recovery | Not idempotent. SPA Adjust points already covers repeat grants. |
-| Customer picker or billing-email match for guests | WooCommerce's own Customer field already reassigns the order. |
-| Column plus "Missing points" filter | Needs query hooks for both HPOS and legacy storage, and is heavy on large stores. |
-| Editable Confirm figure | The user chose the staged figure as is. SPA Adjust points covers other amounts. |
-| Manual entry flow on the order screen | Rejected 2026-11-03: an order earns only through customer actions, and the admin only repairs a known missing award. Free grants belong in SPA Adjust points, which has its own preview and history. |
+| A separate recovery EARN row (`earn:{user}:order:{id}:recovery`, no campaign, the staged figure) | Shipped first on this branch, replaced 2026-11-03. It needed its own qualifier, a guard against later completions, figure rules for reversed and refunded orders, and reversal tweaks. Testing found double payment after a reassignment, overpayment of refunded orders and refunds that never restored. |
+| Order-keyed earn idempotency (`earn:order:{id}:purchase`, no user) | Fixes reassignment at the UNIQUE index, but migrates every existing key and changes how reversals key their rows. A separate decision. |
+| `LedgerService::adjust()` with `order_id` | Not idempotent, and refunds or cancellations never claw it back. |
+| Manual entry on the order screen | An order earns only through customer actions; free grants belong in SPA Adjust points. |
+| Column plus "Missing points" filter | Needs query hooks for both storages; heavy on large stores. |
 
 ## Tests
 
-`tests/integration/Earning/OrderPointsRecoveryTest.php` (`composer test:integration`) guards ledger and money logic:
-- Recovery writes the keyed EARN row and moves `balance`, `lifetime_earned` and `pending_points`.
-- A second call is a duplicate and writes nothing.
-- Recovery is refused when a live earn exists.
-- A later purchase award is skipped with `recovered_manually`.
-- Cancelling writes the `refund_earn …:recovery` clawback.
-- `test_recovery_after_stale_earned_meta` (case 4): an order with `_yayloyalty_points_earned = 40`, released set, no EARN row and `pending_points = 40` resolves to `missing_known`/40. A POST writes one 40-point row, the meta stays at 40 and `pending_points` becomes 0. Accepted 2026-10-30.
-
-The user accepted this test on 2026-10-30.
+`tests/integration/Earning/OrderPointsRetryTest.php` (`composer test:integration`) guards ledger and money logic. Accepted by the user on 2026-11-03:
+- `test_retry_awards_a_failed_award` (signal A): one standard purchase row, pending released, a second POST refused.
+- `test_retry_after_stale_earned_meta` (signal C): one 40-point row, `_yayloyalty_points_earned` stays 40, `pending_points` 0.
+- `test_reassigned_order_is_not_paid_twice`: the new customer gets nothing.
+- `test_reversed_order_is_not_missing`: a cancelled-then-restored order is not missing and the POST writes nothing.
 
 ## Rollout
 
-No migration and no setting. The box and the column appear after the update. Release note: "Recover missing loyalty points from the order screen."
+No migration and no setting. The box and the column appear after the update. Release note: "Retry a loyalty points award that failed, from the order screen."
 
 ## Open questions
 

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute phases in order. Read this file, then the current phase file. Do not start a phase until the previous phase's exit criterion has been verified and `/yayplancheck` has passed on it.
 
-**Status:** active
+**Status:** superseded by [2026-11-03-order-points-retry-award.md](../2026-11-03-order-points-retry-award.md)
 **Goal:** On a paid order whose points never reached the customer, a shop manager restores them from the order screen. Points come back once per order, stored as that order's earning, and a "Loyalty points" column flags affected orders.
 **Spec:** [docs/specs/2026-10-30-order-points-recovery-design.md](../../specs/2026-10-30-order-points-recovery-design.md)
 **Architecture:** A new `LedgerService::recover_order()` writes one EARN row per order, keyed `earn:{user}:order:{id}:recovery`. Existing reversals then claw it back like any purchase earn, and a guard inside `write_keyed()`, under the customer lock, skips a later purchase earn. A read-only `OrderPointsState` feeds a PHP metabox, a REST route and the orders list column. The obvious alternative, `LedgerService::adjust()` with an `order_id`, was rejected in the spec: it is not idempotent and is never clawed back.
