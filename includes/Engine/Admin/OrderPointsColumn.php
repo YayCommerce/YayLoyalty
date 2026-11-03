@@ -18,9 +18,6 @@ final class OrderPointsColumn {
 
     public const KEY = 'yayloyalty_points';
 
-    /** @var LedgerRepository|null One per request, shared by every row. */
-    private static $ledger = null;
-
     public static function register(): void {
         add_filter( 'manage_edit-shop_order_columns', [ self::class, 'add' ] );
         add_filter( 'manage_woocommerce_page_wc-orders_columns', [ self::class, 'add' ] );
@@ -75,7 +72,7 @@ final class OrderPointsColumn {
         }
 
         try {
-            $state = OrderPointsState::resolve( $order, self::ledger() );
+            $state = OrderPointsState::resolve( $order, new LedgerRepository() );
         } catch ( \Throwable $e ) {
             // The orders list outranks the cell.
             Log::warning( 'OrderPointsColumn', 'order #' . $order->get_id() . ': ' . $e->getMessage() );
@@ -100,13 +97,5 @@ final class OrderPointsColumn {
         }
 
         return '&ndash;';
-    }
-
-    private static function ledger(): LedgerRepository {
-        if ( null === self::$ledger ) {
-            self::$ledger = new LedgerRepository();
-        }
-
-        return self::$ledger;
     }
 }

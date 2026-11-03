@@ -15,8 +15,8 @@ import { CustomerDrawerExportLedgerButton } from './CustomerDrawerExportLedgerBu
 /**
  * The drawer's actions. Adjust points and Export ledger are live; Adjust points' invalidations refresh the drawer.
  * On a deleted account a line under the row says why Adjust points is off. Export works for a deleted account too.
- * `?adjust=1` (the order screen's "Adjust points →" link) opens Adjust points once, then leaves the URL;
- * `&points=N` prefills the amount.
+ * `?adjust=1` opens Adjust points once, then leaves the URL; `&points=N` prefills the amount. Both parameters
+ * are owned by OrderPointsMetabox::adjust_points_link() (PHP), the order screen's "Adjust points →" link.
  */
 export function CustomerDrawerActions({ customer, isLoading }: { customer: Customer; isLoading: boolean }) {
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);

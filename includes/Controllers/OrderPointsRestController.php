@@ -23,12 +23,9 @@ final class OrderPointsRestController extends AbstractRestController {
 
     private LedgerRepository $ledger;
 
-    private PendingPoints $pending;
-
-    public function __construct( OrderPointsRetry $retry, LedgerRepository $ledger, PendingPoints $pending ) {
-        $this->retry   = $retry;
-        $this->ledger  = $ledger;
-        $this->pending = $pending;
+    public function __construct( OrderPointsRetry $retry, LedgerRepository $ledger ) {
+        $this->retry  = $retry;
+        $this->ledger = $ledger;
     }
 
     public function get_rest_base(): string {
@@ -59,7 +56,7 @@ final class OrderPointsRestController extends AbstractRestController {
 
     /** @return array<string, mixed>|\WP_Error */
     public function retry( \WP_REST_Request $request ) {
-        $order = $this->fresh_order( (int) $request['id'] );
+        $order = PendingPoints::fresh_order( (int) $request['id'] );
 
         if ( null === $order ) {
             return $this->order_not_found();
@@ -76,23 +73,24 @@ final class OrderPointsRestController extends AbstractRestController {
         }
 
         // actor_id comes from the session; the POST has no body.
-        $outcomes = $this->retry->retry( $order, get_current_user_id() );
-        $reason   = '';
+        $is_awarded = false;
+        $has_points = false;
+        $reason     = '';
 
-        foreach ( $outcomes as $outcome ) {
-            if ( Outcome::AWARDED === $outcome->get_status() ) {
-                $fresh = $this->fresh_order( (int) $order->get_id() );
-
-                return OrderPointsState::resolve( null === $fresh ? $order : $fresh, $this->ledger )->to_array();
-            }
+        foreach ( $this->retry->retry( $order, get_current_user_id() ) as $outcome ) {
+            $is_awarded = $is_awarded || Outcome::AWARDED === $outcome->get_status();
+            $has_points = $has_points || Outcome::DUPLICATE === $outcome->get_status() || LedgerService::REASON_ORDER_HAS_POINTS === $outcome->get_reason();
+            $reason     = '' === $reason ? (string) $outcome->get_reason() : $reason;
         }
 
-        foreach ( $outcomes as $outcome ) {
-            if ( Outcome::DUPLICATE === $outcome->get_status() || LedgerService::REASON_ORDER_HAS_POINTS === $outcome->get_reason() ) {
-                return $this->order_has_points();
-            }
+        if ( $is_awarded ) {
+            $fresh = PendingPoints::fresh_order( (int) $order->get_id() );
 
-            $reason = '' === $reason ? (string) $outcome->get_reason() : $reason;
+            return OrderPointsState::resolve( null === $fresh ? $order : $fresh, $this->ledger )->to_array();
+        }
+
+        if ( $has_points ) {
+            return $this->order_has_points();
         }
 
         return $this->conflict(
@@ -100,15 +98,6 @@ final class OrderPointsRestController extends AbstractRestController {
             /* translators: %s: reason code */
             sprintf( __( 'No points were awarded: %s. Use YayLoyalty › Customers › Adjust points instead.', 'yayloyalty' ), '' === $reason ? '-' : $reason )
         );
-    }
-
-    /** The order as the database holds it, past any cached copy, or null. */
-    private function fresh_order( int $order_id ): ?\WC_Order {
-        $this->pending->forget_cached( $order_id );
-
-        $order = wc_get_order( $order_id );
-
-        return $order instanceof \WC_Order ? $order : null;
     }
 
     private function order_not_found(): \WP_Error {

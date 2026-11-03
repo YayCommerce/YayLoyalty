@@ -37,17 +37,9 @@ final class OrderAward {
      */
     public function run( \WC_Order $order ): array {
         $order_id = (int) $order->get_id();
-
-        /**
-         * Triggers one completed order is awarded for, in order. Internal seam: Pro appends its order triggers.
-         *
-         * @param string[]  $triggers CampaignTrigger values.
-         * @param \WC_Order $order
-         */
-        $triggers = (array) apply_filters( 'yayloyalty_order_award_triggers', [ CampaignTrigger::PURCHASE ], $order );
         $outcomes = [];
 
-        foreach ( $triggers as $trigger ) {
+        foreach ( self::triggers( $order ) as $trigger ) {
             $outcome = $this->service->award( (string) $trigger, ContextFactory::from_order( $order ) );
 
             PreviewLog::write_outcome( 'OrderListener', 'order #' . $order_id . ' ' . $trigger, $outcome );
@@ -60,6 +52,38 @@ final class OrderAward {
         $this->pending->release( $order_id );
 
         return $outcomes;
+    }
+
+    /**
+     * The points run() would award now, summed over the same triggers, without writing. 0 when no
+     * campaign applies or the order has no creation date.
+     */
+    public function preview( \WC_Order $order ): int {
+        try {
+            $ctx = ContextFactory::from_order( $order );
+        } catch ( \InvalidArgumentException $e ) {
+            return 0;
+        }
+
+        $points = 0;
+
+        foreach ( self::triggers( $order ) as $trigger ) {
+            $result  = $this->service->preview( (string) $trigger, $ctx );
+            $points += $result->is_awarded() ? $result->get_points() : 0;
+        }
+
+        return $points;
+    }
+
+    /** @return string[] */
+    private static function triggers( \WC_Order $order ): array {
+        /**
+         * Triggers one completed order is awarded for, in order. Internal seam: Pro appends its order triggers.
+         *
+         * @param string[]  $triggers CampaignTrigger values.
+         * @param \WC_Order $order
+         */
+        return (array) apply_filters( 'yayloyalty_order_award_triggers', [ CampaignTrigger::PURCHASE ], $order );
     }
 
     /**

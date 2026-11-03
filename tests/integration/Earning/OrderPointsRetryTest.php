@@ -124,8 +124,6 @@ final class OrderPointsRetryTest extends IntegrationTestCase {
 
     /** The state as the order screen's box resolves it: the order read past its cached copy. */
     private function fresh_state( int $order_id ): OrderPointsState {
-        ( new PendingPoints( new CustomerRepository() ) )->forget_cached( $order_id );
-
-        return OrderPointsState::resolve( wc_get_order( $order_id ), new LedgerRepository() );
+        return OrderPointsState::resolve( PendingPoints::fresh_order( $order_id ), new LedgerRepository() );
     }
 }

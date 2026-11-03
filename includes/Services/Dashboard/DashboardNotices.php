@@ -6,6 +6,7 @@ use YayLoyalty\Models\Campaign;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\DashboardRepository;
 use YayLoyalty\Utils\Dates;
+use YayLoyalty\Utils\Text;
 use YayLoyalty\Utils\WooOrders;
 
 defined( 'ABSPATH' ) || exit;
@@ -145,7 +146,7 @@ class DashboardNotices {
                     'campaign_id'     => (int) $campaign->get_id(),
                     'name'            => $campaign->get_name(),
                     'updated_at'      => $campaign->get_updated_at(),
-                    'updated_by_name' => null === $campaign->get_updated_by() ? '' : $this->user_display_name( $campaign->get_updated_by() ),
+                    'updated_by_name' => null === $campaign->get_updated_by() ? '' : Text::user_display_name( $campaign->get_updated_by() ),
                     'orders_affected' => $totals['orders'],
                     'points_issued'   => $totals['points'],
                 ];
@@ -174,12 +175,6 @@ class DashboardNotices {
         $updated = date_create_immutable( $campaign->get_updated_at(), new \DateTimeZone( 'UTC' ) );
 
         return false !== $updated && $updated->setTimezone( $tz )->format( 'Y-m-d' ) === $day;
-    }
-
-    protected function user_display_name( int $user_id ): string {
-        $user = get_userdata( $user_id );
-
-        return $user instanceof \WP_User ? $user->display_name : '';
     }
 
     /** The Orders list filtered to a month (YYYYMM). WooCommerce filters by month only. */

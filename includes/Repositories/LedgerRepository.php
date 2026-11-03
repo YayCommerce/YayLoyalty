@@ -39,28 +39,27 @@ class LedgerRepository extends AbstractRepository {
 
     /**
      * What one order earned, from its rows: `earned` sums its EARN rows, and `net` also nets out their
-     * clawbacks and the restores of deleted refunds (ADJUST rows referencing a refund). `net > 0` means
-     * the order still has live points.
+     * clawbacks and the restores of deleted refunds (live_order_points_sql()). `net > 0` means the order
+     * still has live points.
      *
      * @return array{earned: int, net: int}
      */
     public function order_points_summary( int $order_id ): array {
         global $wpdb;
 
+        list( $live_sql, $live_values ) = self::live_order_points_sql();
+
+        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $live_sql carries placeholders only; every value is bound here.
         $row = $wpdb->get_row( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT COALESCE(SUM(CASE WHEN type = %s THEN points ELSE 0 END), 0) AS earned,
-                        COALESCE(SUM(CASE WHEN type IN (%s, %s) OR (type = %s AND reference_type = %s) THEN points ELSE 0 END), 0) AS net
+                        COALESCE(SUM(CASE WHEN ' . $live_sql . ' THEN points ELSE 0 END), 0) AS net
                  FROM `' . esc_sql( $this->table() ) . '` WHERE order_id = %d',
-                LedgerType::EARN,
-                LedgerType::EARN,
-                LedgerType::REFUND_EARN,
-                LedgerType::ADJUST,
-                ReferenceType::REFUND,
-                $order_id
+                array_merge( [ LedgerType::EARN ], $live_values, [ $order_id ] )
             ),
             ARRAY_A
         );
+        // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 
         return [
             'earned' => is_array( $row ) ? (int) $row['earned'] : 0,
@@ -69,33 +68,28 @@ class LedgerRepository extends AbstractRepository {
     }
 
     /**
-     * The order's live points held by customers other than $user_id: their EARN rows net of clawbacks
-     * and refund restores, as order_points_summary()'s `net`. Above 0 when the order was reassigned
-     * after it paid someone else.
-     *
-     * @param bool $is_locking Read the latest committed rows and share-lock them, for a check under the customer lock.
+     * The order's live points held by customers other than $user_id, as order_points_summary()'s `net`.
+     * Above 0 when the order was reassigned after it paid someone else. A locking read, for the check
+     * under the customer lock.
      */
-    public function net_points_of_others_for_order( int $order_id, int $user_id, bool $is_locking = false ): int {
-        global $wpdb;
+    public function net_points_of_others_for_order( int $order_id, int $user_id ): int {
+        list( $live_sql, $live_values ) = self::live_order_points_sql();
 
-        $lock_sql = $is_locking ? ' LOCK IN SHARE MODE' : '';
+        return $this->sum_points( 'order_id = %d AND user_id <> %d AND ' . $live_sql, array_merge( [ $order_id, $user_id ], $live_values ), true );
+    }
 
-        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $lock_sql is a literal from this method.
-        $net = $wpdb->get_var( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
-            $wpdb->prepare(
-                'SELECT COALESCE(SUM(points), 0) FROM `' . esc_sql( $this->table() ) . "`
-                 WHERE order_id = %d AND user_id <> %d AND ( type IN (%s, %s) OR ( type = %s AND reference_type = %s ) ){$lock_sql}",
-                $order_id,
-                $user_id,
-                LedgerType::EARN,
-                LedgerType::REFUND_EARN,
-                LedgerType::ADJUST,
-                ReferenceType::REFUND
-            )
-        );
-        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-
-        return (int) $net;
+    /**
+     * The rows that make up an order's live points: its EARN rows, their clawbacks, and the restores of
+     * deleted refunds (ADJUST rows referencing a refund). One definition for the order screen's state and
+     * the reassigned-order guard, so they never disagree.
+     *
+     * @return array{0: string, 1: string[]} [ parenthesised SQL with placeholders, its values ]
+     */
+    private static function live_order_points_sql(): array {
+        return [
+            '(type IN (%s, %s) OR (type = %s AND reference_type = %s))',
+            [ LedgerType::EARN, LedgerType::REFUND_EARN, LedgerType::ADJUST, ReferenceType::REFUND ],
+        ];
     }
 
     /**

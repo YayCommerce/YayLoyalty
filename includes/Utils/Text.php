@@ -14,6 +14,13 @@ final class Text {
         return html_entity_decode( wp_strip_all_tags( $value ), ENT_QUOTES );
     }
 
+    /** A user's display name as WordPress stores it, or '' when the user no longer exists. */
+    public static function user_display_name( int $user_id ): string {
+        $user = get_userdata( $user_id );
+
+        return $user instanceof \WP_User ? $user->display_name : '';
+    }
+
     /** The site title as plain text, for copy shown to shoppers ("Adjustment by {store}"). */
     public static function store_name(): string {
         return self::plain( (string) get_bloginfo( 'name' ) );

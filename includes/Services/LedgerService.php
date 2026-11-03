@@ -354,7 +354,7 @@ final class LedgerService {
             return false;
         }
 
-        return $this->ledger->net_points_of_others_for_order( $order_id, $draft->get_user_id(), true ) > 0;
+        return $this->ledger->net_points_of_others_for_order( $order_id, $draft->get_user_id() ) > 0;
     }
 
     /**

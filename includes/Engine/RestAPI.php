@@ -83,7 +83,7 @@ class RestAPI {
             // $ledger and $redemptions are read-only here.
             new CustomerRestController( $customers, $ledger_service, $ledger, $customer_meta, $redemptions ),
             // The retry writes through the award's own LedgerService (EarningService::build()); $ledger is read-only here.
-            new OrderPointsRestController( new OrderPointsRetry( new OrderAward( EarningService::build(), $pending, $ledger ), $pending ), $ledger, $pending ),
+            new OrderPointsRestController( new OrderPointsRetry( new OrderAward( EarningService::build(), $pending, $ledger ), $pending ), $ledger ),
             // $customers is read-only here too.
             new CustomerAdjustPreviewRestController( $customers, $dashboard ),
             new LedgerRestController( $ledger ),

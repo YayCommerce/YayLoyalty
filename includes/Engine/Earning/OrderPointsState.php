@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
  * Read only, and decided by the order alone: an order is missing points when it is completed, has a
  * customer, has no EARN row (for anyone) and still shows that its award should have paid: an
  * unreleased staged figure, or earned meta the ledger lacks. A caller that must see the database rather
- * than the object cache calls PendingPoints::forget_cached() before reading the order.
+ * than the object cache reads the order with PendingPoints::fresh_order().
  */
 final class OrderPointsState {
 
@@ -70,20 +70,20 @@ final class OrderPointsState {
             return new self( self::NO_POINTS, 0, $summary['net'] );
         }
 
-        // A fully refunded order owes nothing. A free order with no refund is not refunded.
-        list( $refunds, , $is_fully_refunded ) = Reversal::refund_state( $order );
-
-        if ( [] !== $refunds && $is_fully_refunded ) {
-            return new self( self::NO_POINTS, 0, $summary['net'] );
-        }
-
         $figure = PendingPoints::unreleased( $order );
 
         if ( $figure < 1 ) {
             $figure = (int) $order->get_meta( PendingPoints::META_EARNED );
         }
 
-        return $figure > 0 ? new self( self::MISSING, $figure, 0 ) : new self( self::NO_POINTS, 0, $summary['net'] );
+        if ( $figure < 1 ) {
+            return new self( self::NO_POINTS, 0, $summary['net'] );
+        }
+
+        // A fully refunded order owes nothing. A free order with no refund is not refunded. Checked last: it queries.
+        list( $refunds, , $is_fully_refunded ) = Reversal::refund_state( $order );
+
+        return [] !== $refunds && $is_fully_refunded ? new self( self::NO_POINTS, 0, $summary['net'] ) : new self( self::MISSING, $figure, 0 );
     }
 
     /** One of the class constants. */

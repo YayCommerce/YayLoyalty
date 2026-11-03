@@ -1,7 +1,7 @@
 /**
- * The order screen's "Loyalty points" box: its button gives the order's known missing points back through
- * POST yayloyalty/v1/orders/{id}/points (no body: the server takes the figure and the note), shows a
- * refusal in the box's error line, and reloads on success so the box renders its new state.
+ * The order screen's "Loyalty points" box: its button runs the order's award again through
+ * POST yayloyalty/v1/orders/{id}/points (no body: the award decides the points), shows a refusal in the
+ * box's error line, and reloads on success so the box renders its new state.
  *
  * Plain script, no build step. The markup comes from includes/Engine/Admin/OrderPointsMetabox.php;
  * wp-api-fetch sends the REST nonce in wp-admin.

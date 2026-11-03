@@ -116,13 +116,7 @@ final class PendingPoints {
      * row, so a projection that claims points is wrong (an award rolled back after its meta reached a
      * persistent object cache, or rows deleted by hand), and mark_awarded() would add to it.
      */
-    public function forget_earned( int $order_id ): void {
-        $order = wc_get_order( $order_id );
-
-        if ( ! $order instanceof \WC_Order ) {
-            return;
-        }
-
+    public function forget_earned( \WC_Order $order ): void {
         $order->delete_meta_data( self::META_EARNED );
         $order->delete_meta_data( self::META_CAMPAIGN );
         $this->save_meta( $order );
@@ -134,12 +128,21 @@ final class PendingPoints {
      * mid-way, a persistent object cache (Redis, Memcached) can still serve the rolled-back meta, an
      * order that claims points the ledger never kept.
      */
-    public function forget_cached( int $order_id ): void {
+    public static function forget_cached( int $order_id ): void {
         clean_post_cache( $order_id );
 
         if ( class_exists( OrderUtil::class ) && OrderUtil::orders_cache_usage_is_enabled() ) {
             wc_get_container()->get( OrderCache::class )->remove( $order_id );
         }
+    }
+
+    /** The order as the database holds it, past any cached copy (forget_cached()), or null. */
+    public static function fresh_order( int $order_id ): ?\WC_Order {
+        self::forget_cached( $order_id );
+
+        $order = wc_get_order( $order_id );
+
+        return $order instanceof \WC_Order ? $order : null;
     }
 
     /**
@@ -150,11 +153,11 @@ final class PendingPoints {
      * @return int The new pending_points.
      */
     public function resync_customer( int $user_id ): int {
-        $order_ids = wc_get_orders(
+        $orders = wc_get_orders(
             [
                 'customer_id' => $user_id,
                 'limit'       => -1,
-                'return'      => 'ids',
+                'return'      => 'objects',
                 'meta_query'  => [ // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- one customer's orders, on a retried award or a reassigned order.
                     [
                         'key'     => self::META_PENDING,
@@ -170,9 +173,7 @@ final class PendingPoints {
 
         $pending = 0;
 
-        foreach ( is_array( $order_ids ) ? $order_ids : [] as $order_id ) {
-            $order = wc_get_order( $order_id );
-
+        foreach ( is_array( $orders ) ? $orders : [] as $order ) {
             if ( $order instanceof \WC_Order ) {
                 $pending += self::unreleased( $order );
             }
