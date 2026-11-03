@@ -269,6 +269,7 @@ Expected: 2 failures, `OrderPointsState` not found and the POST answering 404 `r
 | 2 | `get_customer_id() < 1` | `GUEST` | 0 |
 | 3 | `find_recovery_for_order()` finds a row | `RECOVERED` | 0 |
 | 4 | `net > 0` | `EARNED` | 0 |
+| 4b | status is not `OrderStatus::AWARD` (`completed`); amended 2026-11-03 | `AWAITING_COMPLETION` | `PendingPoints::unreleased()` |
 | 5 | `PendingPoints::unreleased() > 0` | `MISSING_KNOWN` | the unreleased figure |
 | 6 | `earned > 0` | `MISSING_KNOWN` | `earned` |
 | 7 | `(int) get_meta( PendingPoints::META_EARNED ) > 0` (case 4: the meta claims points the ledger lacks) | `MISSING_KNOWN` | that meta value |
@@ -313,7 +314,7 @@ Expected: 2 failures, `OrderPointsState` not found and the POST answering 404 `r
 | Case | Response |
 |---|---|
 | No `wc_get_order()` | 404 |
-| State `NOT_PAID` or `GUEST` | 409 `yayloyalty_not_eligible` |
+| State `NOT_PAID`, `GUEST` or `AWAITING_COMPLETION` | 409 `yayloyalty_not_eligible` |
 | State `RECOVERED` | 409 `yayloyalty_already_recovered` |
 | State `EARNED` | 409 `yayloyalty_order_has_points` |
 | `MISSING_KNOWN` | Points = figure. Note = "Recovered missing order points". |
@@ -372,7 +373,7 @@ Log the "campaign … is gone" warning only when the row's `campaign_id` is not 
 
 - [ ] **Step 3: Verify on the local site**
 
-- Recover a `processing` order through the box or the REST call from Task 2, then set it to Completed. Expected: the notes include "No points earned: points were recovered manually." and the balance is unchanged.
+- Recover a `completed` order through the box or the REST call from Task 2, set it to Processing, then to Completed again. Expected: the notes include "No points earned: points were recovered manually." and the balance is unchanged.
 - Refund one of two lines on a recovered order. Expected: a `refund_earn` row proportional to that line's total, and no `campaign of ledger row` warning in WooCommerce › Status › Logs (source `yayloyalty`).
 
 - [ ] **Step 4: Lint and commit**
@@ -407,7 +408,8 @@ Message: `feat(earning): note recovered orders and quiet the refund warning for 
 
 | State | Output |
 |---|---|
-| `NOT_PAID` | "Points can be added once the order is paid (Processing or Completed)." |
+| `NOT_PAID` | "Points are added when the order is completed." |
+| `AWAITING_COMPLETION` | "%d points will be added when the order is completed.", or "Points are added when the order is completed." with no staged figure. No button, no link. |
 | `GUEST` | "Assign a customer in the Customer field and update the order to add points." |
 | `EARNED` | "Earned %d points." Then the Adjust points link. |
 | `RECOVERED` | "%1$d points added manually by %2$s on %3$s: %4$s." When `to_array()["recovery"]["reversed"]`: "%1$d points added manually by %2$s on %3$s were reversed." Then the Adjust points link. |

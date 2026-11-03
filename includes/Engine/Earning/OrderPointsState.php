@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Engine\Earning;
 
+use YayLoyalty\Enums\OrderStatus;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Utils\Dates;
@@ -20,6 +21,9 @@ final class OrderPointsState {
 
     /** The order has no customer. */
     public const GUEST = 'guest';
+
+    /** Paid but not completed: only completion awards, so a staged figure is waiting, not missing. */
+    public const AWAITING_COMPLETION = 'awaiting_completion';
 
     /** The order has live earned points. */
     public const EARNED = 'earned';
@@ -51,7 +55,7 @@ final class OrderPointsState {
         $this->is_recovery_reversed = $is_recovery_reversed;
     }
 
-    /** The first matching state wins, in this order: not paid, guest, recovered, earned, then missing. */
+    /** The first matching state wins, in this order: not paid, guest, recovered, earned, awaiting completion, then missing. */
     public static function resolve( \WC_Order $order, LedgerRepository $ledger ): self {
         if ( ! in_array( $order->get_status(), wc_get_is_paid_statuses(), true ) ) {
             return new self( self::NOT_PAID, 0, 0, null, false );
@@ -73,6 +77,11 @@ final class OrderPointsState {
 
         if ( $summary['net'] > 0 ) {
             return new self( self::EARNED, 0, $summary['net'], null, false );
+        }
+
+        // Points are missing only once the order has reached the status that awards them.
+        if ( OrderStatus::AWARD !== $order->get_status() ) {
+            return new self( self::AWAITING_COMPLETION, PendingPoints::unreleased( $order ), $summary['net'], null, false );
         }
 
         // The first known figure: the unreleased staged one; else, for an order reversed then restored, what its
@@ -99,7 +108,7 @@ final class OrderPointsState {
         return $this->status;
     }
 
-    /** The points to give back in MISSING_KNOWN, else 0. */
+    /** The points to give back in MISSING_KNOWN, the staged figure in AWAITING_COMPLETION, else 0. */
     public function get_figure(): int {
         return $this->figure;
     }

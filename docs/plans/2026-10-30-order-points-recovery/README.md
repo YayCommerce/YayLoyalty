@@ -50,7 +50,7 @@ The user accepted all of these on 2026-10-30.
 ## Review focus
 
 - **A recovery and a completion running together.** Expected: one row only, because both writes take the customer lock and the guard and the live-earn check read with locking reads. Owner: Phase 1 Task 1, accepted test `test_later_completion_is_skipped_after_recovery` plus code review of `is_locking`.
-- **An order recovered on `processing` that later completes.** Expected: no purchase row, and the note "No points earned: points were recovered manually." Owner: Phase 1 Task 1 (test) and Task 3 (note check).
+- **An order recovered, then set to `processing` and completed again.** (Since 2026-11-03 the box offers recovery only on `completed`.) Expected: no purchase row, and the note "No points earned: points were recovered manually." Owner: Phase 1 Task 1 (test) and Task 3 (note check).
 - **An order reversed then restored.** Expected: the Confirm figure is the original earn sum, and recovery succeeds even though the purchase key is spent. Owner: Phase 1 Task 2, verification step.
 - **A double click or a retried POST.** Expected: 409 `yayloyalty_already_recovered`, with the balance unchanged. Owner: Phase 1 Task 1 (test) and Task 2 (REST check).
 - **A partial refund of a recovered order.** Expected: claws back by the share of every product line, with no "campaign is gone" warning. Owner: Phase 1 Task 3, verification step.
@@ -73,7 +73,7 @@ The user accepted all of these on 2026-10-30.
 - `LedgerService::recover_order( int $user_id, int $order_id, int $points, string $note, int $actor_id ): Outcome` — returns `awarded`, `duplicate` or `skipped( REASON_ORDER_HAS_POINTS )`. Produced by Phase 1 Task 1, consumed by Phase 1 Task 2.
 - `OrderPointsState` (`includes/Engine/Earning/OrderPointsState.php`):
   - `resolve( \WC_Order $order, LedgerRepository $ledger ): self`
-  - constants `NOT_PAID = 'not_paid'`, `GUEST = 'guest'`, `EARNED = 'earned'`, `RECOVERED = 'recovered'`, `MISSING_KNOWN = 'missing_known'`, `MISSING_UNKNOWN = 'missing_unknown'`
+  - constants `NOT_PAID = 'not_paid'`, `GUEST = 'guest'`, `EARNED = 'earned'`, `RECOVERED = 'recovered'`, `AWAITING_COMPLETION = 'awaiting_completion'` (amended 2026-11-03), `MISSING_KNOWN = 'missing_known'`, `MISSING_UNKNOWN = 'missing_unknown'`
   - getters `get_status(): string`, `get_figure(): int`, `get_net_earned(): int` (the recovery row and its reversed flag reach callers through `to_array()`)
   - `to_array(): array`
 

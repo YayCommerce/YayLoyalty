@@ -75,8 +75,8 @@ final class OrderPointsRestController extends AbstractRestController {
             case OrderPointsState::MISSING_KNOWN:
                 break;
             default:
-                // Not paid, guest, or nothing says how many points are missing: a manual grant, not a recovery.
-                return $this->conflict( 'yayloyalty_not_eligible', __( 'Only a paid order with a customer and a known missing figure can get its points back here. Use YayLoyalty › Customers › Adjust points instead.', 'yayloyalty' ) );
+                // Not completed, guest, or nothing says how many points are missing: not a recovery.
+                return $this->conflict( 'yayloyalty_not_eligible', __( 'Only a completed order with a customer and a known missing figure can get its points back here. Use YayLoyalty › Customers › Adjust points instead.', 'yayloyalty' ) );
         }
 
         // The figure as is and the default note; actor_id comes from the session. No request field sets any of them.

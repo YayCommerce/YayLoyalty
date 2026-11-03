@@ -56,7 +56,15 @@ final class OrderPointsMetabox {
     private static function render_state( \WC_Order $order, OrderPointsState $state ): void {
         switch ( $state->get_status() ) {
             case OrderPointsState::NOT_PAID:
-                self::paragraph( __( 'Points can be added once the order is paid (Processing or Completed).', 'yayloyalty' ) );
+                self::paragraph( __( 'Points are added when the order is completed.', 'yayloyalty' ) );
+                return;
+            case OrderPointsState::AWAITING_COMPLETION:
+                self::paragraph(
+                    $state->get_figure() > 0
+                        /* translators: %d: points */
+                        ? sprintf( __( '%d points will be added when the order is completed.', 'yayloyalty' ), $state->get_figure() )
+                        : __( 'Points are added when the order is completed.', 'yayloyalty' )
+                );
                 return;
             case OrderPointsState::GUEST:
                 self::paragraph( __( 'Assign a customer in the Customer field and update the order to add points.', 'yayloyalty' ) );
