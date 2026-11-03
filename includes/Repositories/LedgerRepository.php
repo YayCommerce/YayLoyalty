@@ -44,10 +44,11 @@ class LedgerRepository extends AbstractRepository {
     /**
      * What one order earned, from its rows: `earned` sums its EARN rows, and `net` also nets out their
      * clawbacks and the restores of deleted refunds (ADJUST rows referencing a refund). `net > 0` means
-     * the order still has live points.
+     * the order still has live points. `reversed` is what whole-order reversals (cancel, trash, the
+     * refunded status: clawbacks referencing the order, not a refund) took back, as a positive number.
      *
      * @param bool $is_locking Read the latest committed rows and share-lock them, for a check under the customer lock.
-     * @return array{earned: int, net: int}
+     * @return array{earned: int, net: int, reversed: int}
      */
     public function order_points_summary( int $order_id, bool $is_locking = false ): array {
         global $wpdb;
@@ -58,13 +59,16 @@ class LedgerRepository extends AbstractRepository {
         $row = $wpdb->get_row( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT COALESCE(SUM(CASE WHEN type = %s THEN points ELSE 0 END), 0) AS earned,
-                        COALESCE(SUM(CASE WHEN type IN (%s, %s) OR (type = %s AND reference_type = %s) THEN points ELSE 0 END), 0) AS net
+                        COALESCE(SUM(CASE WHEN type IN (%s, %s) OR (type = %s AND reference_type = %s) THEN points ELSE 0 END), 0) AS net,
+                        COALESCE(SUM(CASE WHEN type = %s AND reference_type = %s THEN -points ELSE 0 END), 0) AS reversed
                  FROM `' . esc_sql( $this->table() ) . "` WHERE order_id = %d{$lock_sql}",
                 LedgerType::EARN,
                 LedgerType::EARN,
                 LedgerType::REFUND_EARN,
                 LedgerType::ADJUST,
                 ReferenceType::REFUND,
+                LedgerType::REFUND_EARN,
+                ReferenceType::ORDER,
                 $order_id
             ),
             ARRAY_A
@@ -72,8 +76,9 @@ class LedgerRepository extends AbstractRepository {
         // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
         return [
-            'earned' => is_array( $row ) ? (int) $row['earned'] : 0,
-            'net'    => is_array( $row ) ? (int) $row['net'] : 0,
+            'earned'   => is_array( $row ) ? (int) $row['earned'] : 0,
+            'net'      => is_array( $row ) ? (int) $row['net'] : 0,
+            'reversed' => is_array( $row ) ? (int) $row['reversed'] : 0,
         ];
     }
 

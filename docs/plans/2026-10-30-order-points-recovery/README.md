@@ -66,8 +66,8 @@ The user accepted all of these on 2026-10-30.
 
 ## Interface contract
 
-- `IdempotencyKey::RECOVERY = 'recovery'` — a qualifier accepted only for `LedgerType::EARN` and `LedgerType::REFUND_EARN`. Produced by Phase 1 Task 1.
-- `LedgerRepository::order_points_summary( int $order_id, bool $is_locking = false ): array{earned: int, net: int}` — `earned` is the SUM of EARN points with this `order_id`. `net` is the SUM over EARN, REFUND_EARN and (ADJUST with `reference_type = refund`) rows with this `order_id`. Produced by Phase 1 Task 1, consumed by Phase 1 Tasks 1 and 2 and Phase 2 Task 1.
+- `IdempotencyKey::RECOVERY = 'recovery'` — a qualifier accepted only for `LedgerType::EARN`, `LedgerType::REFUND_EARN` and `LedgerType::ADJUST` (a deleted refund's restore; amended 2026-11-03). Produced by Phase 1 Task 1.
+- `LedgerRepository::order_points_summary( int $order_id, bool $is_locking = false ): array{earned: int, net: int, reversed: int}` — `earned` is the SUM of EARN points with this `order_id`. `net` is the SUM over EARN, REFUND_EARN and (ADJUST with `reference_type = refund`) rows with this `order_id`. `reversed` (amended 2026-11-03) is minus the SUM of REFUND_EARN rows with `reference_type = order`: what whole-order reversals took. Produced by Phase 1 Task 1, consumed by Phase 1 Tasks 1 and 2 and Phase 2 Task 1.
 - `LedgerRepository::find_recovery_for_order( int $order_id, bool $is_locking = false ): ?LedgerEntry` — the EARN row with this `order_id` whose key ends in `:recovery`, whatever its user. The purchase guard reads it locking, so an order reassigned after its recovery is not paid again (amended 2026-11-03). Produced by Phase 1 Task 1, consumed by Phase 1 Task 2.
 - `LedgerService::REASON_RECOVERED = 'recovered_manually'` and `LedgerService::REASON_ORDER_HAS_POINTS = 'order_has_points'` — produced by Phase 1 Task 1, consumed by Phase 1 Tasks 2 and 3.
 - `LedgerService::recover_order( int $user_id, int $order_id, int $points, string $note, int $actor_id ): Outcome` — returns `awarded`, `duplicate` or `skipped( REASON_ORDER_HAS_POINTS )`. Produced by Phase 1 Task 1, consumed by Phase 1 Task 2.

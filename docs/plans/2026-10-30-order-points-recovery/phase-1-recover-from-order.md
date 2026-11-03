@@ -270,9 +270,10 @@ Expected: 2 failures, `OrderPointsState` not found and the POST answering 404 `r
 | 3 | `find_recovery_for_order()` finds a row | `RECOVERED` | 0 |
 | 4 | `net > 0` | `EARNED` | 0 |
 | 4b | status is not `OrderStatus::AWARD` (`completed`); amended 2026-11-03 | `AWAITING_COMPLETION` | `PendingPoints::unreleased()` |
+| 4c | the order has refunds and they cover its total (`Reversal::refund_state()`); amended 2026-11-03 | `MISSING_UNKNOWN` | 0 |
 | 5 | `PendingPoints::unreleased() > 0` | `MISSING_KNOWN` | the unreleased figure |
-| 6 | `earned > 0` | `MISSING_KNOWN` | `earned` |
-| 7 | `(int) get_meta( PendingPoints::META_EARNED ) > 0` (case 4: the meta claims points the ledger lacks) | `MISSING_KNOWN` | that meta value |
+| 6 | `net + reversed > 0` (refund clawbacks stay taken; amended 2026-11-03) | `MISSING_KNOWN` | `net + reversed` |
+| 7 | `earned = 0` and `(int) get_meta( PendingPoints::META_EARNED ) > 0` (case 4: the meta claims points the ledger lacks) | `MISSING_KNOWN` | that meta value |
 | 8 | otherwise | `MISSING_UNKNOWN` | 0 |
 
 - For `RECOVERED`, the recovery is reversed when `sum_refunded_for( $recovery, false ) >= $recovery->get_points()`.

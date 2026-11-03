@@ -84,15 +84,23 @@ final class OrderPointsState {
             return new self( self::AWAITING_COMPLETION, PendingPoints::unreleased( $order ), $summary['net'], null, false );
         }
 
-        // The first known figure: the unreleased staged one; else, for an order reversed then restored, what its
-        // earn rows paid; else what the meta claims without a row (an award rolled back after its meta was cached).
+        // A fully refunded order owes nothing back, whatever its rows or meta say. A free order with no refund is not refunded.
+        list( $refunds, , $is_fully_refunded ) = Reversal::refund_state( $order );
+
+        if ( [] !== $refunds && $is_fully_refunded ) {
+            return new self( self::MISSING_UNKNOWN, 0, $summary['net'], null, false );
+        }
+
+        // The first known figure: the unreleased staged one; else, for an order reversed then restored, what the
+        // whole-order reversal took (refund clawbacks stay taken); else, only when the order has no EARN row, what
+        // the meta claims (an award rolled back after its meta was cached).
         $figure = PendingPoints::unreleased( $order );
 
         if ( $figure < 1 ) {
-            $figure = $summary['earned'];
+            $figure = $summary['net'] + $summary['reversed'];
         }
 
-        if ( $figure < 1 ) {
+        if ( $figure < 1 && 0 === $summary['earned'] ) {
             $figure = (int) $order->get_meta( PendingPoints::META_EARNED );
         }
 
