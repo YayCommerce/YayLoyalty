@@ -104,6 +104,24 @@ final class OrderPointsRetryTest extends IntegrationTestCase {
         $this->assertSame( [ 40, -40 ], $this->ledger_points( $user_id ) );
     }
 
+    /** An order reassigned after it earned does not pay its new customer when it completes again. */
+    public function test_reassigned_order_is_not_paid_twice(): void {
+        $this->create_campaign();
+        $first  = $this->create_customer( 'first' . wp_rand() . '@example.test' );
+        $second = $this->create_customer( 'second' . wp_rand() . '@example.test' );
+        $order  = $this->transition( $this->create_order( $first, [ 40 ] ), 'completed' );
+
+        $order = wc_get_order( $order->get_id() );
+        $order->set_customer_id( $second );
+        $order->save();
+        $order = $this->transition( wc_get_order( $order->get_id() ), 'processing' );
+        $order = $this->transition( $order, 'completed' );
+
+        $this->assertSame( [ 40 ], $this->ledger_points( $first ) );
+        $this->assertSame( [], $this->ledger_points( $second ) );
+        $this->assertContains( "No points earned: this order's points already went to another customer.", $this->order_notes( $order ) );
+    }
+
     /** The state as the order screen's box resolves it: the order read past its cached copy. */
     private function fresh_state( int $order_id ): OrderPointsState {
         ( new PendingPoints( new CustomerRepository() ) )->forget_cached( $order_id );
