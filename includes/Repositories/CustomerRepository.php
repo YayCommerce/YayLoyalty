@@ -501,6 +501,28 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
     }
 
     /**
+     * Customers per tier, for the tiers that have any.
+     *
+     * @return array<int, int> Tier id => customer count.
+     */
+    public function count_by_tier(): array {
+        global $wpdb;
+
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            'SELECT tier_id, COUNT(*) AS members FROM `' . esc_sql( $this->table() ) . '` WHERE tier_id IS NOT NULL GROUP BY tier_id', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- no values; the table name is escaped.
+            ARRAY_A
+        );
+
+        $counts = [];
+
+        foreach ( (array) $rows as $row ) {
+            $counts[ (int) $row['tier_id'] ] = (int) $row['members'];
+        }
+
+        return $counts;
+    }
+
+    /**
      * Row count for one criteria set.
      *
      * @param array<string, mixed> $criteria CustomerRowFilters::to_criteria()'s shape.

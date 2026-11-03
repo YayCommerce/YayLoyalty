@@ -16,6 +16,7 @@ use YayLoyalty\Pro\Controllers\CampaignPreviewRestController;
 use YayLoyalty\Pro\Controllers\CustomerSegmentsRestController;
 use YayLoyalty\Pro\Controllers\DashboardProRestController;
 use YayLoyalty\Pro\Controllers\StoreLedgerRestController;
+use YayLoyalty\Pro\Controllers\TiersRestController;
 use YayLoyalty\Pro\Emails\ProEmails;
 use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
 use YayLoyalty\Pro\Integrations\YayMail\ProYayMail;
@@ -27,8 +28,11 @@ use YayLoyalty\Pro\Services\DailyEarningLimit;
 use YayLoyalty\Pro\Services\DiscountRewardHandler;
 use YayLoyalty\Pro\Storefront\RewardsPanel;
 use YayLoyalty\Repositories\CampaignRepository;
+use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\DashboardRepository;
+use YayLoyalty\Repositories\RewardRepository;
+use YayLoyalty\Repositories\TierRepository;
 use YayLoyalty\Services\Dashboard\DashboardCache;
 
 defined( 'ABSPATH' ) || exit;
@@ -336,6 +340,11 @@ final class YayLoyaltyPro {
         $controllers[] = new StoreLedgerRestController(
             new StoreLedgerRepository( new LedgerRepository() ),
             new LedgerRepository()
+        );
+        $controllers[] = new TiersRestController(
+            new TierRepository(),
+            new RewardRepository(),
+            new CustomerRepository()
         );
 
         return $controllers;

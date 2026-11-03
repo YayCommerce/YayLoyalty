@@ -2,6 +2,7 @@
 namespace YayLoyalty\Repositories;
 
 use YayLoyalty\Engine\Points\Context as EarnContext;
+use YayLoyalty\Enums\RewardConditionType;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\AbstractModel;
 use YayLoyalty\Models\Reward;
@@ -92,6 +93,55 @@ final class RewardRepository extends AbstractRepository {
         }
 
         return $live;
+    }
+
+    /**
+     * Rewards of any status whose stored conditions name $tier_id in a `tier` entry, either as the
+     * value or inside a list value. The LIKE only narrows the rows read; the PHP check decides.
+     *
+     * @return Reward[]
+     */
+    public function find_referencing_tier( int $tier_id ): array {
+        global $wpdb;
+
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE conditions LIKE %s ORDER BY id ASC', // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the table name is escaped.
+                '%' . $wpdb->esc_like( '"' . RewardConditionType::TIER . '"' ) . '%'
+            ),
+            ARRAY_A
+        );
+
+        $referencing = [];
+
+        foreach ( (array) $rows as $row ) {
+            $reward = $this->hydrate( $row );
+
+            if ( $reward instanceof Reward && self::conditions_name_tier( $reward->get_conditions(), $tier_id ) ) {
+                $referencing[] = $reward;
+            }
+        }
+
+        return $referencing;
+    }
+
+    /** @param array<int, mixed> $conditions */
+    private static function conditions_name_tier( array $conditions, int $tier_id ): bool {
+        foreach ( $conditions as $condition ) {
+            if ( ! is_array( $condition ) || RewardConditionType::TIER !== ( $condition['type'] ?? null ) ) {
+                continue;
+            }
+
+            $values = is_array( $condition['value'] ?? null ) ? $condition['value'] : [ $condition['value'] ?? null ];
+
+            foreach ( $values as $value ) {
+                if ( is_numeric( $value ) && (int) $value === $tier_id ) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /** The sort_order that places a new reward after every existing one, archived rows included. */
