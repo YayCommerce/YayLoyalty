@@ -78,6 +78,36 @@ class LedgerRepository extends AbstractRepository {
     }
 
     /**
+     * The order's live points held by customers other than $user_id: their EARN rows net of clawbacks
+     * and refund restores, as order_points_summary()'s `net`. Above 0 when the order was reassigned
+     * after it paid someone else.
+     *
+     * @param bool $is_locking Read the latest committed rows and share-lock them, for a check under the customer lock.
+     */
+    public function net_points_of_others_for_order( int $order_id, int $user_id, bool $is_locking = false ): int {
+        global $wpdb;
+
+        $lock_sql = $is_locking ? ' LOCK IN SHARE MODE' : '';
+
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $lock_sql is a literal from this method.
+        $net = $wpdb->get_var( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT COALESCE(SUM(points), 0) FROM `' . esc_sql( $this->table() ) . "`
+                 WHERE order_id = %d AND user_id <> %d AND ( type IN (%s, %s) OR ( type = %s AND reference_type = %s ) ){$lock_sql}",
+                $order_id,
+                $user_id,
+                LedgerType::EARN,
+                LedgerType::REFUND_EARN,
+                LedgerType::ADJUST,
+                ReferenceType::REFUND
+            )
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+        return (int) $net;
+    }
+
+    /**
      * The order's manual recovery EARN row (LedgerService::recover_order()), whoever it was paid to, or null.
      *
      * @param bool $is_locking Read the latest committed row and share-lock it, for a check under the customer lock.

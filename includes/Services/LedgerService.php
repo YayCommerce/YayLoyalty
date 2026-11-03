@@ -51,7 +51,7 @@ final class LedgerService {
     /** Outcome::skipped reason: the order's points were already given back by recover_order(), so its purchase award is not written. */
     public const REASON_RECOVERED = 'recovered_manually';
 
-    /** Outcome::skipped reason: under the lock the order still has live earned points, so recover_order() writes nothing. */
+    /** Outcome::skipped reason: under the lock the order still has live earned points, so recover_order() writes nothing, or another customer's, so an order earn for its new customer is not written. */
     public const REASON_ORDER_HAS_POINTS = 'order_has_points';
 
     /** The most points one recover_order() call gives. */
@@ -371,6 +371,10 @@ final class LedgerService {
                     return Outcome::skipped( self::REASON_RECOVERED );
                 }
 
+                if ( $this->is_paid_to_another_customer( $draft ) ) {
+                    return Outcome::skipped( self::REASON_ORDER_HAS_POINTS );
+                }
+
                 if ( ! $this->campaign_survives( $draft ) ) {
                     return Outcome::skipped( self::REASON_CAMPAIGN_DELETED );
                 }
@@ -410,6 +414,26 @@ final class LedgerService {
         }
 
         return null !== $this->ledger->find_recovery_for_order( $order_id, true );
+    }
+
+    /**
+     * Whether $draft is an order earn (any trigger; a recovery checks its own way in recover_order()) and
+     * the order still pays another customer: it was reassigned after it earned, so earning again would
+     * pay one order twice. A locking read, as in is_recovered_order(). Once the other customer's points
+     * are clawed back in full, the order can earn for its new customer.
+     */
+    private function is_paid_to_another_customer( LedgerEntry $draft ): bool {
+        $order_id = $draft->get_order_id();
+
+        if ( LedgerType::EARN !== $draft->get_type() || null === $order_id ) {
+            return false;
+        }
+
+        if ( IdempotencyKey::RECOVERY === IdempotencyKey::qualifier_of( (string) $draft->get_idempotency_key() ) ) {
+            return false;
+        }
+
+        return $this->ledger->net_points_of_others_for_order( $order_id, $draft->get_user_id(), true ) > 0;
     }
 
     /** The key of an order's one recovery row: `earn:{user}:order:{order_id}:recovery`. */

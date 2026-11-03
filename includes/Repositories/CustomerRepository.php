@@ -457,7 +457,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
     }
 
     /**
-     * Sets customers.pending_points outright, floored at 0. Only PendingPoints::resync_customer() calls it,
+     * Sets customers.pending_points outright, floored at 0. Only PendingPoints::resync_customer() calls it (on a recovery or a reassigned order),
      * after summing the order meta that is the truth; everything else moves it by apply_pending_delta().
      *
      * @throws QueryException When the write fails.

@@ -199,6 +199,8 @@ final class OrderListener {
                     $order->add_order_note( sprintf( __( 'No points earned: an earning limit held back all %d points.', 'yayloyalty' ), $outcome->held_back() ) );
                 } elseif ( LedgerService::REASON_RECOVERED === $outcome->get_reason() ) {
                     $order->add_order_note( __( 'No points earned: points were recovered manually.', 'yayloyalty' ) );
+                } elseif ( LedgerService::REASON_ORDER_HAS_POINTS === $outcome->get_reason() ) {
+                    $order->add_order_note( __( 'No points earned: this order\'s points already went to another customer.', 'yayloyalty' ) );
                 } elseif ( ProgramGate::REASON_NO_CUSTOMER !== $outcome->get_reason() ) {
                     /* translators: %s: reason code */
                     $order->add_order_note( sprintf( __( 'No points earned: %s.', 'yayloyalty' ), $outcome->get_reason() ) );

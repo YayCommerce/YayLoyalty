@@ -149,6 +149,8 @@ On a paid WooCommerce order whose points never reached the customer's balance, a
 | Recovery and completion run at the same time | Both hold the customer lock. Whichever commits second gets `recovered_manually` or `order_has_points`. |
 | Customer reassigned after staging | Points go to the current customer, the same as `release()`. |
 | Customer reassigned after a recovery, then the order completes | No purchase row for the new customer: the guard finds the recovery by order, not by user. |
+| Customer reassigned after the order earned, then it completes again | No earn row for the new customer: `write_keyed()` skips any order earn with `order_has_points` while another customer still holds live points from the order, and the note says "No points earned: this order's points already went to another customer." Once those points are clawed back in full, the order earns for its new customer. Amended 2026-11-03. |
+| Customer reassigned while a staged figure is unreleased | `OrderCustomerChangeListener` recomputes `pending_points` for the old and the new customer from order meta after the save, so the figure moves with the order. Amended 2026-11-03. |
 | Double click | 409 `yayloyalty_already_recovered`. |
 | Pro order triggers other than `purchase` | Unaffected by the guard. |
 | Recovery row clawed back, then the order restored | Box state `recovered`, with "…reversed; use YayLoyalty › Customers › Adjust points." No second recovery. |

@@ -158,7 +158,7 @@ final class PendingPoints {
                 'customer_id' => $user_id,
                 'limit'       => -1,
                 'return'      => 'ids',
-                'meta_query'  => [ // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- one customer's orders, on a manual recovery.
+                'meta_query'  => [ // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- one customer's orders, on a manual recovery or a reassigned order.
                     [
                         'key'     => self::META_PENDING,
                         'compare' => 'EXISTS',
@@ -179,6 +179,11 @@ final class PendingPoints {
             if ( $order instanceof \WC_Order ) {
                 $pending += self::unreleased( $order );
             }
+        }
+
+        // A customer an order was just reassigned to may have no row yet.
+        if ( $pending > 0 ) {
+            $this->customers->ensure_row( $user_id );
         }
 
         $this->customers->set_pending_points( $user_id, $pending );

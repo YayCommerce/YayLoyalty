@@ -2,6 +2,7 @@
 namespace YayLoyalty;
 
 use YayLoyalty\Engine\Earning\EarningService;
+use YayLoyalty\Engine\Earning\Listeners\OrderCustomerChangeListener;
 use YayLoyalty\Engine\Earning\Listeners\OrderListener;
 use YayLoyalty\Engine\Earning\Listeners\OrderReversalListener;
 use YayLoyalty\Engine\Earning\Listeners\ReviewListener;
@@ -77,7 +78,7 @@ class YayLoyalty {
     }
 
     /**
-     * Builds the earning composition root and attaches its four listeners. Runs once, at boot.
+     * Builds the earning composition root and attaches its five listeners. Runs once, at boot.
      * The order reversal listener also takes the redemption root's reversal: one order event returns redeemed points and claws back earned ones.
      */
     private function register_earning_listeners( RedemptionReversal $redemption_reversal ): void {
@@ -89,6 +90,7 @@ class YayLoyalty {
         $reversals = new OrderReversalListener( $pending, $reversal, $redemption_reversal );
 
         ( new OrderListener( $service, $pending, $ledger, $reversals ) )->register();
+        ( new OrderCustomerChangeListener( $pending ) )->register();
         $reversals->register();
         ( new ReviewListener( $service, $reversal ) )->register();
         ( new SignupListener( $service ) )->register();
