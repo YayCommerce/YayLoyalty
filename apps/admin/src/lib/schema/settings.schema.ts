@@ -14,6 +14,18 @@ export const settingsSchema = z.object({
   max_points_per_day: z.number().int().min(1).nullable(),
   /** Whether YayCurrency's exchange fee is part of a currency's rate. Read by YayCurrencyIntegration. */
   currency_include_fee: z.boolean(),
+  /** Read-only here: only the Tiers route writes the three tier keys, and POST /settings drops them. */
+  tiers_enabled: z.boolean(),
+  tiers_mode: z.enum(['lifetime', 'rolling']),
+  /** Mirrors TierMode::ROLLING_MONTHS. */
+  tiers_rolling_months: z.union([
+    z.literal(3),
+    z.literal(6),
+    z.literal(9),
+    z.literal(12),
+    z.literal(18),
+    z.literal(24),
+  ]),
   emails: z.object({
     /** Weekly per-customer cap on loyalty emails; null = no cap. */
     throttle_per_week: z.number().int().min(1).nullable(),
