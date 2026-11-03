@@ -3,8 +3,11 @@ namespace YayLoyalty\Engine\Admin;
 
 use Automattic\WooCommerce\Utilities\OrderUtil;
 use YayLoyalty\Access\Capabilities;
+use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\OrderPointsState;
 use YayLoyalty\Engine\Earning\PendingPoints;
+use YayLoyalty\Engine\Points\ContextFactory;
+use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 
@@ -12,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The "Loyalty points" box on the order edit screen, for HPOS and legacy storage: where the order's
- * points stand and, when a known figure is missing, a button that gives it back once through
+ * points stand and, when the order's award never completed, a button that runs it again through
  * `POST yayloyalty/v1/orders/{id}/points` (assets/admin/order-points.js). Otherwise, on a paid order
  * with a customer, a link to Customers › Adjust points for any manual grant. Rendered in PHP from
  * OrderPointsState, after dropping the order's cached copy.
@@ -82,26 +85,59 @@ final class OrderPointsMetabox {
         self::adjust_points_link( (int) $order->get_customer_id() );
     }
 
-    /** One click gives the known figure back; the route takes no points or note, so the box sends none. */
+    /**
+     * The button offers what the award gives now (campaigns live at the order's date, as configured
+     * today), which is what the retry writes. Checkout's figure is shown when it differs, and when the
+     * award gives nothing the box links to Adjust points prefilled with it.
+     */
     private static function render_confirm( \WC_Order $order, OrderPointsState $state ): void {
-        $customer = get_userdata( (int) $order->get_customer_id() );
-        $name     = $customer instanceof \WP_User ? $customer->display_name : '';
-        $figure   = $state->get_figure();
+        $customer_id = (int) $order->get_customer_id();
+        $customer    = get_userdata( $customer_id );
+        $name        = $customer instanceof \WP_User ? $customer->display_name : '';
+        $expected    = $state->get_figure();
+        $now         = self::award_preview( $order );
+
+        if ( $now < 1 ) {
+            /* translators: %d: points */
+            self::paragraph( sprintf( __( 'No campaign gives this order points any more. At checkout it was expected to earn %d points.', 'yayloyalty' ), $expected ) );
+            self::adjust_points_link( $customer_id, $expected );
+
+            return;
+        }
 
         /* translators: 1: points, 2: customer display name */
-        self::paragraph( sprintf( __( 'This order should have earned %1$d points but they are not in %2$s\'s balance.', 'yayloyalty' ), $figure, $name ) );
+        self::paragraph( sprintf( __( 'This order should have earned %1$d points but they are not in %2$s\'s balance.', 'yayloyalty' ), $now, $name ) );
+
+        if ( $expected !== $now ) {
+            /* translators: %d: points */
+            self::paragraph( sprintf( __( 'At checkout it was expected to earn %d points.', 'yayloyalty' ), $expected ) );
+        }
         ?>
         <p>
             <?php /* translators: %d: points */ ?>
-            <button type="button" class="button button-primary"><?php echo esc_html( sprintf( __( 'Give %d points', 'yayloyalty' ), $figure ) ); ?></button>
+            <button type="button" class="button button-primary"><?php echo esc_html( sprintf( __( 'Give %d points', 'yayloyalty' ), $now ) ); ?></button>
         </p>
         <?php
         self::error_line();
     }
 
-    /** The customer's drawer in the SPA with the Adjust points dialog open (CustomerDrawerActions reads `adjust=1`). */
-    private static function adjust_points_link( int $customer_id ): void {
-        $url = admin_url( 'admin.php?page=yayloyalty#/customers/' . $customer_id . '?adjust=1' );
+    /** The purchase points EarningService::award() would give the order now; 0 when no campaign applies or the order has no date. */
+    private static function award_preview( \WC_Order $order ): int {
+        try {
+            $result = EarningService::build()->preview( CampaignTrigger::PURCHASE, ContextFactory::from_order( $order ) );
+        } catch ( \InvalidArgumentException $e ) {
+            return 0;
+        }
+
+        return $result->is_awarded() ? $result->get_points() : 0;
+    }
+
+    /**
+     * The customer's drawer in the SPA with the Adjust points dialog open (CustomerDrawerActions reads
+     * `adjust=1`), its amount prefilled when $points is above 0.
+     */
+    private static function adjust_points_link( int $customer_id, int $points = 0 ): void {
+        $url = admin_url( 'admin.php?page=yayloyalty#/customers/' . $customer_id . '?adjust=1' . ( $points > 0 ? '&points=' . $points : '' ) );
 
         echo '<p><a href="' . esc_url( $url ) . '">' . esc_html__( 'Adjust points →', 'yayloyalty' ) . '</a></p>';
     }

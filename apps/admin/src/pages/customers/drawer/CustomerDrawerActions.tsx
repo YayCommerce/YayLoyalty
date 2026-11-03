@@ -15,15 +15,18 @@ import { CustomerDrawerExportLedgerButton } from './CustomerDrawerExportLedgerBu
 /**
  * The drawer's actions. Adjust points and Export ledger are live; Adjust points' invalidations refresh the drawer.
  * On a deleted account a line under the row says why Adjust points is off. Export works for a deleted account too.
- * `?adjust=1` (the order screen's "Adjust points →" link) opens Adjust points once, then leaves the URL.
+ * `?adjust=1` (the order screen's "Adjust points →" link) opens Adjust points once, then leaves the URL;
+ * `&points=N` prefills the amount.
  */
 export function CustomerDrawerActions({ customer, isLoading }: { customer: Customer; isLoading: boolean }) {
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
+  const [initialAmount, setInitialAmount] = useState<number | undefined>(undefined);
   const adjustMutation = useAdjustPointsMutation(customer.user_id);
   const isDeleted = !!customer.deleted_at;
   const canAdjust = useCapability(CAP.MANAGE_POINTS);
   const [searchParams, setSearchParams] = useSearchParams();
   const wantsAdjust = searchParams.get('adjust') === '1';
+  const linkedPoints = Number(searchParams.get('points'));
 
   useEffect(() => {
     if (!wantsAdjust) return;
@@ -32,13 +35,17 @@ export function CustomerDrawerActions({ customer, isLoading }: { customer: Custo
     setSearchParams(
       (params) => {
         params.delete('adjust');
+        params.delete('points');
         return params;
       },
       { replace: true },
     );
 
-    if (canAdjust && !isDeleted) setIsAdjustOpen(true);
-  }, [wantsAdjust, canAdjust, isDeleted, setSearchParams]);
+    if (canAdjust && !isDeleted) {
+      setInitialAmount(Number.isInteger(linkedPoints) && linkedPoints > 0 ? linkedPoints : undefined);
+      setIsAdjustOpen(true);
+    }
+  }, [wantsAdjust, linkedPoints, canAdjust, isDeleted, setSearchParams]);
 
   // The drawer's own detail query (same key, same cache): the dialog reads and re-checks the record the drawer shows.
   const customerQuery = useCustomerQuery(customer.user_id);
@@ -72,6 +79,7 @@ export function CustomerDrawerActions({ customer, isLoading }: { customer: Custo
           })
         }
         target={{ kind: 'single', customer: customerQuery }}
+        initialAmount={initialAmount}
       />
     </div>
   );

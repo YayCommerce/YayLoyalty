@@ -71,6 +71,7 @@ export function CustomersAdjustPointsDialog({
   rowsOnPage = 0,
   acknowledgementResetKey = 0,
   recountedCount = null,
+  initialAmount,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -96,6 +97,8 @@ export function CustomersAdjustPointsDialog({
   acknowledgementResetKey?: number;
   /** Bulk only: the fresh count a submit resolved when it disagreed with the one shown; replaces it until close. */
   recountedCount?: number | null;
+  /** Single only: points to add, prefilled each time the dialog opens (the order screen's "Adjust points →" link). */
+  initialAmount?: number;
 }) {
   const [state, setState] = useState<AdjustFormState>(() => initialAdjustFormState(DEFAULT_REASON()));
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -134,7 +137,10 @@ export function CustomersAdjustPointsDialog({
   // Keyed on `open`, not done in handleOpenChange: callers also close the dialog by setting
   // `open` to false after a successful submit, which bypasses handleOpenChange.
   useEffect(() => {
-    if (open) return;
+    if (open) {
+      if (isSingle && initialAmount && initialAmount > 0) patchState({ direction: 'add', amount: initialAmount });
+      return;
+    }
     setState(initialAdjustFormState(DEFAULT_REASON()));
     setValidationError(null);
     baseline.reset();
