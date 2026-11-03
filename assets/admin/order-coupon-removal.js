@@ -128,11 +128,12 @@
     true
   );
 
+  // The code stays in config.coupons: if the request fails, the line stays and its next Remove must ask again.
+  // After a restore succeeds the line is gone, and the order refuses that code again (CouponProvider).
   $(ITEMS).on("woocommerce_order_meta_box_remove_coupon_ajax_data", function (event, data) {
     if (pending !== null && data && String(data.coupon).toLowerCase() === pending) {
       data.yayloyalty_restore = 1;
       data.yayloyalty_nonce = config.nonce;
-      delete config.coupons[pending];
       pending = null;
     }
 
