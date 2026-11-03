@@ -1,0 +1,60 @@
+/* The restore-points dialog on the order edit screen. Markup: assets/admin/order-coupon-removal.js. */
+.yayloyalty-coupon-removal {
+  box-sizing: border-box;
+  width: min(460px, calc(100vw - 32px));
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: #fff;
+  color: #1e1e1e;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+.yayloyalty-coupon-removal::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.yayloyalty-coupon-removal__header {
+  padding: 20px 24px 0;
+}
+
+.yayloyalty-coupon-removal__header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.yayloyalty-coupon-removal__body {
+  padding: 12px 24px 0;
+}
+
+.yayloyalty-coupon-removal__body p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #50575e;
+}
+
+.yayloyalty-coupon-removal__body p:last-child {
+  margin-bottom: 0;
+}
+
+.yayloyalty-coupon-removal__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 16px 24px;
+  border-top: 1px solid #f0f0f1;
+}
+
+.yayloyalty-coupon-removal__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}

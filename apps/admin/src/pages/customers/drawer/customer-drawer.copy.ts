@@ -147,3 +147,4 @@ export const COLUMN_STATUS = () => __('Status', 'yayloyalty');
 export const REDEMPTION_STATUS_APPLIED = () => __('Applied', 'yayloyalty');
 export const REDEMPTION_STATUS_REFUNDED = () => __('Points returned', 'yayloyalty'); // status `refunded`
 export const REDEMPTION_STATUS_CANCELLED = () => __('Cancelled', 'yayloyalty');
+export const REDEMPTION_STATUS_REMOVED = () => __('Removed by admin', 'yayloyalty'); // status `removed`
