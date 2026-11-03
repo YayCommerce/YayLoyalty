@@ -394,8 +394,9 @@ final class LedgerService {
 
     /**
      * Whether $draft is an order's purchase earn and recover_order() already gave that order's points
-     * back. A locking read, under the customer lock: no index ties the two keys, so a plain read in an
-     * older snapshot could miss a recovery committed since and pay the order twice.
+     * back, to any customer: an order reassigned after its recovery must not pay its new customer too.
+     * A locking read, under the customer lock: no index ties the two keys, so a plain read in an older
+     * snapshot could miss a recovery committed since and pay the order twice.
      */
     private function is_recovered_order( LedgerEntry $draft ): bool {
         $order_id = $draft->get_order_id();
@@ -408,7 +409,7 @@ final class LedgerService {
             return false;
         }
 
-        return null !== $this->ledger->find_by_idempotency_key( self::recovery_key( $draft->get_user_id(), $order_id ), true );
+        return null !== $this->ledger->find_recovery_for_order( $order_id, true );
     }
 
     /** The key of an order's one recovery row: `earn:{user}:order:{order_id}:recovery`. */

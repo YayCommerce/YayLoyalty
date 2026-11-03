@@ -77,14 +77,20 @@ class LedgerRepository extends AbstractRepository {
         ];
     }
 
-    /** The order's manual recovery EARN row (LedgerService::recover_order()), or null. */
-    public function find_recovery_for_order( int $order_id ): ?LedgerEntry {
+    /**
+     * The order's manual recovery EARN row (LedgerService::recover_order()), whoever it was paid to, or null.
+     *
+     * @param bool $is_locking Read the latest committed row and share-lock it, for a check under the customer lock.
+     */
+    public function find_recovery_for_order( int $order_id, bool $is_locking = false ): ?LedgerEntry {
         global $wpdb;
 
         return $this->select_entries(
             'type = %s AND order_id = %d AND idempotency_key LIKE %s',
             [ LedgerType::EARN, $order_id, '%' . $wpdb->esc_like( ':' . IdempotencyKey::RECOVERY ) ],
-            1
+            1,
+            false,
+            $is_locking
         )[0] ?? null;
     }
 
