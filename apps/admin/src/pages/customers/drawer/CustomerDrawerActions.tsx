@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
-import { Can, CAP } from '@/lib/access';
+import { Can, CAP, useCapability } from '@/lib/access';
 import { toastApiError } from '@/lib/api/api';
 import { useAdjustPointsMutation, useCustomerQuery } from '@/lib/queries/customer.queries';
 import type { Customer } from '@/lib/schema/customer.schema';
@@ -14,11 +15,30 @@ import { CustomerDrawerExportLedgerButton } from './CustomerDrawerExportLedgerBu
 /**
  * The drawer's actions. Adjust points and Export ledger are live; Adjust points' invalidations refresh the drawer.
  * On a deleted account a line under the row says why Adjust points is off. Export works for a deleted account too.
+ * `?adjust=1` (the order screen's "Adjust points →" link) opens Adjust points once, then leaves the URL.
  */
 export function CustomerDrawerActions({ customer, isLoading }: { customer: Customer; isLoading: boolean }) {
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
   const adjustMutation = useAdjustPointsMutation(customer.user_id);
   const isDeleted = !!customer.deleted_at;
+  const canAdjust = useCapability(CAP.MANAGE_POINTS);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const wantsAdjust = searchParams.get('adjust') === '1';
+
+  useEffect(() => {
+    if (!wantsAdjust) return;
+
+    // Dropped first, so closing the dialog or reloading never reopens it, and the drawer's list filters never see it.
+    setSearchParams(
+      (params) => {
+        params.delete('adjust');
+        return params;
+      },
+      { replace: true },
+    );
+
+    if (canAdjust && !isDeleted) setIsAdjustOpen(true);
+  }, [wantsAdjust, canAdjust, isDeleted, setSearchParams]);
 
   // The drawer's own detail query (same key, same cache): the dialog reads and re-checks the record the drawer shows.
   const customerQuery = useCustomerQuery(customer.user_id);

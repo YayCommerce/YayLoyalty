@@ -3,19 +3,18 @@ namespace YayLoyalty\Engine\Admin;
 
 use Automattic\WooCommerce\Utilities\OrderUtil;
 use YayLoyalty\Access\Capabilities;
-use YayLoyalty\Controllers\OrderPointsRestController;
 use YayLoyalty\Engine\Earning\OrderPointsState;
 use YayLoyalty\Engine\Earning\PendingPoints;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
-use YayLoyalty\Services\LedgerService;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * The "Loyalty points" box on the order edit screen, for HPOS and legacy storage: where the order's
- * points stand and, when they are missing, a button that gives them back once through
- * `POST yayloyalty/v1/orders/{id}/points` (assets/admin/order-points.js). Rendered in PHP from
+ * points stand and, when a known figure is missing, a button that gives it back once through
+ * `POST yayloyalty/v1/orders/{id}/points` (assets/admin/order-points.js). Otherwise, on a paid order
+ * with a customer, a link to Customers › Adjust points for any manual grant. Rendered in PHP from
  * OrderPointsState, after dropping the order's cached copy.
  */
 final class OrderPointsMetabox {
@@ -62,19 +61,20 @@ final class OrderPointsMetabox {
             case OrderPointsState::GUEST:
                 self::paragraph( __( 'Assign a customer in the Customer field and update the order to add points.', 'yayloyalty' ) );
                 return;
-            case OrderPointsState::EARNED:
-                /* translators: %d: points */
-                self::paragraph( sprintf( __( 'Earned %d points.', 'yayloyalty' ), $state->get_net_earned() ) );
-                return;
-            case OrderPointsState::RECOVERED:
-                self::render_recovered( $state );
-                return;
             case OrderPointsState::MISSING_KNOWN:
                 self::render_confirm( $order, $state );
                 return;
-            default:
-                self::render_manual();
+            case OrderPointsState::EARNED:
+                /* translators: %d: points */
+                self::paragraph( sprintf( __( 'Earned %d points.', 'yayloyalty' ), $state->get_net_earned() ) );
+                break;
+            case OrderPointsState::RECOVERED:
+                self::render_recovered( $state );
+                break;
         }
+
+        // Earned, recovered, or nothing says how many points are missing: a manual grant belongs in Adjust points.
+        self::adjust_points_link( (int) $order->get_customer_id() );
     }
 
     private static function render_recovered( OrderPointsState $state ): void {
@@ -83,15 +83,16 @@ final class OrderPointsMetabox {
 
         if ( $recovery['reversed'] ) {
             /* translators: 1: points, 2: admin display name, 3: date */
-            self::paragraph( sprintf( __( '%1$d points added manually by %2$s on %3$s were reversed; use YayLoyalty › Customers › Adjust points.', 'yayloyalty' ), $recovery['points'], $recovery['actor_name'], $recovery['created_at'] ) );
+            self::paragraph( sprintf( __( '%1$d points added manually by %2$s on %3$s were reversed.', 'yayloyalty' ), $recovery['points'], $recovery['actor_name'], $recovery['created_at'] ) );
 
             return;
         }
 
-        /* translators: 1: points, 2: admin display name, 3: date, 4: the admin's reason */
+        /* translators: 1: points, 2: admin display name, 3: date, 4: the recovery's note */
         self::paragraph( sprintf( __( '%1$d points added manually by %2$s on %3$s: %4$s.', 'yayloyalty' ), $recovery['points'], $recovery['actor_name'], $recovery['created_at'], $recovery['note'] ) );
     }
 
+    /** One click gives the known figure back; the route takes no points or note, so the box sends none. */
     private static function render_confirm( \WC_Order $order, OrderPointsState $state ): void {
         $customer = get_userdata( (int) $order->get_customer_id() );
         $name     = $customer instanceof \WP_User ? $customer->display_name : '';
@@ -101,9 +102,6 @@ final class OrderPointsMetabox {
         self::paragraph( sprintf( __( 'This order should have earned %1$d points but they are not in %2$s\'s balance.', 'yayloyalty' ), $figure, $name ) );
         ?>
         <p>
-            <input type="text" class="widefat" name="yayloyalty_note" maxlength="500" placeholder="<?php echo esc_attr( OrderPointsRestController::default_note() ); ?>" aria-label="<?php echo esc_attr__( 'Reason', 'yayloyalty' ); ?>" />
-        </p>
-        <p>
             <?php /* translators: %d: points */ ?>
             <button type="button" class="button button-primary"><?php echo esc_html( sprintf( __( 'Give %d points', 'yayloyalty' ), $figure ) ); ?></button>
         </p>
@@ -111,21 +109,11 @@ final class OrderPointsMetabox {
         self::error_line();
     }
 
-    private static function render_manual(): void {
-        ?>
-        <p>
-            <label for="yayloyalty_points"><?php esc_html_e( 'Points', 'yayloyalty' ); ?></label>
-            <input type="number" class="widefat" id="yayloyalty_points" name="yayloyalty_points" min="1" max="<?php echo esc_attr( (string) LedgerService::MAX_RECOVERY_POINTS ); ?>" step="1" />
-        </p>
-        <p>
-            <label for="yayloyalty_note"><?php esc_html_e( 'Reason', 'yayloyalty' ); ?></label>
-            <input type="text" class="widefat" id="yayloyalty_note" name="yayloyalty_note" maxlength="500" required />
-        </p>
-        <p>
-            <button type="button" class="button button-primary"><?php esc_html_e( 'Add points', 'yayloyalty' ); ?></button>
-        </p>
-        <?php
-        self::error_line();
+    /** The customer's drawer in the SPA with the Adjust points dialog open (CustomerDrawerActions reads `adjust=1`). */
+    private static function adjust_points_link( int $customer_id ): void {
+        $url = admin_url( 'admin.php?page=yayloyalty#/customers/' . $customer_id . '?adjust=1' );
+
+        echo '<p><a href="' . esc_url( $url ) . '">' . esc_html__( 'Adjust points →', 'yayloyalty' ) . '</a></p>';
     }
 
     private static function paragraph( string $text ): void {

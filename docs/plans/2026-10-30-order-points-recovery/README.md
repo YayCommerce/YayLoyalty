@@ -15,11 +15,12 @@
 - `includes/Repositories/CustomerRepository.php` (shared: every `LedgerService` write and every customer read; one additive setter)
 - `includes/Engine/Earning/Reversal.php`
 - `includes/Engine/Earning/` (new `OrderPointsState`, `OrderPointsRecovery`)
-- `includes/Controllers/` (new `OrderPointsRestController`, `Schemas/OrderPointsRouteArgs`)
+- `includes/Controllers/` (new `OrderPointsRestController`)
 - `includes/Engine/RestAPI.php`
 - `includes/Engine/Admin/` (new `OrderPointsMetabox`, `OrderPointsColumn`)
 - `includes/YayLoyalty.php`
 - `assets/admin/order-points.js` (new)
+- `apps/admin/src/pages/customers/drawer/CustomerDrawerActions.tsx` (`?adjust=1` opens the Adjust points dialog; amended 2026-11-03)
 
 **Tests:** `tests/integration/Earning/OrderPointsRecoveryTest.php` (integration, `composer test:integration`). It guards ledger and money logic:
 - recovery writes the keyed EARN row and moves `balance`, `lifetime_earned` and `pending_points`;
@@ -38,7 +39,7 @@ The user accepted all of these on 2026-10-30.
 - Lite feature: everything lives in core `includes/`, nothing under `includes/Pro/`.
 - Orders are read and written only through the WooCommerce CRUD API. Order meta is written only through `PendingPoints`, which saves meta only and never does a full save.
 - REST routes use `exec_read()`/`exec_write()` and `requires( Capabilities::MANAGE_POINTS )`. The actor is `get_current_user_id()`, never a request field.
-- Points are integers from 1 to 1,000,000. The note is sanitized with `sanitize_text_field`, required in Manual mode, at most 500 characters, and defaults to "Recovered missing order points" in Confirm mode.
+- Points are integers from 1 to 1,000,000, taken from `OrderPointsState::get_figure()`, never from the request. The note is always "Recovered missing order points" (amended 2026-11-03: no Manual mode, no reason field).
 - Strings use the `yayloyalty` text domain. Hooks, globals, meta box ids and column keys use the `yayloyalty_`/`yayloyalty-` prefix.
 - Order notes and hooks that call out are written from `Transaction::after_commit()`.
 - SQL values go through `$wpdb->prepare()` placeholders, and the table name through `esc_sql()` in backticks. Logging goes only through `Log::error|warning|debug`.
@@ -60,7 +61,7 @@ The user accepted all of these on 2026-10-30.
 
 | Phase | Delivers (user-visible) | Exit criterion (exact check) | Status |
 |---|---|---|---|
-| 1 | The "Loyalty points" box on the order screen recovers missing points (Confirm and Manual), once per order. Refunds and cancels claw them back, and a later completion adds nothing. | Spec acceptance 11 steps 1, 2, 4, 5 and 6 pass on the local site, and `composer test:integration` prints `OK` with the 7 `OrderPointsRecoveryTest` methods in its count | pending |
+| 1 | The "Loyalty points" box on the order screen recovers missing points with a known figure in one click, once per order, and links every other manual grant to SPA Adjust points. Refunds and cancels claw them back, and a later completion adds nothing. | Spec acceptance 11 steps 1, 2, 4, 5 and 6 pass on the local site, and `composer test:integration` prints `OK` with the 7 `OrderPointsRecoveryTest` methods in its count | pending |
 | 2 | The orders list "Loyalty points" column shows earned points, a **Missing** badge, or "–" | Spec acceptance 11 passes in full, step 3 included | pending |
 
 ## Interface contract
@@ -85,8 +86,8 @@ The user accepted all of these on 2026-10-30.
   Produced by Phase 1 Task 2, consumed by Phase 1 Tasks 2 and 4.
 - `CustomerRepository::set_pending_points( int $user_id, int $points ): void` (floored at 0), called only by `PendingPoints::resync_customer()`. Produced by Phase 1 Task 2.
 - REST routes `GET` and `POST yayloyalty/v1/orders/(?P<id>\d+)/points`:
-  - POST body: `points` (int, optional), `note` (string, optional)
+  - POST body: none. Only `missing_known` is recovered; `missing_unknown` gets 409 `yayloyalty_not_eligible`.
   - both answer with `OrderPointsState::to_array()`
-  - errors: 404 `yayloyalty_order_not_found`, 400 `yayloyalty_invalid_points`, 400 `yayloyalty_invalid_note`, 409 `yayloyalty_not_eligible`, 409 `yayloyalty_order_has_points`, 409 `yayloyalty_already_recovered`
+  - errors: 404 `yayloyalty_order_not_found`, 409 `yayloyalty_not_eligible`, 409 `yayloyalty_order_has_points`, 409 `yayloyalty_already_recovered`
 
   Produced by Phase 1 Task 2, consumed by Phase 1 Task 4's script.

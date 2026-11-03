@@ -119,7 +119,7 @@ final class OrderPointsRecoveryTest extends IntegrationTestCase {
         $this->assertSame( 'missing_known', $this->send( 'GET', $route )->get_data()['status'] );
         $this->assertSame( 40, $this->send( 'GET', $route )->get_data()['figure'] );
 
-        $response = $this->send( 'POST', $route, [ 'note' => '' ] );
+        $response = $this->send( 'POST', $route );
 
         $this->assertSame( 200, $response->get_status() );
         $this->assertSame( 'recovered', $response->get_data()['status'] );
@@ -129,7 +129,7 @@ final class OrderPointsRecoveryTest extends IntegrationTestCase {
         $fresh = wc_get_order( $order->get_id() );
         $this->assertNotSame( '', (string) $fresh->get_meta( PendingPoints::META_RELEASED_AT ) );
         $this->assertSame( 40, (int) $fresh->get_meta( PendingPoints::META_EARNED ) );
-        $this->assertSame( 'yayloyalty_already_recovered', $this->send( 'POST', $route, [ 'note' => '' ] )->as_error()->get_error_code() );
+        $this->assertSame( 'yayloyalty_already_recovered', $this->send( 'POST', $route )->as_error()->get_error_code() );
     }
 
     /** Case 4: the order meta claims 40 earned and released, the ledger has nothing, and pending_points still holds 40. */
@@ -149,7 +149,7 @@ final class OrderPointsRecoveryTest extends IntegrationTestCase {
         $this->assertSame( 'missing_known', $state['status'] );
         $this->assertSame( 40, $state['figure'] );
 
-        $this->assertSame( 200, $this->send( 'POST', $route, [ 'note' => '' ] )->get_status() );
+        $this->assertSame( 200, $this->send( 'POST', $route )->get_status() );
 
         $this->assertSame( [ 40 ], $this->ledger_points( $user_id ) );
         $this->assertSame( 40, (int) wc_get_order( $order->get_id() )->get_meta( PendingPoints::META_EARNED ) );

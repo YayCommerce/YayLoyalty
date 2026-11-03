@@ -2,7 +2,8 @@
 
 **Plan:** `README.md` in this directory: the Status, constraints and interface contract
 **Depends on:** nothing
-**Delivers:** the "Loyalty points" box on the order edit screen, for HPOS and legacy storage, gives missing points back once per order, by confirming the known figure or entering points. The points behave like purchase points afterwards.
+**Delivers:** the "Loyalty points" box on the order edit screen, for HPOS and legacy storage, gives missing points back once per order, by confirming the known figure in one click. Every other manual grant goes through a link to SPA Adjust points. The points behave like purchase points afterwards.
+**Amended:** 2026-11-03 (spec amendment of the same day): no Manual mode and no reason field. The POST takes no body, `MISSING_UNKNOWN` answers 409 `yayloyalty_not_eligible`, and `EARNED`, `RECOVERED` and `MISSING_UNKNOWN` boxes link to `admin.php?page=yayloyalty#/customers/{customer_id}?adjust=1`, which opens the Adjust points dialog (Task 4, Step 2b).
 **Exit criterion:** on the local site:
 
 1. Spec acceptance 11 steps 1, 2, 4, 5 and 6. Skip step 3 (the column, Phase 2) and open the order directly. Expected:
@@ -186,7 +187,6 @@ Message: `feat(ledger): add a once-per-order recovery earn and skip purchase awa
 - Create: `includes/Engine/Earning/OrderPointsState.php`
 - Create: `includes/Engine/Earning/OrderPointsRecovery.php`
 - Create: `includes/Controllers/OrderPointsRestController.php`
-- Create: `includes/Controllers/Schemas/OrderPointsRouteArgs.php`
 - Modify: `includes/Engine/RestAPI.php` (`controllers()`)
 - Modify: `includes/Engine/Earning/PendingPoints.php`
 - Modify: `includes/Repositories/CustomerRepository.php`
@@ -214,7 +214,7 @@ public function test_rest_recovery_of_a_failed_award(): void {
     $this->assertSame( 'missing_known', $this->send( 'GET', $route )->get_data()['status'] );
     $this->assertSame( 40, $this->send( 'GET', $route )->get_data()['figure'] );
 
-    $response = $this->send( 'POST', $route, [ 'note' => '' ] );
+    $response = $this->send( 'POST', $route );
 
     $this->assertSame( 200, $response->get_status() );
     $this->assertSame( 'recovered', $response->get_data()['status'] );
@@ -224,7 +224,7 @@ public function test_rest_recovery_of_a_failed_award(): void {
     $fresh = wc_get_order( $order->get_id() );
     $this->assertNotSame( '', (string) $fresh->get_meta( PendingPoints::META_RELEASED ) );
     $this->assertSame( 40, (int) $fresh->get_meta( PendingPoints::META_EARNED ) );
-    $this->assertSame( 'yayloyalty_already_recovered', $this->send( 'POST', $route, [ 'note' => '' ] )->as_error()->get_error_code() );
+    $this->assertSame( 'yayloyalty_already_recovered', $this->send( 'POST', $route )->as_error()->get_error_code() );
 }
 
 /** Case 4: the order meta claims 40 earned and released, the ledger has nothing, and pending_points still holds 40. */
@@ -244,7 +244,7 @@ public function test_recovery_after_stale_earned_meta(): void {
     $this->assertSame( 'missing_known', $state['status'] );
     $this->assertSame( 40, $state['figure'] );
 
-    $this->assertSame( 200, $this->send( 'POST', $route, [ 'note' => '' ] )->get_status() );
+    $this->assertSame( 200, $this->send( 'POST', $route )->get_status() );
 
     $this->assertSame( [ 40 ], $this->ledger_points( $user_id ) );
     $this->assertSame( 40, (int) wc_get_order( $order->get_id() )->get_meta( PendingPoints::META_EARNED ) );
@@ -301,11 +301,7 @@ Expected: 2 failures, the GET answers 404 `rest_no_route`
 
 - [ ] **Step 6: Implement the controller and its route args**
 
-- `OrderPointsRouteArgs::recover()`:
-  - `points`: integer, `minimum` 1, `maximum` 1000000, not required
-  - `note`: string, `maxLength` 500, `validate_callback` `rest_validate_request_arg`, `sanitize_callback` `sanitize_text_field`, default `''`
-
-  The 500 cap follows the `customer_note` pattern in `CustomerRouteArgs`.
+- No body args (amended 2026-11-03): the route takes only `id`, so no `OrderPointsRouteArgs` class.
 - `OrderPointsRestController`:
   - `get_rest_base()` returns `'orders'`.
   - It registers `/orders/(?P<id>[\d]+)/points` with `READABLE` → `exec_read( [ $this, 'get_state' ] )` and `CREATABLE` → `exec_write( [ $this, 'recover' ] )`, both with `requires( Capabilities::MANAGE_POINTS )`.
@@ -319,8 +315,8 @@ Expected: 2 failures, the GET answers 404 `rest_no_route`
 | State `NOT_PAID` or `GUEST` | 409 `yayloyalty_not_eligible` |
 | State `RECOVERED` | 409 `yayloyalty_already_recovered` |
 | State `EARNED` | 409 `yayloyalty_order_has_points` |
-| `MISSING_KNOWN` | Points = figure, the request's `points` ignored. Note = request note, or "Recovered missing order points" when empty. |
-| `MISSING_UNKNOWN` | Missing points → 400 `yayloyalty_invalid_points`. Empty note → 400 `yayloyalty_invalid_note`. |
+| `MISSING_KNOWN` | Points = figure. Note = "Recovered missing order points". |
+| `MISSING_UNKNOWN` | 409 `yayloyalty_not_eligible` |
 | Outcome `skipped( REASON_ORDER_HAS_POINTS )` | 409 `yayloyalty_order_has_points` |
 | Outcome `DUPLICATE` | 409 `yayloyalty_already_recovered` |
 | Success | 200, with `OrderPointsState::resolve()` of a fresh `wc_get_order()` |
@@ -334,20 +330,20 @@ In `RestAPI::controllers()`, build `$pending = new PendingPoints( $customers )` 
 Run: `composer test:integration -- --filter OrderPointsRecoveryTest`
 Expected: `OK (7 tests, …)`
 
-- [ ] **Step 9: Verify the reversed-then-restored figure, the manual errors and case 4 under an object cache**
+- [ ] **Step 9: Verify the reversed-then-restored figure, the refusal of `missing_unknown` and case 4 under an object cache**
 
 On the local site, complete an order for a registered customer while a purchase campaign is active, so it earns N. Set it to Cancelled, then to Completed. As an administrator, in the browser console on wp-admin, run `wp.apiFetch({ path: '/yayloyalty/v1/orders/<id>/points' })`.
 Expected: `status: "missing_known"` and `figure: N`
 
-On a completed order that earned nothing (no active purchase campaign), run `wp.apiFetch({ path: '/yayloyalty/v1/orders/<id>/points', method: 'POST', data: { points: 0, note: 'x' } })`.
-Expected: a 400 error, and no new ledger row in the customer's drawer
+On a completed order that earned nothing (no active purchase campaign), run `wp.apiFetch({ path: '/yayloyalty/v1/orders/<id>/points', method: 'POST', data: { points: 50, note: 'x' } })`.
+Expected: 409 `yayloyalty_not_eligible`, and no new ledger row in the customer's drawer
 
 With a persistent object cache active (Redis Object Cache plugin, `wp redis status` showing `Connected`), repeat spec acceptance 11 steps 1 and 2, then open the order.
 Expected: the box offers **Give N points** whatever the cached meta says. After clicking, `wp eval 'echo wc_get_order(<id>)->get_meta("_yayloyalty_points_earned");'` prints N (not 2N), and the customer's pending in their drawer is 0. If no object cache is available locally, record that this check was skipped; the accepted test covers the meta and pending outcome.
 
 - [ ] **Step 10: Lint the changed files**
 
-Run: `composer lint -- includes/Engine/Earning/OrderPointsState.php includes/Engine/Earning/OrderPointsRecovery.php includes/Controllers/OrderPointsRestController.php includes/Controllers/Schemas/OrderPointsRouteArgs.php includes/Engine/RestAPI.php includes/Engine/Earning/PendingPoints.php includes/Repositories/CustomerRepository.php`
+Run: `composer lint -- includes/Engine/Earning/OrderPointsState.php includes/Engine/Earning/OrderPointsRecovery.php includes/Controllers/OrderPointsRestController.php includes/Engine/RestAPI.php includes/Engine/Earning/PendingPoints.php includes/Repositories/CustomerRepository.php`
 Expected: no errors or warnings
 
 - [ ] **Step 11: Commit**
@@ -412,20 +408,24 @@ Message: `feat(earning): note recovered orders and quiet the refund warning for 
 |---|---|
 | `NOT_PAID` | "Points can be added once the order is paid (Processing or Completed)." |
 | `GUEST` | "Assign a customer in the Customer field and update the order to add points." |
-| `EARNED` | "Earned %d points." |
-| `RECOVERED` | "%1$d points added manually by %2$s on %3$s: %4$s." When `is_recovery_reversed()`: "%1$d points added manually by %2$s on %3$s were reversed; use YayLoyalty › Customers › Adjust points." |
-| `MISSING_KNOWN` | "This order should have earned %1$d points but they are not in %2$s's balance.", where %2$s is the customer's display name. Then a text input `name="yayloyalty_note"`, optional with placeholder "Recovered missing order points", and a button `.button.button-primary` "Give %d points". |
-| `MISSING_UNKNOWN` | A number input `name="yayloyalty_points"` (min 1, max 1000000), a text input `name="yayloyalty_note"` (required, maxlength 500) and a button "Add points". |
+| `EARNED` | "Earned %d points." Then the Adjust points link. |
+| `RECOVERED` | "%1$d points added manually by %2$s on %3$s: %4$s." When `is_recovery_reversed()`: "%1$d points added manually by %2$s on %3$s were reversed." Then the Adjust points link. |
+| `MISSING_KNOWN` | "This order should have earned %1$d points but they are not in %2$s's balance.", where %2$s is the customer's display name. Then a button `.button.button-primary` "Give %d points". No reason field. |
+| `MISSING_UNKNOWN` | The Adjust points link only. |
 
-  The `<p class="yayloyalty-order-points__error" hidden>` error line appears in the two MISSING states only.
+  The Adjust points link reads "Adjust points →" and points to `admin_url( 'admin.php?page=yayloyalty#/customers/{customer_id}?adjust=1' )`. The `<div class="yayloyalty-order-points__error" hidden>` error line appears in `MISSING_KNOWN` only.
 - `enqueue( string $hook )`: return unless `get_current_screen()` has the id `wc_get_page_screen_id( 'shop-order' )` and the user can `MANAGE_POINTS`. Then call `wp_enqueue_script( 'yayloyalty-order-points', YAYLOYALTY_PLUGIN_URL . 'assets/admin/order-points.js', [ 'wp-api-fetch' ], YAYLOYALTY_VERSION, true )`.
 
 - [ ] **Step 2: Write `assets/admin/order-points.js`**
 
 - An IIFE with no build step, matching the style of `assets/storefront/*.js`.
-- On a button click inside `.yayloyalty-order-points`, call `wp.apiFetch( { path: '/yayloyalty/v1/orders/' + id + '/points', method: 'POST', data } )`. `data` holds `note`, plus `points` when the number input exists.
+- On a button click inside `.yayloyalty-order-points`, call `wp.apiFetch( { path: '/yayloyalty/v1/orders/' + id + '/points', method: 'POST', data } )`. No `data`: the route takes no body.
 - Disable the button while the request runs. On success, call `window.location.reload()`. On error, show `error.message` in the error line and enable the button again.
 - `wp-api-fetch` already sends the REST nonce in wp-admin.
+
+- [ ] **Step 2b: Open Adjust points from the link**
+
+In `apps/admin/src/pages/customers/drawer/CustomerDrawerActions.tsx`, when the search has `adjust=1`, drop the parameter with `setSearchParams( …, { replace: true } )`, and open the Adjust points dialog when the user has `CAP.MANAGE_POINTS` and the account is not deleted. Check with `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit`.
 
 - [ ] **Step 3: Register it**
 
@@ -440,7 +440,7 @@ In `includes/YayLoyalty.php`, in the `else` (admin) branch, add `\YayLoyalty\Eng
   - re-completing adds nothing;
   - cancelling takes N back, and the box then says "…were reversed; use YayLoyalty › Customers › Adjust points."
 - Switch to legacy post storage and open a pending order and a guest processing order. Expected: the not-paid and guest messages, with no button.
-- On a paid order that earned nothing, submit with an empty reason. Expected: the error line shows the 400 message and nothing is written.
+- On a paid order that earned nothing, the box shows only the Adjust points link. Clicking it opens YayLoyalty › Customers with that customer's drawer and the Adjust points dialog open; closing the dialog and reloading does not reopen it.
 - Log in as a shop manager after removing the capability: run `wp cap remove shop_manager yayloyalty_manage_points`, then put it back with `wp cap add`. Expected: no "Loyalty points" box, and `wp.apiFetch` against the route answers 403 `yayloyalty_forbidden`.
 
 - [ ] **Step 5: Lint and commit**

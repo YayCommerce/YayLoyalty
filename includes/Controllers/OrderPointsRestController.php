@@ -2,7 +2,6 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
-use YayLoyalty\Controllers\Schemas\OrderPointsRouteArgs;
 use YayLoyalty\Engine\Earning\OrderPointsRecovery;
 use YayLoyalty\Engine\Earning\OrderPointsState;
 use YayLoyalty\Engine\Earning\Outcome;
@@ -14,8 +13,9 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * GET and POST /orders/{id}/points: where an order's points stand, and giving its missing points
- * back once. Both read the order after dropping its cached copy, so stale meta left by a rolled-back
- * award cannot hide the missing points.
+ * back once. The POST takes no body: it recovers only a known figure (MISSING_KNOWN), with the default
+ * note. Any other manual grant goes through Customers › Adjust points. Both read the order after
+ * dropping its cached copy, so stale meta left by a rolled-back award cannot hide the missing points.
  */
 final class OrderPointsRestController extends AbstractRestController {
 
@@ -57,7 +57,7 @@ final class OrderPointsRestController extends AbstractRestController {
                     'methods'             => \WP_REST_Server::CREATABLE,
                     'callback'            => fn( $request ) => $this->exec_write( [ $this, 'recover' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::MANAGE_POINTS ),
-                    'args'                => [ 'id' => $id_arg ] + OrderPointsRouteArgs::recover(),
+                    'args'                => [ 'id' => $id_arg ],
                 ],
             ]
         );
@@ -83,40 +83,21 @@ final class OrderPointsRestController extends AbstractRestController {
         }
 
         $state = OrderPointsState::resolve( $order, $this->ledger );
-        $note  = trim( (string) $request['note'] );
 
         switch ( $state->get_status() ) {
-            case OrderPointsState::NOT_PAID:
-            case OrderPointsState::GUEST:
-                return $this->conflict( 'yayloyalty_not_eligible', __( 'Points can be added only to a paid order with a customer.', 'yayloyalty' ) );
             case OrderPointsState::RECOVERED:
                 return $this->already_recovered();
             case OrderPointsState::EARNED:
                 return $this->order_has_points();
             case OrderPointsState::MISSING_KNOWN:
-                // Confirm mode: the figure as is, never the request's points.
-                $points = $state->get_figure();
-                $note   = '' === $note ? self::default_note() : $note;
                 break;
             default:
-                $points = null === $request['points'] ? 0 : (int) $request['points'];
-
-                if ( $points < 1 || $points > LedgerService::MAX_RECOVERY_POINTS ) {
-                    return new \WP_Error(
-                        'yayloyalty_invalid_points',
-                        /* translators: %s: the most points allowed, formatted */
-                        sprintf( __( 'Enter the points to add, a whole number from 1 to %s.', 'yayloyalty' ), number_format_i18n( LedgerService::MAX_RECOVERY_POINTS ) ),
-                        [ 'status' => 400 ]
-                    );
-                }
-
-                if ( '' === $note ) {
-                    return new \WP_Error( 'yayloyalty_invalid_note', __( 'Enter a reason for adding these points.', 'yayloyalty' ), [ 'status' => 400 ] );
-                }
+                // Not paid, guest, or nothing says how many points are missing: a manual grant, not a recovery.
+                return $this->conflict( 'yayloyalty_not_eligible', __( 'Only a paid order with a customer and a known missing figure can get its points back here. Use YayLoyalty › Customers › Adjust points instead.', 'yayloyalty' ) );
         }
 
-        // actor_id comes from the session, never the request body.
-        $outcome = $this->recovery->recover( $order, $points, $note, get_current_user_id() );
+        // The figure as is and the default note; actor_id comes from the session. No request field sets any of them.
+        $outcome = $this->recovery->recover( $order, $state->get_figure(), self::default_note(), get_current_user_id() );
 
         if ( Outcome::DUPLICATE === $outcome->get_status() ) {
             return $this->already_recovered();
@@ -131,7 +112,7 @@ final class OrderPointsRestController extends AbstractRestController {
         return OrderPointsState::resolve( null === $fresh ? $order : $fresh, $this->ledger )->to_array();
     }
 
-    /** The reason a Confirm-mode recovery records when the admin gives none; the box shows it as the placeholder. */
+    /** The note every recovery records. */
     public static function default_note(): string {
         return __( 'Recovered missing order points', 'yayloyalty' );
     }
