@@ -19,6 +19,7 @@ export const CAP = {
   MANAGE_POINTS: 'yayloyalty_manage_points',
   MANAGE_CAMPAIGNS: 'yayloyalty_manage_campaigns',
   MANAGE_REWARDS: 'yayloyalty_manage_rewards',
+  MANAGE_TIERS: 'yayloyalty_manage_tiers',
   MANAGE_SETTINGS: 'yayloyalty_manage_settings',
   RUN_TOOLS: 'yayloyalty_run_tools',
 } as const;
