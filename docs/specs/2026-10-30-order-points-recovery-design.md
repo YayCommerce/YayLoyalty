@@ -57,7 +57,7 @@ Known false positive: an order duplicated or migrated by a tool that copies all 
 
 ## Acceptance criteria
 
-1. Given a `completed` order with a customer, no EARN row and `_yayloyalty_points_pending = 120` unreleased, when an admin with `yayloyalty_manage_points` opens the order, then the box says the order should have earned N points, where N is what the purchase award gives now, and shows a **Give N points** button. When N differs from 120, the box also says "At checkout it was expected to earn 120 points."
+1. Given a `completed` order with a customer, no EARN row and `_yayloyalty_points_pending = 120` unreleased, when an admin with `yayloyalty_manage_points` opens the order, then the box says the order should have earned **120** points and shows a **Give N points** button, where N is what the award gives now (what the retry writes). When N differs from 120, the box also says "Campaigns changed since checkout: retrying gives N points now."
 2. When the admin clicks it, the order's award runs as on completion: one purchase EARN row keyed `earn:{user}:order:{order_id}:purchase` with its campaign, `pending_points` released, `_yayloyalty_points_earned = N`, the usual award note, and the order note "Points award retried by {admin display name}."
 3. When the award gives 0 now (the campaign was paused, archived or changed), the box shows no button. It says "No campaign gives this order points any more. At checkout it was expected to earn 120 points." and links to Adjust points with `points=120`.
 3a. Signal C: given a `completed` order with a customer, no EARN row, `_yayloyalty_points_earned = 40`, the release flag set and `customers.pending_points = 40`, the order is missing. The retry writes one 40-point row, leaves `_yayloyalty_points_earned` at 40 (not 80) and sets `pending_points` to 0. The box and the REST route read the order after dropping its cached copy.
@@ -134,7 +134,7 @@ Known false positive: an order duplicated or migrated by a tool that copies all 
 | Situation | Expected behaviour |
 |---|---|
 | Retry and completion at the same time | Both write the same purchase key; the second is a duplicate. |
-| Campaign changed since checkout | The button offers the award's figure now; the box states the checkout figure. |
+| Campaign changed since checkout | The box states the checkout figure and adds "Campaigns changed since checkout: retrying gives N points now."; the button offers N. |
 | Campaign paused or archived since checkout | No button; the link prefills Adjust points with the checkout figure. |
 | Earning limit reached today | The award holds back as on completion; its note says so. |
 | The cause of the original failure persists | The retry fails again; the POST reports the error and writes nothing. |

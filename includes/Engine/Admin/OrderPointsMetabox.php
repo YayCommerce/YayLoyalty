@@ -84,9 +84,10 @@ final class OrderPointsMetabox {
     }
 
     /**
-     * The button offers what the award gives now (OrderAward::preview(): campaigns live at the order's
-     * date, as configured today), which is what the retry writes. Checkout's figure is shown when it differs, and when the
-     * award gives nothing the box links to Adjust points prefilled with it.
+     * The box states what checkout expected; the button offers what the award gives now
+     * (OrderAward::preview(): campaigns live at the order's date, as configured today), which is what the
+     * retry writes. When the two differ the box says so, and when the award gives nothing it links to
+     * Adjust points prefilled with checkout's figure.
      */
     private static function render_confirm( \WC_Order $order, OrderPointsState $state ): void {
         $customer_id = (int) $order->get_customer_id();
@@ -104,11 +105,11 @@ final class OrderPointsMetabox {
         }
 
         /* translators: 1: points, 2: customer display name */
-        self::paragraph( sprintf( __( 'This order should have earned %1$d points but they are not in %2$s\'s balance.', 'yayloyalty' ), $now, $name ) );
+        self::paragraph( sprintf( __( 'This order should have earned %1$d points but they are not in %2$s\'s balance.', 'yayloyalty' ), $expected, $name ) );
 
         if ( $expected !== $now ) {
             /* translators: %d: points */
-            self::paragraph( sprintf( __( 'At checkout it was expected to earn %d points.', 'yayloyalty' ), $expected ) );
+            self::paragraph( sprintf( __( 'Campaigns changed since checkout: retrying gives %d points now.', 'yayloyalty' ), $now ) );
         }
         ?>
         <p>
