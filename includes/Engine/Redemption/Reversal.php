@@ -163,7 +163,7 @@ final class Reversal {
      * @return Outcome|null Null when the order has no row for $code.
      */
     public function coupon_removed( \WC_Order $order, string $code ): ?Outcome {
-        $stale = $this->redemptions->find_for_order_code( (int) $order->get_id(), $code );
+        $stale = $this->redemptions->find_by_order_and_coupon_code( (int) $order->get_id(), $code );
 
         if ( null === $stale ) {
             return null;

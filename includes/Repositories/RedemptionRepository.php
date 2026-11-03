@@ -74,11 +74,8 @@ final class RedemptionRepository extends AbstractRepository {
         return array_map( [ Redemption::class, 'from_row' ], is_array( $rows ) ? $rows : [] );
     }
 
-    /**
-     * The order's row for the coupon line $code, in any status, or null. Codes compare under
-     * wc_format_coupon_code(), as WooCommerce matches coupon lines.
-     */
-    public function find_for_order_code( int $order_id, string $code ): ?Redemption {
+    /** The order's redemption whose coupon code matches $code under wc_format_coupon_code(), in any status, or null. */
+    public function find_by_order_and_coupon_code( int $order_id, string $code ): ?Redemption {
         $code = wc_format_coupon_code( $code );
 
         foreach ( $this->for_order( $order_id ) as $row ) {

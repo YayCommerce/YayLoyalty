@@ -155,7 +155,7 @@ final class OrderCouponRemoval {
             return;
         }
 
-        $row  = $this->redemptions->find_for_order_code( $order_id, $code );
+        $row  = $this->redemptions->find_by_order_and_coupon_code( $order_id, $code );
         $name = null === $row ? $code : $this->name_of( $row );
 
         try {

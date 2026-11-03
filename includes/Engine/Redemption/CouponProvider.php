@@ -88,7 +88,7 @@ final class CouponProvider {
             return $valid;
         }
 
-        $row = $this->redemptions->find_for_order_code( (int) $order->get_id(), $code );
+        $row = $this->redemptions->find_by_order_and_coupon_code( (int) $order->get_id(), $code );
 
         if ( null === $row || Redemption::STATUS_APPLIED !== $row->get_status() ) {
             throw new \Exception( esc_html__( 'This loyalty discount can only be applied by the customer at checkout.', 'yayloyalty' ) );
