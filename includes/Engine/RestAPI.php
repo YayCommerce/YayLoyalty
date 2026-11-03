@@ -17,7 +17,9 @@ use YayLoyalty\Controllers\RewardRestController;
 use YayLoyalty\Controllers\SettingsRestController;
 use YayLoyalty\Controllers\SetupRestController;
 use YayLoyalty\Controllers\StorefrontActivityRestController;
-use YayLoyalty\Engine\Earning\OrderPointsRecovery;
+use YayLoyalty\Engine\Earning\EarningService;
+use YayLoyalty\Engine\Earning\OrderAward;
+use YayLoyalty\Engine\Earning\OrderPointsRetry;
 use YayLoyalty\Engine\Earning\PendingPoints;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerMetaRepository;
@@ -80,8 +82,8 @@ class RestAPI {
             new EmailsRestController(),
             // $ledger and $redemptions are read-only here.
             new CustomerRestController( $customers, $ledger_service, $ledger, $customer_meta, $redemptions ),
-            // $ledger is read-only here; the recovery writes through $ledger_service.
-            new OrderPointsRestController( new OrderPointsRecovery( $ledger_service, $pending ), $ledger, $pending ),
+            // The retry writes through the award's own LedgerService (EarningService::build()); $ledger is read-only here.
+            new OrderPointsRestController( new OrderPointsRetry( new OrderAward( EarningService::build(), $pending, $ledger ), $pending ), $ledger, $pending ),
             // $customers is read-only here too.
             new CustomerAdjustPreviewRestController( $customers, $dashboard ),
             new LedgerRestController( $ledger ),

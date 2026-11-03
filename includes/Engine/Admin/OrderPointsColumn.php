@@ -87,15 +87,15 @@ final class OrderPointsColumn {
         echo self::cell( $state ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- cell() escapes every part.
     }
 
-    /** The cell's HTML: net points for a live earn (recovered or not), the Missing badge, or "–". */
+    /** The cell's HTML: net points for a live earn, the Missing badge, or "–". */
     private static function cell( OrderPointsState $state ): string {
         $status = $state->get_status();
 
-        if ( ( OrderPointsState::EARNED === $status || OrderPointsState::RECOVERED === $status ) && $state->get_net_earned() > 0 ) {
+        if ( OrderPointsState::EARNED === $status ) {
             return esc_html( number_format_i18n( $state->get_net_earned() ) );
         }
 
-        if ( OrderPointsState::MISSING_KNOWN === $status ) {
+        if ( OrderPointsState::MISSING === $status ) {
             return '<mark class="order-status status-on-hold"><span>' . esc_html__( 'Missing', 'yayloyalty' ) . '</span></mark>';
         }
 

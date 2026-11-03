@@ -96,38 +96,35 @@ final class PendingPoints {
      * per awarded row, never for a duplicate, or the sum double counts.
      */
     public function mark_awarded( int $order_id, LedgerEntry $entry ): void {
-        $this->write_earned( $order_id, $entry, true );
-    }
-
-    /**
-     * Sets META_EARNED to $entry's points, rather than adding to it as mark_awarded() does, and
-     * META_CAMPAIGN as mark_awarded() does. For a recovery: the meta may already claim points the
-     * ledger never kept (an award rolled back after its meta reached a persistent object cache), and
-     * adding would double it.
-     */
-    public function restate_earned( int $order_id, LedgerEntry $entry ): void {
-        $this->write_earned( $order_id, $entry, false );
-    }
-
-    /**
-     * META_EARNED set to, or with $is_additive raised by, $entry's points; META_CAMPAIGN set to its
-     * campaign while the order has none.
-     */
-    private function write_earned( int $order_id, LedgerEntry $entry, bool $is_additive ): void {
         $order = wc_get_order( $order_id );
 
         if ( ! $order instanceof \WC_Order ) {
             return;
         }
 
-        $earned = $is_additive ? (int) $order->get_meta( self::META_EARNED ) + $entry->get_points() : $entry->get_points();
-
-        $order->update_meta_data( self::META_EARNED, $earned );
+        $order->update_meta_data( self::META_EARNED, (int) $order->get_meta( self::META_EARNED ) + $entry->get_points() );
 
         if ( '' === (string) $order->get_meta( self::META_CAMPAIGN ) && null !== $entry->get_campaign_id() ) {
             $order->update_meta_data( self::META_CAMPAIGN, $entry->get_campaign_id() );
         }
 
+        $this->save_meta( $order );
+    }
+
+    /**
+     * Drops META_EARNED and META_CAMPAIGN. For a retried award (OrderPointsRetry): the order has no EARN
+     * row, so a projection that claims points is wrong (an award rolled back after its meta reached a
+     * persistent object cache, or rows deleted by hand), and mark_awarded() would add to it.
+     */
+    public function forget_earned( int $order_id ): void {
+        $order = wc_get_order( $order_id );
+
+        if ( ! $order instanceof \WC_Order ) {
+            return;
+        }
+
+        $order->delete_meta_data( self::META_EARNED );
+        $order->delete_meta_data( self::META_CAMPAIGN );
         $this->save_meta( $order );
     }
 
@@ -158,7 +155,7 @@ final class PendingPoints {
                 'customer_id' => $user_id,
                 'limit'       => -1,
                 'return'      => 'ids',
-                'meta_query'  => [ // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- one customer's orders, on a manual recovery or a reassigned order.
+                'meta_query'  => [ // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- one customer's orders, on a retried award or a reassigned order.
                     [
                         'key'     => self::META_PENDING,
                         'compare' => 'EXISTS',

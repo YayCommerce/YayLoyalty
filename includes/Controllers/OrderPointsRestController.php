@@ -2,7 +2,7 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
-use YayLoyalty\Engine\Earning\OrderPointsRecovery;
+use YayLoyalty\Engine\Earning\OrderPointsRetry;
 use YayLoyalty\Engine\Earning\OrderPointsState;
 use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Earning\PendingPoints;
@@ -12,23 +12,23 @@ use YayLoyalty\Services\LedgerService;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * POST /orders/{id}/points: gives an order's missing points back once, and answers with where the
- * order's points then stand. The POST takes no body: it recovers only a known figure (MISSING_KNOWN), with the default
- * note. Any other manual grant goes through Customers › Adjust points. It reads the order after
- * dropping its cached copy, so stale meta left by a rolled-back award cannot hide the missing points.
+ * POST /orders/{id}/points: runs a completed order's award again when it never completed
+ * (OrderPointsState::MISSING), and answers with where the order's points then stand. No body: the award
+ * decides the points. Any other manual grant goes through Customers › Adjust points. It reads the order
+ * after dropping its cached copy, so stale meta left by a rolled-back award cannot hide the missing points.
  */
 final class OrderPointsRestController extends AbstractRestController {
 
-    private OrderPointsRecovery $recovery;
+    private OrderPointsRetry $retry;
 
     private LedgerRepository $ledger;
 
     private PendingPoints $pending;
 
-    public function __construct( OrderPointsRecovery $recovery, LedgerRepository $ledger, PendingPoints $pending ) {
-        $this->recovery = $recovery;
-        $this->ledger   = $ledger;
-        $this->pending  = $pending;
+    public function __construct( OrderPointsRetry $retry, LedgerRepository $ledger, PendingPoints $pending ) {
+        $this->retry   = $retry;
+        $this->ledger  = $ledger;
+        $this->pending = $pending;
     }
 
     public function get_rest_base(): string {
@@ -49,7 +49,7 @@ final class OrderPointsRestController extends AbstractRestController {
             [
                 [
                     'methods'             => \WP_REST_Server::CREATABLE,
-                    'callback'            => fn( $request ) => $this->exec_write( [ $this, 'recover' ], $request ),
+                    'callback'            => fn( $request ) => $this->exec_write( [ $this, 'retry' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::MANAGE_POINTS ),
                     'args'                => [ 'id' => $id_arg ],
                 ],
@@ -58,7 +58,7 @@ final class OrderPointsRestController extends AbstractRestController {
     }
 
     /** @return array<string, mixed>|\WP_Error */
-    public function recover( \WP_REST_Request $request ) {
+    public function retry( \WP_REST_Request $request ) {
         $order = $this->fresh_order( (int) $request['id'] );
 
         if ( null === $order ) {
@@ -67,37 +67,39 @@ final class OrderPointsRestController extends AbstractRestController {
 
         $state = OrderPointsState::resolve( $order, $this->ledger );
 
-        switch ( $state->get_status() ) {
-            case OrderPointsState::RECOVERED:
-                return $this->already_recovered();
-            case OrderPointsState::EARNED:
-                return $this->order_has_points();
-            case OrderPointsState::MISSING_KNOWN:
-                break;
-            default:
-                // Not completed, guest, or nothing says how many points are missing: not a recovery.
-                return $this->conflict( 'yayloyalty_not_eligible', __( 'Only a completed order with a customer and a known missing figure can get its points back here. Use YayLoyalty › Customers › Adjust points instead.', 'yayloyalty' ) );
-        }
-
-        // The figure as is and the default note; actor_id comes from the session. No request field sets any of them.
-        $outcome = $this->recovery->recover( $order, $state->get_figure(), self::default_note(), get_current_user_id() );
-
-        if ( Outcome::DUPLICATE === $outcome->get_status() ) {
-            return $this->already_recovered();
-        }
-
-        if ( Outcome::SKIPPED === $outcome->get_status() && LedgerService::REASON_ORDER_HAS_POINTS === $outcome->get_reason() ) {
+        if ( OrderPointsState::EARNED === $state->get_status() ) {
             return $this->order_has_points();
         }
 
-        $fresh = $this->fresh_order( (int) $order->get_id() );
+        if ( OrderPointsState::MISSING !== $state->get_status() ) {
+            return $this->conflict( 'yayloyalty_not_eligible', __( 'Only a completed order whose points award never completed can be retried here. Use YayLoyalty › Customers › Adjust points instead.', 'yayloyalty' ) );
+        }
 
-        return OrderPointsState::resolve( null === $fresh ? $order : $fresh, $this->ledger )->to_array();
-    }
+        // actor_id comes from the session; the POST has no body.
+        $outcomes = $this->retry->retry( $order, get_current_user_id() );
+        $reason   = '';
 
-    /** The note every recovery records. */
-    private static function default_note(): string {
-        return __( 'Recovered missing order points', 'yayloyalty' );
+        foreach ( $outcomes as $outcome ) {
+            if ( Outcome::AWARDED === $outcome->get_status() ) {
+                $fresh = $this->fresh_order( (int) $order->get_id() );
+
+                return OrderPointsState::resolve( null === $fresh ? $order : $fresh, $this->ledger )->to_array();
+            }
+        }
+
+        foreach ( $outcomes as $outcome ) {
+            if ( Outcome::DUPLICATE === $outcome->get_status() || LedgerService::REASON_ORDER_HAS_POINTS === $outcome->get_reason() ) {
+                return $this->order_has_points();
+            }
+
+            $reason = '' === $reason ? (string) $outcome->get_reason() : $reason;
+        }
+
+        return $this->conflict(
+            'yayloyalty_not_awarded',
+            /* translators: %s: reason code */
+            sprintf( __( 'No points were awarded: %s. Use YayLoyalty › Customers › Adjust points instead.', 'yayloyalty' ), '' === $reason ? '-' : $reason )
+        );
     }
 
     /** The order as the database holds it, past any cached copy, or null. */
@@ -111,10 +113,6 @@ final class OrderPointsRestController extends AbstractRestController {
 
     private function order_not_found(): \WP_Error {
         return new \WP_Error( 'yayloyalty_order_not_found', __( 'No such order.', 'yayloyalty' ), [ 'status' => 404 ] );
-    }
-
-    private function already_recovered(): \WP_Error {
-        return $this->conflict( 'yayloyalty_already_recovered', __( 'This order\'s points were already added manually. Use YayLoyalty › Customers › Adjust points instead.', 'yayloyalty' ) );
     }
 
     private function order_has_points(): \WP_Error {

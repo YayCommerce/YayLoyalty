@@ -69,35 +69,17 @@ final class OrderPointsMetabox {
             case OrderPointsState::GUEST:
                 self::paragraph( __( 'Assign a customer in the Customer field and update the order to add points.', 'yayloyalty' ) );
                 return;
-            case OrderPointsState::MISSING_KNOWN:
+            case OrderPointsState::MISSING:
                 self::render_confirm( $order, $state );
                 return;
             case OrderPointsState::EARNED:
                 /* translators: %d: points */
                 self::paragraph( sprintf( __( 'Earned %d points.', 'yayloyalty' ), $state->get_net_earned() ) );
                 break;
-            case OrderPointsState::RECOVERED:
-                self::render_recovered( $state );
-                break;
         }
 
-        // Earned, recovered, or nothing says how many points are missing: a manual grant belongs in Adjust points.
+        // Earned, or no points to retry: a manual grant belongs in Adjust points.
         self::adjust_points_link( (int) $order->get_customer_id() );
-    }
-
-    private static function render_recovered( OrderPointsState $state ): void {
-        // resolve() gives RECOVERED only with its row, so the recovery is never null here.
-        $recovery = $state->to_array()['recovery'];
-
-        if ( $recovery['reversed'] ) {
-            /* translators: 1: points, 2: admin display name, 3: date */
-            self::paragraph( sprintf( __( '%1$d points added manually by %2$s on %3$s were reversed.', 'yayloyalty' ), $recovery['points'], $recovery['actor_name'], $recovery['created_at'] ) );
-
-            return;
-        }
-
-        /* translators: 1: points, 2: admin display name, 3: date, 4: the recovery's note */
-        self::paragraph( sprintf( __( '%1$d points added manually by %2$s on %3$s: %4$s.', 'yayloyalty' ), $recovery['points'], $recovery['actor_name'], $recovery['created_at'], $recovery['note'] ) );
     }
 
     /** One click gives the known figure back; the route takes no points or note, so the box sends none. */

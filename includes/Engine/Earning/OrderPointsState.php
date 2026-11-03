@@ -2,17 +2,16 @@
 namespace YayLoyalty\Engine\Earning;
 
 use YayLoyalty\Enums\OrderStatus;
-use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\LedgerRepository;
-use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Where one order's points stand, for the order screen's box, its REST route and the orders list.
- * Read only. The ledger is the truth: order meta that claims earned points without an EARN row
- * counts as missing. A caller that must see the database rather than the object cache calls
- * PendingPoints::forget_cached() before reading the order.
+ * Read only, and decided by the order alone: an order is missing points when it is completed, has a
+ * customer, has no EARN row (for anyone) and still shows that its award should have paid: an
+ * unreleased staged figure, or earned meta the ledger lacks. A caller that must see the database rather
+ * than the object cache calls PendingPoints::forget_cached() before reading the order.
  */
 final class OrderPointsState {
 
@@ -22,20 +21,17 @@ final class OrderPointsState {
     /** The order has no customer. */
     public const GUEST = 'guest';
 
-    /** Paid but not completed: only completion awards, so a staged figure is waiting, not missing. */
-    public const AWAITING_COMPLETION = 'awaiting_completion';
-
     /** The order has live earned points. */
     public const EARNED = 'earned';
 
-    /** LedgerService::recover_order() already gave the order's points back. */
-    public const RECOVERED = 'recovered';
+    /** Paid but not completed: only completion awards, so a staged figure is waiting, not missing. */
+    public const AWAITING_COMPLETION = 'awaiting_completion';
 
-    /** Points are missing, and the figure says how many. */
-    public const MISSING_KNOWN = 'missing_known';
+    /** Completed, but its award never completed: OrderPointsRetry runs it again. */
+    public const MISSING = 'missing';
 
-    /** Nothing says how many points are missing: not a recovery; the box links to Adjust points. */
-    public const MISSING_UNKNOWN = 'missing_unknown';
+    /** Neither earned nor missing (no campaign applied, reversed, refunded): any grant goes through Adjust points. */
+    public const NO_POINTS = 'no_points';
 
     private string $status;
 
@@ -43,72 +39,51 @@ final class OrderPointsState {
 
     private int $net_earned;
 
-    private ?LedgerEntry $recovery;
-
-    private bool $is_recovery_reversed;
-
-    private function __construct( string $status, int $figure, int $net_earned, ?LedgerEntry $recovery, bool $is_recovery_reversed ) {
-        $this->status               = $status;
-        $this->figure               = $figure;
-        $this->net_earned           = $net_earned;
-        $this->recovery             = $recovery;
-        $this->is_recovery_reversed = $is_recovery_reversed;
+    private function __construct( string $status, int $figure, int $net_earned ) {
+        $this->status     = $status;
+        $this->figure     = $figure;
+        $this->net_earned = $net_earned;
     }
 
-    /** The first matching state wins, in this order: not paid, guest, recovered, earned, awaiting completion, then missing. */
+    /** The first matching state wins, in this order: not paid, guest, earned, awaiting completion, then missing or no points. */
     public static function resolve( \WC_Order $order, LedgerRepository $ledger ): self {
         if ( ! in_array( $order->get_status(), wc_get_is_paid_statuses(), true ) ) {
-            return new self( self::NOT_PAID, 0, 0, null, false );
+            return new self( self::NOT_PAID, 0, 0 );
         }
 
         if ( (int) $order->get_customer_id() < 1 ) {
-            return new self( self::GUEST, 0, 0, null, false );
+            return new self( self::GUEST, 0, 0 );
         }
 
-        $order_id = (int) $order->get_id();
-        $summary  = $ledger->order_points_summary( $order_id );
-        $recovery = $ledger->find_recovery_for_order( $order_id );
-
-        if ( null !== $recovery ) {
-            $is_reversed = $ledger->sum_refunded_for( $recovery, false ) >= $recovery->get_points();
-
-            return new self( self::RECOVERED, 0, $summary['net'], $recovery, $is_reversed );
-        }
+        $summary = $ledger->order_points_summary( (int) $order->get_id() );
 
         if ( $summary['net'] > 0 ) {
-            return new self( self::EARNED, 0, $summary['net'], null, false );
+            return new self( self::EARNED, 0, $summary['net'] );
         }
 
-        // Points are missing only once the order has reached the status that awards them.
         if ( OrderStatus::AWARD !== $order->get_status() ) {
-            return new self( self::AWAITING_COMPLETION, PendingPoints::unreleased( $order ), $summary['net'], null, false );
+            return new self( self::AWAITING_COMPLETION, PendingPoints::unreleased( $order ), $summary['net'] );
         }
 
-        // A fully refunded order owes nothing back, whatever its rows or meta say. A free order with no refund is not refunded.
+        // Any EARN row means the award did run; a reversal since is final, by design.
+        if ( $summary['earned'] > 0 ) {
+            return new self( self::NO_POINTS, 0, $summary['net'] );
+        }
+
+        // A fully refunded order owes nothing. A free order with no refund is not refunded.
         list( $refunds, , $is_fully_refunded ) = Reversal::refund_state( $order );
 
         if ( [] !== $refunds && $is_fully_refunded ) {
-            return new self( self::MISSING_UNKNOWN, 0, $summary['net'], null, false );
+            return new self( self::NO_POINTS, 0, $summary['net'] );
         }
 
-        // The first known figure: the unreleased staged one; else, for an order reversed then restored, what the
-        // whole-order reversal took (refund clawbacks stay taken); else, only when the order has no EARN row, what
-        // the meta claims (an award rolled back after its meta was cached).
         $figure = PendingPoints::unreleased( $order );
 
         if ( $figure < 1 ) {
-            $figure = $summary['net'] + $summary['reversed'];
-        }
-
-        if ( $figure < 1 && 0 === $summary['earned'] ) {
             $figure = (int) $order->get_meta( PendingPoints::META_EARNED );
         }
 
-        if ( $figure < 1 ) {
-            return new self( self::MISSING_UNKNOWN, 0, $summary['net'], null, false );
-        }
-
-        return new self( self::MISSING_KNOWN, $figure, $summary['net'], null, false );
+        return $figure > 0 ? new self( self::MISSING, $figure, 0 ) : new self( self::NO_POINTS, 0, $summary['net'] );
     }
 
     /** One of the class constants. */
@@ -116,7 +91,7 @@ final class OrderPointsState {
         return $this->status;
     }
 
-    /** The points to give back in MISSING_KNOWN, the staged figure in AWAITING_COMPLETION, else 0. */
+    /** What checkout expected the award to pay, in MISSING and AWAITING_COMPLETION; else 0. */
     public function get_figure(): int {
         return $this->figure;
     }
@@ -129,29 +104,13 @@ final class OrderPointsState {
     /**
      * The REST shape of `orders/{id}/points`.
      *
-     * @return array{status: string, figure: int, net_earned: int, recovery: array{points: int, note: string, actor_name: string, created_at: string, reversed: bool}|null}
+     * @return array{status: string, figure: int, net_earned: int}
      */
     public function to_array(): array {
-        $recovery = null;
-
-        if ( null !== $this->recovery ) {
-            $actor_id = $this->recovery->get_actor_id();
-            $actor    = null === $actor_id ? false : get_userdata( $actor_id );
-
-            $recovery = [
-                'points'     => $this->recovery->get_points(),
-                'note'       => (string) $this->recovery->get_note(),
-                'actor_name' => $actor instanceof \WP_User ? $actor->display_name : '',
-                'created_at' => Dates::to_site_date( $this->recovery->get_created_at() ),
-                'reversed'   => $this->is_recovery_reversed,
-            ];
-        }
-
         return [
             'status'     => $this->status,
             'figure'     => $this->figure,
             'net_earned' => $this->net_earned,
-            'recovery'   => $recovery,
         ];
     }
 }
