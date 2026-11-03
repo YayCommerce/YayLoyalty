@@ -8,17 +8,15 @@
 
 ## Today
 
-v1.0 has no tier UI or logic. Only the stored shape stays:
+The tier catalogue exists: the `tiers` table seeded with Bronze, Silver and Gold, the `yayloyalty_manage_tiers` capability (`Capabilities` v3), Pro's tier CRUD routes (`TiersRestController`) and the Pro Tiers page. Nothing assigns customers to tiers yet:
 
-- `customers` columns `tier_id`, `tier_evaluated_at` and `tier_progress_value`, with `KEY tier_id` (`includes/Database/Schema/CustomersTable.php`). Nothing writes them, and `Models\Customer` does not map them.
+- `customers` columns `tier_id`, `tier_evaluated_at`, `tier_progress_value`, `tier_held_until`, `tier_achieved_at`, `tier_manual_id` and `tier_manual_until` (`includes/Database/Schema/CustomersTable.php`). Nothing writes them, and `Models\Customer` does not map them.
 - `ActivityEvent::TIER_CHANGED`. Nothing emits it, and the drawer renders only its title.
 - `CampaignConditionType::TIER` and `RewardConditionType::TIER`, kept out of `all()` by `UNAVAILABLE`. `ConditionsEvaluator` rejects them as `unsupported_condition_type`.
 - `CustomerFacts::$tier_id`, always null: `CustomerFactsReader` never passes it.
 
 That branch removed these placeholders. Restore them from its squash commit only as a starting point:
 
-- the Tiers page and nav item;
-- the `yayloyalty_manage_tiers` capability (`Capabilities` v2 strips it from roles);
 - the Customers list `tier` filter and the saved-segment `tier` key;
 - the drawer's Assign tier button and the activity log's Tier changes filter;
 - the dashboard's Tier distribution card and its Lite teaser;
@@ -35,9 +33,9 @@ Start from a spec. Tiers need a table with a rank, because the `TIER` conditions
 
 ## Done when
 
-- [ ] A tiers table with a rank exists, and a schema change or data migration ships it.
+- [x] A tiers table with a rank exists, and a schema change or data migration ships it.
 - [ ] An evaluator sets `customers.tier_id`, `tier_evaluated_at` and `tier_progress_value`, and emits `ActivityEvent::TIER_CHANGED`.
-- [ ] Merchants can manage tiers on a Tiers page, behind a capability.
+- [x] Merchants can manage tiers on a Tiers page, behind a capability.
 - [ ] The Customers list filters by tier, and saved segments store it.
 - [ ] The drawer shows a customer's tier and lets staff assign one.
 - [ ] The dashboard shows the tier distribution.

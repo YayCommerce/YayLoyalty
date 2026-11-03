@@ -109,6 +109,7 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
 
 - `Installer::schemas()` (`includes/Database/Installer.php`) is the list of installed tables, after the `yayloyalty_table_schemas` filter, which nothing hooks today. Each entry is a class in `includes/Database/Schema/` that returns its table's `dbDelta` DDL.
   - A schema class that isn't on the list is only a design.
+- The tiers table (`TiersTable`) is Lite's, so a site keeps its tiers after a move to Lite. `Installer::install()` seeds Bronze, Silver and Gold through `TierRepository::seed_defaults()` only while the table holds no row at all, deleted rows included, so a later install never brings back a tier the merchant deleted or overwrites one they edited. Tiers are soft-deleted (`deleted_at`).
 - `Table::name()` (`includes/Utils/Table.php`) reads `$wpdb->prefix` on every call and never caches it, because multisite switches blogs. Integration tests rely on the same behaviour to move every plugin table to a scratch prefix.
 - `Installer::install()` is safe to repeat:
   - It runs `dbDelta` for every schema, then seeds the built-ins.
