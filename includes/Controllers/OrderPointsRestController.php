@@ -12,9 +12,9 @@ use YayLoyalty\Services\LedgerService;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * GET and POST /orders/{id}/points: where an order's points stand, and giving its missing points
- * back once. The POST takes no body: it recovers only a known figure (MISSING_KNOWN), with the default
- * note. Any other manual grant goes through Customers › Adjust points. Both read the order after
+ * POST /orders/{id}/points: gives an order's missing points back once, and answers with where the
+ * order's points then stand. The POST takes no body: it recovers only a known figure (MISSING_KNOWN), with the default
+ * note. Any other manual grant goes through Customers › Adjust points. It reads the order after
  * dropping its cached copy, so stale meta left by a rolled-back award cannot hide the missing points.
  */
 final class OrderPointsRestController extends AbstractRestController {
@@ -48,12 +48,6 @@ final class OrderPointsRestController extends AbstractRestController {
             '/orders/(?P<id>[\d]+)/points',
             [
                 [
-                    'methods'             => \WP_REST_Server::READABLE,
-                    'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_state' ], $request ),
-                    'permission_callback' => $this->requires( Capabilities::MANAGE_POINTS ),
-                    'args'                => [ 'id' => $id_arg ],
-                ],
-                [
                     'methods'             => \WP_REST_Server::CREATABLE,
                     'callback'            => fn( $request ) => $this->exec_write( [ $this, 'recover' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::MANAGE_POINTS ),
@@ -61,17 +55,6 @@ final class OrderPointsRestController extends AbstractRestController {
                 ],
             ]
         );
-    }
-
-    /** @return array<string, mixed>|\WP_Error */
-    public function get_state( \WP_REST_Request $request ) {
-        $order = $this->fresh_order( (int) $request['id'] );
-
-        if ( null === $order ) {
-            return $this->order_not_found();
-        }
-
-        return OrderPointsState::resolve( $order, $this->ledger )->to_array();
     }
 
     /** @return array<string, mixed>|\WP_Error */
@@ -113,7 +96,7 @@ final class OrderPointsRestController extends AbstractRestController {
     }
 
     /** The note every recovery records. */
-    public static function default_note(): string {
+    private static function default_note(): string {
         return __( 'Recovered missing order points', 'yayloyalty' );
     }
 

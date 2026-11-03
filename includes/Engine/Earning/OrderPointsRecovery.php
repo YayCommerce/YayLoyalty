@@ -57,7 +57,7 @@ final class OrderPointsRecovery {
                         $order = wc_get_order( $order_id );
 
                         if ( $order instanceof \WC_Order ) {
-                            /* translators: 1: points, 2: admin display name, 3: the admin's reason. */
+                            /* translators: 1: points, 2: admin display name, 3: the recovery's note. */
                             $order->add_order_note( sprintf( __( '%1$d points added manually by %2$s: %3$s.', 'yayloyalty' ), $points, $actor_name, $note ) );
                         }
                     }

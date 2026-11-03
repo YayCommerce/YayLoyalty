@@ -54,8 +54,8 @@ final class LedgerService {
     /** Outcome::skipped reason: under the lock the order still has live earned points, so recover_order() writes nothing. */
     public const REASON_ORDER_HAS_POINTS = 'order_has_points';
 
-    /** The most points one recover_order() call gives; the order screen's box and route check against it too. */
-    public const MAX_RECOVERY_POINTS = 1000000;
+    /** The most points one recover_order() call gives. */
+    private const MAX_RECOVERY_POINTS = 1000000;
 
     /** @var LedgerRepository */
     private $ledger;

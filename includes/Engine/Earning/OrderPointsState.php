@@ -30,7 +30,7 @@ final class OrderPointsState {
     /** Points are missing, and the figure says how many. */
     public const MISSING_KNOWN = 'missing_known';
 
-    /** Nothing says how many points are missing: the admin enters them. */
+    /** Nothing says how many points are missing: not a recovery; the box links to Adjust points. */
     public const MISSING_UNKNOWN = 'missing_unknown';
 
     private string $status;
@@ -107,16 +107,6 @@ final class OrderPointsState {
     /** The order's earn rows net of their clawbacks; 0 before the ledger is read (not paid, guest). */
     public function get_net_earned(): int {
         return $this->net_earned;
-    }
-
-    /** The recovery row in RECOVERED, else null. */
-    public function get_recovery(): ?LedgerEntry {
-        return $this->recovery;
-    }
-
-    /** Whether the recovery row has been clawed back in full. */
-    public function is_recovery_reversed(): bool {
-        return $this->is_recovery_reversed;
     }
 
     /**

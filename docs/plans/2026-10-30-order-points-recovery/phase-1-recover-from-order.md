@@ -211,8 +211,9 @@ public function test_rest_recovery_of_a_failed_award(): void {
 
     $this->act_as_admin();
     $route = '/yayloyalty/v1/orders/' . $order->get_id() . '/points';
-    $this->assertSame( 'missing_known', $this->send( 'GET', $route )->get_data()['status'] );
-    $this->assertSame( 40, $this->send( 'GET', $route )->get_data()['figure'] );
+    $state = $this->fresh_state( $order->get_id() );
+    $this->assertSame( OrderPointsState::MISSING_KNOWN, $state->get_status() );
+    $this->assertSame( 40, $state->get_figure() );
 
     $response = $this->send( 'POST', $route );
 
@@ -240,9 +241,9 @@ public function test_recovery_after_stale_earned_meta(): void {
 
     $this->act_as_admin();
     $route = '/yayloyalty/v1/orders/' . $order->get_id() . '/points';
-    $state = $this->send( 'GET', $route )->get_data();
-    $this->assertSame( 'missing_known', $state['status'] );
-    $this->assertSame( 40, $state['figure'] );
+    $state = $this->fresh_state( $order->get_id() );
+    $this->assertSame( OrderPointsState::MISSING_KNOWN, $state->get_status() );
+    $this->assertSame( 40, $state->get_figure() );
 
     $this->assertSame( 200, $this->send( 'POST', $route )->get_status() );
 
@@ -256,7 +257,7 @@ public function test_recovery_after_stale_earned_meta(): void {
 - [ ] **Step 2: Run the tests to confirm they fail**
 
 Run: `composer test:integration -- --filter 'test_rest_recovery_of_a_failed_award|test_recovery_after_stale_earned_meta'`
-Expected: 2 failures, the GET answers 404 `rest_no_route`
+Expected: 2 failures, `OrderPointsState` not found and the POST answering 404 `rest_no_route`
 
 - [ ] **Step 3: Implement `OrderPointsState`**
 
@@ -273,7 +274,7 @@ Expected: 2 failures, the GET answers 404 `rest_no_route`
 | 7 | `(int) get_meta( PendingPoints::META_EARNED ) > 0` (case 4: the meta claims points the ledger lacks) | `MISSING_KNOWN` | that meta value |
 | 8 | otherwise | `MISSING_UNKNOWN` | 0 |
 
-- For `RECOVERED`, `is_recovery_reversed()` is `sum_refunded_for( $recovery, false ) >= $recovery->get_points()`.
+- For `RECOVERED`, the recovery is reversed when `sum_refunded_for( $recovery, false ) >= $recovery->get_points()`.
 - `to_array()` returns `[ 'status', 'figure', 'net_earned', 'recovery' => null | [ 'points', 'note', 'actor_name', 'created_at', 'reversed' ] ]`, where `created_at` goes through `Dates::to_site_date()` and `actor_name` is the actor's `display_name`, or `''` when there is none.
 
 - [ ] **Step 4: Add the `PendingPoints` methods and the customer setter**
@@ -304,9 +305,9 @@ Expected: 2 failures, the GET answers 404 `rest_no_route`
 - No body args (amended 2026-11-03): the route takes only `id`, so no `OrderPointsRouteArgs` class.
 - `OrderPointsRestController`:
   - `get_rest_base()` returns `'orders'`.
-  - It registers `/orders/(?P<id>[\d]+)/points` with `READABLE` → `exec_read( [ $this, 'get_state' ] )` and `CREATABLE` → `exec_write( [ $this, 'recover' ] )`, both with `requires( Capabilities::MANAGE_POINTS )`.
+  - It registers `/orders/(?P<id>[\d]+)/points` with `CREATABLE` → `exec_write( [ $this, 'recover' ] )` only (the GET was removed 2026-11-03), with `requires( Capabilities::MANAGE_POINTS )`.
   - Constructor: `( OrderPointsRecovery $recovery, LedgerRepository $ledger, PendingPoints $pending )`.
-  - Both callbacks call `$pending->forget_cached( $id )` before `wc_get_order()`.
+  - `recover()` calls `$pending->forget_cached( $id )` before `wc_get_order()`.
 - `recover()` maps cases to responses as follows. Each error is a `new \WP_Error( code, message, [ 'status' => N ] )`, with the codes from the README contract.
 
 | Case | Response |
@@ -332,8 +333,8 @@ Expected: `OK (7 tests, …)`
 
 - [ ] **Step 9: Verify the reversed-then-restored figure, the refusal of `missing_unknown` and case 4 under an object cache**
 
-On the local site, complete an order for a registered customer while a purchase campaign is active, so it earns N. Set it to Cancelled, then to Completed. As an administrator, in the browser console on wp-admin, run `wp.apiFetch({ path: '/yayloyalty/v1/orders/<id>/points' })`.
-Expected: `status: "missing_known"` and `figure: N`
+On the local site, complete an order for a registered customer while a purchase campaign is active, so it earns N. Set it to Cancelled, then to Completed. As an administrator, in the browser console on wp-admin, open the order.
+Expected: the box offers **Give N points**
 
 On a completed order that earned nothing (no active purchase campaign), run `wp.apiFetch({ path: '/yayloyalty/v1/orders/<id>/points', method: 'POST', data: { points: 50, note: 'x' } })`.
 Expected: 409 `yayloyalty_not_eligible`, and no new ledger row in the customer's drawer
@@ -409,7 +410,7 @@ Message: `feat(earning): note recovered orders and quiet the refund warning for 
 | `NOT_PAID` | "Points can be added once the order is paid (Processing or Completed)." |
 | `GUEST` | "Assign a customer in the Customer field and update the order to add points." |
 | `EARNED` | "Earned %d points." Then the Adjust points link. |
-| `RECOVERED` | "%1$d points added manually by %2$s on %3$s: %4$s." When `is_recovery_reversed()`: "%1$d points added manually by %2$s on %3$s were reversed." Then the Adjust points link. |
+| `RECOVERED` | "%1$d points added manually by %2$s on %3$s: %4$s." When `to_array()["recovery"]["reversed"]`: "%1$d points added manually by %2$s on %3$s were reversed." Then the Adjust points link. |
 | `MISSING_KNOWN` | "This order should have earned %1$d points but they are not in %2$s's balance.", where %2$s is the customer's display name. Then a button `.button.button-primary` "Give %d points". No reason field. |
 | `MISSING_UNKNOWN` | The Adjust points link only. |
 

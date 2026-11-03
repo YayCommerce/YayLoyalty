@@ -1,12 +1,14 @@
 <?php
 namespace YayLoyalty\Tests\Integration\Earning;
 
+use YayLoyalty\Engine\Earning\OrderPointsState;
 use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Earning\PendingPoints;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Repositories\CustomerRepository;
+use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Services\LedgerService;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
 use YayLoyalty\Tests\Integration\WooCommerceOrdersFixture;
@@ -116,8 +118,9 @@ final class OrderPointsRecoveryTest extends IntegrationTestCase {
 
         $this->act_as_admin();
         $route = '/yayloyalty/v1/orders/' . $order->get_id() . '/points';
-        $this->assertSame( 'missing_known', $this->send( 'GET', $route )->get_data()['status'] );
-        $this->assertSame( 40, $this->send( 'GET', $route )->get_data()['figure'] );
+        $state = $this->fresh_state( $order->get_id() );
+        $this->assertSame( OrderPointsState::MISSING_KNOWN, $state->get_status() );
+        $this->assertSame( 40, $state->get_figure() );
 
         $response = $this->send( 'POST', $route );
 
@@ -145,9 +148,9 @@ final class OrderPointsRecoveryTest extends IntegrationTestCase {
 
         $this->act_as_admin();
         $route = '/yayloyalty/v1/orders/' . $order->get_id() . '/points';
-        $state = $this->send( 'GET', $route )->get_data();
-        $this->assertSame( 'missing_known', $state['status'] );
-        $this->assertSame( 40, $state['figure'] );
+        $state = $this->fresh_state( $order->get_id() );
+        $this->assertSame( OrderPointsState::MISSING_KNOWN, $state->get_status() );
+        $this->assertSame( 40, $state->get_figure() );
 
         $this->assertSame( 200, $this->send( 'POST', $route )->get_status() );
 
@@ -155,6 +158,13 @@ final class OrderPointsRecoveryTest extends IntegrationTestCase {
         $this->assertSame( 40, (int) wc_get_order( $order->get_id() )->get_meta( PendingPoints::META_EARNED ) );
         $this->assertSame( 0, (int) $this->customer_row( $user_id )['pending_points'] );
         $this->assertSame( 40, (int) $this->customer_row( $user_id )['balance'] );
+    }
+
+    /** The state as the order screen's box resolves it: the order read past its cached copy. */
+    private function fresh_state( int $order_id ): OrderPointsState {
+        ( new PendingPoints( new CustomerRepository() ) )->forget_cached( $order_id );
+
+        return OrderPointsState::resolve( wc_get_order( $order_id ), new LedgerRepository() );
     }
 
     private function recovery_key( int $user_id, int $order_id ): string {

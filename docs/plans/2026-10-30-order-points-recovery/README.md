@@ -38,7 +38,7 @@ The user accepted all of these on 2026-10-30.
 - Only `LedgerService` writes ledger rows and balances. `OrderPointsRecovery` gets the `LedgerService` built in `Engine\RestAPI::controllers()`, an existing listed construction site. No new construction site.
 - Lite feature: everything lives in core `includes/`, nothing under `includes/Pro/`.
 - Orders are read and written only through the WooCommerce CRUD API. Order meta is written only through `PendingPoints`, which saves meta only and never does a full save.
-- REST routes use `exec_read()`/`exec_write()` and `requires( Capabilities::MANAGE_POINTS )`. The actor is `get_current_user_id()`, never a request field.
+- The REST route uses `exec_write()` and `requires( Capabilities::MANAGE_POINTS )`. The actor is `get_current_user_id()`, never a request field.
 - Points are integers from 1 to 1,000,000, taken from `OrderPointsState::get_figure()`, never from the request. The note is always "Recovered missing order points" (amended 2026-11-03: no Manual mode, no reason field).
 - Strings use the `yayloyalty` text domain. Hooks, globals, meta box ids and column keys use the `yayloyalty_`/`yayloyalty-` prefix.
 - Order notes and hooks that call out are written from `Transaction::after_commit()`.
@@ -55,7 +55,7 @@ The user accepted all of these on 2026-10-30.
 - **A double click or a retried POST.** Expected: 409 `yayloyalty_already_recovered`, with the balance unchanged. Owner: Phase 1 Task 1 (test) and Task 2 (REST check).
 - **A partial refund of a recovered order.** Expected: claws back by the share of every product line, with no "campaign is gone" warning. Owner: Phase 1 Task 3, verification step.
 - **Case 4, the server failed during completion with a persistent object cache.** The order meta says "earned 40" or "released", but the database and ledger have nothing. Expected: the box offers **Give 40 points**, recovery leaves `_yayloyalty_points_earned` at 40, and `pending_points` is correct. Owner: Phase 1 Task 2, accepted test `test_recovery_after_stale_earned_meta`, plus a Redis/Memcached check in its verification step.
-- **A shop manager without `yayloyalty_manage_points`.** Expected: no box and 403 from both routes. Owner: Phase 1 Task 4, verification step.
+- **A shop manager without `yayloyalty_manage_points`.** Expected: no box and 403 from the route. Owner: Phase 1 Task 4, verification step.
 
 ## Phases
 
@@ -74,7 +74,7 @@ The user accepted all of these on 2026-10-30.
 - `OrderPointsState` (`includes/Engine/Earning/OrderPointsState.php`):
   - `resolve( \WC_Order $order, LedgerRepository $ledger ): self`
   - constants `NOT_PAID = 'not_paid'`, `GUEST = 'guest'`, `EARNED = 'earned'`, `RECOVERED = 'recovered'`, `MISSING_KNOWN = 'missing_known'`, `MISSING_UNKNOWN = 'missing_unknown'`
-  - getters `get_status(): string`, `get_figure(): int`, `get_net_earned(): int`, `get_recovery(): ?LedgerEntry`, `is_recovery_reversed(): bool`
+  - getters `get_status(): string`, `get_figure(): int`, `get_net_earned(): int` (the recovery row and its reversed flag reach callers through `to_array()`)
   - `to_array(): array`
 
   Produced by Phase 1 Task 2, consumed by Phase 1 Task 4 and Phase 2 Task 1.
@@ -85,9 +85,9 @@ The user accepted all of these on 2026-10-30.
 
   Produced by Phase 1 Task 2, consumed by Phase 1 Tasks 2 and 4.
 - `CustomerRepository::set_pending_points( int $user_id, int $points ): void` (floored at 0), called only by `PendingPoints::resync_customer()`. Produced by Phase 1 Task 2.
-- REST routes `GET` and `POST yayloyalty/v1/orders/(?P<id>\d+)/points`:
-  - POST body: none. Only `missing_known` is recovered; `missing_unknown` gets 409 `yayloyalty_not_eligible`.
-  - both answer with `OrderPointsState::to_array()`
+- REST route `POST yayloyalty/v1/orders/(?P<id>\d+)/points` (the GET route was removed 2026-11-03: no client read it):
+  - body: none. Only `missing_known` is recovered; `missing_unknown` gets 409 `yayloyalty_not_eligible`.
+  - answers with `OrderPointsState::to_array()`
   - errors: 404 `yayloyalty_order_not_found`, 409 `yayloyalty_not_eligible`, 409 `yayloyalty_order_has_points`, 409 `yayloyalty_already_recovered`
 
   Produced by Phase 1 Task 2, consumed by Phase 1 Task 4's script.
