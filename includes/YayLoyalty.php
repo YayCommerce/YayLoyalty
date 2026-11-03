@@ -2,6 +2,7 @@
 namespace YayLoyalty;
 
 use YayLoyalty\Engine\Earning\EarningService;
+use YayLoyalty\Engine\Earning\OrderAward;
 use YayLoyalty\Engine\Earning\Listeners\OrderCustomerChangeListener;
 use YayLoyalty\Engine\Earning\Listeners\OrderListener;
 use YayLoyalty\Engine\Earning\Listeners\OrderReversalListener;
@@ -89,7 +90,7 @@ class YayLoyalty {
         $reversal  = Reversal::build();
         $reversals = new OrderReversalListener( $pending, $reversal, $redemption_reversal );
 
-        ( new OrderListener( $service, $pending, $ledger, $reversals ) )->register();
+        ( new OrderListener( $service, $pending, new OrderAward( $service, $pending, $ledger ), $reversals ) )->register();
         ( new OrderCustomerChangeListener( $pending ) )->register();
         $reversals->register();
         ( new ReviewListener( $service, $reversal ) )->register();
