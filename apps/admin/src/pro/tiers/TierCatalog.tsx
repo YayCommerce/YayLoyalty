@@ -7,7 +7,7 @@ import { __, sprintf } from '@wordpress/i18n';
 import { toastApiError } from '@/lib/api/api';
 import { formatStoreNumber } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
-import { Tier, TIER_LIMITS, TierInUseReward } from '@/lib/schema/tier.schema';
+import { Tier, TIER_LIMITS, TierInUse } from '@/lib/schema/tier.schema';
 import { Button, LoadingButton } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ColorPicker } from '@/components/ui/color-picker';
@@ -41,6 +41,7 @@ import { useCreateTierMutation, useDeleteTierMutation, useTiersQuery, useUpdateT
 /** Which dialog is open: a new tier, or a snapshot of the row being edited, so a refetch can't swap it. */
 type FormTarget = { mode: 'create' } | { mode: 'edit'; tier: Tier };
 
+/** Mirrors TiersRestController::create_item()'s limit message: the tooltip shows before any request. */
 const tierLimitMessage = () =>
   sprintf(
     /* translators: %s: the most tiers a store may have. */
@@ -299,7 +300,7 @@ function TierFormDialog({ target, tiers, onClose }: { target: FormTarget; tiers:
             </FieldContent>
           </Field>
 
-          <Field data-invalid={!!errors.color}>
+          <Field>
             <FieldLabel>{__('Badge colour', 'yayloyalty')}</FieldLabel>
             <FieldContent>
               <Controller
@@ -307,7 +308,6 @@ function TierFormDialog({ target, tiers, onClose }: { target: FormTarget; tiers:
                 name="color"
                 render={({ field }) => <ColorPicker value={field.value} onValueChange={field.onChange} />}
               />
-              {errors.color && <FieldError>{errors.color.message}</FieldError>}
             </FieldContent>
           </Field>
 
@@ -328,7 +328,7 @@ function TierFormDialog({ target, tiers, onClose }: { target: FormTarget; tiers:
 /** Confirms a delete. When rewards still require the tier, it lists them instead and offers no delete. */
 function TierDeleteDialog({ tier, onClose }: { tier: Tier; onClose: () => void }) {
   const deleteTier = useDeleteTierMutation();
-  const [blockers, setBlockers] = useState<TierInUseReward[]>();
+  const [blockers, setBlockers] = useState<TierInUse>();
 
   async function confirm() {
     try {
@@ -342,10 +342,10 @@ function TierDeleteDialog({ tier, onClose }: { tier: Tier; onClose: () => void }
       );
       onClose();
     } catch (error) {
-      const rewards = await readTierInUse(error);
+      const inUse = await readTierInUse(error);
 
-      if (rewards) {
-        setBlockers(rewards);
+      if (inUse) {
+        setBlockers(inUse);
       } else {
         await toastApiError(error, __('Could not delete the tier.', 'yayloyalty'));
       }
@@ -365,14 +365,14 @@ function TierDeleteDialog({ tier, onClose }: { tier: Tier; onClose: () => void }
           </DialogTitle>
           <DialogDescription>
             {blockers
-              ? __('These rewards require this tier. Remove the tier from them before deleting it.', 'yayloyalty')
+              ? blockers.message
               : __('The tier leaves the catalogue. Its history stays in each customer’s activity.', 'yayloyalty')}
           </DialogDescription>
         </DialogHeader>
 
         {blockers && (
           <ul className="list-disc pl-5 text-sm">
-            {blockers.map((reward) => (
+            {blockers.rewards.map((reward) => (
               <li key={reward.id}>{reward.name}</li>
             ))}
           </ul>

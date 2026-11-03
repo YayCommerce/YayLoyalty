@@ -1,14 +1,7 @@
 import { HTTPError } from 'ky';
 
 import { api } from '@/lib/api/api';
-import {
-  Tier,
-  TierInput,
-  tierInUseErrorSchema,
-  TierInUseReward,
-  tierSchema,
-  tiersSchema,
-} from '@/lib/schema/tier.schema';
+import { Tier, TierInput, TierInUse, tierInUseErrorSchema, tierSchema, tiersSchema } from '@/lib/schema/tier.schema';
 
 /** Client for Pro's tier catalogue routes. Lite has none of them. */
 
@@ -29,8 +22,8 @@ export async function deleteTier(id: number): Promise<void> {
   await api.delete(`tiers/${id}`).json();
 }
 
-/** The rewards that blocked a delete, or null when `error` is any other failure. */
-export async function readTierInUse(error: unknown): Promise<TierInUseReward[] | null> {
+/** The server's refusal and the rewards that blocked a delete, or null when `error` is any other failure. */
+export async function readTierInUse(error: unknown): Promise<TierInUse | null> {
   if (!(error instanceof HTTPError) || error.response.status !== 409) {
     return null;
   }
@@ -42,5 +35,5 @@ export async function readTierInUse(error: unknown): Promise<TierInUseReward[] |
     .catch(() => null);
   const parsed = tierInUseErrorSchema.safeParse(body);
 
-  return parsed.success ? parsed.data.data.rewards : null;
+  return parsed.success ? { message: parsed.data.message, rewards: parsed.data.data.rewards } : null;
 }

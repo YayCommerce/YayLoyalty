@@ -20,7 +20,11 @@ final class Tier extends AbstractModel {
 
     public const MULTIPLIER_MAX = '10.00';
 
-    /** The multiplier moves in steps of 0.05, counted in hundredths. */
+    /** MULTIPLIER_MIN, MULTIPLIER_MAX and the 0.05 step, counted in hundredths. */
+    public const MULTIPLIER_MIN_CENTS = 100;
+
+    public const MULTIPLIER_MAX_CENTS = 1000;
+
     public const MULTIPLIER_STEP_CENTS = 5;
 
     /** Most live tiers a store may have. */
@@ -168,7 +172,7 @@ final class Tier extends AbstractModel {
 
         $cents = (int) $parts[1] * 100 + (int) str_pad( $parts[2] ?? '', 2, '0' );
 
-        if ( $cents < 100 || $cents > 1000 || 0 !== $cents % self::MULTIPLIER_STEP_CENTS ) {
+        if ( $cents < self::MULTIPLIER_MIN_CENTS || $cents > self::MULTIPLIER_MAX_CENTS || 0 !== $cents % self::MULTIPLIER_STEP_CENTS ) {
             return null;
         }
 

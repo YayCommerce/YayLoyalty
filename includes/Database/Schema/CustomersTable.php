@@ -9,8 +9,8 @@ defined( 'ABSPATH' ) || exit;
  * ON DUPLICATE KEY no-op. balance and lifetime_earned are signed on
  * purpose, for refund clawbacks. Columns for unbuilt features, such as
  * tiers and referrals, are declared ahead so each feature lands as a data
- * migration, not a schema change. Indexed columns must stay in sync with
- * CustomerRowSort::KEYS. reminder_for is the expires_at the last expiry reminder
+ * migration, not a schema change. Every CustomerRowSort::KEYS column needs
+ * an index here. reminder_for is the expires_at the last expiry reminder
  * announced, so each date is reminded once whatever the reminder timing.
  * birthday_month and birthday_day are a site-calendar date with no year.
  * tier_manual_id is a staff-assigned floor; tier_manual_until NULL with a

@@ -192,15 +192,16 @@ final class TiersRestController extends AbstractRestController {
         $referencing = $this->rewards->find_referencing_tier( $id );
 
         if ( [] !== $referencing ) {
-            $rewards = [];
-
-            foreach ( $referencing as $reward ) {
-                $rewards[] = [
-                    'id'     => (int) $reward->get_id(),
-                    'name'   => $reward->get_name(),
-                    'status' => $reward->get_status(),
-                ];
-            }
+            $rewards = array_map(
+                static function ( $reward ): array {
+                    return [
+                        'id'     => (int) $reward->get_id(),
+                        'name'   => $reward->get_name(),
+                        'status' => $reward->get_status(),
+                    ];
+                },
+                $referencing
+            );
 
             return new \WP_Error(
                 'yayloyalty_tier_in_use',
@@ -260,29 +261,13 @@ final class TiersRestController extends AbstractRestController {
     }
 
     /**
+     * Tier::normalize_<field>() for one of FIELDS.
+     *
      * @param mixed $value
      * @return string|int|null
      */
     private function normalize_field( string $field, $value ) {
-        switch ( $field ) {
-            case 'name':
-                return Tier::normalize_name( $value );
-
-            case 'threshold':
-                return Tier::normalize_threshold( $value );
-
-            case 'multiplier':
-                return Tier::normalize_multiplier( $value );
-
-            case 'entry_bonus':
-                return Tier::normalize_entry_bonus( $value );
-
-            case 'color':
-                return Tier::normalize_color( $value );
-
-            default:
-                return null;
-        }
+        return call_user_func( [ Tier::class, 'normalize_' . $field ], $value );
     }
 
     private function field_error( string $field ): \WP_Error {
@@ -379,9 +364,7 @@ final class TiersRestController extends AbstractRestController {
         $args = $this->get_write_args();
 
         foreach ( self::FIELDS as $field ) {
-            if ( isset( $args[ $field ] ) ) {
-                $args[ $field ]['required'] = true;
-            }
+            $args[ $field ]['required'] = true;
         }
 
         return $args;

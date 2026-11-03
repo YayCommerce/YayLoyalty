@@ -13,14 +13,10 @@ export interface TierFormValues {
   color: string;
 }
 
-/** Whole hundredths that are a multiple of the 0.05 step; tolerant of float noise such as 1.1500000001. */
-function isMultiplierStep(value: number): boolean {
-  const hundredths = Math.round(value * 100);
-
-  return Math.abs(value * 100 - hundredths) < 1e-6 && hundredths % Math.round(TIER_LIMITS.multiplierStep * 100) === 0;
-}
-
-/** Inline messages only. The server re-checks every rule, uniqueness included, and its message is toasted. */
+/**
+ * Inline messages for the bounds only. The 0.05 step and the colour format are Models\Tier's rules: the inputs can't
+ * produce anything else, and the server re-checks every rule, uniqueness included, and its message is toasted.
+ */
 export function tierFormSchema() {
   return z.object({
     name: z
@@ -41,19 +37,14 @@ export function tierFormSchema() {
         /* translators: %s: the highest number of points a tier may start at. */
         sprintf(__('Use %s points or fewer.', 'yayloyalty'), formatStoreNumber(TIER_LIMITS.thresholdMax, 0)),
       ),
-    multiplier: z
-      .number()
-      .refine(
-        (value) => value >= TIER_LIMITS.multiplierMin && value <= TIER_LIMITS.multiplierMax && isMultiplierStep(value),
-        {
-          message: sprintf(
-            /* translators: 1: the lowest multiplier, 2: the highest multiplier. */
-            __('Use a value from %1$s to %2$s, in steps of 0.05.', 'yayloyalty'),
-            formatStoreNumber(TIER_LIMITS.multiplierMin, 2),
-            formatStoreNumber(TIER_LIMITS.multiplierMax, 2),
-          ),
-        },
+    multiplier: z.number().refine((value) => value >= TIER_LIMITS.multiplierMin && value <= TIER_LIMITS.multiplierMax, {
+      message: sprintf(
+        /* translators: 1: the lowest multiplier, 2: the highest multiplier. */
+        __('Use a value from %1$s to %2$s.', 'yayloyalty'),
+        formatStoreNumber(TIER_LIMITS.multiplierMin, 2),
+        formatStoreNumber(TIER_LIMITS.multiplierMax, 2),
       ),
+    }),
     entry_bonus: z
       .number()
       .int()
@@ -63,7 +54,7 @@ export function tierFormSchema() {
         /* translators: %s: the largest entry bonus, in points. */
         sprintf(__('Use %s points or fewer.', 'yayloyalty'), formatStoreNumber(TIER_LIMITS.entryBonusMax, 0)),
       ),
-    color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, __('Pick a colour.', 'yayloyalty')),
+    color: z.string(),
   });
 }
 

@@ -3,11 +3,13 @@ import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/r
 import type { TierInput } from '@/lib/schema/tier.schema';
 import { createTier, deleteTier, getTiers, updateTier } from './tiers.api';
 
-/** Every tier read sits under `['tier']`, so each write invalidates the lot. */
+/** Every tier read sits under this prefix, so each write invalidates the lot. */
+const TIER_KEY = ['tier'] as const;
+
 export const TIER_QUERIES = {
   list: () =>
     queryOptions({
-      queryKey: ['tier', 'list'],
+      queryKey: [...TIER_KEY, 'list'],
       queryFn: ({ signal }) => getTiers(signal),
     }),
 };
@@ -21,7 +23,7 @@ export function useCreateTierMutation() {
 
   return useMutation({
     mutationFn: (input: TierInput) => createTier(input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tier'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: TIER_KEY }),
   });
 }
 
@@ -30,7 +32,7 @@ export function useUpdateTierMutation() {
 
   return useMutation({
     mutationFn: ({ id, input }: { id: number; input: Partial<TierInput> }) => updateTier(id, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tier'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: TIER_KEY }),
   });
 }
 
@@ -39,6 +41,6 @@ export function useDeleteTierMutation() {
 
   return useMutation({
     mutationFn: (id: number) => deleteTier(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tier'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: TIER_KEY }),
   });
 }

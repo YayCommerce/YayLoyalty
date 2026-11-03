@@ -39,9 +39,13 @@ export const TIER_LIMITS = {
 /** The 409 a delete answers while rewards still name the tier in their conditions. */
 export const tierInUseErrorSchema = z.object({
   code: z.literal('yayloyalty_tier_in_use'),
+  message: z.string(),
   data: z.object({
     rewards: z.array(z.object({ id: z.number().int(), name: z.string(), status: z.string() })),
   }),
 });
 
 export type TierInUseReward = z.infer<typeof tierInUseErrorSchema>['data']['rewards'][number];
+
+/** Why a delete was refused, in the server's words, and the rewards that block it. */
+export type TierInUse = { message: string; rewards: TierInUseReward[] };
