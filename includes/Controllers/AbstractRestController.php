@@ -212,7 +212,7 @@ abstract class AbstractRestController extends BaseRestController {
 
         return [
             'currentPage' => (int) $result['page'],
-            'totalPage'   => (int) ceil( $total / $per_page ),
+            'totalPages'  => (int) ceil( $total / $per_page ),
             'totalItems'  => $total,
             'perPage'     => $per_page,
             'data'        => $data,

@@ -1,7 +1,7 @@
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { CustomersSavedSegmentRow } from '@/pro';
-import type { RowFilters } from '../customers-page.filter-rows';
-import type { SortDirection, SortKey } from '../customers-page.sort-rows';
+import type { CustomerListFilters } from '../customers-page.filters';
+import type { SortDirection, SortKey } from '../customers-page.sort';
 import { CustomersExportButton } from './CustomersExportButton';
 import { CustomersToolbar } from './CustomersToolbar';
 
@@ -20,10 +20,10 @@ export function CustomersFilterBar({
 }: {
   disabled: boolean;
   exportDisabled: boolean;
-  filters: RowFilters;
-  onFiltersChange: (patch: Partial<RowFilters>) => void;
+  filters: CustomerListFilters;
+  onFiltersChange: (patch: Partial<CustomerListFilters>) => void;
   /** Committed filters, what Export should fetch. */
-  queryFilters: RowFilters;
+  queryFilters: CustomerListFilters;
   sort: { by: SortKey; dir: SortDirection };
 }) {
   if (IS_PRO_BUILD) {

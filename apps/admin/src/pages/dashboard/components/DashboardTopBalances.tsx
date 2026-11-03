@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
-import type { DashboardTopEarner } from '@/lib/schema/dashboard.schema';
+import type { DashboardTopBalance } from '@/lib/schema/dashboard.schema';
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PointsValue } from '@/components/ui/custom/points-value';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -26,13 +26,13 @@ function Frame({ children }: { children: React.ReactNode }) {
 }
 
 /** Three highest balances. Always three row-heights tall so the side column never jumps. */
-export function DashboardTopEarners({ earners }: { earners: DashboardTopEarner[] }) {
+export function DashboardTopBalances({ balances }: { balances: DashboardTopBalance[] }) {
   return (
     <Frame>
-      {earners.length === 0 ? (
+      {balances.length === 0 ? (
         <li className="text-muted-foreground py-2 text-sm">{__('No members yet.', 'yayloyalty')}</li>
       ) : (
-        earners.slice(0, ROWS).map((row) => (
+        balances.slice(0, ROWS).map((row) => (
           <li key={row.user_id} className="flex items-center justify-between gap-3 py-2 text-sm">
             <Link to={`/customers/${row.user_id}`} className="truncate hover:underline">
               {row.name}
@@ -45,7 +45,7 @@ export function DashboardTopEarners({ earners }: { earners: DashboardTopEarner[]
   );
 }
 
-export function DashboardTopEarnersSkeleton() {
+export function DashboardTopBalancesSkeleton() {
   return (
     <Frame>
       {Array.from({ length: ROWS }).map((_, i) => (

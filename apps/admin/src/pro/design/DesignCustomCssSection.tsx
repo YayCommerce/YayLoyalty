@@ -5,10 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  TYPOGRAPHY_CUSTOM_CSS_DESCRIPTION,
-  TYPOGRAPHY_CUSTOM_CSS_LABEL,
-  TYPOGRAPHY_SECTION_DESCRIPTION,
-  TYPOGRAPHY_SECTION_TITLE,
+  CUSTOM_CSS_FIELD_DESCRIPTION,
+  CUSTOM_CSS_FIELD_LABEL,
+  CUSTOM_CSS_SECTION_DESCRIPTION,
+  CUSTOM_CSS_SECTION_TITLE,
 } from '@/pages/settings/design-settings.copy';
 
 /**
@@ -16,21 +16,21 @@ import {
  * a future renderer must emit it via `wp_add_inline_style`, never interpolate it into markup, or
  * merchant CSS becomes an injection path.
  */
-export function DesignTypographySection() {
+export function DesignCustomCssSection() {
   const { register } = useFormContext<Design>();
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{TYPOGRAPHY_SECTION_TITLE()}</CardTitle>
-        <CardDescription>{TYPOGRAPHY_SECTION_DESCRIPTION()}</CardDescription>
+        <CardTitle>{CUSTOM_CSS_SECTION_TITLE()}</CardTitle>
+        <CardDescription>{CUSTOM_CSS_SECTION_DESCRIPTION()}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <Field>
-          <FieldLabel htmlFor="design-typography-custom-css">{TYPOGRAPHY_CUSTOM_CSS_LABEL()}</FieldLabel>
+          <FieldLabel htmlFor="design-custom-css">{CUSTOM_CSS_FIELD_LABEL()}</FieldLabel>
           <FieldContent>
-            <Textarea id="design-typography-custom-css" rows={6} {...register('typography.custom_css')} />
-            <FieldDescription>{TYPOGRAPHY_CUSTOM_CSS_DESCRIPTION()}</FieldDescription>
+            <Textarea id="design-custom-css" rows={6} {...register('custom_css.custom_css')} />
+            <FieldDescription>{CUSTOM_CSS_FIELD_DESCRIPTION()}</FieldDescription>
           </FieldContent>
         </Field>
       </CardContent>

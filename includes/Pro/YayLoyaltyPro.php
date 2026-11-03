@@ -233,10 +233,6 @@ final class YayLoyaltyPro {
             'type' => 'nullable_number',
             'min'  => 0,
         ];
-        $expiry_days  = [
-            'type' => 'nullable_int',
-            'min'  => 1,
-        ];
         $exclude_sale = [ 'type' => 'bool' ];
 
         // A cap, not a threshold: null is no cap, and a set cap is above 0.
@@ -253,7 +249,6 @@ final class YayLoyaltyPro {
                 'required' => true,
             ],
             'min_order'          => $money,
-            'coupon_expiry_days' => $expiry_days,
             'exclude_sale_items' => $exclude_sale,
         ];
 
@@ -267,31 +262,28 @@ final class YayLoyaltyPro {
             'max_discount'       => $money_cap,
             'currency'           => $currency,
             'min_order'          => $money,
-            'coupon_expiry_days' => $expiry_days,
             'exclude_sale_items' => $exclude_sale,
         ];
 
         $schema[ RewardType::FREE_SHIPPING ] = [
-            'min_order'          => $money,
-            'currency'           => $currency,
-            'coupon_expiry_days' => $expiry_days,
+            'min_order' => $money,
+            'currency'  => $currency,
         ];
 
         $schema[ RewardType::FREE_PRODUCT ] = [
-            'product_id'         => [
+            'product_id'   => [
                 'type'     => 'product',
                 'required' => true,
             ],
-            'variation_id'       => [
+            'variation_id' => [
                 'type' => 'nullable_int',
                 'min'  => 1,
             ],
-            'qty'                => [
+            'qty'          => [
                 'type'     => 'int',
                 'min'      => 1,
                 'required' => true,
             ],
-            'coupon_expiry_days' => $expiry_days,
         ];
 
         return $schema;

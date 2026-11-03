@@ -32,7 +32,7 @@ describe('typeLabel', () => {
 });
 
 describe('costLabel', () => {
-  it('is "any" for the slider, whose customer picks the amount', () => {
+  it('is "any" for the flexible discount, whose customer picks the amount', () => {
     expect(costLabel(reward({ type: 'flexible_discount', cost_points: null }))).toBe('any');
   });
 
@@ -42,28 +42,23 @@ describe('costLabel', () => {
 });
 
 describe('rewardSubtitle', () => {
-  it('is the fixed slider copy for flexible_discount', () => {
+  it('reads a flexible discount without a redemption mode as auto max', () => {
     expect(rewardSubtitle(reward({ type: 'flexible_discount' }))).toBe(
-      'The customer chooses how many points to use at checkout',
+      'The most points the order allows are applied at checkout',
     );
   });
 
-  it('names the coupon expiry when the config carries one', () => {
-    expect(rewardSubtitle(reward({ type: 'fixed_coupon', config: { coupon_expiry_days: 60 } }))).toBe(
-      'Single-use coupon, valid 60 days after claiming',
-    );
-  });
-
-  it('falls back to a generic line when no expiry is configured', () => {
-    expect(rewardSubtitle(reward({ type: 'free_shipping', config: {} }))).toBe('Single-use coupon');
+  it('is the coupon line for every catalog type', () => {
+    expect(rewardSubtitle(reward({ type: 'fixed_coupon' }))).toBe('Applied as a coupon at checkout');
+    expect(rewardSubtitle(reward({ type: 'free_product' }))).toBe('Applied as a coupon at checkout');
   });
 });
 
 describe('availabilityLabel', () => {
-  it('reads the slider limits from config, not conditions', () => {
+  it('reads the flexible discount limits from config, not conditions', () => {
     expect(
       availabilityLabel(
-        reward({ type: 'flexible_discount', config: { min_points: 100, max_percent_of_subtotal: null } }),
+        reward({ type: 'flexible_discount', config: { min_points: 100, max_percent_of_discountable: null } }),
       ),
     ).toBe('100 pts minimum · up to 100% of the order');
   });
@@ -85,7 +80,7 @@ describe('resolveRewardsScreen', () => {
 
     const screen = resolveRewardsScreen([builtin]);
 
-    expect(screen.isInitCase).toBe(true);
+    expect(screen.hasNoCatalogRewards).toBe(true);
     expect(screen.catalogRows).toHaveLength(0);
     expect(screen.rows).toEqual([builtin]);
   });
@@ -96,7 +91,7 @@ describe('resolveRewardsScreen', () => {
 
     const screen = resolveRewardsScreen([catalogReward, builtin]);
 
-    expect(screen.isInitCase).toBe(false);
+    expect(screen.hasNoCatalogRewards).toBe(false);
     expect(screen.catalogRows).toEqual([catalogReward]);
   });
 
@@ -118,7 +113,7 @@ describe('resolveRewardsScreen', () => {
     expect(screen.rows).toEqual([builtin]);
     expect(screen.catalogRows).toHaveLength(0);
     // An archived reward is not a reason to show the empty state; it once had a catalog.
-    expect(screen.isInitCase).toBe(true);
+    expect(screen.hasNoCatalogRewards).toBe(true);
   });
 
   it('collects archived rewards, in display order, for the Archived view', () => {

@@ -5,7 +5,7 @@ import { CampaignFormValues } from '../editor/campaign-editor.form';
 
 /** One card on the "Add a campaign" chooser: one per creatable trigger, each opening an empty campaign of that kind. */
 export interface CampaignTemplate {
-  /** The URL segment at campaigns/new/:templateId; the trigger itself. */
+  /** The URL segment at campaigns/new/:trigger; the trigger itself. */
   id: CreatableCampaignTrigger;
   title: string;
   description: string;

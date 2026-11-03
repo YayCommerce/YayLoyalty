@@ -30,6 +30,6 @@ class RewardClaimedYayMailEmail extends LoyaltyYayMailEmail {
         $greeting = LoyaltyEmail::greeting_text( LoyaltyEmailShortcodes::tag( 'customer_name' ) );
         $balance  = LoyaltyEmail::balance_sentence( LoyaltyEmailShortcodes::tag( 'balance_points' ) );
 
-        return '<p>' . $greeting . '</p><p>' . LoyaltyEmailShortcodes::tag( 'claimed_points' ) . '</p><div>' . LoyaltyEmailShortcodes::tag( 'reward_lines' ) . '</div><p>' . $balance . '</p>';
+        return '<p>' . $greeting . '</p><p>' . LoyaltyEmailShortcodes::tag( 'claimed_message' ) . '</p><div>' . LoyaltyEmailShortcodes::tag( 'reward_lines' ) . '</div><p>' . $balance . '</p>';
     }
 }

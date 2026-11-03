@@ -25,7 +25,7 @@ interface TriggerHandler {
      * What a campaign pays with no event, for the storefront to advertise: points per currency unit or flat
      * points; 0 pays nothing. Required: a handler registered without it is a fatal error.
      */
-    public function advertised_value( Campaign $campaign ): float;
+    public function advertised_points( Campaign $campaign ): float;
 
     /** A ReferenceType constant. */
     public function reference_type(): string;

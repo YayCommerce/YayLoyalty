@@ -13,7 +13,7 @@ While points expiry is on, each customer gets the "Points expiring soon" email N
 - `includes/Engine/Expiry/ExpiryRunner.php`: the daily job `yayloyalty_expiry_run` runs backfill, then `apply_settings`, then `expire_due`, in batches of 100 with an async continuation. `ExpiryPolicy` holds the effective rules, `signature()`, `is_due()` and `OPTION_APPLIED`.
 - `customers.reminder_sent_at` (datetime NULL) exists and nothing sets it. `CustomerRepository::apply_delta()` clears it on activity. `customers.expires_at` is the whole balance's date in inactivity mode and the soonest open lot's date in batch mode.
 - `lots` (`LotsTable`) holds `expires_at` per lot in batch mode. `LotRepository` has `due_lots`, `due_user_ids`, `earliest_open_expiry` and `restamp_open_expiry`.
-- `ActivityEvent::EXPIRING_SOON_EMAIL_SENT` is defined and never written. The drawer already renders it (`customer-drawer.activity-rows.ts`, reading `data.window_days`).
+- `ActivityEvent::EXPIRING_SOON_EMAIL_SENT` is defined and never written. The drawer already renders it (`customer-drawer.activity-rows.ts`, reading `data.reminder_days`).
 - `LoyaltyEmail::send_to_customer()` applies `EmailThrottle` (`emails.throttle_per_week`, default 3).
 - YayMail: `LedgerEntryYayMailEmail` / `LedgerEntryShortcodes` / `templates/yaymail-ledger-entry.php` adapt Points earned and Points expired. They're typed to `LedgerEntryEmail`.
 - The Emails tab's "Expiry reminder timing" link (`EmailsSettingsPage.tsx:101`) points to `/settings/general`. It should point to `/settings/expiry`.
@@ -60,11 +60,11 @@ While points expiry is on, each customer gets the "Points expiring soon" email N
    - inactivity: "**120 Points** will expire on 14 November 2026. Earn or redeem before then to keep them.";
    - batch, one date: "**120 Points** will expire on 14 November 2026.";
    - batch, several dates: "**120 Points** will expire, starting 14 November 2026.";
-   - "That's worth **$1.20** in rewards." when `balance_value( points )` isn't '';
+   - "That's worth **$1.20** in rewards." when `points_worth_html( points )` isn't '';
    - a button only when `yayloyalty_points_expiring_soon_cta_url` returns a URL.
 8. The WooCommerce preview renders 120 points expiring now + 30 days for the current user.
-9. Each accepted send writes one `customer_meta` row `expiring_soon_email_sent` with `{ points, expires_at, window_days }`, `staff_only = false`, actor `system`.
-10. With YayMail ≥ 4.4.7 licensed, the email appears in YayMail with shortcodes `customer_name`, `expiring_points`, `expiry_date`, `points_value` and `points_url`. Points earned and Points expired still render as before.
+9. Each accepted send writes one `customer_meta` row `expiring_soon_email_sent` with `{ points, expires_at, reminder_days }`, `staff_only = false`, actor `system`.
+10. With YayMail ≥ 4.4.7 licensed, the email appears in YayMail with shortcodes `customer_name`, `expiring_message`, `expiry_date`, `points_value` and `points_url`. Points earned and Points expired still render as before.
 11. The Emails tab's "Expiry reminder timing" link goes to `/settings/expiry`.
 12. **End to end.** On a Lite site with inactivity expiry on (365 days) and Points expiring soon enabled:
     1. Set a customer's `customers.expires_at` to now + 10 days by SQL.
@@ -115,7 +115,7 @@ While points expiry is on, each customer gets the "Points expiring soon" email N
   - `send_to_customer()` returns `bool` and skips `EmailThrottle::allows()` when not capped, but always `record()`s an accepted send;
   - `get_template_values()` moves up from `LedgerEntryEmail`.
 - `Emails`: `POINTS_EXPIRING_SOON_ACTION = 'yayloyalty_points_expiring_soon_email'` in `add_email_actions()`, and `relay_expiring_soon( int $user_id, int $points, string $expires_at )`.
-- `CustomerActivityService::record_expiring_soon_email_sent( int $user_id, int $points, string $expires_at, int $window_days )`, called by the email after an accepted send. Its docblock and `ActivityEvent`'s "writes only three" docblock are updated.
+- `CustomerActivityService::record_expiring_soon_email_sent( int $user_id, int $points, string $expires_at, int $reminder_days )`, called by the email after an accepted send. Its docblock and `ActivityEvent`'s "writes only three" docblock are updated.
 - Both `yayloyalty-points-expiring-soon.php` templates: rewritten to the body in AC 7.
 - YayMail:
   - rename `LedgerEntryYayMailEmail` → `LoyaltyYayMailEmail`, `LedgerEntryShortcodes` → `LoyaltyEmailShortcodes`, and `yaymail-ledger-entry.php` → `yaymail-loyalty-email.php`;

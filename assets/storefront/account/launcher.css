@@ -1,5 +1,5 @@
 /*
- * templates/launcher.php: the launcher panel's body, which prints the Rewards tab's partials inside
+ * templates/launcher.php: the launcher panel's body, which prints the My Points tab's partials inside
  * .yayloyalty-account. This file only fits them to a 400px panel; the shell (header, footer, motion) is the
  * launcher's own stylesheet. .yayloyalty-launcher lifts every rule here to 0,3,0, above the partials' 0,2,0.
  * Imported by rewards-tokens.css, which holds the tokens.
@@ -43,7 +43,7 @@
   font-size: 14px;
 }
 
-/* The panel names each way to earn and its value; the Rewards tab has room for the line under it. */
+/* The panel names each way to earn and its value; the My Points tab has room for the line under it. */
 .yayloyalty-launcher .yayloyalty-account .yayloyalty-account__earn .yayloyalty-account__item-text,
 .yayloyalty-launcher .yayloyalty-account .yayloyalty-account__steps .yayloyalty-account__item-text {
   display: none;

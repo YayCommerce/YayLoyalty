@@ -278,9 +278,9 @@ final class RewardRestController extends AbstractRestController {
         }
 
         // Unguarded gap: nothing locks between this check and the delete below, and
-        // redemptions.reward_id is a plain KEY, not a FOREIGN KEY, so a claim written into that
-        // gap would be orphaned rather than rejected. Not reachable today: the only writer
-        // (Engine\Redemption\CommitWriter) claims the built-in reward, which this route never deletes. Revisit once catalog claims are registered.
+        // redemptions.reward_id is a plain KEY, not a FOREIGN KEY, so a checkout that commits this
+        // reward's first claim in that gap (Engine\Redemption\CommitWriter::commit_rewards()) leaves
+        // a row naming a deleted reward. Engine\Redemption\Reversal still settles it under its key.
         $this->rewards->delete( $id );
 
         return [
@@ -447,12 +447,12 @@ final class RewardRestController extends AbstractRestController {
     }
 
     /**
-     * Whether $reward may be deleted: never the built-in (the Free UI binds to
+     * Whether $reward may be deleted: never the built-in (the Lite UI binds to
      * it), and only with no redemption row naming it. Rows in any status, never
      * points: a refunded claim still names the reward in customer history.
      */
-    private static function is_deletable( Reward $reward, int $redemption_rows ): bool {
-        return ! $reward->is_builtin() && 0 === $redemption_rows;
+    private static function is_deletable( Reward $reward, int $redemption_row_count ): bool {
+        return ! $reward->is_builtin() && 0 === $redemption_row_count;
     }
 
     protected function define_item_schema(): array {
@@ -474,7 +474,7 @@ final class RewardRestController extends AbstractRestController {
                     'description' => sprintf(
                         /* translators: %s: the built-in reward's slug. */
                         __( 'Stable machine key, generated on create and immutable afterwards. Built-in is "%s".', 'yayloyalty' ),
-                        RewardRepository::CART_DISCOUNT_SLUG
+                        RewardRepository::FLEXIBLE_DISCOUNT_SLUG
                     ),
                     'type'        => 'string',
                     'context'     => [ 'view', 'edit' ],
@@ -553,17 +553,13 @@ final class RewardRestController extends AbstractRestController {
                     'readonly'    => true,
                 ],
                 'redemption_summary' => [
-                    'description' => __( 'Claim figures from the redemptions table; zeros and nulls for a reward with no claims. Outstanding means an issued coupon that has not expired.', 'yayloyalty' ),
+                    'description' => __( 'Claim figures from the redemptions table; zero and null for a reward with no claims.', 'yayloyalty' ),
                     'type'        => 'object',
                     'context'     => [ 'view' ],
                     'readonly'    => true,
                     'properties'  => [
-                        'claimed'               => [ 'type' => 'integer' ],
-                        'outstanding'           => [ 'type' => 'integer' ],
-                        'outstanding_customers' => [ 'type' => 'integer' ],
-                        'outstanding_points'    => [ 'type' => 'integer' ],
-                        'first_claimed_at'      => [ 'type' => [ 'string', 'null' ] ],
-                        'last_expires_at'       => [ 'type' => [ 'string', 'null' ] ],
+                        'claimed'          => [ 'type' => 'integer' ],
+                        'first_claimed_at' => [ 'type' => [ 'string', 'null' ] ],
                     ],
                 ],
             ],

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { parseWPDate } from '@/lib/helpers/format.helper';
+import { formatWPDate } from '@/lib/helpers/format.helper';
 import { Badge } from '@/components/ui/badge';
 import { Button, LoadingButton } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -92,7 +92,7 @@ export function BuiltInConfigCard({
               {sprintf(
                 /* translators: %s: the date this was last saved. */
                 __('Last edited %s', 'yayloyalty'),
-                parseWPDate(updatedAt),
+                formatWPDate(updatedAt),
               )}
             </span>
           </div>

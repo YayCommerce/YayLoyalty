@@ -1,7 +1,7 @@
 import { Controller, useWatch } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { parseWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
+import { formatWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints, pointsPerCurrencyLabel, rateFromSpend } from '@/lib/helpers/points.helper';
 import { MoneyInput, PointsInput } from '@/components/ui/custom/amount-inputs';
 import { Switch } from '@/components/ui/switch';
@@ -52,7 +52,7 @@ export function EarnPointsStep({ form }: WizardStepProps) {
           {sprintf(
             /* translators: 1: a sample order total, formatted; 2: the points it earns, formatted. */
             __('A %1$s order earns %2$s points', 'yayloyalty'),
-            parseWPCurrency(50),
+            formatWPCurrency(50),
             formatPoints(pointsForSpend({ earnPoints, earnSpend }, 50)),
           )}
         </WizardPreview>

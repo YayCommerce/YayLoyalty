@@ -52,8 +52,8 @@ export function useDrawerTabQueryState<F extends string>(initialFilter: F) {
       page,
       perPage: DRAWER_PAGE_SIZE,
       search: querySearch,
-      after: range?.from ? format(range.from, 'yyyy-MM-dd') : undefined,
-      before: range?.to ? format(range.to, 'yyyy-MM-dd') : undefined,
+      from: range?.from ? format(range.from, 'yyyy-MM-dd') : undefined,
+      to: range?.to ? format(range.to, 'yyyy-MM-dd') : undefined,
     },
   };
 }

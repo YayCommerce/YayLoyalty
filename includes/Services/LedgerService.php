@@ -6,6 +6,7 @@ use YayLoyalty\Engine\Earning\IdempotencyKey;
 use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Expiry\ExpiryPolicy;
 use YayLoyalty\Engine\Rewards\Result as RedeemResult;
+use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
@@ -26,7 +27,8 @@ defined( 'ABSPATH' ) || exit;
  * Engine\Expiry\ExpiryRunner::run() and Engine\Redemption\RedemptionService::build().
  * Name a sixth here before adding it.
  * Manual rows enter through adjust() and record(). System rows enter through earn(),
- * refund_earn(), restore_refund(), expire() and redeem(), which add the idempotency-key duplicate branch.
+ * refund_earn(), restore_refund(), expire(), redeem() and recover_order(), which add the idempotency-key
+ * duplicate branch.
  * Lock order: the customer row, then, for an earn row, its campaign row shared, which
  * CampaignRestController::delete_item() locks exclusively before deleting.
  * It also keeps `lots` and `lot_allocations` in step with every row, through LotService, which
@@ -45,6 +47,15 @@ final class LedgerService {
 
     /** Outcome::skipped reason: under the lock the customer is no longer due to expire (expiry off, or activity moved the date). */
     public const REASON_NOT_DUE = 'not_due';
+
+    /** Outcome::skipped reason: the order's points were already given back by recover_order(), so its purchase award is not written. */
+    public const REASON_RECOVERED = 'recovered_manually';
+
+    /** Outcome::skipped reason: under the lock the order still has live earned points, so recover_order() writes nothing. */
+    public const REASON_ORDER_HAS_POINTS = 'order_has_points';
+
+    /** The most points one recover_order() call gives; the order screen's box and route check against it too. */
+    public const MAX_RECOVERY_POINTS = 1000000;
 
     /** @var LedgerRepository */
     private $ledger;
@@ -71,7 +82,7 @@ final class LedgerService {
      *
      * @param bool $adjust_lifetime True writes an ADJUST row: lifetime_earned
      *             moves by the same signed amount as the balance, so a
-     *             deduction can undo a mistaken grant's tier progress. False
+     *             deduction can undo a mistaken grant's lifetime total. False
      *             writes a CORRECTION row: balance only.
      * @param string|null $customer_note Shown to the customer in place of "Adjustment by {store}"; blank stores NULL.
      *
@@ -145,6 +156,50 @@ final class LedgerService {
         ReferenceType::assert( $draft->get_reference_type() );
 
         return $this->write_keyed( $draft, $points_under_lock, $skip_reason );
+    }
+
+    /**
+     * Gives an order's missing points back once, as that order's earning: one EARN row keyed
+     * `earn:{user}:order:{order_id}:recovery`, with no campaign. Reversals claw it back like a
+     * purchase earn, and a later purchase award for the order is skipped (is_recovered_order()).
+     *
+     * @param int $actor_id The admin who asked; 0 or less stores none.
+     * @return Outcome awarded (the EARN row), duplicate (the order's existing recovery row), or
+     *                 skipped( REASON_ORDER_HAS_POINTS ) when, under the lock, the order still has live points.
+     * @throws \InvalidArgumentException When points is outside 1 to 1,000,000.
+     * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails.
+     */
+    public function recover_order( int $user_id, int $order_id, int $points, string $note, int $actor_id ): Outcome {
+        if ( $points < 1 || $points > self::MAX_RECOVERY_POINTS ) {
+            throw new \InvalidArgumentException( 'YayLoyalty: a recovery gives from 1 to 1,000,000 points.' );
+        }
+
+        $draft = new LedgerEntry(
+            null,
+            $user_id,
+            $points,
+            0, // balance_after is computed inside the lock.
+            LedgerType::EARN,
+            LedgerSource::ORDER,
+            ReferenceType::ORDER,
+            $order_id,
+            null,
+            null,
+            $order_id,
+            $note,
+            $actor_id > 0 ? $actor_id : null,
+            Dates::now(),
+            self::recovery_key( $user_id, $order_id )
+        );
+
+        return $this->write_keyed(
+            $draft,
+            function () use ( $order_id, $points ): int {
+                // Locking: a completion committed since this transaction's snapshot must count.
+                return $this->ledger->order_points_summary( $order_id, true )['net'] > 0 ? 0 : $points;
+            },
+            self::REASON_ORDER_HAS_POINTS
+        );
     }
 
     /**
@@ -312,6 +367,10 @@ final class LedgerService {
                     return Outcome::duplicate( $existing );
                 }
 
+                if ( $this->is_recovered_order( $draft ) ) {
+                    return Outcome::skipped( self::REASON_RECOVERED );
+                }
+
                 if ( ! $this->campaign_survives( $draft ) ) {
                     return Outcome::skipped( self::REASON_CAMPAIGN_DELETED );
                 }
@@ -331,6 +390,30 @@ final class LedgerService {
                 return null === $persisted ? Outcome::duplicate( $this->existing_for( $key ) ) : Outcome::awarded( $persisted );
             }
         );
+    }
+
+    /**
+     * Whether $draft is an order's purchase earn and recover_order() already gave that order's points
+     * back. A locking read, under the customer lock: no index ties the two keys, so a plain read in an
+     * older snapshot could miss a recovery committed since and pay the order twice.
+     */
+    private function is_recovered_order( LedgerEntry $draft ): bool {
+        $order_id = $draft->get_order_id();
+
+        if ( LedgerType::EARN !== $draft->get_type() || null === $order_id ) {
+            return false;
+        }
+
+        if ( CampaignTrigger::PURCHASE !== IdempotencyKey::qualifier_of( (string) $draft->get_idempotency_key() ) ) {
+            return false;
+        }
+
+        return null !== $this->ledger->find_by_idempotency_key( self::recovery_key( $draft->get_user_id(), $order_id ), true );
+    }
+
+    /** The key of an order's one recovery row: `earn:{user}:order:{order_id}:recovery`. */
+    private static function recovery_key( int $user_id, int $order_id ): string {
+        return IdempotencyKey::compose( LedgerType::EARN, $user_id, ReferenceType::ORDER, $order_id, IdempotencyKey::RECOVERY );
     }
 
     /**
@@ -438,7 +521,7 @@ final class LedgerService {
      *
      * Preconditions: $draft is a REDEEM row with points < 0 and an
      * idempotency key composed by the caller
-     * (`redeem:{user}:order:{order_id}:flexible_discount` for the slider).
+     * (`redeem:{user}:order:{order_id}:flexible_discount` for the flexible discount).
      * `order_id` is optional. Nothing slow or externally fallible may run inside.
      *
      * Returns exactly one of: Outcome::awarded( persisted row ), with

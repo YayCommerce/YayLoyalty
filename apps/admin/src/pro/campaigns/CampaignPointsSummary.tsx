@@ -1,6 +1,6 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
+import { DisplayStatus } from '@/lib/schema/campaign.schema';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PointsValue } from '@/components/ui/custom/points-value';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,7 +15,7 @@ const VISIBLE_ROWS = 5;
 export function CampaignPointsSummary({
   rows: allRows,
 }: {
-  rows: { id: number; name: string; displayStatus: CampaignDisplayStatus; points_issued: number }[];
+  rows: { id: number; name: string; displayStatus: DisplayStatus; points_issued: number }[];
 }) {
   // Archived is retired, and a zero has no share to show.
   const rows = allRows.filter((row) => row.displayStatus !== 'archived' && row.points_issued > 0);

@@ -6,7 +6,7 @@ import { isStaleSnapshot, type AdjustTarget } from './customers-adjust-points.fo
  * The single-customer baseline: the record the admin acknowledged and the balance first seen.
  * It re-baselines on a successful Reload, never on the submit-time re-check, which must block instead.
  */
-export function useAdjustPreviewBaseline(
+export function useSingleCustomerBaseline(
   open: boolean,
   isSingle: boolean,
   singleCustomer: AdjustTarget | undefined,

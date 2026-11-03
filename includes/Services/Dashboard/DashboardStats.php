@@ -7,13 +7,13 @@ use YayLoyalty\Utils\PointsMath;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Composes the cacheable part of GET /dashboard: stats, series, top earners,
+ * Composes the cacheable part of GET /dashboard: stats, series, top balances,
  * recent activity. Previous liability is approximated as net_balance −
  * net_delta: the positive-only filter cannot be rewound without a snapshot.
  */
 final class DashboardStats {
 
-    public const TOP_EARNERS   = 3;
+    public const TOP_BALANCES  = 3;
     public const ACTIVITY_ROWS = 6;
 
     /** @var DashboardRepository */
@@ -23,7 +23,7 @@ final class DashboardStats {
         $this->repository = $repository;
     }
 
-    /** @return array{stats: array, series: array, top_earners: array, recent_activity: array} */
+    /** @return array{stats: array, series: array, top_balances: array, recent_activity: array} */
     public function build( PeriodWindow $window ): array {
         $repo = $this->repository;
         $from = $window->from_utc();
@@ -37,11 +37,11 @@ final class DashboardStats {
         $redeemed     = $repo->sum_redeemed( $from, $to );
         $liability    = $repo->liability_points();
 
-        $orders_total       = $repo->count_orders( $window->from_ts(), $window->to_ts() );
-        $orders_with_points = $repo->orders_with_points( $from, $to );
-        $rate               = PointsMath::pct_of( $orders_with_points, $orders_total );
-        $rate_prev          = PointsMath::pct_of(
-            $repo->orders_with_points( $pf, $pt ),
+        $orders_total           = $repo->count_orders( $window->from_ts(), $window->to_ts() );
+        $orders_with_redemption = $repo->orders_with_redemption( $from, $to );
+        $rate                   = PointsMath::pct_of( $orders_with_redemption, $orders_total );
+        $rate_prev              = PointsMath::pct_of(
+            $repo->orders_with_redemption( $pf, $pt ),
             $repo->count_orders( $window->prev_from_ts(), $window->from_ts() )
         );
 
@@ -64,10 +64,10 @@ final class DashboardStats {
                     'prev_delta_pct' => PointsMath::pct_delta( $liability, $repo->net_balance() - $repo->net_delta( $from, $to ) ),
                 ],
                 'redemption_rate' => [
-                    'rate'               => $rate,
-                    'orders_with_points' => $orders_with_points,
-                    'orders_total'       => $orders_total,
-                    'prev_delta_pct'     => null === $rate || null === $rate_prev ? null : PointsMath::pct_delta( $rate, $rate_prev ),
+                    'rate'                   => $rate,
+                    'orders_with_redemption' => $orders_with_redemption,
+                    'orders_total'           => $orders_total,
+                    'prev_delta_pct'         => null === $rate || null === $rate_prev ? null : PointsMath::pct_delta( $rate, $rate_prev ),
                 ],
             ],
             'series'          => DashboardMath::fill_series(
@@ -75,7 +75,7 @@ final class DashboardStats {
                 $window->days(),
                 [ 'issued', 'redeemed' ]
             ),
-            'top_earners'     => $repo->top_earners( self::TOP_EARNERS ),
+            'top_balances'    => $repo->top_balances( self::TOP_BALANCES ),
             'recent_activity' => [
                 'total_today' => $repo->count_activity_since( $window->today_from_utc() ),
                 'rows'        => $repo->latest_activity( self::ACTIVITY_ROWS ),

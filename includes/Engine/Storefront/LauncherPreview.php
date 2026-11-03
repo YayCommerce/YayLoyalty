@@ -60,7 +60,7 @@ final class LauncherPreview {
         return '<!doctype html><html><head><meta charset="utf-8">'
             . '<meta name="viewport" content="width=device-width, initial-scale=1">'
             . '<link rel="stylesheet" href="' . esc_url( Launcher::style_url() ) . '">' // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- a standalone page for an iframe; there is no WordPress head to enqueue into.
-            . '<link rel="stylesheet" href="' . esc_url( AccountRewards::style_url() ) . '">' // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- as above: the panel prints the Rewards tab's partials.
+            . '<link rel="stylesheet" href="' . esc_url( AccountMyPoints::style_url() ) . '">' // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- as above: the panel prints the My Points tab's partials.
             . '<link rel="stylesheet" href="' . esc_url( Launcher::versioned_url( self::FRAME_STYLE_PATH ) ) . '">' // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- as above.
             . '</head><body>'
             . self::store_frame()

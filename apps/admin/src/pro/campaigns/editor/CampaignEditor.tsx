@@ -5,10 +5,10 @@ import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
-import { parseWPRelativeDate } from '@/lib/helpers/format.helper';
+import { formatWPRelativeDate } from '@/lib/helpers/format.helper';
 import { useCampaignQuery, useCreateCampaignMutation, useUpdateCampaignMutation } from '@/lib/queries/campaign.queries';
 import { hasPerformancePage } from '@/lib/schema/campaign-performance.schema';
-import { Campaign, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
+import { Campaign, resolveDisplayStatus } from '@/lib/schema/campaign.schema';
 import { useEditorSave } from '@/hooks/useEditorSave';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -91,7 +91,7 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
   );
 
   // The header renders from the loaded campaign, never form state; "Unsaved changes" says when the two differ.
-  const displayStatus = resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at);
+  const displayStatus = resolveDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at);
 
   return (
     <CampaignEditorContext.Provider value={{ mode: 'edit', campaign, trigger: campaign.trigger }}>
@@ -115,7 +115,7 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
                     {sprintf(
                       /* translators: %s: relative time until the campaign starts, e.g. "in 3 days". */
                       __('starts %s', 'yayloyalty'),
-                      parseWPRelativeDate(campaign.starts_at),
+                      formatWPRelativeDate(campaign.starts_at),
                     )}
                   </span>
                 )}
@@ -176,10 +176,10 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
   );
 }
 
-/** Create-mode entry point for `campaigns/new/:templateId`. Nothing is written until Save. */
-export function CampaignCreator({ templateId }: { templateId: string }) {
+/** Create-mode entry point for `campaigns/new/:trigger`. Nothing is written until Save. */
+export function CampaignCreator({ trigger }: { trigger: string }) {
   // Memoised so CampaignCreatorForm's seed stays stable: findTemplate() builds a fresh object per call.
-  const template = useMemo(() => findTemplate(templateId), [templateId]);
+  const template = useMemo(() => findTemplate(trigger), [trigger]);
 
   if (!template) {
     return <NotFoundPage />;

@@ -17,11 +17,11 @@ import {
 import { hasPerformancePage } from '@/lib/schema/campaign-performance.schema';
 import {
   Campaign,
-  CAMPAIGN_DISPLAY_STATUSES,
-  CampaignDisplayStatus,
+  DISPLAY_STATUSES,
+  DisplayStatus,
   findBuiltinCampaign,
   LITE_CAMPAIGN_TRIGGERS,
-  resolveCampaignDisplayStatus,
+  resolveDisplayStatus,
 } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -59,8 +59,8 @@ import {
 import { CampaignPointsSummary, CampaignPointsSummarySkeleton } from './CampaignPointsSummary';
 import { CampaignStatusBadge } from './CampaignStatusBadge';
 
-/** Groups larger than this collapse to the default plus this many, highest-priority first. */
-const VISIBLE_NON_DEFAULT_ROWS = 4;
+/** Groups larger than this collapse to the built-in plus this many, highest-priority first. */
+const VISIBLE_NON_BUILTIN_ROWS = 4;
 
 /** Above this many campaigns, finding one by scrolling stops being reasonable. */
 const SEARCH_THRESHOLD = 20;
@@ -83,7 +83,7 @@ interface DisplayCampaign extends Campaign {
   gives: string;
   conditionsLabel: string;
   scheduleLabel: string;
-  displayStatus: CampaignDisplayStatus;
+  displayStatus: DisplayStatus;
 }
 
 /** One trigger group as rendered; hiddenRows sit behind "Show the other … campaigns". */
@@ -99,19 +99,14 @@ interface CampaignGroup {
  * BuiltInCampaignList. Presentation strings are derived client-side
  * (toDisplayCampaign); points_issued is the server's own field.
  * Drag-to-reorder saves the group's order as `priority`, top row highest.
- * `newStore` / `noLiveCampaign` are dev-only preview toggles with no UI
- * control; `newStore` stands in for "has this store ever earned points",
- * which nothing can query yet.
  */
 export function CampaignTable() {
   const navigate = useNavigate();
-  const [newStore] = useState(false);
-  const [noLiveCampaign] = useState(false);
 
   const { data, isPending, isError, refetch } = useCampaignsQuery({ perPage: 100 });
   const allRows = useMemo(() => (data?.data ?? []).map(toDisplayCampaign), [data]);
 
-  const [statusFilter, setStatusFilter] = useState<CampaignDisplayStatus | undefined>();
+  const [statusFilter, setStatusFilter] = useState<DisplayStatus | undefined>();
   const [searchQuery, setSearchQuery] = useState('');
   // Shows a drop at once while its save is in flight. Ignored once the query's own data changes,
   // so every refetch replaces it with the stored order.
@@ -126,21 +121,18 @@ export function CampaignTable() {
   // A snapshot, so a refetch while the dialog is open cannot change what it acts on.
   const [bulkArchiveTargets, setBulkArchiveTargets] = useState<DisplayCampaign[]>();
 
-  const orderedRows = override && override.source === data ? override.rows : allRows;
-  const baseRows = newStore ? allRows.filter((row) => row.is_builtin) : orderedRows;
-  const rows = noLiveCampaign ? baseRows.map(pauseIfActivePurchase) : baseRows;
+  const rows = override && override.source === data ? override.rows : allRows;
   const archivedCount = rows.filter((row) => row.displayStatus === 'archived').length;
   const hasActivePurchaseCampaign = rows.some(
     (row) => triggerGroup(row.trigger) === 'purchase' && row.displayStatus === 'active',
   );
 
-  // The one-click fix the "aren't earning points" alert below offers. Read off allRows, never
-  // the toggled/filtered rows: the real built-in, regardless of dev preview state.
-  const defaultPurchaseCampaign = findBuiltinCampaign(allRows, 'purchase');
-  const reactivatePurchaseMutation = useUpdateCampaignStatusMutation(defaultPurchaseCampaign?.id ?? 0);
+  // The one-click fix the "aren't earning points" alert below offers.
+  const builtinPurchaseCampaign = findBuiltinCampaign(allRows, 'purchase');
+  const reactivatePurchaseMutation = useUpdateCampaignStatusMutation(builtinPurchaseCampaign?.id ?? 0);
 
-  async function reactivateDefaultPurchase() {
-    if (!defaultPurchaseCampaign) {
+  async function reactivateBuiltinPurchase() {
+    if (!builtinPurchaseCampaign) {
       return;
     }
 
@@ -177,7 +169,7 @@ export function CampaignTable() {
     selectedRows.length === 0 ? false : selectedRows.length === selectableRows.length ? true : 'indeterminate';
 
   // The rows on screen change, so picks made against the old ones no longer apply.
-  function changeStatusFilter(next: CampaignDisplayStatus | undefined) {
+  function changeStatusFilter(next: DisplayStatus | undefined) {
     setStatusFilter(next);
     setSelectedIds(new Set());
   }
@@ -260,7 +252,7 @@ export function CampaignTable() {
     const reordered = arrayMove(groupRows, fromIndex, toIndex);
     const groupIds = new Set(groupRows.map((row) => row.id));
     let next = 0;
-    const nextRows = orderedRows.map((row) => (groupIds.has(row.id) ? reordered[next++] : row));
+    const nextRows = rows.map((row) => (groupIds.has(row.id) ? reordered[next++] : row));
     const groupKey = triggerGroup(reordered[0].trigger);
 
     // The whole group, top first; archived rows no longer compete, so they have no priority to save.
@@ -290,34 +282,28 @@ export function CampaignTable() {
 
             {!isPending && (
               <p className="text-foreground flex-1 text-sm">
-                {newStore ? (
-                  __('Three ways customers earn points. Nothing has been awarded yet.', 'yayloyalty')
-                ) : (
+                {sprintf(
+                  /* translators: %d: total number of campaigns, archived ones included. */
+                  __('%d campaigns', 'yayloyalty'),
+                  rows.length,
+                )}
+                {archivedCount > 0 && (
                   <>
-                    {sprintf(
-                      /* translators: %d: total number of campaigns, archived ones included. */
-                      __('%d campaigns', 'yayloyalty'),
-                      rows.length,
-                    )}
-                    {archivedCount > 0 && (
-                      <>
-                        {' - '}
-                        <button
-                          type="button"
-                          className="text-foreground hover:underline"
-                          onClick={() => changeStatusFilter('archived')}
-                        >
-                          {sprintf(
-                            /* translators: %d: number of archived campaigns in the list. */
-                            __('%d archived', 'yayloyalty'),
-                            archivedCount,
-                          )}
-                        </button>
-                      </>
-                    )}
-                    {__('. Drag to reorder within a group.', 'yayloyalty')}
+                    {' - '}
+                    <button
+                      type="button"
+                      className="text-foreground hover:underline"
+                      onClick={() => changeStatusFilter('archived')}
+                    >
+                      {sprintf(
+                        /* translators: %d: number of archived campaigns in the list. */
+                        __('%d archived', 'yayloyalty'),
+                        archivedCount,
+                      )}
+                    </button>
                   </>
                 )}
+                {__('. Drag to reorder within a group.', 'yayloyalty')}
               </p>
             )}
 
@@ -335,28 +321,23 @@ export function CampaignTable() {
               </InputGroup>
             )}
 
-            {/* Nothing to filter on a fresh install: three campaigns, all active. */}
-            {!newStore && (
-              <Select
-                value={statusFilter ?? 'all'}
-                onValueChange={(value) =>
-                  changeStatusFilter(value === 'all' ? undefined : (value as CampaignDisplayStatus))
-                }
-              >
-                <SelectTrigger size="sm">
-                  <span className="text-muted-foreground">{__('Status:', 'yayloyalty')}</span>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{__('All', 'yayloyalty')}</SelectItem>
-                  {CAMPAIGN_DISPLAY_STATUSES.map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {statusLabel(status)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <Select
+              value={statusFilter ?? 'all'}
+              onValueChange={(value) => changeStatusFilter(value === 'all' ? undefined : (value as DisplayStatus))}
+            >
+              <SelectTrigger size="sm">
+                <span className="text-muted-foreground">{__('Status:', 'yayloyalty')}</span>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{__('All', 'yayloyalty')}</SelectItem>
+                {DISPLAY_STATUSES.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {statusLabel(status)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             <Button size="sm" onClick={() => navigate('/campaigns/new')}>
               {__('Add campaign', 'yayloyalty')}
@@ -383,13 +364,13 @@ export function CampaignTable() {
                     'yayloyalty',
                   )}
                 </p>
-                {defaultPurchaseCampaign && (
+                {builtinPurchaseCampaign && (
                   <div className="flex flex-wrap items-center gap-3 pt-1">
                     <Button
                       variant="primary"
                       size="sm"
                       disabled={reactivatePurchaseMutation.isPending}
-                      onClick={reactivateDefaultPurchase}
+                      onClick={reactivateBuiltinPurchase}
                     >
                       {reactivatePurchaseMutation.isPending
                         ? __('Switching on…', 'yayloyalty')
@@ -397,27 +378,6 @@ export function CampaignTable() {
                     </Button>
                   </div>
                 )}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {newStore && (
-            <Alert variant="outline">
-              <InfoIcon />
-              <AlertDescription className="text-foreground flex-row items-center justify-between gap-3">
-                <span>
-                  {__(
-                    'Your three campaigns are live and waiting. The first completed order will award points and fill the column on the right.',
-                    'yayloyalty',
-                  )}
-                </span>
-                <Button
-                  variant="primary-outline-fill"
-                  size="sm"
-                  onClick={() => window.open(window.yayLoyaltyMeta.wpMeta.siteUrl, '_blank', 'noopener')}
-                >
-                  {__('View your storefront', 'yayloyalty')}
-                </Button>
               </AlertDescription>
             </Alert>
           )}
@@ -892,12 +852,12 @@ function SortableCampaignRow({
   );
 }
 
-/** The default stays visible regardless of rank; the rest cap at VISIBLE_NON_DEFAULT_ROWS until expanded. */
+/** The built-in stays visible regardless of rank; the rest cap at VISIBLE_NON_BUILTIN_ROWS until expanded. */
 function splitCollapsedRows(
   groupRows: DisplayCampaign[],
   expanded: boolean,
 ): Pick<CampaignGroup, 'visibleRows' | 'hiddenRows'> {
-  const hiddenRows = expanded ? [] : groupRows.filter((row) => !row.is_builtin).slice(VISIBLE_NON_DEFAULT_ROWS);
+  const hiddenRows = expanded ? [] : groupRows.filter((row) => !row.is_builtin).slice(VISIBLE_NON_BUILTIN_ROWS);
   const hiddenIds = new Set(hiddenRows.map((row) => row.id));
 
   return { visibleRows: groupRows.filter((row) => !hiddenIds.has(row.id)), hiddenRows };
@@ -906,15 +866,6 @@ function splitCollapsedRows(
 /** A built-in can never be archived, and an archived row has nothing left to archive. */
 function isSelectable(row: DisplayCampaign): boolean {
   return !row.is_builtin && row.displayStatus !== 'archived';
-}
-
-/** For the `noLiveCampaign` preview: a purchase campaign that was active no longer is. */
-function pauseIfActivePurchase(row: DisplayCampaign): DisplayCampaign {
-  if (triggerGroup(row.trigger) === 'purchase' && row.displayStatus === 'active') {
-    return { ...row, displayStatus: 'paused' };
-  }
-
-  return row;
 }
 
 function campaignCountLabel(count: number): string {
@@ -936,6 +887,6 @@ function toDisplayCampaign(campaign: Campaign): DisplayCampaign {
     gives: givesLabel(campaign.trigger, campaign.config),
     conditionsLabel: conditionsLabel(campaign.conditions),
     scheduleLabel: scheduleLabel(campaign.starts_at, campaign.ends_at),
-    displayStatus: resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at),
+    displayStatus: resolveDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at),
   };
 }

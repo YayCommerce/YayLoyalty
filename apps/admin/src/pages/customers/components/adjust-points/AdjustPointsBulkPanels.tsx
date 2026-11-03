@@ -1,7 +1,7 @@
 import { formatPoints } from '@/lib/helpers/points.helper';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BALANCE_RANGE_OPTIONS, EXPIRING_SOON_OPTIONS, type RowFilters } from '../../customers-page.filter-rows';
+import { BALANCE_RANGE_OPTIONS, EXPIRING_SOON_OPTIONS, type CustomerListFilters } from '../../customers-page.filters';
 import { MAX_MATCHING_ROWS } from '../../customers-page.matching-customers';
 import {
   acknowledgeLiability,
@@ -21,7 +21,7 @@ import { addsToLiability } from '../customers-adjust-points.copy';
 import { bulkLiabilityProjection, bulkTotalPoints, type AdjustFormState } from '../customers-adjust-points.form-state';
 
 /** The active filters as text. */
-function filterSummary(filters: RowFilters): string | null {
+function filterSummary(filters: CustomerListFilters): string | null {
   const parts: string[] = [];
 
   if (filters.search.trim()) parts.push(`"${filters.search.trim()}"`);
@@ -53,7 +53,7 @@ export function AdjustPointsBulkPanels({
   effectiveCount: number;
   isCountLoading: boolean;
   selectionMode: 'partial' | 'all';
-  filters: RowFilters;
+  filters: CustomerListFilters;
   /** Rows the filter matches beyond the current page; 0 when none. */
   notShownOnPage: number;
   liabilityPoints: number | null;

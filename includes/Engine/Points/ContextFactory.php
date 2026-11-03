@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Builds Contexts from WooCommerce objects. With CustomerFactsReader, the only engine classes that touch WooCommerce.
- * Amounts stay in the order's currency. base_rate carries the conversion and is the whole multi-currency seam.
+ * Amounts stay in the order's currency. to_base_factor carries the conversion and is the whole multi-currency seam.
  */
 final class ContextFactory {
 
@@ -40,23 +40,14 @@ final class ContextFactory {
             }
         }
 
-        $loyalty_discount = 0.0;
-
-        foreach ( $order->get_items( 'coupon' ) as $coupon ) {
-            if ( $coupon instanceof \WC_Order_Item_Coupon && Context::is_loyalty_code( (string) $coupon->get_code() ) ) {
-                $loyalty_discount += (float) $coupon->get_discount();
-            }
-        }
-
         return new Context(
             $user_id > 0 ? $user_id : null,
             $occurred_at,
             (string) $order->get_currency(),
-            self::base_rate( (string) $order->get_currency(), $order ),
+            self::to_base_factor( (string) $order->get_currency(), $order ),
             $line_items,
             (float) $order->get_subtotal(),
             (float) $order->get_total_discount(),
-            $loyalty_discount,
             (array) $order->get_coupon_codes(),
             self::user_roles( $user_id ),
             $order_id,
@@ -74,19 +65,18 @@ final class ContextFactory {
      * A user event with no order or comment: a signup passes the registration time, so a signup campaign that
      * has since ended still applies to a late-processed registration; the birthday run passes now.
      *
-     * @param string               $registered_at The event's UTC MySQL datetime (wp_users.user_registered is already UTC).
-     * @param array<string, mixed> $extra         Facts the trigger's handler reads, such as the birthday's year.
+     * @param string               $occurred_at The event's UTC MySQL datetime (wp_users.user_registered is already UTC).
+     * @param array<string, mixed> $extra       Facts the trigger's handler reads, such as the birthday's year.
      */
-    public static function from_user( int $user_id, string $registered_at, array $extra = [] ): Context {
+    public static function from_user( int $user_id, string $occurred_at, array $extra = [] ): Context {
         $currency = get_woocommerce_currency();
 
         return new Context(
             $user_id,
-            $registered_at,
+            $occurred_at,
             $currency,
-            self::base_rate( $currency, null ),
+            self::to_base_factor( $currency, null ),
             [],
-            0.0,
             0.0,
             0.0,
             [],
@@ -94,7 +84,7 @@ final class ContextFactory {
             null,
             null,
             $extra,
-            static fn() => self::customer_facts( $user_id, $registered_at )
+            static fn() => self::customer_facts( $user_id, $occurred_at )
         );
     }
 
@@ -120,9 +110,8 @@ final class ContextFactory {
             $user_id > 0 ? $user_id : null,
             $occurred_at,
             $currency,
-            self::base_rate( $currency, null ),
+            self::to_base_factor( $currency, null ),
             [],
-            0.0,
             0.0,
             0.0,
             [],
@@ -218,10 +207,9 @@ final class ContextFactory {
             $user_id,
             Dates::now(),
             $currency,
-            self::base_rate( $currency, null ),
+            self::to_base_factor( $currency, null ),
             [ $line ],
             $subtotal,
-            0.0,
             0.0,
             [],
             self::user_roles( (int) $user_id )
@@ -232,7 +220,7 @@ final class ContextFactory {
     public static function for_advert( string $at ): Context {
         $currency = get_woocommerce_currency();
 
-        return Context::advert( $at, $currency, self::base_rate( $currency, null ) );
+        return Context::advert( $at, $currency, self::to_base_factor( $currency, null ) );
     }
 
     /** For the cart/checkout earn preview. */
@@ -257,25 +245,17 @@ final class ContextFactory {
             );
         }
 
-        $coupon_codes     = (array) $cart->get_applied_coupons();
-        $currency         = get_woocommerce_currency();
-        $loyalty_discount = 0.0;
-
-        foreach ( $coupon_codes as $code ) {
-            if ( Context::is_loyalty_code( (string) $code ) ) {
-                $loyalty_discount += (float) $cart->get_coupon_discount_amount( $code );
-            }
-        }
+        $coupon_codes = (array) $cart->get_applied_coupons();
+        $currency     = get_woocommerce_currency();
 
         return new Context(
             $user_id,
             Dates::now(),
             $currency,
-            self::base_rate( $currency, null ),
+            self::to_base_factor( $currency, null ),
             $line_items,
             (float) $cart->get_subtotal(),
             (float) $cart->get_discount_total(),
-            $loyalty_discount,
             $coupon_codes,
             self::user_roles( (int) $user_id )
         );
@@ -305,7 +285,7 @@ final class ContextFactory {
         return $user ? array_values( (array) $user->roles ) : [];
     }
 
-    private static function base_rate( string $currency, ?\WC_Order $order ): float {
+    private static function to_base_factor( string $currency, ?\WC_Order $order ): float {
         /**
          * Event currency → store base currency. Defaults to the inverse of CurrencyRate::rate(), which is
          * 1.0 unless a multi-currency integration answers yayloyalty_currency_rate.
@@ -314,7 +294,7 @@ final class ContextFactory {
          * @param string         $currency
          * @param \WC_Order|null $order
          */
-        $rate = (float) apply_filters( 'yayloyalty_context_base_rate', CurrencyRate::to_base( 1.0, $currency, $order ), $currency, $order );
+        $rate = (float) apply_filters( 'yayloyalty_context_to_base_factor', CurrencyRate::to_base( 1.0, $currency, $order ), $currency, $order );
 
         return $rate > 0 ? $rate : 1.0;
     }

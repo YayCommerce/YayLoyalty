@@ -9,11 +9,11 @@ export const setupSchema = z.object({
   /** The built-in signup and review campaigns: enabled means status active, otherwise paused. */
   signup: z.object({ enabled: z.boolean(), points: z.number().int() }),
   review: z.object({ enabled: z.boolean(), points: z.number().int() }),
-  /** The built-in cart-discount reward. max_percent_of_subtotal null = no limit (100%). */
-  cart_discount: z.object({
+  /** The built-in flexible discount reward. max_percent_of_discountable null = no limit (100%). */
+  flexible_discount: z.object({
     points_per_currency_unit: z.number(),
     min_points: z.number().int(),
-    max_percent_of_subtotal: z.number().nullable(),
+    max_percent_of_discountable: z.number().nullable(),
   }),
   brand_color: z.string(),
 });

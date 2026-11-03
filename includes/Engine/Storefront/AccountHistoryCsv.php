@@ -7,7 +7,7 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The signed-in shopper's whole points history as a CSV download, from the My Account Rewards tab.
+ * The signed-in shopper's whole points history as a CSV download, from the My Account My Points tab.
  */
 final class AccountHistoryCsv {
 
@@ -19,13 +19,13 @@ final class AccountHistoryCsv {
     private const BATCH = 100;
 
     public static function url(): string {
-        return wp_nonce_url( add_query_arg( self::QUERY_ARG, 'csv', AccountRewards::url() ), self::NONCE_ACTION );
+        return wp_nonce_url( add_query_arg( self::QUERY_ARG, 'csv', AccountMyPoints::url() ), self::NONCE_ACTION );
     }
 
     /** On `template_redirect`: streams the file and exits when the request asks for it. */
     public static function maybe_send(): void {
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- the nonce is verified below, once the request is known to be an export.
-        if ( ! isset( $_GET[ self::QUERY_ARG ] ) || 'csv' !== sanitize_key( wp_unslash( $_GET[ self::QUERY_ARG ] ) ) || ! is_user_logged_in() || ! is_wc_endpoint_url( AccountRewards::ENDPOINT ) ) {
+        if ( ! isset( $_GET[ self::QUERY_ARG ] ) || 'csv' !== sanitize_key( wp_unslash( $_GET[ self::QUERY_ARG ] ) ) || ! is_user_logged_in() || ! is_wc_endpoint_url( AccountMyPoints::ENDPOINT ) ) {
             return;
         }
 
@@ -39,7 +39,7 @@ final class AccountHistoryCsv {
 
         $out = fopen( 'php://output', 'w' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- streaming to the response.
         fwrite( $out, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- UTF-8 BOM, so spreadsheets read the labels' accents.
-        $columns = AccountRewards::column_labels();
+        $columns = AccountMyPoints::column_labels();
         fputcsv( $out, [ $columns['date'], $columns['description'], __( 'Order', 'yayloyalty' ), $columns['points'], $columns['balance'] ] );
 
         $ledger  = new LedgerRepository();

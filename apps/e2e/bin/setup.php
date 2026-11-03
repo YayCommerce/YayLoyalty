@@ -23,7 +23,7 @@ $input = [
         'enabled' => true,
         'points'  => 50,
     ],
-    'cart_discount'         => [
+    'flexible_discount'     => [
         'points_per_currency_unit' => 100,
         'min_points'               => 100,
     ],

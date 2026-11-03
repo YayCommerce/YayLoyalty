@@ -43,7 +43,7 @@ A merchant renames the loyalty currency (singular and plural, e.g. "Star" / "Sta
 ## Acceptance criteria
 
 1. Both Lite and Pro builds show the Points naming card on Settings → Advanced, prefilled with the current labels (default `Point` / `Points`).
-2. The "Storefront reads" line updates as the merchant types. It shows `You have 9,850 {plural}` · `Earn 1 {singular} per {currency 1}` · `Redeem 500 {plural} for {currency 5} off`, with money formatted by `parseWPCurrency`.
+2. The "Storefront reads" line updates as the merchant types. It shows `You have 9,850 {plural}` · `Earn 1 {singular} per {currency 1}` · `Redeem 500 {plural} for {currency 5} off`, with money formatted by `formatWPCurrency`.
 3. Save is blocked when a label is empty or only whitespace, or longer than 30 characters, and an inline error shows. A REST post that bypasses this has the label trimmed and cut to 30 characters. An empty value is ignored, so the stored or default label stays.
 4. If only the fraud limit changes in Pro, the saved option gains `advanced.max_points_per_day` only. It does not gain `advanced.points_label_*` keys, so translated defaults keep following the site language. The reverse also holds.
 5. With the labels set to `Star` / `Stars` and saved:

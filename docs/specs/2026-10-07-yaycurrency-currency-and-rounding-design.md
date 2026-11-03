@@ -9,7 +9,7 @@ On a store running YayCurrency, earning stops treating a foreign-currency order 
 
 ## Context
 
-- Earning already has a multi-currency seam that nothing hooks. `ContextFactory::base_rate()` (`includes/Engine/Points/ContextFactory.php`) applies `yayloyalty_context_base_rate` (event currency → base currency multiplier, default `1.0`), and `BaseCalculator::compute()` multiplies the earning base by it. Today a €100 order earns as if it were $100.
+- Earning already has a multi-currency seam that nothing hooks. `ContextFactory::to_base_factor()` (`includes/Engine/Points/ContextFactory.php`) applies `yayloyalty_context_to_base_factor` (event currency → base currency multiplier, default `1.0`), and `BaseCalculator::compute()` multiplies the earning base by it. Today a €100 order earns as if it were $100.
 - A point's value is set per reward, not globally: the `Reward` config `points_per_currency_unit` is in the store's base currency (`includes/Models/Reward.php`), and `Clamp::apply()` turns points into money through `PointsMath::points_to_currency()`, which rounds to nearest at the given decimals.
 - Redemption is scaffolding: `RedemptionService`, `CouponProvider`, `Rewards\ContextFactory`, `FlexibleDiscountHandler` and both checkout adapters throw `Not implemented`. When built, `CouponProvider` adds a virtual `fixed_cart` coupon with code `CouponProvider::CODE`, quoted in the cart's currency (`get_woocommerce_currency()`).
 - Clawback (`ClawbackMath::owed()`) is proportional in order currency, so the rate in force at refund time does not matter.
@@ -27,7 +27,7 @@ On a store running YayCurrency, earning stops treating a foreign-currency order 
 
 **In:**
 - A new integration folder, `includes/Integrations/YayCurrency/`, shaped like `includes/Integrations/YayMail/` and shipped in both tiers.
-- Earning conversion in Lite and Pro, through the existing `yayloyalty_context_base_rate` seam.
+- Earning conversion in Lite and Pro, through the existing `yayloyalty_context_to_base_factor` seam.
 - The "Currency and rounding" card in Pro, matching the design. It shows when YayCurrency is active.
 - A Lite card with the same title and a `<ProGate />` upsell, also only when YayCurrency is active.
 - A Lite helper that exposes the rate seam and a new rounding seam, so the redemption work calls them, plus a `$mode` argument on `PointsMath::points_to_currency()`.
@@ -105,7 +105,7 @@ On a store running YayCurrency, earning stops treating a foreign-currency order 
 
 **Chosen:** one rate seam used in both directions, one rounding seam, and a YayCurrency integration in `includes/Integrations/YayCurrency/` (both tiers), with only the settings card and the fixed-rate REST route in Pro.
 
-**Architecture:** the private `ContextFactory::base_rate()` moves into a public Lite helper, `CurrencyRate::to_base()`, so the redemption work uses the same seam as earning. A reward's rate in currency X is `points_per_currency_unit × CurrencyRate::to_base( X )`; for example, 100 pts/USD at EUR 0.91 is 109.89 pts/EUR. Rounding becomes a second seam that `points_to_currency()` callers read through `CurrencyRate::rounding()`. `YayCurrencyIntegration`, booted from `includes/YayLoyalty.php` next to `YayMailIntegration`, resolves a currency's rate through a pure `CurrencyRateMath`, in this order:
+**Architecture:** the private `ContextFactory::to_base_factor()` moves into a public Lite helper, `CurrencyRate::to_base()`, so the redemption work uses the same seam as earning. A reward's rate in currency X is `points_per_currency_unit × CurrencyRate::to_base( X )`; for example, 100 pts/USD at EUR 0.91 is 109.89 pts/EUR. Rounding becomes a second seam that `points_to_currency()` callers read through `CurrencyRate::rounding()`. `YayCurrencyIntegration`, booted from `includes/YayLoyalty.php` next to `YayMailIntegration`, resolves a currency's rate through a pure `CurrencyRateMath`, in this order:
 
 1. The order's `yay_currency_order_rate`.
 2. The currency post's fixed rate, in fixed mode only.
@@ -115,13 +115,13 @@ On a store running YayCurrency, earning stops treating a foreign-currency order 
 It returns `1 / rate` to the seam. Without YayCurrency nothing subscribes, and the rate is `1.0` as today. The integration reads `currency_conversion` and `currency_rounding` in both tiers. Lite cannot edit them, so a Lite store runs on the defaults, or on whatever a Pro install stored before a downgrade.
 
 **Components:**
-- `includes/Utils/CurrencyRate.php` (Lite) has two methods. `to_base( string $currency, ?\WC_Order $order ): float` applies `yayloyalty_context_base_rate` and treats a value ≤ 0 as `1.0`. `rounding( string $currency ): string` applies `yayloyalty_points_value_rounding` and returns `PointsMath::ROUND_NEAREST` for anything it doesn't know. `Engine\Points\ContextFactory` calls `to_base()` in place of its private `base_rate()`.
+- `includes/Utils/CurrencyRate.php` (Lite) has two methods. `to_base( string $currency, ?\WC_Order $order ): float` applies `yayloyalty_context_to_base_factor` and treats a value ≤ 0 as `1.0`. `rounding( string $currency ): string` applies `yayloyalty_points_value_rounding` and returns `PointsMath::ROUND_NEAREST` for anything it doesn't know. `Engine\Points\ContextFactory` calls `to_base()` in place of its private `to_base_factor()`.
 - `includes/Utils/PointsMath.php`: `points_to_currency( int $points, $points_per_currency_unit, int $decimals, string $mode = self::ROUND_NEAREST )`. `down` floors at `$decimals` after a `round( …, $decimals + 6 )` guard against float error.
 - `apps/admin/src/lib/points-math/`: the matching `mode` argument in the TS mirror.
 - `includes/Helpers/SettingsHelper.php`:
   - two root fields, `currency_conversion` and `currency_rounding`;
   - a new coerce type for each (`currency_conversion`, `currency_rounding`) that maps unknown values to the default.
-- `includes/Integrations/YayCurrency/YayCurrencyIntegration.php` is a singleton like `YayMailIntegration`, constructed in `includes/YayLoyalty.php` right after it. It returns early unless `defined( 'YAY_CURRENCY_VERSION' )`. It hooks `yayloyalty_context_base_rate`, `yayloyalty_points_value_rounding`, `YayCurrency/GetCouponAmount` and `YayCurrency/StoreCurrency/GetCouponAmount`.
+- `includes/Integrations/YayCurrency/YayCurrencyIntegration.php` is a singleton like `YayMailIntegration`, constructed in `includes/YayLoyalty.php` right after it. It returns early unless `defined( 'YAY_CURRENCY_VERSION' )`. It hooks `yayloyalty_context_to_base_factor`, `yayloyalty_points_value_rounding`, `YayCurrency/GetCouponAmount` and `YayCurrency/StoreCurrency/GetCouponAmount`.
 - `includes/Integrations/YayCurrency/YayCurrencyRates.php` is the only class that calls YayCurrency. It supplies the base currency, the currency list (code, symbol, decimals, live rate after fee), a currency by code, and an order's `yay_currency_order_rate`.
 - `includes/Integrations/YayCurrency/CurrencyRateMath.php` is pure, with no WordPress: it resolves a rate from the candidate inputs and inverts it.
 - `includes/Integrations/YayCurrency/FixedRateStore.php` reads, writes and deletes post meta `yayloyalty_fixed_rate` by currency code.
@@ -140,7 +140,7 @@ It returns `1 / rate` to the seam. Without YayCurrency nothing subscribes, and t
 
 **Integration points:**
 - Filters:
-  - `yayloyalty_context_base_rate` (existing; the integration subscribes, both tiers);
+  - `yayloyalty_context_to_base_factor` (existing; the integration subscribes, both tiers);
   - `yayloyalty_points_value_rounding` (new; `( string $mode, string $currency )`);
   - `YayCurrency/GetCouponAmount` and `YayCurrency/StoreCurrency/GetCouponAmount` (YayCurrency's; the integration subscribes, scoped to `CouponProvider::CODE`).
 - REST: `yayloyalty/v1/currency-rates`.
@@ -161,7 +161,7 @@ It returns `1 / rate` to the seam. Without YayCurrency nothing subscribes, and t
 - Stored fixed meta is ≤ 0 or not numeric: it is treated as blank, so the live rate applies.
 - A currency is renamed or deleted in YayCurrency: the meta follows the post. A deleted currency's rate is gone, and the merchant re-enters it if they re-add the currency.
 
-**Decision record:** None. This extends the existing `yayloyalty_context_base_rate` seam and reverses no architectural choice.
+**Decision record:** None. This extends the existing `yayloyalty_context_to_base_factor` seam and reverses no architectural choice.
 
 ## Alternatives considered
 

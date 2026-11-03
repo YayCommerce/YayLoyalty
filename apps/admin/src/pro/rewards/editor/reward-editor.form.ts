@@ -3,10 +3,10 @@ import type { Resolver } from 'react-hook-form';
 import { z } from 'zod';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { parseWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
+import { formatWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
 import { pointsPhrase } from '@/lib/helpers/points.helper';
 import { numberConfig } from '@/lib/helpers/reward.helper';
-import { isCampaignScheduleInOrder } from '@/lib/schema/campaign.schema';
+import { isScheduleInOrder } from '@/lib/schema/campaign.schema';
 import {
   CatalogRewardType,
   isCatalogRewardType,
@@ -53,7 +53,6 @@ function seedConfig(type: CatalogRewardType, currency: string): Record<string, u
         currency,
         amount: 5,
         min_order: 25,
-        coupon_expiry_days: 60,
         exclude_sale_items: false,
       };
     case 'percent_coupon':
@@ -62,13 +61,12 @@ function seedConfig(type: CatalogRewardType, currency: string): Record<string, u
         max_discount: 50,
         currency,
         min_order: null,
-        coupon_expiry_days: 30,
         exclude_sale_items: false,
       };
     case 'free_shipping':
-      return { min_order: 25, currency, coupon_expiry_days: 30 };
+      return { min_order: 25, currency };
     case 'free_product':
-      return { product_id: null, variation_id: null, qty: 1, coupon_expiry_days: 60 };
+      return { product_id: null, variation_id: null, qty: 1 };
   }
 }
 
@@ -89,8 +87,8 @@ export function templateExample(type: CatalogRewardType): string {
       return sprintf(
         /* translators: 1: discount amount, 2: minimum order amount, 3: points cost, e.g. "500 points". */
         __('Example: %1$s off orders over %2$s, for %3$s', 'yayloyalty'),
-        parseWPCurrency(numberConfig(config, 'amount') ?? 0),
-        parseWPCurrency(numberConfig(config, 'min_order') ?? 0),
+        formatWPCurrency(numberConfig(config, 'amount') ?? 0),
+        formatWPCurrency(numberConfig(config, 'min_order') ?? 0),
         cost,
       );
     case 'percent_coupon':
@@ -224,7 +222,7 @@ export function rewardFormSchema(type: RewardType) {
       config: REWARD_CONFIG_SCHEMAS[type],
       status: z.enum(EDITABLE_REWARD_STATUSES),
     })
-    .refine((data) => isCampaignScheduleInOrder(data.starts_at, data.ends_at), {
+    .refine((data) => isScheduleInOrder(data.starts_at, data.ends_at), {
       message: __('The reward must end after it starts.', 'yayloyalty'),
       path: ['ends_at'],
     });

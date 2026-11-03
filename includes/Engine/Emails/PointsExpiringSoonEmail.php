@@ -65,7 +65,7 @@ class PointsExpiringSoonEmail extends LoyaltyEmail {
              * @param int    $user_id     The customer reminded.
              * @param int    $points      Points that expire.
              * @param string $expires_at  The soonest of their expiry dates, UTC.
-             * @param int    $window_days The reminder timing it went out under.
+             * @param int    $reminder_days The reminder timing it went out under.
              */
             do_action( Emails::POINTS_EXPIRING_SOON_SENT_ACTION, $user_id, $points, $expires_at, ExpiryPolicy::current()->reminder_days() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
         }
@@ -83,7 +83,7 @@ class PointsExpiringSoonEmail extends LoyaltyEmail {
     private function prepare( int $user_id, int $points, string $expires_at, bool $is_single_date ): void {
         $expiry_date   = Dates::to_site_date( $expires_at );
         $greeting_name = self::greeting_name( $user_id );
-        $points_value  = self::balance_value( $points );
+        $points_value  = self::points_worth_html( $points );
 
         $this->values = [
             'greeting_name'     => $greeting_name,

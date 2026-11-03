@@ -2,12 +2,12 @@
  * The order-received page's "Rewards" card (ThankYouPoints, templates/thankyou-points.php).
  * Hand-written and shipped as-is: no build step, and nothing from the launcher's stylesheet or the Design tab.
  *
- * - The colours are storefront-tokens.css's, shared with the Rewards tab, so a theme or custom CSS can re-point
+ * - The colours are storefront-tokens.css's, shared with the My Points tab, so a theme or custom CSS can re-point
  *   them in one place. The pending and earned states are fixed amber and green, so the card is a fixed white
  *   surface rather than tints of the theme's colour.
  * - Every rule is nested under the root, so it is at least 0,2,0 and a theme's plain `h2 {}` cannot beat it.
  * - Sizes are px: rem follows the theme's html font-size (62.5% is common).
- * - The reset is storefront-reset.css, shared with the Rewards tab.
+ * - The reset is storefront-reset.css, shared with the My Points tab.
  */
 @import url("storefront-reset.css");
 @import url("storefront-tokens.css");

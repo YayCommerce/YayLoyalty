@@ -14,29 +14,29 @@ import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components
 import { Switch } from '@/components/ui/switch';
 import { triggerLabel } from '../campaign-labels';
 import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
-import { RewardFieldsPurchase } from './CampaignEditorRewardPurchase';
+import { CampaignEditorEarnPurchase } from './CampaignEditorEarnPurchase';
 
 /** Reward section: the per-trigger field maps behind the editor's third card. */
 
-/** Dispatches on the effective trigger (context's `trigger`, not campaign.trigger — see CampaignEditorContextValue); anything without a field map falls back to RewardFieldsUnknown. */
-export function CampaignEditorReward() {
+/** Dispatches on the effective trigger (context's `trigger`, not campaign.trigger — see CampaignEditorContextValue); anything without a field map falls back to EarnFieldsUnknown. */
+export function CampaignEditorEarn() {
   const { trigger } = useCampaignEditorContext();
 
   switch (trigger) {
     case 'purchase':
-      return <RewardFieldsPurchase />;
+      return <CampaignEditorEarnPurchase />;
     case 'signup':
-      return <RewardFieldsSignup />;
+      return <EarnFieldsSignup />;
     case 'review':
-      return <RewardFieldsReview />;
+      return <EarnFieldsReview />;
     case 'birthday':
-      return <RewardFieldsBirthday />;
+      return <EarnFieldsBirthday />;
     default:
-      return <RewardFieldsUnknown trigger={trigger} />;
+      return <EarnFieldsUnknown trigger={trigger} />;
   }
 }
 
-function RewardFieldsSignup() {
+function EarnFieldsSignup() {
   const { watch, setValue } = useFormContext<CampaignFormValues>();
   const config = watch('config') as SignupConfig;
 
@@ -64,7 +64,7 @@ function RewardFieldsSignup() {
   );
 }
 
-function RewardFieldsReview() {
+function EarnFieldsReview() {
   const { watch, setValue } = useFormContext<CampaignFormValues>();
   const config = watch('config') as ReviewConfig;
 
@@ -133,7 +133,7 @@ function RewardFieldsReview() {
   );
 }
 
-function RewardFieldsBirthday() {
+function EarnFieldsBirthday() {
   const { watch, setValue } = useFormContext<CampaignFormValues>();
   const config = watch('config') as BirthdayConfig;
 
@@ -188,7 +188,7 @@ function RewardFieldsBirthday() {
  * nothing back to config: the seeded clone must round-trip untouched, or
  * this would erase on the client what the server preserves for a downgrade.
  */
-function RewardFieldsUnknown({ trigger }: { trigger: CampaignTrigger }) {
+function EarnFieldsUnknown({ trigger }: { trigger: CampaignTrigger }) {
   const { watch } = useFormContext<CampaignFormValues>();
   const config = watch('config');
   const entries = Object.entries(config ?? {});

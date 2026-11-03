@@ -6,7 +6,7 @@
 
 ## Status
 
-Accepted, 2026-10-07, by Jason, with the redemptions design.
+Superseded by [Lite owns every redemption write, and every redemption row is an applied discount](2026-10-30-lite-writes-every-redemption-as-an-applied-discount.md), 2026-10-30. Accepted 2026-10-07 by Jason, with the redemptions design.
 
 ## Context
 

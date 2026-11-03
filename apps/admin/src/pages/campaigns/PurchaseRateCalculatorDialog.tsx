@@ -4,10 +4,10 @@ import { __, sprintf } from '@wordpress/i18n';
 import {
   currencyDecimals,
   formatStoreDecimal,
-  parseWPCurrency,
+  formatWPCurrency,
   storeCurrencySymbol,
 } from '@/lib/helpers/format.helper';
-import { rateFromSpend, spendPairFromRate } from '@/lib/helpers/points.helper';
+import { rateFromSpend, ratePair } from '@/lib/helpers/points.helper';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AMOUNT_INPUT_WIDTH } from '@/components/ui/custom/amount-inputs';
@@ -53,8 +53,8 @@ function CalculatorBody({
   onApply: (rate: number) => void;
   onCancel: () => void;
 }) {
-  const [pair, setPair] = useState(() => spendPairFromRate(rate));
-  const result = pair.points > 0 ? rateFromSpend(pair.spend, pair.points) : null;
+  const [pair, setPair] = useState(() => ratePair(rate));
+  const result = pair.points > 0 ? rateFromSpend(pair.amount, pair.points) : null;
 
   return (
     <>
@@ -72,8 +72,8 @@ function CalculatorBody({
           className={AMOUNT_INPUT_WIDTH}
           min={10 ** -currencyDecimals()}
           decimalScale={currencyDecimals()}
-          value={pair.spend}
-          onValueChange={(spend) => setPair({ ...pair, spend })}
+          value={pair.amount}
+          onValueChange={(amount) => setPair({ ...pair, amount })}
         >
           <NumberInputInput aria-label={__('Amount spent', 'yayloyalty')} />
           <NumberInputUnit unit={storeCurrencySymbol()} />
@@ -97,7 +97,7 @@ function CalculatorBody({
             /* translators: 1: points per one currency unit, e.g. "0.05"; 2: one unit of the store currency, e.g. "1 ₫". */
             __('= %1$s pts per %2$s', 'yayloyalty'),
             formatStoreDecimal(result, 6),
-            parseWPCurrency(1),
+            formatWPCurrency(1),
           )}
         </Badge>
       )}

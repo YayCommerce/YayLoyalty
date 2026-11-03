@@ -1,7 +1,7 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { formatPercent, formatStoreDecimal, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatPercent, formatStoreDecimal, formatWPTime, utcToDate } from '@/lib/helpers/format.helper';
+import { formatCount, formatPoints } from '@/lib/helpers/points.helper';
 import { pctDelta } from '@/lib/points-math/points-math';
 import type { DashboardRange, DashboardSeriesPoint } from '@/lib/schema/dashboard.schema';
 
@@ -56,12 +56,12 @@ export function deltaLine(
 }
 
 /** "212 of 1,190 orders" */
-export function ordersSubline(withPoints: number, total: number): string {
+export function ordersSubline(withRedemption: number, total: number): string {
   return sprintf(
-    /* translators: 1: orders that earned points, formatted; 2: all orders in the range, formatted. */
+    /* translators: 1: orders on which points were redeemed, formatted; 2: all orders in the range, formatted. */
     __('%1$s of %2$s orders', 'yayloyalty'),
-    formatPoints(withPoints),
-    formatPoints(total),
+    formatCount(withRedemption),
+    formatCount(total),
   );
 }
 
@@ -73,13 +73,13 @@ export function activityDenominator(shown: number, totalToday: number): string |
     /* translators: 1: number of events shown; 2: all events today, formatted. */
     __('%1$d most recent of %2$s events today', 'yayloyalty'),
     shown,
-    formatPoints(totalToday),
+    formatCount(totalToday),
   );
 }
 
 /** "Last updated 14:05 · next 15:05" for the cache strip. Inputs are UTC MySQL strings. */
 export function cacheStripTimes(generatedAt: string, nextRefreshAt: string | null): string {
-  const at = (utc: string) => parseWPTime(utcToDate(utc));
+  const at = (utc: string) => formatWPTime(utcToDate(utc));
   const updated = sprintf(
     /* translators: %s: the time the figures were computed. */
     __('Last updated %s', 'yayloyalty'),

@@ -7,7 +7,7 @@
  * @var array $yayloyalty_member LauncherPayload's `member`; `new_points` set by Launcher::view() for a live member.
  */
 
-use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
+use YayLoyalty\Engine\Storefront\AccountMyPointsIcon;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Utils\Kses;
@@ -21,7 +21,7 @@ if ( $yayloyalty_new_points <= 0 ) {
 }
 ?>
 <p class="yayloyalty-account__notice yayloyalty-account__notice--new">
-    <?php echo wp_kses( AccountRewardsIcon::design( 'new_points' ), Kses::svg() ); ?>
+    <?php echo wp_kses( AccountMyPointsIcon::design( 'new_points' ), Kses::svg() ); ?>
     <span class="yayloyalty-account__notice-text">
         <?php
         /* translators: 1: points number, as "40", 2: the store's points label agreeing with it, as "Points". */

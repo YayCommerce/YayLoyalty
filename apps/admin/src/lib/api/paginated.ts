@@ -6,7 +6,7 @@ import { PaginatedResponse } from '@/lib/api/api.type';
 export function paginatedSchema<T extends z.ZodTypeAny>(item: T) {
   return z.object({
     currentPage: z.number().int(),
-    totalPage: z.number().int(),
+    totalPages: z.number().int(),
     totalItems: z.number().int(),
     perPage: z.number().int(),
     data: z.array(item),
@@ -30,18 +30,18 @@ export const MAX_PAGES = 500;
  * the server. Throws `tooLarge(MAX_PAGES * MAX_PER_PAGE)` past MAX_PAGES pages.
  */
 export async function fetchAllPages<T>(
-  fetchPage: (page: number, perPage: number) => Promise<{ data: T[]; totalPage: number }>,
+  fetchPage: (page: number, perPage: number) => Promise<{ data: T[]; totalPages: number }>,
   tooLarge: (maxRows: number) => string,
 ): Promise<T[]> {
   const first = await fetchPage(1, MAX_PER_PAGE);
 
-  if (first.totalPage > MAX_PAGES) {
+  if (first.totalPages > MAX_PAGES) {
     throw new Error(tooLarge(MAX_PAGES * MAX_PER_PAGE));
   }
 
   const rows = [...first.data];
 
-  for (let page = 2; page <= first.totalPage; page++) {
+  for (let page = 2; page <= first.totalPages; page++) {
     const next = await fetchPage(page, MAX_PER_PAGE);
     rows.push(...next.data);
   }

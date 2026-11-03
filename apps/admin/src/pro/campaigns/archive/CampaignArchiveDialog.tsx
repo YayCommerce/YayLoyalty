@@ -10,7 +10,7 @@ import {
   useDeleteCampaignMutation,
   useUpdateCampaignStatusMutation,
 } from '@/lib/queries/campaign.queries';
-import { Campaign, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
+import { Campaign, resolveDisplayStatus } from '@/lib/schema/campaign.schema';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -45,7 +45,7 @@ export function CampaignArchiveDialog({
   /** Omitted where there is no Archived view to jump to. */
   onViewArchived?: () => void;
 }) {
-  const displayStatus = resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at);
+  const displayStatus = resolveDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at);
   const archiveCase = resolveArchiveCase(displayStatus, campaign.is_deletable);
   const isEarning = archiveCase === 'live' && displayStatus === 'active';
 
@@ -289,7 +289,7 @@ export function CampaignBulkArchiveDialog({
 }
 
 function toBulkArchiveRow(campaign: Campaign): BulkArchiveRow {
-  const displayStatus = resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at);
+  const displayStatus = resolveDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at);
 
   return {
     campaign,

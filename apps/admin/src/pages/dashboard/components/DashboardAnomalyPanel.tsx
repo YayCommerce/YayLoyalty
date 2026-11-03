@@ -2,8 +2,8 @@ import { Link } from 'react-router';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { Can, CAP } from '@/lib/access';
-import { parseWPDay, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
-import { formatCompactPoints, formatPoints } from '@/lib/helpers/points.helper';
+import { formatWPDay, formatWPTime, utcToDate } from '@/lib/helpers/format.helper';
+import { formatCompactPoints, formatCount, formatPoints } from '@/lib/helpers/points.helper';
 import type { PointsJumpData } from '@/lib/schema/dashboard-notice.schema';
 import { BarChart } from '@/components/ui/bar-chart';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,11 +32,11 @@ export function DashboardAnomalyPanel({ data }: { data: PointsJumpData }) {
                 ? sprintf(
                     /* translators: 1: the first day shown; 2: yesterday; 3: number of days shown. */
                     __('%1$s – %2$s · %3$d days', 'yayloyalty'),
-                    parseWPDay(first),
-                    parseWPDay(data.yesterday),
+                    formatWPDay(first),
+                    formatWPDay(data.yesterday),
                     data.daily.length,
                   )
-                : parseWPDay(data.yesterday)}
+                : formatWPDay(data.yesterday)}
             </CardDescription>
           </CardHeader>
           <ChartContainer config={CONFIG} className="aspect-auto h-55 w-full">
@@ -46,11 +46,11 @@ export function DashboardAnomalyPanel({ data }: { data: PointsJumpData }) {
               yKey="issued"
               radius={3}
               barOpacity={(d) => (d.date === data.yesterday ? 1 : 0.35)}
-              referenceY={data.daily_average}
+              referenceY={data.active_day_average}
               minTickGap={24}
-              xTickFormat={(v) => parseWPDay(v, 'j M')}
+              xTickFormat={(v) => formatWPDay(v, 'j M')}
               yTickFormat={(v) => formatCompactPoints(v)}
-              tooltipLabel={(v) => parseWPDay(v, 'j M Y')}
+              tooltipLabel={(v) => formatWPDay(v, 'j M Y')}
               tooltipValue={(v) => formatPoints(v)}
             />
           </ChartContainer>
@@ -59,14 +59,14 @@ export function DashboardAnomalyPanel({ data }: { data: PointsJumpData }) {
               {sprintf(
                 /* translators: %s: average points issued per day, formatted. */
                 __('Typical day — about %s', 'yayloyalty'),
-                formatPoints(data.daily_average),
+                formatPoints(data.active_day_average),
               )}
             </span>
             <span className="text-foreground font-medium">
               {sprintf(
                 /* translators: 1: yesterday's date; 2: points issued yesterday, formatted. */
                 __('%1$s — %2$s', 'yayloyalty'),
-                parseWPDay(data.yesterday),
+                formatWPDay(data.yesterday),
                 formatPoints(data.yesterday_points),
               )}
             </span>
@@ -80,7 +80,7 @@ export function DashboardAnomalyPanel({ data }: { data: PointsJumpData }) {
                 ? sprintf(
                     /* translators: %s: the time the campaign was edited. */
                     __('What changed at %s', 'yayloyalty'),
-                    parseWPTime(utcToDate(edits[0].updated_at)),
+                    formatWPTime(utcToDate(edits[0].updated_at)),
                   )
                 : __('What changed', 'yayloyalty')}
             </CardTitle>
@@ -99,7 +99,7 @@ export function DashboardAnomalyPanel({ data }: { data: PointsJumpData }) {
                         /* translators: 1: person, 2: time. */
                         __('%1$s at %2$s', 'yayloyalty'),
                         edit.updated_by_name || __('Unknown', 'yayloyalty'),
-                        parseWPTime(utcToDate(edit.updated_at)),
+                        formatWPTime(utcToDate(edit.updated_at)),
                       )
                     : edit.updated_by_name || __('Unknown', 'yayloyalty')}
                 </dd>
@@ -111,7 +111,7 @@ export function DashboardAnomalyPanel({ data }: { data: PointsJumpData }) {
                     sprintf(
                       /* translators: %s: number of orders, formatted. */
                       _n('%s order', '%s orders', edit.orders_affected, 'yayloyalty'),
-                      formatPoints(edit.orders_affected),
+                      formatCount(edit.orders_affected),
                     ),
                     formatPoints(edit.points_issued),
                   )}
@@ -131,14 +131,14 @@ export function DashboardAnomalyPanel({ data }: { data: PointsJumpData }) {
               {sprintf(
                 /* translators: %s: yesterday's date. */
                 __('See the orders from %s', 'yayloyalty'),
-                parseWPDay(data.yesterday),
+                formatWPDay(data.yesterday),
               )}
             </a>
           </div>
         </div>
       </div>
       {edits.length > 0 && (
-        <DashboardAnomalySettlements edits={edits} day={parseWPDay(data.yesterday)} threshold={data.threshold} />
+        <DashboardAnomalySettlements edits={edits} day={formatWPDay(data.yesterday)} threshold={data.threshold} />
       )}
     </Card>
   );

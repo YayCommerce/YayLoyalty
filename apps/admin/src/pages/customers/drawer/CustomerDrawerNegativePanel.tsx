@@ -1,4 +1,4 @@
-import { formatStoredDate, parseWPCurrency } from '@/lib/helpers/format.helper';
+import { formatStoredDate, formatWPCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import type { DrawerNegativeBalance } from '@/lib/schema/customer.schema';
 import {
@@ -42,7 +42,11 @@ export function CustomerDrawerNegativePanel({
             )}
           </li>
           <li>
-            {negativeBalanceFactSpent(formatPoints(spent.points), String(spent.order_id), parseWPCurrency(spent.value))}
+            {negativeBalanceFactSpent(
+              formatPoints(spent.points),
+              String(spent.order_id),
+              formatWPCurrency(spent.value),
+            )}
           </li>
           <li>{negativeBalanceFactReversed(String(reversed.order_id), formatPoints(reversed.points))}</li>
         </ol>

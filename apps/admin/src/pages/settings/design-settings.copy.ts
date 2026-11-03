@@ -72,11 +72,11 @@ export const PANEL_SECTION_UPSELL = () =>
 
 // Custom CSS section (Pro)
 
-export const TYPOGRAPHY_SECTION_TITLE = () => __('Custom CSS', 'yayloyalty');
-export const TYPOGRAPHY_SECTION_DESCRIPTION = () => __('CSS applied to the rewards launcher.', 'yayloyalty');
-export const TYPOGRAPHY_CUSTOM_CSS_LABEL = () => __('Custom CSS', 'yayloyalty');
-export const TYPOGRAPHY_CUSTOM_CSS_DESCRIPTION = () => __('Saved, not yet applied to the storefront.', 'yayloyalty');
-export const TYPOGRAPHY_SECTION_UPSELL = () =>
+export const CUSTOM_CSS_SECTION_TITLE = () => __('Custom CSS', 'yayloyalty');
+export const CUSTOM_CSS_SECTION_DESCRIPTION = () => __('CSS applied to the rewards launcher.', 'yayloyalty');
+export const CUSTOM_CSS_FIELD_LABEL = () => __('Custom CSS', 'yayloyalty');
+export const CUSTOM_CSS_FIELD_DESCRIPTION = () => __('Saved, not yet applied to the storefront.', 'yayloyalty');
+export const CUSTOM_CSS_SECTION_UPSELL = () =>
   __('Style the rewards launcher with your own CSS. Available in YayLoyalty Pro.', 'yayloyalty');
 
 // Preview

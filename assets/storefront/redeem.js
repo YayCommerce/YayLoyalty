@@ -379,7 +379,7 @@
 
   /** Whether the ticked row's field holds less than the minimum: checkout's Update waits until it is fixed. */
   function isBelowMin(root) {
-    var toggle = root.querySelector("[data-yl-slider-toggle]");
+    var toggle = root.querySelector("[data-yl-flexible-toggle]");
     var field = root.querySelector("[data-yl-points]");
 
     return Boolean(
@@ -396,7 +396,7 @@
    * request, so an untouched row is not lowered to its minimum. A row without a field (auto max) asks for its max.
    */
   function draftOf(root) {
-    var toggle = root.querySelector("[data-yl-slider-toggle]");
+    var toggle = root.querySelector("[data-yl-flexible-toggle]");
     var typed = typedPoints(root);
     var points = 0;
 
@@ -413,7 +413,7 @@
 
   /** Whether the draft differs from what the server drew: the markup's own checked and value attributes. */
   function isChanged(root) {
-    var toggle = root.querySelector("[data-yl-slider-toggle]");
+    var toggle = root.querySelector("[data-yl-flexible-toggle]");
     var typed = typedPoints(root);
 
     if (toggle && toggle.checked !== toggle.defaultChecked) {
@@ -522,8 +522,8 @@
 
     var isDraft = isCheckout(root);
 
-    if (target.matches("[data-yl-slider-toggle]")) {
-      var body = root.querySelector("[data-yl-slider-body]");
+    if (target.matches("[data-yl-flexible-toggle]")) {
+      var body = root.querySelector("[data-yl-flexible-body]");
 
       if (body) {
         body.hidden = !target.checked;

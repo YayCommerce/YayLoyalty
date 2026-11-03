@@ -8,9 +8,9 @@ import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageLayout from '@/components/layout/PageLayout';
 import { CustomersScreen } from './components/CustomersScreen';
-import { initialFiltersFromSearch, type RowFilters } from './customers-page.filter-rows';
 import { countActiveFilters, toFilterDropSuggestions } from './customers-page.filter-suggestions';
-import { defaultSortDirection, type SortDirection, type SortKey } from './customers-page.sort-rows';
+import { initialFiltersFromSearch, type CustomerListFilters } from './customers-page.filters';
+import { defaultSortDirection, type SortDirection, type SortKey } from './customers-page.sort';
 
 const PER_PAGE = 10;
 
@@ -24,8 +24,8 @@ export default function CustomersPage() {
   // `filters` drives the toolbar instantly; `queryFilters` drives the fetch, with search debounced.
   // Seeded from `?balance_range=` once on mount; same-route navigation will not re-seed.
   const [searchParams] = useSearchParams();
-  const [filters, setFilters] = useState<RowFilters>(() => initialFiltersFromSearch(searchParams));
-  const [queryFilters, setQueryFilters] = useState<RowFilters>(filters);
+  const [filters, setFilters] = useState<CustomerListFilters>(() => initialFiltersFromSearch(searchParams));
+  const [queryFilters, setQueryFilters] = useState<CustomerListFilters>(filters);
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState<SortKey>('balance');
   const [sortDir, setSortDir] = useState<SortDirection>('desc');
@@ -43,8 +43,8 @@ export default function CustomersPage() {
   });
   const rows = customersQuery.data?.data ?? [];
   const totalItems = customersQuery.data?.totalItems ?? 0;
-  const serverPageCount = customersQuery.data?.totalPage;
-  // Zero matches gives totalPage 0; clamp so the footer reads "1 of 1".
+  const serverPageCount = customersQuery.data?.totalPages;
+  // Zero matches gives totalPages 0; clamp so the footer reads "1 of 1".
   const pageCount = Math.max(1, serverPageCount ?? 1);
 
   // A sort change can leave `page` past the new last page; placeholderData would show stale rows silently.
@@ -61,7 +61,7 @@ export default function CustomersPage() {
   // Labelled from `queryFilters`, the state that actually produced this response.
   const suggestions = toFilterDropSuggestions(customersQuery.data?.suggestions ?? [], queryFilters);
 
-  function updateFilters(patch: Partial<RowFilters>) {
+  function updateFilters(patch: Partial<CustomerListFilters>) {
     setFilters((current) => ({ ...current, ...patch }));
     setPage(1);
 

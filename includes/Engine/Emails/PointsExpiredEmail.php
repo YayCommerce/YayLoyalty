@@ -43,7 +43,7 @@ class PointsExpiredEmail extends LedgerEntryEmail {
     }
 
     /** @return array{points: string, points_label: string, balance: string} */
-    protected function amounts( LedgerEntry $entry ): array {
+    protected function placeholder_values( LedgerEntry $entry ): array {
         $points = abs( $entry->get_points() );
 
         return [
@@ -62,7 +62,7 @@ class PointsExpiredEmail extends LedgerEntryEmail {
     protected function build_values( LedgerEntry $entry ): array {
         $points = '<strong>' . esc_html( SettingsHelper::points_text( abs( $entry->get_points() ) ) ) . '</strong>';
 
-        return $this->balance_values( $entry ) + [
+        return $this->shared_values( $entry ) + [
             /* translators: %s: points with label, e.g. "50 Points". */
             'expired_text' => sprintf( esc_html__( '%s expired from your account.', 'yayloyalty' ), $points ),
         ];

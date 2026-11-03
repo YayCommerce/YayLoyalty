@@ -53,7 +53,7 @@ class YayLoyalty {
 
         ( new \YayLoyalty\Engine\Expiry\ExpiryRunner() )->register();
 
-        \YayLoyalty\Engine\Storefront\AccountRewards::register();
+        \YayLoyalty\Engine\Storefront\AccountMyPoints::register();
         \YayLoyalty\Engine\Storefront\Placements::register();
         \YayLoyalty\Engine\Storefront\ProductEarnMessage::register();
         \YayLoyalty\Engine\Storefront\ThankYouPoints::register();
@@ -62,6 +62,8 @@ class YayLoyalty {
             \YayLoyalty\Engine\Storefront\Launcher::register();
         } else {
             \YayLoyalty\Engine\Admin\ReviewPointsNote::register();
+            \YayLoyalty\Engine\Admin\OrderPointsMetabox::register();
+            \YayLoyalty\Engine\Admin\OrderPointsColumn::register();
         }
     }
 

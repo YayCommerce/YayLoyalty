@@ -4,7 +4,7 @@
  * AccountHistoryAjax (the URL in the section's data-endpoint), which renders the same partial as the tab;
  * any failure falls back to following the link.
  *
- * Plain script, no build step. The section id is AccountRewards::HISTORY_ANCHOR, and the section and its
+ * Plain script, no build step. The section id is AccountMyPoints::HISTORY_ANCHOR, and the section and its
  * links carry data-page and data-filter (includes/Engine/Storefront/templates/points-history.php and
  * points-history-pages.php).
  */

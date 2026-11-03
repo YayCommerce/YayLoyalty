@@ -1,13 +1,10 @@
-import { formatStoredDate, parseWPCurrency } from '@/lib/helpers/format.helper';
+import { formatStoredDate, formatWPCurrency } from '@/lib/helpers/format.helper';
 import { formatSignedPoints } from '@/lib/helpers/ledger.helper';
 import type { RedemptionEntry } from '@/lib/schema/redemption.schema';
 import {
   REDEMPTION_STATUS_APPLIED,
   REDEMPTION_STATUS_CANCELLED,
-  REDEMPTION_STATUS_EXPIRED,
-  REDEMPTION_STATUS_ISSUED,
-  REDEMPTION_STATUS_RETURNED,
-  REDEMPTION_STATUS_USED,
+  REDEMPTION_STATUS_REFUNDED,
 } from './customer-drawer.copy';
 
 export type RedemptionRow = {
@@ -24,7 +21,7 @@ export function toRedemptionRow(entry: RedemptionEntry): RedemptionRow {
   return {
     date: formatStoredDate(entry.created_at),
     reward: entry.reward_name,
-    value: parseWPCurrency(entry.value),
+    value: formatWPCurrency(entry.value),
     points: formatSignedPoints(entry.points),
     order: entry.order_id !== null ? `#${entry.order_id}` : '—',
     status: statusLabel(entry.status),
@@ -35,15 +32,9 @@ function statusLabel(status: RedemptionEntry['status']): string {
   switch (status) {
     case 'applied':
       return REDEMPTION_STATUS_APPLIED();
-    case 'issued':
-      return REDEMPTION_STATUS_ISSUED();
-    case 'used':
-      return REDEMPTION_STATUS_USED();
     case 'refunded':
-      return REDEMPTION_STATUS_RETURNED();
+      return REDEMPTION_STATUS_REFUNDED();
     case 'cancelled':
       return REDEMPTION_STATUS_CANCELLED();
-    case 'expired':
-      return REDEMPTION_STATUS_EXPIRED();
   }
 }

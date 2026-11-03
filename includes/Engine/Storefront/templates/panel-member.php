@@ -1,6 +1,6 @@
 <?php
 /**
- * Signed-in panel body: the Rewards tab's own partials (points card with its expiry notice, ways to earn,
+ * Signed-in panel body: the My Points tab's own partials (points card with its expiry notice, ways to earn,
  * ways to redeem), then the recent activity launcher.js loads. No stylesheet of its own: each partial has its
  * file, and launcher.css fits them to the panel.
  *

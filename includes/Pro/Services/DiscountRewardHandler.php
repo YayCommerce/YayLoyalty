@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
  * The handler for one of Pro's discount reward types, `fixed_coupon` or `percent_coupon`, both spent as a
  * virtual coupon on the cart. Registered once per type. The quote is WooCommerce's own answer for that coupon
  * on the cart (RewardCoupons::probe()); the cost is always the reward's full `cost_points`, even when the cart
- * leaves less than the face value to take off. `coupon_expiry_days` and `currency` are not read.
+ * leaves less than the face value to take off. `currency` is not read.
  */
 final class DiscountRewardHandler implements RewardHandler {
 

@@ -140,7 +140,7 @@ class DashboardNotices {
 
         foreach ( $this->campaigns->all_non_archived() as $campaign ) {
             if ( $this->edited_on( $campaign, $yesterday, $now_site->getTimezone() ) ) {
-                $totals         = $this->repository->campaign_points_on_day( (int) $campaign->get_id(), $day_start_utc, $day_end_utc );
+                $totals         = $this->repository->campaign_points_between( (int) $campaign->get_id(), $day_start_utc, $day_end_utc );
                 $what_changed[] = [
                     'campaign_id'     => (int) $campaign->get_id(),
                     'name'            => $campaign->get_name(),

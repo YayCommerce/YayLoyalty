@@ -1,6 +1,6 @@
 /*
  * Every colour, radius and shadow token of the storefront's hand-written cards, defined only here. Each card's
- * stylesheet imports this file first: the Rewards tab (account/rewards-tokens.css), the order-received card
+ * stylesheet imports this file first: the My Points tab (account/rewards-tokens.css), the order-received card
  * (thankyou-points.css), the points card (redeem.css) and the product-page line (product-earn.css).
  *
  * - The shared values are set once, as --yayloyalty-*, on every card's root. Each card then names the ones it
@@ -66,7 +66,7 @@
   --yayloyalty-thankyou-accent-bg: var(--yayloyalty-warning-bg);
 }
 
-/* The points card on the cart and checkout. Its accent is its own, not the Rewards tab's. */
+/* The points card on the cart and checkout. Its accent is its own, not the My Points tab's. */
 .yayloyalty-redeem {
   --yayloyalty-redeem-accent: #4353ff;
   --yayloyalty-redeem-accent-hover: #3442d6;

@@ -76,7 +76,7 @@ final class LedgerTable extends AbstractTableSchema {
             // Missing means duplicate awards. Installer::verify() exists for this.
             'uniq_idempotency_key',
             'idx_user_history_type',
-            // LedgerRepository::points_earned_today() reads one day of a customer's rows under the award lock.
+            // LedgerRepository::points_earned_on_site_day() reads one day of a customer's rows under the award lock.
             'idx_user_created',
             'campaign_id',
             'redemption_id',

@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { parseWPCurrency, parseWPDate, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatWPCurrency, formatWPDate, formatWPTime, utcToDate } from '@/lib/helpers/format.helper';
+import { formatCount, formatPoints } from '@/lib/helpers/points.helper';
 import type { CampaignPerformanceEntry, CampaignPerformanceTrigger } from '@/lib/schema/campaign-performance.schema';
 import { cn } from '@/lib/utils';
 import { useDebouncedSearchCommit } from '@/hooks/useDebouncedSearchCommit';
@@ -57,7 +57,7 @@ function renderCell(column: ColumnKey, entry: CampaignPerformanceEntry): ReactNo
     case 'customer':
       return entry.customer_name;
     case 'subtotal':
-      return entry.subtotal === null ? '—' : parseWPCurrency(entry.subtotal);
+      return entry.subtotal === null ? '—' : formatWPCurrency(entry.subtotal);
     case 'points':
       return <span className="font-semibold tabular-nums">{formatPoints(entry.points)}</span>;
     case 'when': {
@@ -67,8 +67,8 @@ function renderCell(column: ColumnKey, entry: CampaignPerformanceEntry): ReactNo
           {sprintf(
             /* translators: 1: date, 2: time. */
             __('%1$s, %2$s', 'yayloyalty'),
-            parseWPDate(instant),
-            parseWPTime(instant),
+            formatWPDate(instant),
+            formatWPTime(instant),
           )}
         </span>
       );
@@ -112,7 +112,7 @@ export function CampaignPerformanceEntries({
 
   const columns = COLUMNS[trigger];
   const rows = query.data?.data ?? [];
-  const totalPage = Math.max(1, query.data?.totalPage ?? 1);
+  const totalPages = Math.max(1, query.data?.totalPages ?? 1);
   const showSearch = entriesTotal > 30;
 
   return (
@@ -124,7 +124,7 @@ export function CampaignPerformanceEntries({
             {sprintf(
               /* translators: %s: total number of entries. */
               __('%s in total', 'yayloyalty'),
-              formatPoints(entriesTotal),
+              formatCount(entriesTotal),
             )}
           </p>
         </div>
@@ -141,9 +141,7 @@ export function CampaignPerformanceEntries({
           {entriesTotal > 0 && (
             // Inert: no export endpoint yet.
             <Button type="button" onClick={() => {}}>
-              {sprintf(
-                __('Export all', 'yayloyalty'),
-              )}
+              {sprintf(__('Export all', 'yayloyalty'))}
             </Button>
           )}
         </div>
@@ -198,14 +196,14 @@ export function CampaignPerformanceEntries({
                 </TableBody>
               </Table>
             </div>
-            {totalPage > 1 && (
+            {totalPages > 1 && (
               <Pagination
                 pageIndex={page - 1}
-                pageCount={totalPage}
+                pageCount={totalPages}
                 canPreviousPage={page > 1}
-                canNextPage={page < totalPage}
+                canNextPage={page < totalPages}
                 onPreviousPage={() => setPage((current) => Math.max(1, current - 1))}
-                onNextPage={() => setPage((current) => Math.min(totalPage, current + 1))}
+                onNextPage={() => setPage((current) => Math.min(totalPages, current + 1))}
                 onPageChange={(pageIndex) => setPage(pageIndex + 1)}
                 className="ml-auto"
               />

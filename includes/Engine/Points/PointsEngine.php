@@ -74,9 +74,8 @@ final class PointsEngine {
      * The value the storefront may promise for a trigger: never more than any shopper gets. Walks evaluate()'s
      * candidates down to the first campaign for everyone; a conditional campaign above it may catch some
      * shoppers, so its value lowers the promise. Null when that lowest value is 0, or no campaign is for
-     * everyone. The handlers' event gates (min_subtotal, exclude_coupon_orders, require_verified,
-     * one_per_product) are the row's terms, not uncertainty: a gated campaign stops the walk like evaluate()
-     * stops at it. Not applied without an event: caps, and the purchase filters and rounding.
+     * everyone. The handlers' event gates (min_subtotal, require_verified, one_per_product) are the row's
+     * terms, not uncertainty: a gated campaign stops the walk like evaluate() stops at it. Not applied without an event: caps, and the purchase filters and rounding.
      *
      * @param string  $trigger A CampaignTrigger constant.
      * @param Context $ctx     Context::advert(); liveness is evaluated at its occurred_at.
@@ -100,7 +99,7 @@ final class PointsEngine {
                 continue;
             }
 
-            $value = $handler->advertised_value( $campaign );
+            $value = $handler->advertised_points( $campaign );
 
             if ( null === $lowest || $value < $lowest['value'] ) {
                 $lowest = [

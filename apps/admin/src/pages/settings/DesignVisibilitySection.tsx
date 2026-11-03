@@ -166,9 +166,9 @@ export function DesignVisibilitySection() {
           </FieldContent>
         </Field>
 
-        <VisibilitySwitchField name="product_message" label={VISIBILITY_PRODUCT_MESSAGE_LABEL()} />
+        <VisibilitySwitchField name="show_product_message" label={VISIBILITY_PRODUCT_MESSAGE_LABEL()} />
 
-        <VisibilitySwitchField name="thankyou_message" label={VISIBILITY_THANKYOU_MESSAGE_LABEL()} />
+        <VisibilitySwitchField name="show_thankyou_message" label={VISIBILITY_THANKYOU_MESSAGE_LABEL()} />
       </CardContent>
     </Card>
   );

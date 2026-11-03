@@ -1,11 +1,11 @@
 import { TriangleAlert } from 'lucide-react';
 
-import { formatStoredDate, formatStoreDecimal, parseWPDate, utcToDate } from '@/lib/helpers/format.helper';
+import { formatStoredDate, formatStoreDecimal, formatWPDate, utcToDate } from '@/lib/helpers/format.helper';
 import { formatPoints, pointsPhrase } from '@/lib/helpers/points.helper';
 import type { Customer, DrawerExpiry } from '@/lib/schema/customer.schema';
 import { Button } from '@/components/ui/button';
 import { NOT_AVAILABLE_YET_REASON } from './customer-drawer.copy';
-import { daysUntil } from './customer-drawer.money';
+import { daysUntil } from './customer-drawer.days-until';
 import {
   ACTION_EXEMPT_FROM_EXPIRY,
   ACTION_SEND_REMINDER_NOW,
@@ -31,7 +31,7 @@ export function CustomerDrawerExpiryPanel({ customer, expiry }: { customer: Cust
             {expiringBannerTitle(
               formatPoints(expiry.expiring_points),
               formatPoints(customer.balance),
-              parseWPDate(expiresAt),
+              formatWPDate(expiresAt),
             )}
           </p>
           <p className="text-muted-foreground text-xs">
@@ -43,7 +43,7 @@ export function CustomerDrawerExpiryPanel({ customer, expiry }: { customer: Cust
               {expiringReminderSentence(
                 formatStoredDate(expiry.reminders.sent_at),
                 formatStoredDate(expiry.reminders.next_due_at),
-                String(expiry.reminders.window_days),
+                String(expiry.reminders.reminder_days),
               )}
             </p>
           )}

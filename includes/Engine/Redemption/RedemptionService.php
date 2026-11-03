@@ -180,7 +180,7 @@ final class RedemptionService {
 
     /**
      * quote() and ceiling(): the Quoter's answer for $points_requested, or Result::denied( REASON_NO_REWARD ).
-     * Picked rewards are paid for first, so the slider quotes against the balance less their cost and the cart
+     * Picked rewards are paid for first, so the flexible discount quotes against the balance less their cost and the cart
      * less their value; with none picked, or none allowed, it quotes against the whole of both.
      */
     private function quote_for( \WC_Cart $cart, ?int $user_id, int $points_requested ): Result {
@@ -202,7 +202,7 @@ final class RedemptionService {
         }
 
         if ( $cost > 0 ) {
-            $ctx = $ctx->with_balance( $ctx->get_balance() - $cost )->with_cart_subtotal( max( 0.0, (float) $ctx->get_cart_subtotal() - $amount ) );
+            $ctx = $ctx->with_balance( $ctx->get_balance() - $cost )->with_discountable_amount( max( 0.0, (float) $ctx->get_discountable_amount() - $amount ) );
         }
 
         return $this->quoter->quote( $reward, $ctx );
@@ -229,13 +229,13 @@ final class RedemptionService {
         return $this->quoted_reward;
     }
 
-    /** Whether $reward is the slider's: the built-in `flexible_discount` reward, not a catalog one. */
-    public static function is_slider( ?Reward $reward ): bool {
+    /** Whether $reward is the flexible discount's: the built-in `flexible_discount` reward, not a catalog one. */
+    public static function is_flexible_discount( ?Reward $reward ): bool {
         return null !== $reward && RewardType::FLEXIBLE_DISCOUNT === $reward->get_type();
     }
 
-    /** The slider's coupon code: the flexible reward's stored code, '' when that reward is missing. */
-    public function slider_code(): string {
+    /** The flexible discount's coupon code: the flexible reward's stored code, '' when that reward is missing. */
+    public function flexible_discount_code(): string {
         $reward = $this->quoted_reward();
 
         return null === $reward ? '' : $reward->get_coupon_code();
@@ -248,7 +248,7 @@ final class RedemptionService {
 
     /**
      * The catalog rewards whose coupon is on the cart, keyed by code in the order the cart holds them. Codes of a
-     * missing reward, and the slider's, are left out.
+     * missing reward, and the flexible discount's, are left out.
      *
      * @return array<string, Reward>
      */
@@ -258,7 +258,7 @@ final class RedemptionService {
         foreach ( $cart->get_applied_coupons() as $code ) {
             $reward = $this->reward_for_code( (string) $code );
 
-            if ( null !== $reward && ! self::is_slider( $reward ) ) {
+            if ( null !== $reward && ! self::is_flexible_discount( $reward ) ) {
                 $rewards[ (string) $code ] = $reward;
             }
         }
@@ -289,7 +289,7 @@ final class RedemptionService {
      * The picked rewards' quotes, keyed by reward id in the order they were picked. Each quotes against the
      * balance left once the rewards allowed before it are paid for, so a selection never costs more than the
      * balance. A missing reward, or one this build does not offer, is denied `not_live` without reaching the
-     * Quoter, so a type with no handler (Lite after a downgrade) never throws. Writes nothing. Every slider
+     * Quoter, so a type with no handler (Lite after a downgrade) never throws. Writes nothing. Every flexible discount
      * quote asks for this, many times a request, so the answer is kept while the picked ids, the shopper and
      * cart_key() stay the same.
      *
@@ -430,9 +430,9 @@ final class RedemptionService {
         return RewardCoupons::data( null === $cart ? $props : RewardCoupons::capped( $reward->get_coupon_code(), $props, $cart ) );
     }
 
-    /** Whether the card may offer the reward: live now, not the slider's, and spent as a coupon by a registered handler. */
+    /** Whether the card may offer the reward: live now, not the flexible discount's, and spent as a coupon by a registered handler. */
     public function is_reward_offered( Reward $reward ): bool {
-        return ! self::is_slider( $reward )
+        return ! self::is_flexible_discount( $reward )
             && $reward->is_live_at( Dates::now() )
             && null !== $this->coupon_props_of( $reward );
     }
@@ -441,7 +441,7 @@ final class RedemptionService {
      * Checkout-submission affordability, before totals freeze. Precondition:
      * called from the adapter's validation hook with the live cart.
      * Postconditions: picked rewards first, rewards_error() when it has a
-     * key. Then the slider: null when nothing is asked, when the quote
+     * key. Then the flexible discount: null when nothing is asked, when the quote
      * applies any points, even fewer than asked (the cart already shows the
      * clamped discount), or when it applies none beside a reward that
      * applies (the rewards took what it could have had, and it comes back if
@@ -566,7 +566,7 @@ final class RedemptionService {
     /**
      * ZONE 2. Once per order, from the order-processed hook of either
      * adapter. Re-quotes from the order (never from the session) and
-     * commits through CommitWriter in one transaction: the slider's line
+     * commits through CommitWriter in one transaction: the flexible discount's line
      * through commit(), reward lines through commit_rewards(), and an order
      * carrying both kinds through commit_all().
      *
@@ -584,27 +584,27 @@ final class RedemptionService {
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails (rolled back).
      */
     public function commit( \WC_Order $order ): Outcome {
-        $codes        = array_map( 'strval', $order->get_coupon_codes() );
-        $has_slider   = false;
-        $reward_codes = [];
+        $codes                 = array_map( 'strval', $order->get_coupon_codes() );
+        $has_flexible_discount = false;
+        $reward_codes          = [];
 
         foreach ( $codes as $code ) {
             if ( ! EarnContext::is_loyalty_code( $code ) ) {
                 continue;
             }
 
-            if ( self::is_slider( $this->reward_for_code( $code ) ) ) {
-                $has_slider = true;
+            if ( self::is_flexible_discount( $this->reward_for_code( $code ) ) ) {
+                $has_flexible_discount = true;
             } else {
                 $reward_codes[] = $code;
             }
         }
 
-        if ( ! $has_slider && [] === $reward_codes ) {
+        if ( ! $has_flexible_discount && [] === $reward_codes ) {
             return Outcome::skipped( self::REASON_NO_INTENT );
         }
 
-        if ( $has_slider ) {
+        if ( $has_flexible_discount ) {
             // Read fresh: quote()'s copy may predate a merchant's edit in this request.
             $reward = $this->flexible_reward();
 
@@ -681,7 +681,7 @@ final class RedemptionService {
      * is told `not_live` rather than `no_reward`. Null when a merchant deleted it. Catalog rewards are the Pro seam, not this.
      */
     private function flexible_reward(): ?Reward {
-        return $this->rewards->find_by_slug( RewardRepository::CART_DISCOUNT_SLUG );
+        return $this->rewards->find_by_slug( RewardRepository::FLEXIBLE_DISCOUNT_SLUG );
     }
 
     /** The reward by id, read once per request. */
@@ -703,7 +703,7 @@ final class RedemptionService {
     }
 
     /**
-     * The coupon the reward's handler describes, in the currency the request charges in; null for the slider's
+     * The coupon the reward's handler describes, in the currency the request charges in; null for the flexible discount's
      * type, or a type with no handler (Lite).
      */
     private function coupon_props_of( Reward $reward ): ?array {

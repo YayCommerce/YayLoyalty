@@ -103,7 +103,7 @@ final class CustomerItemSchema {
                 ],
             ],
             'expiry'            => [
-                'description' => __( 'Points about to expire, the batch breakdown (lots, oldest first), and the reminder schedule. Always null for now — needs lots, which do not exist yet.', 'yayloyalty' ),
+                'description' => __( 'Points about to expire, the batch breakdown (lots, oldest first), and the reminder schedule. Always null for now: the lots exist, but CustomerItemFormatter does not build this summary from them yet.', 'yayloyalty' ),
                 'type'        => [ 'object', 'null' ],
                 'context'     => [ 'view' ],
                 'readonly'    => true,
@@ -114,9 +114,9 @@ final class CustomerItemSchema {
                     'reminders'       => [
                         'type'       => 'object',
                         'properties' => [
-                            'sent_at'     => [ 'type' => [ 'string', 'null' ] ],
-                            'next_due_at' => [ 'type' => [ 'string', 'null' ] ],
-                            'window_days' => [ 'type' => 'integer' ],
+                            'sent_at'       => [ 'type' => [ 'string', 'null' ] ],
+                            'next_due_at'   => [ 'type' => [ 'string', 'null' ] ],
+                            'reminder_days' => [ 'type' => 'integer' ],
                         ],
                     ],
                     'batches'         => [

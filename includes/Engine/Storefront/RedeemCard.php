@@ -19,7 +19,7 @@ use YayLoyalty\Utils\Text;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The points card: one checkbox list, the Points discount row (which opens into the slider) then the rows
+ * The points card: one checkbox list, the Points discount row (which opens into its amount) then the rows
  * ROWS_FILTER adds (Pro's rewards), in one template for every place it shows. The shortcode and the action
  * print it anywhere; the classic adapter prints it in the totals tables and the Store API adapter carries the
  * same markup to the Cart and Checkout blocks. It decides nothing: every number is RedemptionService's answer,
@@ -35,7 +35,7 @@ final class RedeemCard {
     /** Filters the rows listed after the Points discount row: `( string[] $rows, array $context ): string[]`. */
     public const ROWS_FILTER = 'yayloyalty_redeem_card_rows';
 
-    /** The `wc-ajax` endpoint the card's ticks and slider post to on pages without the blocks, and the nonce action it checks. */
+    /** The `wc-ajax` endpoint the card's ticks and points field post to on pages without the blocks, and the nonce action it checks. */
     private const AJAX_ENDPOINT = 'yayloyalty_redeem';
     private const NONCE_ACTION  = 'yayloyalty-redeem';
 
@@ -163,7 +163,7 @@ final class RedeemCard {
     /**
      * The card's HTML for the current shopper and cart, with its assets enqueued. A guest gets the sign-in card
      * alone. A customer gets the header, then the list: the Points discount row from view(), then the rows
-     * ROWS_FILTER adds. '' when nothing renders: no cart, an empty cart, neither a slider nor a row to show
+     * ROWS_FILTER adds. '' when nothing renders: no cart, an empty cart, neither a flexible discount nor a row to show
      * (a customer the gates refuse, a missing reward), or a failure.
      */
     public function markup(): string {
@@ -184,7 +184,7 @@ final class RedeemCard {
 
                 self::enqueue_assets();
 
-                return self::template( self::view( null, $guest, $guest, 0 ) + self::chrome() );
+                return self::template( self::view( null, $guest, $guest, 0, wc_get_price_decimals() ) + self::chrome() );
             }
 
             $balance = (int) $this->balance_of( $user_id );
@@ -234,12 +234,12 @@ final class RedeemCard {
      * @param int      $requested SessionIntent::get(): the points the shopper asked for; 0 while the row is unticked.
      * @param int      $decimals  The charged currency's decimals.
      * @param float    $currency_rate Units of the charged currency per 1 base unit, as ContextFactory::from_cart() passes.
-     * @return array{state: string} `guest` and `hidden` carry nothing else. `slider` adds name (the reward's),
+     * @return array{state: string} `guest` and `hidden` carry nothing else. `flexible` adds name (the reward's),
      *                              mode (auto_max or free_input), requested, points and value (applied; 0 when the quote is
-     *                              refused), balance, min, step (Clamp::effective_step()), max (the ceiling's
+     *                              refused), balance, min, effective_step (Clamp::effective_step()), max (the ceiling's
      *                              points), max_value, rate, is_disabled and bound_by.
      */
-    public static function view( ?int $balance, Result $quote, Result $ceiling, int $requested, int $decimals = 2, float $currency_rate = 1.0 ): array {
+    public static function view( ?int $balance, Result $quote, Result $ceiling, int $requested, int $decimals, float $currency_rate = 1.0 ): array {
         if ( null === $balance ) {
             return [ 'state' => 'guest' ];
         }
@@ -263,21 +263,21 @@ final class RedeemCard {
         $max = $ceiling->get_points();
 
         return [
-            'state'       => 'slider',
-            'name'        => $reward->get_name(),
-            'mode'        => $is_auto_max ? Reward::REDEMPTION_MODE_AUTO_MAX : Reward::REDEMPTION_MODE_FREE_INPUT,
-            'requested'   => $requested,
-            'points'      => $quote->is_allowed() ? $quote->get_points() : 0,
-            'value'       => $quote->is_allowed() ? $quote->get_value() : 0.0,
-            'balance'     => $balance,
-            'min'         => $min,
-            'step'        => $step,
-            'max'         => $max,
-            'max_value'   => $ceiling->get_value(),
-            'rate'        => $ceiling->get_rate_snapshot(),
+            'state'          => 'flexible',
+            'name'           => $reward->get_name(),
+            'mode'           => $is_auto_max ? Reward::REDEMPTION_MODE_AUTO_MAX : Reward::REDEMPTION_MODE_FREE_INPUT,
+            'requested'      => $requested,
+            'points'         => $quote->is_allowed() ? $quote->get_points() : 0,
+            'value'          => $quote->is_allowed() ? $quote->get_value() : 0.0,
+            'balance'        => $balance,
+            'min'            => $min,
+            'effective_step' => $step,
+            'max'            => $max,
+            'max_value'      => $ceiling->get_value(),
+            'rate'           => $ceiling->get_rate_snapshot(),
             // A ticked row stays tickable when the rewards leave it nothing, so it can be unticked; only an unticked one is shut.
-            'is_disabled' => $max < $min && $requested <= 0,
-            'bound_by'    => $is_lowered ? $quote->get_bound_by() : '',
+            'is_disabled'    => $max < $min && $requested <= 0,
+            'bound_by'       => $is_lowered ? $quote->get_bound_by() : '',
         ];
     }
 
@@ -342,18 +342,18 @@ final class RedeemCard {
     }
 
     /**
-     * What the card has applied, for the checkout's summary line: `points` the slider's applied points plus each
-     * applied reward's cost, `count` how many are applied, the slider counting as one. Both 0 when nothing is.
+     * What the card has applied, for the checkout's summary line: `points` the flexible discount's applied points plus each
+     * applied reward's cost, `count` how many are applied, the flexible discount counting as one. Both 0 when nothing is.
      *
      * @return array{points: int, count: int}
      */
     private function summary( \WC_Cart $cart, int $user_id, Result $quote ): array {
-        $slider  = $quote->is_allowed() ? $quote->get_points() : 0;
-        $rewards = $this->service->applied_reward_costs( $cart, $user_id );
+        $flexible_points = $quote->is_allowed() ? $quote->get_points() : 0;
+        $rewards         = $this->service->applied_reward_costs( $cart, $user_id );
 
         return [
-            'points' => $slider + array_sum( $rewards ),
-            'count'  => ( $slider > 0 ? 1 : 0 ) + count( $rewards ),
+            'points' => $flexible_points + array_sum( $rewards ),
+            'count'  => ( $flexible_points > 0 ? 1 : 0 ) + count( $rewards ),
         ];
     }
 
@@ -411,7 +411,7 @@ final class RedeemCard {
 
     /**
      * What the template prints besides the numbers: where the card posts, and the store's money format for
-     * redeem.js, which previews the discount as the slider moves.
+     * redeem.js, which previews the discount as the points field changes.
      */
     private static function chrome(): array {
         return [

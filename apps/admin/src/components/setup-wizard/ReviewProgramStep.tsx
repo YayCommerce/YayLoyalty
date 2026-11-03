@@ -1,6 +1,6 @@
 import { __, sprintf } from '@wordpress/i18n';
 
-import { parseWPCurrency } from '@/lib/helpers/format.helper';
+import { formatWPCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import type { WizardStep, WizardStepProps } from './setup-wizard.form';
 import { WizardSection, WizardStepHeading } from './WizardStepParts';
@@ -25,7 +25,7 @@ export function ReviewProgramStep({ form, onEdit }: ReviewProgramStepProps) {
       value: sprintf(
         __('%1$s points per %2$s spent', 'yayloyalty'),
         formatPoints(v.earnPoints),
-        parseWPCurrency(v.earnSpend),
+        formatWPCurrency(v.earnSpend),
       ),
       step: 2,
     },
@@ -51,15 +51,15 @@ export function ReviewProgramStep({ form, onEdit }: ReviewProgramStepProps) {
       value: sprintf(
         __('%1$s points = %2$s off', 'yayloyalty'),
         formatPoints(v.worthPoints),
-        parseWPCurrency(v.worthAmount),
+        formatWPCurrency(v.worthAmount),
       ),
       step: 3,
     },
     {
       label: __('Redemption limits', 'yayloyalty'),
       value: sprintf(
-        /* translators: 1: the smallest redemption, in points; 2: the most of the subtotal points may cover, a percentage. */
-        __('from %1$s points, up to %2$s%% of the subtotal', 'yayloyalty'),
+        /* translators: 1: the smallest redemption, in points; 2: the most of the order total after other discounts that points may cover, a percentage. */
+        __('from %1$s points, up to %2$s%% of the order total after other discounts', 'yayloyalty'),
         formatPoints(v.minPoints),
         String(v.maxPercent),
       ),

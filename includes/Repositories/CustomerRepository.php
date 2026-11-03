@@ -457,6 +457,29 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
     }
 
     /**
+     * Sets customers.pending_points outright, floored at 0. Only PendingPoints::resync_customer() calls it,
+     * after summing the order meta that is the truth; everything else moves it by apply_pending_delta().
+     *
+     * @throws QueryException When the write fails.
+     */
+    public function set_pending_points( int $user_id, int $points ): void {
+        global $wpdb;
+
+        $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'UPDATE `' . esc_sql( $this->table() ) . '` SET pending_points = %d, updated_at = %s WHERE user_id = %d',
+                max( 0, $points ),
+                Dates::now(),
+                $user_id
+            )
+        );
+
+        if ( false === $result ) {
+            throw new QueryException( 'update', esc_html( $wpdb->last_error ), esc_html( $this->table() . ' (set_pending_points)' ) );
+        }
+    }
+
+    /**
      * The admin Customers list: search, filter, sort and paginate, LEFT JOINed with wp_users for name
      * and email. LEFT, not INNER: a deleted member's `customers` row must still appear. Its `u.*` columns
      * are NULL, and CustomerListFormatter::format_row() falls back to the `account_deleted` snapshot.

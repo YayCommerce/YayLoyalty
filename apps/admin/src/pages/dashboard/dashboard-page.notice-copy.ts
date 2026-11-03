@@ -1,8 +1,14 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { CAP } from '@/lib/access';
-import { formatStoredDate, formatStoreDecimal, parseWPDay, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
-import { formatPoints } from '@/lib/helpers/points.helper';
+import {
+  formatStoredDate,
+  formatStoreDecimal,
+  formatWPDay,
+  formatWPTime,
+  utcToDate,
+} from '@/lib/helpers/format.helper';
+import { formatCount, formatPoints } from '@/lib/helpers/points.helper';
 import { parseNoticeData, type TypedNotice } from '@/lib/schema/dashboard-notice.schema';
 import type { DashboardNotice } from '@/lib/schema/dashboard.schema';
 import { scrollToAnomalyPanel, type NoticeAction } from './dashboard-page.notice-actions';
@@ -43,7 +49,7 @@ function copyFor(n: TypedNotice): NoticeCopy {
             n.data.count,
             'yayloyalty',
           ),
-          formatPoints(n.data.count),
+          formatCount(n.data.count),
         ),
         body: __(
           'A refund clawback can push a balance below zero. Review each one and decide whether to correct it.',
@@ -62,7 +68,7 @@ function copyFor(n: TypedNotice): NoticeCopy {
           sprintf(
             /* translators: %s: number of orders completed since the pause, formatted. */
             _n('%s order has completed', '%s orders have completed', n.data.orders_without_points, 'yayloyalty'),
-            formatPoints(n.data.orders_without_points),
+            formatCount(n.data.orders_without_points),
           ),
         ),
         // TODO(dashboard-notices): wire the reactivation mutation CampaignTable already uses.
@@ -81,8 +87,8 @@ function copyFor(n: TypedNotice): NoticeCopy {
         /* translators: 1: points issued yesterday; 2: yesterday's date; 3: the 30-day daily average, in points. */
         __('%1$s points on %2$s against a 30-day average of %3$s.', 'yayloyalty'),
         formatPoints(n.data.yesterday_points),
-        parseWPDay(n.data.yesterday),
-        formatPoints(n.data.daily_average),
+        formatWPDay(n.data.yesterday),
+        formatPoints(n.data.active_day_average),
       );
       const cause =
         edits.length === 0
@@ -91,7 +97,7 @@ function copyFor(n: TypedNotice): NoticeCopy {
             ? sprintf(
                 /* translators: %s: the time the campaign was edited. */
                 __('One campaign was edited at %s.', 'yayloyalty'),
-                parseWPTime(utcToDate(edits[0].updated_at)),
+                formatWPTime(utcToDate(edits[0].updated_at)),
               )
             : sprintf(
                 /* translators: %d: number of campaigns edited that day. */

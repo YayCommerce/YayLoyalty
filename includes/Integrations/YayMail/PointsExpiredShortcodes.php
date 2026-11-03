@@ -16,11 +16,11 @@ class PointsExpiredShortcodes extends LoyaltyEmailShortcodes {
     use SingletonTrait;
 
     protected const VALUE_KEYS = [
-        'expired_points' => 'expired_text',
-        'balance_points' => 'balance_text',
+        'expired_message' => 'expired_text',
+        'balance_points'  => 'balance_text',
     ];
 
-    protected const HTML_KEYS = [ 'expired_points' ];
+    protected const HTML_KEYS = [ 'expired_message' ];
 
     public $available_email_ids = [ PointsExpiredEmail::ID ];
 
@@ -30,8 +30,8 @@ class PointsExpiredShortcodes extends LoyaltyEmailShortcodes {
 
     protected function descriptions(): array {
         return [
-            'expired_points' => __( 'Points Expired Message', 'yayloyalty' ),
-            'points'         => __( 'Points Expired', 'yayloyalty' ),
+            'expired_message' => __( 'Points Expired Message', 'yayloyalty' ),
+            'points'          => __( 'Points Expired', 'yayloyalty' ),
         ] + self::shared_descriptions( 'points_label', 'balance', 'balance_points', 'balance_value', 'balance_value_text' );
     }
 }

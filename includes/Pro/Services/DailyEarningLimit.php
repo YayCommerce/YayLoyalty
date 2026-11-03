@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
  * every source. Subscribes to EarningService::AWARD_POINTS_FILTER, so it
  * lowers an award to what is left under the cap and never writes itself.
  *
- * Today's total is gross EARN (LedgerRepository::points_earned_today with no
+ * Today's total is gross EARN (LedgerRepository::points_earned_on_site_day with no
  * source): manual adjustments are neither capped nor counted, and a refund
  * does not free up room. preview() is not capped, so pending points stay
  * the uncapped best case; the storefront reads left_today() instead.
@@ -72,6 +72,6 @@ final class DailyEarningLimit {
             return null;
         }
 
-        return max( 0, $cap - $this->ledger->points_earned_today( $user_id, Dates::now(), null ) );
+        return max( 0, $cap - $this->ledger->points_earned_on_site_day( $user_id, Dates::now(), null ) );
     }
 }

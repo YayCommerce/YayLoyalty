@@ -1,11 +1,11 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { parseWPDay, utcToDate } from '@/lib/helpers/format.helper';
+import { formatWPDay, utcToDate } from '@/lib/helpers/format.helper';
 import type { CampaignPerformanceSkip, CampaignPerformanceTrigger } from '@/lib/schema/campaign-performance.schema';
-import type { CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
+import type { DisplayStatus } from '@/lib/schema/campaign.schema';
 
 /**
- * Pure, trigger-aware copy for the campaign performance page. It avoids `parseWPRelativeDate`,
+ * Pure, trigger-aware copy for the campaign performance page. It avoids `formatWPRelativeDate`,
  * which needs WP globals, so it runs in plain Node.
  *
  * Each sentence is written out per trigger rather than splicing a noun into a template: a
@@ -15,7 +15,7 @@ import type { CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 /** Why the page has nothing to show yet — the reason, not just an absence. */
 export function emptyReason(
   trigger: CampaignPerformanceTrigger,
-  displayStatus: CampaignDisplayStatus,
+  displayStatus: DisplayStatus,
   startsAt: string | null,
   now: Date = new Date(),
 ): string {
@@ -153,14 +153,14 @@ export function skipReasonLabel(skip: CampaignPerformanceSkip): string {
 /** "27 Nov – 30 Nov 2025", or a single formatted date when `from` and `to` are the same day. */
 export function windowLabel(window: { from: string; to: string }): string {
   if (window.from === window.to) {
-    return parseWPDay(window.from, 'j M Y');
+    return formatWPDay(window.from, 'j M Y');
   }
 
   return sprintf(
     /* translators: 1: start date (no year), 2: end date (includes the year). */
     __('%1$s – %2$s', 'yayloyalty'),
-    parseWPDay(window.from, 'j M'),
-    parseWPDay(window.to, 'j M Y'),
+    formatWPDay(window.from, 'j M'),
+    formatWPDay(window.to, 'j M Y'),
   );
 }
 

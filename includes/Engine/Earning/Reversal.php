@@ -67,12 +67,12 @@ final class Reversal {
     public function refund( \WC_Order $order, int $refund_id ): array {
         list( $refunds, , $is_fully_refunded ) = self::refund_state( $order );
 
-        $lines          = self::product_lines( $order );
-        $refunded_lines = self::refunded_by_line( $refunds );
-        $outcomes       = [];
+        $lines            = self::product_lines( $order );
+        $refunded_by_line = self::refunded_by_line( $refunds );
+        $outcomes         = [];
 
         foreach ( $this->ledger->earn_rows_for_order( (int) $order->get_id() ) as $earn ) {
-            list( $original, $refunded ) = $this->bases( $lines, $refunded_lines, $earn );
+            list( $original, $refunded ) = $this->bases( $lines, $refunded_by_line, $earn );
 
             $owed       = ClawbackMath::owed( $earn->get_points(), $refunded, $original, $is_fully_refunded );
             $outcomes[] = $this->writer->refund_earn( $earn, $owed, ReferenceType::REFUND, $refund_id );
@@ -188,14 +188,17 @@ final class Reversal {
      * (BaseCalculator::includes_line()), so refunding an excluded product
      * claws back nothing.
      *
-     * @param array<int, array{0: \WC_Order_Item_Product, 1: ContextLineItem}> $lines          product_lines()
-     * @param array<int, float>                                         $refunded_lines refunded_by_line()
+     * @param array<int, array{0: \WC_Order_Item_Product, 1: ContextLineItem}> $lines            product_lines()
+     * @param array<int, float>                                         $refunded_by_line refunded_by_line()
      * @return float[] [ original, refunded ]
      */
-    private function bases( array $lines, array $refunded_lines, LedgerEntry $earn ): array {
+    private function bases( array $lines, array $refunded_by_line, LedgerEntry $earn ): array {
         $campaign = null === $earn->get_campaign_id() ? null : $this->campaigns->find_campaign( (int) $earn->get_campaign_id() );
 
-        if ( null === $campaign ) {
+        // A recovery row has no campaign by design: every line counts, and nothing is gone.
+        $is_recovery = null === $earn->get_campaign_id() && IdempotencyKey::RECOVERY === IdempotencyKey::qualifier_of( (string) $earn->get_idempotency_key() );
+
+        if ( null === $campaign && ! $is_recovery ) {
             Log::warning( 'Reversal', 'campaign of ledger row #' . $earn->get_id() . ' is gone; every line counts toward its refund share' );
         }
 
@@ -205,7 +208,7 @@ final class Reversal {
         foreach ( $lines as $item_id => list( $item, $line_item ) ) {
             if ( null === $campaign || BaseCalculator::includes_line( $campaign, $line_item ) ) {
                 $original += (float) $item->get_total();
-                $refunded += $refunded_lines[ $item_id ] ?? 0.0;
+                $refunded += $refunded_by_line[ $item_id ] ?? 0.0;
             }
         }
 

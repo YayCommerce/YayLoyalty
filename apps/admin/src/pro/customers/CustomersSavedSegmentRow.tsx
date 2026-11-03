@@ -14,19 +14,19 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/custom/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { RowFilters } from '@/pages/customers/customers-page.filter-rows';
-import { ALL_SEGMENTS_VALUE, useSavedSegmentPicker } from './customers-saved-segment-row.state';
+import type { CustomerListFilters } from '@/pages/customers/customers-page.filters';
+import { ALL_SEGMENTS_VALUE, useSavedSegmentPicker } from './customers-saved-segment-picker';
 import { CustomersSaveSegmentDialog } from './CustomersSaveSegmentDialog';
 
-/** Saved-segment picker above the Customers toolbar. Rendering only; state lives in customers-saved-segment-row.state.ts. */
+/** Saved-segment picker above the Customers toolbar. Rendering only; state lives in customers-saved-segment-picker.ts. */
 export function CustomersSavedSegmentRow({
   disabled,
   filters,
   onFiltersChange,
 }: {
   disabled?: boolean;
-  filters: RowFilters;
-  onFiltersChange: (patch: Partial<RowFilters>) => void;
+  filters: CustomerListFilters;
+  onFiltersChange: (patch: Partial<CustomerListFilters>) => void;
 }) {
   const {
     segments,

@@ -278,12 +278,12 @@ abstract class AbstractRepository {
      *
      * @return string[]
      */
-    protected function site_day_range_where( string $after, string $before ): array {
+    protected function site_day_range_where( string $from, string $to ): array {
         global $wpdb;
 
         $where = [];
-        $start = Dates::site_day_to_utc( trim( $after ) );
-        $end   = Dates::site_day_to_utc( trim( $before ), '+1 day' );
+        $start = Dates::site_day_to_utc( trim( $from ) );
+        $end   = Dates::site_day_to_utc( trim( $to ), '+1 day' );
 
         if ( null !== $start ) {
             $where[] = $wpdb->prepare( 'created_at >= %s', $start );

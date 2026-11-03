@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { DateRange } from 'react-day-picker';
 
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatCount } from '@/lib/helpers/points.helper';
 import { cn } from '@/lib/utils';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Input } from '@/components/ui/input';
@@ -57,7 +57,7 @@ export function DrawerTabFilters<F extends string>({
             <SegmentedItem key={option.value} value={option.value} className="px-2.5">
               {option.label}
               {option.count !== undefined && (
-                <span className="text-muted-foreground text-xs tabular-nums">{formatPoints(option.count)}</span>
+                <span className="text-muted-foreground text-xs tabular-nums">{formatCount(option.count)}</span>
               )}
             </SegmentedItem>
           ))}

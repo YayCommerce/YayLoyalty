@@ -1,15 +1,20 @@
 import { _n, sprintf } from '@wordpress/i18n';
 
-import { currencyDecimals, formatStoreDecimal, formatStoreNumber, parseWPCurrency } from './format.helper';
+import { currencyDecimals, formatStoreDecimal, formatStoreNumber, formatWPCurrency } from './format.helper';
 
 /** Points/balance number formatting. */
 
 /** Values at or above this magnitude switch to the compact "100k+" form. */
 const COMPACT_THRESHOLD = 100_000;
 
-/** Plain grouped integer with the store's separators — "12,400", "-1,000". */
-export function formatPoints(value: number): string {
+/** Plain grouped integer with the store's separators — "12,400", "-1,000". For counts, days and other non-points numbers. */
+export function formatCount(value: number): string {
   return formatStoreNumber(value, 0);
+}
+
+/** A points figure as a grouped integer, the same as formatCount(). */
+export function formatPoints(value: number): string {
+  return formatCount(value);
 }
 
 /** "1 point", "12,400 points": the count with its plural-aware noun. */
@@ -32,13 +37,13 @@ export function shortPoints(points: number): string {
 
 /** "2 pts per $1.00", "1 pt per $2.00": a purchase rate as the spend pair an admin would enter. */
 export function pointsPerCurrencyLabel(rate: number): string {
-  const { spend, points } = spendPairFromRate(rate);
+  const { amount, points } = ratePair(rate);
 
   return sprintf(
     /* translators: 1: points earned; 2: the amount spent to earn them, formatted in the store currency. */
     _n('%1$s pt per %2$s', '%1$s pts per %2$s', points, 'yayloyalty'),
     formatStoreDecimal(points, 6),
-    parseWPCurrency(spend),
+    formatWPCurrency(amount),
   );
 }
 
@@ -56,24 +61,26 @@ const WHOLE_EPSILON = 1e-9;
  * The "spend X to receive Y" pair a stored rate reads as: 0.5 → 2 → 1, 0.75 → 4 → 3, 3 → 1 → 3.
  * Only the rate is stored, so 6 → 3 comes back as 2 → 1, the same rate.
  */
-export function spendPairFromRate(rate: number): { spend: number; points: number } {
+export function ratePair(rate: number): { amount: number; points: number } {
   if (!(rate > 0)) {
-    return { spend: 1, points: 0 };
+    return { amount: 1, points: 0 };
   }
 
-  for (let spend = 1; spend <= 100; spend++) {
-    const points = rate * spend;
+  for (let amount = 1; amount <= 100; amount++) {
+    const points = rate * amount;
 
     if (Math.abs(points - Math.round(points)) < WHOLE_EPSILON) {
-      return { spend, points: Math.round(points) };
+      return { amount, points: Math.round(points) };
     }
   }
 
   // A larger spend that earns exactly 1 point (1 per 10,000 ₫); otherwise the exact rate per 1 unit.
   const factor = 10 ** currencyDecimals();
-  const spend = Math.round(factor / rate) / factor;
+  const amount = Math.round(factor / rate) / factor;
 
-  return spend > 0 && Math.abs(spend * rate - 1) < WHOLE_EPSILON ? { spend, points: 1 } : { spend: 1, points: rate };
+  return amount > 0 && Math.abs(amount * rate - 1) < WHOLE_EPSILON
+    ? { amount, points: 1 }
+    : { amount: 1, points: rate };
 }
 
 /**

@@ -185,32 +185,32 @@ final class CampaignPerformanceRestController extends AbstractRestController {
     }
 
     /**
-     * Adds what the repository cannot: `orders_total`, a sitewide order count that is not
+     * Adds what the repository cannot: `orders_count_all_time`, a sitewide order count that is not
      * scoped to this campaign.
      *
      * @param array<string, mixed> $row
-     * @param array{points_issued: int, entries_total: int, orders_affected: int, customers_earned: int} $totals
+     * @param array{points_issued: int, entries_total: int, orders_affected: int, customers_earned_count: int} $totals
      * @return array<string, mixed>
      */
     private function shape_totals( array $row, array $totals ): array {
         $shaped = [
-            'points_issued'        => $totals['points_issued'],
-            'entries_total'        => $totals['entries_total'],
-            'orders_affected'      => null,
-            'orders_total'         => null,
-            'customers_earned'     => null,
-            'avg_points_per_order' => null,
-            'avg_order_subtotal'   => null,
+            'points_issued'          => $totals['points_issued'],
+            'entries_total'          => $totals['entries_total'],
+            'orders_affected'        => null,
+            'orders_count_all_time'  => null,
+            'customers_earned_count' => null,
+            'avg_points_per_order'   => null,
+            'avg_order_subtotal'     => null,
         ];
 
         if ( CampaignTrigger::PURCHASE !== $row['trigger'] ) {
-            $shaped['customers_earned'] = $totals['customers_earned'];
+            $shaped['customers_earned_count'] = $totals['customers_earned_count'];
 
             return $shaped;
         }
 
-        $shaped['orders_affected'] = $totals['orders_affected'];
-        $shaped['orders_total']    = $this->dashboard->count_orders( 0, time() + 1 );
+        $shaped['orders_affected']       = $totals['orders_affected'];
+        $shaped['orders_count_all_time'] = $this->dashboard->count_orders( 0, time() + 1 );
 
         if ( $totals['orders_affected'] > 0 ) {
             $shaped['avg_points_per_order'] = intdiv( $totals['points_issued'], $totals['orders_affected'] );
@@ -227,13 +227,13 @@ final class CampaignPerformanceRestController extends AbstractRestController {
      * @return array{from: string, to: string} Y-m-d, site-tz, both ends inclusive.
      */
     private function chart_window( array $row ): array {
-        $now = Dates::site_day_start( Dates::now() );
+        $today_site = Dates::site_day_start( Dates::now() );
 
         $starts = Dates::site_day_start( $row['starts_at'] );
         // ends_at is exclusive, so the last live day holds the second before it: a 10:00 end keeps that morning.
         $last_day = Dates::site_day_start( Dates::is_valid( $row['ends_at'] ) ? Dates::offset( -1, $row['ends_at'] ) : null );
 
-        $to = null !== $last_day && $last_day < $now ? $last_day : $now;
+        $to = null !== $last_day && $last_day < $today_site ? $last_day : $today_site;
 
         $from = $to->modify( '-29 days' );
 

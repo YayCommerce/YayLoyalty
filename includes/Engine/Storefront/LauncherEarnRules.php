@@ -29,7 +29,7 @@ final class LauncherEarnRules {
      * @return array{earn: array{purchase: ?float, signup: ?int, review: ?int}, purchase_min: float, purchase_rounding: string}
      *         Points per unit of the shopper's currency / per signup / per review (null when not advertised),
      *         and the advertised purchase campaign's minimum order subtotal in the shopper's currency, so the
-     *         rate line can say it (0 for none). Both convert from base through $ctx's base rate. Last, how that
+     *         rate line can say it (0 for none). Both convert from base through $ctx's to_base_factor. Last, how that
      *         campaign rounds an order's points, so the rate line shows what a round spend earns.
      */
     public static function advertise( PointsEngine $engine, Context $ctx, bool $can_register ): array {
@@ -47,12 +47,12 @@ final class LauncherEarnRules {
             }
 
             if ( CampaignTrigger::PURCHASE === $trigger ) {
-                $base_rate = $ctx->get_base_rate();
-                $min       = PurchaseHandler::min_subtotal( $advert['campaign']->get_config() );
+                $to_base_factor = $ctx->get_to_base_factor();
+                $min            = PurchaseHandler::min_subtotal( $advert['campaign']->get_config() );
 
                 // In the base currency both stay exact, as configured.
-                $rules['earn'][ $trigger ]  = LauncherCopy::converted_rate( $advert['value'] * $base_rate, $base_rate );
-                $rules['purchase_min']      = round( $min / $base_rate, wc_get_price_decimals() );
+                $rules['earn'][ $trigger ]  = LauncherCopy::converted_rate( $advert['value'] * $to_base_factor, $to_base_factor );
+                $rules['purchase_min']      = round( $min / $to_base_factor, wc_get_price_decimals() );
                 $rules['purchase_rounding'] = PurchaseHandler::rounding( $advert['campaign']->get_config() );
             } else {
                 $rules['earn'][ $trigger ] = (int) $advert['value'];
@@ -114,9 +114,10 @@ final class LauncherEarnRules {
      * @param array{purchase: ?float, review: ?int} $earn              advertise()'s `earn`.
      * @param float                                 $purchase_min      advertise()'s `purchase_min`.
      * @param string                                $purchase_rounding advertise()'s `purchase_rounding`.
+     * @param int|null                              $viewer_id         The viewer the rows are for, 0 for a guest; null for the current user.
      * @return array[] Each row as the yayloyalty_launcher_earn_rows filter documents it.
      */
-    public static function member_rows( array $earn, float $purchase_min, string $purchase_rounding = PointsMath::ROUND_DOWN ): array {
+    public static function member_rows( array $earn, float $purchase_min, string $purchase_rounding = PointsMath::ROUND_DOWN, ?int $viewer_id = null ): array {
         $rows = [];
 
         if ( null !== $earn[ CampaignTrigger::PURCHASE ] ) {
@@ -139,14 +140,15 @@ final class LauncherEarnRules {
         }
 
         /**
-         * Ways to earn rows for the current viewer, a guest's included. A row's optional `url` links its label,
-         * and its optional `description` is the line under it on the Rewards tab.
+         * Ways to earn rows for one viewer, a guest's included. A row's optional `url` links its label,
+         * and its optional `description` is the line under it on the My Points tab.
          * Internal Pro seam, not a public API.
          *
          * @param array<int, array{trigger: string, label: string, value: string, description?: string, url?: string}> $rows
-         * @param array<string, float|int|null>                                                   $earn advertise()'s `earn`.
+         * @param array<string, float|int|null>                                                   $earn      advertise()'s `earn`.
+         * @param int                                                                             $viewer_id The viewer the rows are for; 0 for a guest.
          */
-        return apply_filters( 'yayloyalty_launcher_earn_rows', $rows, $earn );
+        return apply_filters( 'yayloyalty_launcher_earn_rows', $rows, $earn, null === $viewer_id ? get_current_user_id() : $viewer_id );
     }
 
     /**
@@ -163,7 +165,7 @@ final class LauncherEarnRules {
         }
 
         if ( $user_id > 0 ) {
-            return self::with_daily_limit( self::member_rows( $payload['earn'], $payload['purchase_min'], $payload['purchase_rounding'] ), $payload['left_today'] );
+            return self::with_daily_limit( self::member_rows( $payload['earn'], $payload['purchase_min'], $payload['purchase_rounding'], $user_id ), $payload['left_today'] );
         }
 
         return [
@@ -181,7 +183,7 @@ final class LauncherEarnRules {
      */
     public static function guest_rows( array $payload ): array {
         $earn = $payload['earn'];
-        $rows = self::member_rows( $earn, $payload['purchase_min'], $payload['purchase_rounding'] );
+        $rows = self::member_rows( $earn, $payload['purchase_min'], $payload['purchase_rounding'], 0 );
 
         if ( null !== $earn[ CampaignTrigger::SIGNUP ] ) {
             array_unshift(
@@ -206,7 +208,7 @@ final class LauncherEarnRules {
      */
     public static function list_item( array $row ): array {
         return [
-            'icon'  => AccountRewardsIcon::for_trigger( $row['trigger'] ),
+            'icon'  => AccountMyPointsIcon::for_trigger( $row['trigger'] ),
             'name'  => $row['label'],
             'url'   => (string) ( $row['url'] ?? '' ),
             'text'  => (string) ( $row['description'] ?? '' ),

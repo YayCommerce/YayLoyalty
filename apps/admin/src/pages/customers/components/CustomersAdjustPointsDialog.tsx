@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/custom/dialog';
 import { FieldError } from '@/components/ui/field';
-import { DEFAULT_ROW_FILTERS, type RowFilters } from '../customers-page.filter-rows';
+import { DEFAULT_CUSTOMER_LIST_FILTERS, type CustomerListFilters } from '../customers-page.filters';
 import { AdjustPointsAmountField } from './adjust-points/AdjustPointsAmountField';
 import { AdjustPointsBulkPanels } from './adjust-points/AdjustPointsBulkPanels';
 import { AdjustPointsFields } from './adjust-points/AdjustPointsFields';
@@ -37,8 +37,8 @@ import {
   submitBlockers,
   type AdjustFormState,
 } from './customers-adjust-points.form-state';
-import { useBulkSelection } from './customers-adjust-points.use-bulk-selection';
-import { useAdjustPreviewBaseline } from './customers-adjust-points.use-preview-baseline';
+import { useBulkAdjustCounts } from './customers-adjust-points.use-bulk-adjust-counts';
+import { useSingleCustomerBaseline } from './customers-adjust-points.use-single-customer-baseline';
 
 /**
  * A live read the dialog renders from and re-checks against.
@@ -89,7 +89,7 @@ export function CustomersAdjustPointsDialog({
   /** Bulk only: whether the selection is an explicit tick list or "every row matching the filter". */
   selectionMode?: 'partial' | 'all';
   /** Bulk only, for the filter restatement. */
-  filters?: RowFilters;
+  filters?: CustomerListFilters;
   /** Bulk only: rows already loaded on the current page, for the "not shown on this page" line. */
   rowsOnPage?: number;
   /** Bulk only: bumped by the caller after a pre-submit count mismatch, to force a fresh consent. */
@@ -106,7 +106,7 @@ export function CustomersAdjustPointsDialog({
   const singleCustomer = target.kind === 'single' ? target.customer.data : undefined;
   const previewData = target.kind === 'bulk' ? target.preview.data : undefined;
 
-  const baseline = useAdjustPreviewBaseline(
+  const baseline = useSingleCustomerBaseline(
     open,
     isSingle,
     singleCustomer,
@@ -115,7 +115,7 @@ export function CustomersAdjustPointsDialog({
   );
   const { isStale, openedBalance } = baseline;
 
-  const bulk = useBulkSelection({
+  const bulk = useBulkAdjustCounts({
     isSingle,
     count,
     previewCount: previewData?.count ?? undefined,
@@ -272,7 +272,7 @@ export function CustomersAdjustPointsDialog({
             effectiveCount={bulk.effectiveCount}
             isCountLoading={bulk.usedFilters && source.isLoading}
             selectionMode={selectionMode}
-            filters={filters ?? DEFAULT_ROW_FILTERS}
+            filters={filters ?? DEFAULT_CUSTOMER_LIST_FILTERS}
             notShownOnPage={bulk.notShownOnPage}
             liabilityPoints={previewData?.liability_points ?? null}
             hasPreviewError={!!source.error}

@@ -9,8 +9,8 @@ export type DrawerPageParams = {
   page?: number;
   perPage?: number;
   search?: string;
-  after?: string;
-  before?: string;
+  from?: string;
+  to?: string;
 };
 
 export function toDrawerSearchParams(params: DrawerPageParams): Record<string, string> {
@@ -19,8 +19,8 @@ export function toDrawerSearchParams(params: DrawerPageParams): Record<string, s
   if (params.page) searchParams.page = String(params.page);
   if (params.perPage) searchParams.per_page = String(params.perPage);
   if (params.search?.trim()) searchParams.search = params.search.trim();
-  if (params.after) searchParams.after = params.after;
-  if (params.before) searchParams.before = params.before;
+  if (params.from) searchParams.from = params.from;
+  if (params.to) searchParams.to = params.to;
 
   return searchParams;
 }

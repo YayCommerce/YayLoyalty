@@ -14,7 +14,7 @@ final class OrderRateSnapshot {
     public const META_KEY = '_yayloyalty_currency_rate';
 
     /** Stages the meta only; both checkout hooks that call this save the order afterwards. */
-    public static function save( \WC_Order $order ): void {
+    public static function stage( \WC_Order $order ): void {
         $currency = (string) $order->get_currency();
 
         if ( (string) get_option( 'woocommerce_currency' ) === $currency || null !== self::read( $order ) ) {

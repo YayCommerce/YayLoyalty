@@ -16,7 +16,7 @@ On a single product page, show the shopper how many points buying that product e
 - `LauncherPayload::register_route()` (private today) returns `'account'`, `'checkout'` or null for where a guest can create an account; `LauncherEarnRules::advertise()` reports the signup campaign's points.
 - Design settings: `DesignSchema::get_default_design()` / `schema()` (`includes/Helpers/DesignSchema.php`), read through `DesignHelper::get_design()`, which merges defaults over the stored design. SPA mirrors in `apps/admin/src/lib/schema/design.schema.ts`, with UI in `apps/admin/src/pages/settings/DesignVisibilitySection.tsx` and `DesignStorefrontTextSection.tsx`.
 - Copy helpers live in `includes/Engine/Storefront/LauncherCopy.php` (`earn_rate()`, `storefront_text()`); labels in `SettingsHelper::points_label()` / `points_text()`.
-- Storefront registration in `includes/YayLoyalty.php`: `AccountRewards::register()` runs on every request; `Launcher::register()` only when `! is_admin()`.
+- Storefront registration in `includes/YayLoyalty.php`: `AccountMyPoints::register()` runs on every request; `Launcher::register()` only when `! is_admin()`.
 - WooCommerce's default block template `single-product.html` uses `woocommerce/product-price` and `woocommerce/add-to-cart-form`; the latter renders the classic variations form, so `found_variation` / `reset_data` fire in block and classic themes alike. The Local test site runs Twenty Twenty-Five (block theme), WooCommerce 11.1.2.
 - `RedemptionService::is_available()` is false while the redemption backend is in progress; tiers are not built (`docs/backlog/` `tiers-not-built`).
 
@@ -39,11 +39,11 @@ On a single product page, show the shopper how many points buying that product e
 
 ## Acceptance criteria
 
-1. Given the program is on, `visibility.product_message` is true and a simple product priced $180 under a purchase campaign of 1 point per $1, when a signed-in member opens its page, then exactly one `.yayloyalty-product-earn` element follows the price, reading "Earn 180 {label} with this purchase" with the store's label (on the Local site: "Earn 180 hehe with this purchase"), in a classic theme and in Twenty Twenty-Five.
+1. Given the program is on, `visibility.show_product_message` is true and a simple product priced $180 under a purchase campaign of 1 point per $1, when a signed-in member opens its page, then exactly one `.yayloyalty-product-earn` element follows the price, reading "Earn 180 {label} with this purchase" with the store's label (on the Local site: "Earn 180 hehe with this purchase"), in a classic theme and in Twenty Twenty-Five.
 2. Given the same product, when a guest opens it, then the same sentence shows at the base rate, followed by a "Sign in to start earning" link to My Account; when the signup campaign is on and `register_route()` is not null, the line continues "— or create an account and get {N} {label}" linking to My Account (`'account'`) or checkout (`'checkout'`).
 3. Given a member who is opted out (`_yayloyalty_opted_out` user meta), has a role in settings `excluded_roles`, or the program is paused, then no `.yayloyalty-product-earn` element is rendered.
 4. Given a product excluded from the purchase campaign, a product whose price is below the campaign's `min_subtotal`, a product with no price, a grouped product or an external product, then no `.yayloyalty-product-earn` element is rendered and no product-earn script is enqueued.
-5. Given `visibility.product_message` is false, then nothing is rendered on any product page and no script is enqueued.
+5. Given `visibility.show_product_message` is false, then nothing is rendered on any product page and no script is enqueued.
 6. Given a variable product with variations at $180 and $210, when its page loads, the line shows the $180 variation's points; when the shopper picks the $210 variation, the line shows its points without a reload; when they click "Clear", the $180 figure returns. A variation that earns 0 hides the line while it is selected.
 7. Given a variable product with more than 30 variations (WooCommerce's AJAX threshold), selecting a variation updates the line the same way (the `woocommerce_available_variation` key is present in the `admin-ajax` response).
 8. Given related products or a product collection on a product page, then only the main product's price block gets the line.
@@ -76,12 +76,12 @@ On a single product page, show the shopper how many points buying that product e
 - `includes/Engine/Storefront/LauncherPayload.php`: `register_route()` becomes `public static`.
 - `includes/Engine/Register/ScriptName.php`: `PRODUCT_EARN_SCRIPT = 'yayloyalty/script/storefront-product-earn'`.
 - `includes/Helpers/DesignSchema.php`: two keys (below).
-- `includes/YayLoyalty.php`: calls `ProductEarnMessage::register()` next to `AccountRewards::register()`, outside the `! is_admin()` block.
+- `includes/YayLoyalty.php`: calls `ProductEarnMessage::register()` next to `AccountMyPoints::register()`, outside the `! is_admin()` block.
 - `apps/admin/src/lib/schema/design.schema.ts`, `DesignVisibilitySection.tsx` (switch "Show on product pages"), `DesignStorefrontTextSection.tsx` (sixth field "Product page earning line") and their i18n strings.
 - `docs/architecture.md`: a Storefront line for `ProductEarnMessage`.
 
 **Data and storage:**
-- `visibility.product_message`: `bool`, default `true`.
+- `visibility.show_product_message`: `bool`, default `true`.
 - `storefront_text.product_earn_line`: `text`, `required: true`, default `__( 'Earn {points} {points_label} with this purchase', 'yayloyalty' )` with a translators comment saying to keep the `{…}` placeholders.
 - Both live in the existing design option. Existing installs get the defaults through `DesignHelper::get_design()`'s merge; no migration. Removed with the design option on uninstall.
 

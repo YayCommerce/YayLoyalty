@@ -9,7 +9,7 @@ import {
   CAMPAIGN_CONDITION_SCHEMA,
   CAMPAIGN_CONDITION_TYPES,
   CampaignCondition,
-  CampaignConditionKind,
+  CampaignConditionType,
   COUNTRY_SOURCE_VALUES,
 } from '@/lib/schema/campaign.schema';
 import { LookupEntity } from '@/lib/schema/lookup.schema';
@@ -42,7 +42,7 @@ export function CampaignEditorConditions() {
 
   const usedTypes = new Set(fields.map((field) => field.type));
 
-  function handleAdd(type: CampaignConditionKind) {
+  function handleAdd(type: CampaignConditionType) {
     append({
       type,
       operator: firstOperatorFor(type),
@@ -108,7 +108,7 @@ const OPERATOR_LABELS: Record<string, string> = {
 };
 
 /** One condition row. The type is fixed once added; only operator and value change. */
-function ConditionRow({ index, type, onRemove }: { index: number; type: CampaignConditionKind; onRemove: () => void }) {
+function ConditionRow({ index, type, onRemove }: { index: number; type: CampaignConditionType; onRemove: () => void }) {
   const { control, setValue, getValues, formState, clearErrors } = useFormContext<CampaignFormValues>();
   const spec = CAMPAIGN_CONDITION_SCHEMA[type];
   const operator = useWatch({ control, name: `conditions.${index}.operator` });
@@ -180,7 +180,7 @@ function ConditionValueEditor({
   operator,
 }: {
   index: number;
-  type: CampaignConditionKind;
+  type: CampaignConditionType;
   operator: string;
 }) {
   switch (type) {
@@ -409,12 +409,12 @@ function MoneyValueEditor({ index, operator }: { index: number; operator: string
 // Shared helpers: defaults, reshaping, minimal validation
 
 /** The default operator on add. */
-function firstOperatorFor(type: CampaignConditionKind): string {
+function firstOperatorFor(type: CampaignConditionType): string {
   return CAMPAIGN_CONDITION_SCHEMA[type].operators[0];
 }
 
 /** Starting value on add: empty for lists so validation flags an unfilled condition; 0 in store currency for numeric kinds. */
-function defaultConditionValue(type: CampaignConditionKind): unknown {
+function defaultConditionValue(type: CampaignConditionType): unknown {
   switch (CAMPAIGN_CONDITION_SCHEMA[type].value) {
     case 'string_list':
     case 'int_list':

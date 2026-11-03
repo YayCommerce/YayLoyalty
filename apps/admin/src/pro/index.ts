@@ -23,7 +23,7 @@ export { CampaignPerformance } from './campaigns/performance/CampaignPerformance
 export { CustomersSavedSegmentRow } from './customers/CustomersSavedSegmentRow';
 export { DashboardProPanels } from './dashboard/DashboardProPanels';
 export { DesignPanelSection } from './design/DesignPanelSection';
-export { DesignTypographySection } from './design/DesignTypographySection';
+export { DesignCustomCssSection } from './design/DesignCustomCssSection';
 export { BatchExpirySection, ExpiryModeSection } from './settings/ExpirySections';
 export { FraudLimitsSection } from './settings/FraudLimitsSection';
 export { StoreLedger } from './ledger/StoreLedger';

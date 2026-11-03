@@ -1,5 +1,5 @@
 /*
- * templates/account-rewards.php: the wrapper every Rewards section sits in (placements too), the intro line
+ * templates/account-rewards.php: the wrapper every My Points section sits in (placements too), the intro line
  * and the section headings they share. The resets the sections rely on are ../storefront-reset.css.
  * Imported by rewards-tokens.css, which holds the tokens.
  */

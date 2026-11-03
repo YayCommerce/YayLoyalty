@@ -1,23 +1,23 @@
-import { formatStoredDate, parseWPDate, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
+import { formatStoredDate, formatWPDate, formatWPTime, utcToDate } from '@/lib/helpers/format.helper';
 import { formatSignedPoints } from '@/lib/helpers/ledger.helper';
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatCount, formatPoints } from '@/lib/helpers/points.helper';
 import type { ActivityEntry, ActivityEventType } from '@/lib/schema/activity.schema';
 import {
-  ACTIVITY_TITLE_MEMBERSHIP_STARTED,
   ACTIVITY_TITLE_ACCOUNT_DELETED,
   ACTIVITY_TITLE_BALANCE_EMAIL_SENT,
   ACTIVITY_TITLE_EARNING_LIMITED,
   ACTIVITY_TITLE_EXPIRING_SOON_EMAIL_SENT,
   ACTIVITY_TITLE_EXPIRY_RESET,
+  ACTIVITY_TITLE_MEMBERSHIP_STARTED,
   ACTIVITY_TITLE_POINTS_ADJUSTED,
   ACTIVITY_TITLE_REWARD_REDEEMED,
   ACTIVITY_TITLE_TIER_CHANGED,
-  activityMembershipStartedSubLine,
   activityAccountDeletedSubLine,
   activityBalanceEmailSubLine,
   activityEarningLimitedSubLine,
   activityExpiringSoonEmailSubLine,
   activityExpiryResetSubLine,
+  activityMembershipStartedSubLine,
   activityPointsAdjustedSubLine,
   activityRewardRedeemedSubLine,
   AUTOMATIC_ACTOR_LABEL,
@@ -41,10 +41,10 @@ export function toActivityRow(entry: ActivityEntry): ActivityRow {
   const occurred = utcToDate(entry.occurred_at);
 
   return {
-    date: parseWPDate(occurred),
-    time: parseWPTime(occurred),
+    date: formatWPDate(occurred),
+    time: formatWPTime(occurred),
     title: titleFor(entry.event_type),
-    subLine: subLineFor(entry, occurred),
+    subLine: subLineFor(entry),
     actorLabel: actorLabelFor(entry),
     isStaffOnly: entry.staff_only,
     isEmail: EMAIL_EVENT_TYPES.has(entry.event_type),
@@ -84,7 +84,7 @@ function num(data: Record<string, unknown>, key: string): number {
   return typeof value === 'number' ? value : 0;
 }
 
-function subLineFor(entry: ActivityEntry, occurred: Date): string {
+function subLineFor(entry: ActivityEntry): string {
   const { data } = entry;
 
   switch (entry.event_type) {
@@ -106,13 +106,11 @@ function subLineFor(entry: ActivityEntry, occurred: Date): string {
       return activityRewardRedeemedSubLine(str(data, 'reward'), String(num(data, 'order_id')));
     case 'balance_email_sent':
       return activityBalanceEmailSubLine(str(data, 'subject'));
-    case 'expiring_soon_email_sent': {
-      // The API does not send a deadline: it is occurred_at plus window_days.
-      const windowDays = num(data, 'window_days');
-      const deadline = new Date(occurred.getTime() + windowDays * 24 * 60 * 60 * 1000);
-
-      return activityExpiringSoonEmailSubLine(formatPoints(windowDays), parseWPDate(deadline));
-    }
+    case 'expiring_soon_email_sent':
+      return activityExpiringSoonEmailSubLine(
+        formatCount(num(data, 'reminder_days')),
+        formatStoredDate(str(data, 'expires_at')),
+      );
     case 'earning_limited': {
       // Data keys from CustomerActivityService::record_earning_limited().
       // An order id is an id, not a points figure: no grouped-thousands formatting (see reward_redeemed).

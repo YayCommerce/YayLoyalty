@@ -3,7 +3,7 @@ import { keepPreviousData, queryOptions, useQuery } from '@tanstack/react-query'
 import type { DashboardRange } from '@/lib/schema/dashboard.schema';
 import { getDashboardPro } from './dashboard-pro.api';
 
-/** Keyed under `['dashboard']` so the Free page's refresh/dismiss invalidation covers this request too. */
+/** Keyed under `['dashboard']` so the Lite page's refresh/dismiss invalidation covers this request too. */
 export const DASHBOARD_PRO_QUERIES = {
   overview: (range: DashboardRange) =>
     queryOptions({

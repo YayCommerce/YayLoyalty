@@ -1,13 +1,13 @@
 import { __ } from '@wordpress/i18n';
 
-import { useCsvExport } from '@/hooks/useCsvExport';
 import { Can, CAP } from '@/lib/access';
+import { useCsvExport } from '@/hooks/useCsvExport';
 import { Button } from '@/components/ui/button';
 import { exportCustomersToCsv } from '../customers-page.export';
 import { EXPORTING_LABEL } from '../customers-page.export.copy';
-import type { RowFilters } from '../customers-page.filter-rows';
+import type { CustomerListFilters } from '../customers-page.filters';
 import { fetchAllMatchingCustomers } from '../customers-page.matching-customers';
-import type { SortDirection, SortKey } from '../customers-page.sort-rows';
+import type { SortDirection, SortKey } from '../customers-page.sort';
 
 /** Exports every row matching the current filters, client-side: there is no export endpoint. */
 export function CustomersExportButton({
@@ -16,7 +16,7 @@ export function CustomersExportButton({
   sort,
 }: {
   disabled: boolean;
-  queryFilters: RowFilters;
+  queryFilters: CustomerListFilters;
   sort: { by: SortKey; dir: SortDirection };
 }) {
   const { isExporting, start } = useCsvExport({

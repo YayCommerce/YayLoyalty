@@ -23,7 +23,7 @@ final class AnomalyDetector {
 
     /**
      * @param array<string, int> $daily_issued `Y-m-d` => points issued, the full 30-day series.
-     * @return array{multiple: float, yesterday_points: int, daily_average: int}|null
+     * @return array{multiple: float, yesterday_points: int, active_day_average: int}|null
      */
     public function evaluate( array $daily_issued, int $yesterday_orders, string $yesterday ): ?array {
         if ( ! array_key_exists( $yesterday, $daily_issued ) || $yesterday_orders < self::MIN_ORDERS ) {
@@ -47,9 +47,9 @@ final class AnomalyDetector {
         }
 
         return [
-            'multiple'         => round( $yesterday_points / $average, 1 ),
-            'yesterday_points' => $yesterday_points,
-            'daily_average'    => (int) round( $average ),
+            'multiple'           => round( $yesterday_points / $average, 1 ),
+            'yesterday_points'   => $yesterday_points,
+            'active_day_average' => (int) round( $average ),
         ];
     }
 }

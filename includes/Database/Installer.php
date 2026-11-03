@@ -151,11 +151,11 @@ final class Installer {
             new \YayLoyalty\Models\Reward(
                 null,
                 __( 'Points discount', 'yayloyalty' ),
-                \YayLoyalty\Repositories\RewardRepository::CART_DISCOUNT_SLUG,
+                \YayLoyalty\Repositories\RewardRepository::FLEXIBLE_DISCOUNT_SLUG,
                 $type,
                 \YayLoyalty\Enums\Status::ACTIVE,
                 0,
-                // cost_points null: flexible_discount is the slider type.
+                // cost_points null: flexible_discount has no fixed cost.
                 null,
                 \YayLoyalty\Models\Reward::default_config( $type ),
                 [],

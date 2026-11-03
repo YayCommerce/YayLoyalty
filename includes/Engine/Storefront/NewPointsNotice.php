@@ -20,7 +20,7 @@ final class NewPointsNotice {
      * Points issued since the last open; 0 for none. A member with no stamp yet starts one now, so the first
      * panel after this ships never sums a whole history into "new".
      */
-    public static function points_since_seen( int $user_id ): int {
+    public static function points_since_seen_or_start( int $user_id ): int {
         $seen_at = (string) get_user_meta( $user_id, self::META_SEEN_AT, true );
 
         if ( ! Dates::is_valid( $seen_at ) ) {

@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
-import { parseWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
+import { formatWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
 import { pointsPerCurrencyLabel } from '@/lib/helpers/points.helper';
 import { roundPoints, type RoundingMode } from '@/lib/points-math/points-math';
 import {
@@ -347,7 +347,7 @@ function worksOut(pointsPerUnit: number, rounding: RoundingMode): string {
   return sprintf(
     /* translators: 1: an example order subtotal, formatted as currency; 2: the points it would earn. */
     _n('A %1$s order earns %2$d point', 'A %1$s order earns %2$d points', points, 'yayloyalty'),
-    parseWPCurrency(exampleSubtotal),
+    formatWPCurrency(exampleSubtotal),
     points,
   );
 }

@@ -1,6 +1,6 @@
 <?php
 /**
- * "Ways to earn": the Rewards tab's list, also in the launcher panel and placed by [yayloyalty_ways_to_earn] and its block.
+ * "Ways to earn": the My Points tab's list, also in the launcher panel and placed by [yayloyalty_ways_to_earn] and its block.
  * Styled by assets/storefront/account/ways-to-earn.css; each row by rule-list-item.php.
  *
  * @var array $yayloyalty_earn LauncherEarnRules::for_viewer().

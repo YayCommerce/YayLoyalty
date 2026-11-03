@@ -16,17 +16,17 @@ import { ProGate } from '@/components/pro/ProGate';
 import { BatchExpirySection, ExpiryModeSection } from '@/pro';
 import {
   buildExpirySettingsUpdate,
+  confirmationKind,
   expirySettingsDefaults,
   expirySettingsFormSchema,
   ExpirySettingsFormValues,
   graceFloorText,
-  needsConfirmation,
 } from './expiry-settings.form';
 import { ExpiryInactivityCard } from './ExpiryInactivityCard';
 import { ExpiryReminderRow } from './ExpiryReminderRow';
 import { ExpiryShortenChoice } from './ExpiryShortenChoice';
 
-type Confirmation = NonNullable<ReturnType<typeof needsConfirmation>>;
+type Confirmation = NonNullable<ReturnType<typeof confirmationKind>>;
 
 /** Title and body per confirmation. Functions, not constants: `__()` must run after the locale loads. */
 const CONFIRM_COPY: Record<
@@ -109,7 +109,7 @@ export default function ExpirySettingsPage() {
   const { handleSave, leaveDialogProps } = useEditorSave(
     form,
     async (values) => {
-      const kind = needsConfirmation(settingsQuery.data.expiry, values.expiry);
+      const kind = confirmationKind(settingsQuery.data.expiry, values.expiry);
 
       if (kind === 'shorten') {
         chooseOnShorten(settingsQuery.data.expiry.on_shorten);

@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { __ } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
-import { DEFAULT_ROW_FILTERS, type RowFilters } from '@/pages/customers/customers-page.filter-rows';
+import { DEFAULT_CUSTOMER_LIST_FILTERS, type CustomerListFilters } from '@/pages/customers/customers-page.filters';
 import { readSegmentsFromLocalize, removeSegment, type SavedSegment } from './customer-segments.api';
 
 /** The virtual "no segment" default; never stored. */
@@ -11,7 +11,7 @@ export const ALL_SEGMENTS_VALUE = 'all';
 
 type SaveableFilters = SavedSegment['filters'];
 
-function saveableFiltersOf({ balanceRange, expiringSoon }: RowFilters): SaveableFilters {
+function saveableFiltersOf({ balanceRange, expiringSoon }: CustomerListFilters): SaveableFilters {
   return { balanceRange, expiringSoon };
 }
 
@@ -27,8 +27,8 @@ export function useSavedSegmentPicker({
   filters,
   onFiltersChange,
 }: {
-  filters: RowFilters;
-  onFiltersChange: (patch: Partial<RowFilters>) => void;
+  filters: CustomerListFilters;
+  onFiltersChange: (patch: Partial<CustomerListFilters>) => void;
 }) {
   const [segments, setSegments] = useState<SavedSegment[]>(() => readSegmentsFromLocalize());
   const [selected, setSelected] = useState(ALL_SEGMENTS_VALUE);
@@ -38,11 +38,11 @@ export function useSavedSegmentPicker({
   const selectedSegment = segments.find((item) => item.name === selected);
   const appliedFilters: SaveableFilters =
     selected === ALL_SEGMENTS_VALUE
-      ? saveableFiltersOf(DEFAULT_ROW_FILTERS)
-      : (selectedSegment?.filters ?? saveableFiltersOf(DEFAULT_ROW_FILTERS));
+      ? saveableFiltersOf(DEFAULT_CUSTOMER_LIST_FILTERS)
+      : (selectedSegment?.filters ?? saveableFiltersOf(DEFAULT_CUSTOMER_LIST_FILTERS));
   const hasSaveableFilters =
-    current.balanceRange !== DEFAULT_ROW_FILTERS.balanceRange ||
-    current.expiringSoon !== DEFAULT_ROW_FILTERS.expiringSoon;
+    current.balanceRange !== DEFAULT_CUSTOMER_LIST_FILTERS.balanceRange ||
+    current.expiringSoon !== DEFAULT_CUSTOMER_LIST_FILTERS.expiringSoon;
   const differsFromApplied =
     current.balanceRange !== appliedFilters.balanceRange || current.expiringSoon !== appliedFilters.expiringSoon;
   const showSaveButton = hasSaveableFilters && differsFromApplied;
@@ -59,7 +59,7 @@ export function useSavedSegmentPicker({
     setSelected(value);
 
     if (value === ALL_SEGMENTS_VALUE) {
-      onFiltersChange(DEFAULT_ROW_FILTERS);
+      onFiltersChange(DEFAULT_CUSTOMER_LIST_FILTERS);
       return;
     }
 
