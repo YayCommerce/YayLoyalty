@@ -4,7 +4,7 @@ description: Builds a test zip of one YayCommerce plugin edition from its dev br
 # Purpose: tester builds, without touching versions or branches. Tester-round fixes are ordinary
 #   commits on the dev branch followed by another yaybuild.
 # Update when: lib/sh/build.sh changes its steps or output, or the tester note changes.
-#   Shared by the YayCommerce plugins; canonical copy YayCommerce/YayLoyalty .claude/skills/yaybuild/,
+#   Shared by the YayCommerce plugins; canonical copy YayCommerce/Yay-Release-Kit .claude/skills/yaybuild/,
 #   replaced whole elsewhere by `yr kit sync`, never edited.
 ---
 
@@ -23,7 +23,7 @@ description: Builds a test zip of one YayCommerce plugin edition from its dev br
    Show the user the one-line plan (version, commit, shared code) and continue unless they object.
 3. **Build.** Same command without `--dry-run`. It can take 5–15 minutes: run it in the background and wait for it to finish (don't poll). On exit 5 (gates failed) or 1 (build failed), go to Failure handling.
 4. **Tester note.** Read `.claude/release-kit/templates/tester-note.md` in the kit, and fill it:
-   - changes: `YR commits --range=<previous test build sha>..<this sha>` (previous = `YR builds latest --type=test` before this build; first build: since the release tag, `YR version propose` shows the base). Write user-facing lines like a changelog (see the kit's `.claude/release-kit/docs/changelog-style.md`), leaving internal commits out.
+   - changes: `YR commits --range=<previous test build sha>..<this sha>` (previous = `YR builds latest --type=test` before this build; first build: since the release tag, `YR version propose` shows the base). Write user-facing lines like a changelog (see the kit's `.claude/release-kit/reference/changelog-style.md`), leaving internal commits out.
    - checklist: 3–8 concrete things to try, derived from the changes (the screen, the action, the expected result), plus "the previous fixes still work" when this is a re-test after a fix.
 
    Print the note and the zip path. Don't write it anywhere else unless asked.
@@ -37,4 +37,4 @@ description: Builds a test zip of one YayCommerce plugin edition from its dev br
 
 ## Scripts
 
-`.claude/release-kit/lib/sh/build.sh` (preflight, worktree, pin, build, gates, dist), `.claude/release-kit/lib/php/gates.php` (see `.claude/release-kit/docs/gates.md`), `.claude/release-kit/lib/php/builds.php` (names, BUILD.json, build-info.json).
+`.claude/release-kit/lib/sh/build.sh` (preflight, worktree, pin, build, gates, dist), `.claude/release-kit/lib/php/gates.php` (see `.claude/release-kit/reference/gates.md`), `.claude/release-kit/lib/php/builds.php` (names, BUILD.json, build-info.json).

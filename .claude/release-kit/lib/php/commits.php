@@ -80,7 +80,7 @@ final class Commits {
 		if ( preg_match( '/^(up ?ver(sion)?\b|bump(ed)?\b|bump version|update(d)? (the )?version|version bump|release v?\d|merge\b|wip\b|clean ?code|fix(ed)? (phpcs|lint|style|typo|cs)\b|phpcs\b|lint\b|format(ting)?\b|update (readme|changelog)\b)/i', $clean ) ) {
 			return [ 'type' => 'chore', 'internal' => true, 'confidence' => 'high', 'why' => 'housekeeping subject' ] + $r;
 		}
-		// Edits to docs files ("Update project-changelog.md", "readme.md tweaks").
+		// Edits to docs files ("Update notes.md", "readme.md tweaks").
 		if ( preg_match( '/(^|\s)[\w.\/-]+\.(md|markdown)\b/i', $clean ) && ! preg_match( '/^(feat|fix|perf)\b/i', $clean ) ) {
 			return [ 'type' => 'docs', 'internal' => true, 'confidence' => 'high', 'why' => 'docs file' ] + $r;
 		}

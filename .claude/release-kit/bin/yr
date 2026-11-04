@@ -2,7 +2,7 @@
 # yr: the release kit's single entry point. Every command supports --dry-run.
 # Purpose: route `yr <command>` to lib/php/cli.php (data: config, versions, changelogs, gates,
 #   reports) or lib/sh/<command>.sh (git and builds). Runs under macOS /bin/bash 3.2.
-# Canonical copy: YayCommerce/YayLoyalty .claude/release-kit/; copies elsewhere are replaced
+# Canonical copy: YayCommerce/Yay-Release-Kit .claude/release-kit/; copies elsewhere are replaced
 #   whole by `yr kit sync`, never edited.
 set -euo pipefail
 

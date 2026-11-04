@@ -8,7 +8,7 @@
  *   insert   put a rendered entry into the edition's changelog file (replacing the same version's
  *            entry on a resubmission, and an Unreleased/TBD block when asked to).
  *
- * The wording is the skill's job (docs/changelog-style.md); this file only moves data and text.
+ * The wording is the skill's job (.claude/release-kit/reference/changelog-style.md); this file only moves data and text.
  * Draft shape: {"version":"1.2.3","date":"2026-11-04","entries":[{"group":"fixed","text":"…"}]}
  */
 
@@ -199,7 +199,7 @@ function cmd_changelog( array $pos ): int {
 			'commits' => array_map( static fn( $c ) => array_intersect_key( $c, array_flip( [ 'short', 'date', 'subject', 'body', 'type', 'scope', 'text', 'pr', 'breaking', 'confidence', 'why' ] ) ), $user ),
 			'internal_dropped' => array_map( static fn( $c ) => "{$c['short']} {$c['subject']}", $dropped ),
 			'support_fixes' => $support,
-			'style_guide' => kit_dir() . '/docs/changelog-style.md',
+			'style_guide' => kit_dir() . '/reference/changelog-style.md',
 		] );
 		return 0;
 	}

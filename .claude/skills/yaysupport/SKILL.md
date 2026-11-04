@@ -5,7 +5,7 @@ disable-model-invocation: true
 # Purpose: customer patch builds that are traceable (zip name + build-info.json) and never lost
 #   (support log → next release's changelog).
 # Update when: support branch naming, the log format or the customer note changes.
-#   Shared by the YayCommerce plugins; canonical copy YayCommerce/YayLoyalty .claude/skills/yaysupport/,
+#   Shared by the YayCommerce plugins; canonical copy YayCommerce/Yay-Release-Kit .claude/skills/yaysupport/,
 #   replaced whole elsewhere by `yr kit sync`, never edited.
 ---
 

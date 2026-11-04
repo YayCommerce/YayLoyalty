@@ -74,7 +74,7 @@ The team's skills cover a change from idea to PR. Each one is called by name, an
 | [`/yayplancheck`](.claude/skills/yayplancheck/SKILL.md) | after each phase of a plan, and before merging | a PASS or FAIL review against the plan, from a fresh subagent |
 | [`/yaybacklog`](.claude/skills/yaybacklog/SKILL.md) | you want to see what reviews left open, check whether an item is done, or record a finding you won't fix in this PR | ticked boxes and new items in `docs/backlog/`, and removes the items that are done |
 
-The release skills take a finished change from a test build to a tagged release. They wrap each repo's own release script and never upload anything: the manager uploads every zip by hand. [RELEASING.md](RELEASING.md) explains the workflow; the config is `.claude/release.config.json`.
+The release skills take a finished change from a test build to a tagged release. They wrap each repo's own release script and never upload anything: the manager uploads every zip by hand. [RELEASING.md](RELEASING.md) explains the workflow; this repo's config is `.claude/release.config.json`. They come from [YayCommerce/Yay-Release-Kit](https://github.com/YayCommerce/Yay-Release-Kit) (see the shared skills note below).
 
 | Skill | Run it when | It writes |
 |---|---|---|
@@ -119,7 +119,7 @@ A typical change runs `/yaybrainstorming`, then `/yayplan`, then you implement i
 - `.claude/settings.local.json`: your own permissions and settings on top of `.claude/settings.json`;
 - `CLAUDE.local.md`: your own instructions on top of `CLAUDE.md`. It may drop the commit and PR trailers that `CLAUDE.md` asks for.
 
-**Shared skills.** The YayCommerce plugins share the five skills above and the eight release skills (with `.claude/release-kit/`, `.claude/agents/yayrelease-worker.md` and `RELEASING.md`, copied with `yr kit sync`), and this repo holds their canonical copy. A change to a skill lands here first, and another repo copies the skill's directory whole, never editing its copy. See [the canonical-copy record](docs/decisions/2026-10-03-shared-skills-canonical-copy.md).
+**Shared skills.** The YayCommerce plugins share the five skills above, and this repo holds their canonical copy. A change to one of them lands here first, and another repo copies the skill's directory whole, never editing its copy. See [the canonical-copy record](docs/decisions/2026-10-03-shared-skills-canonical-copy.md). The eight release skills, `.claude/release-kit/`, `.claude/agents/yayrelease-worker.md` and `RELEASING.md` are a copy of [YayCommerce/Yay-Release-Kit](https://github.com/YayCommerce/Yay-Release-Kit): change them there, then update this copy with its `install` script. See [the release kit record](docs/decisions/2026-11-04-release-kit-canonical-copy.md).
 
 **Mechanical checks.** Run `./scripts/check-harness.sh` before merging a PR that changes a harness file. It checks paths, links, headers, rule globs, skill names and decision records, prints one line per finding, and exits 1 if there is any.
 

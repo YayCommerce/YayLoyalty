@@ -1,7 +1,7 @@
 # Releasing YayCommerce plugins
 
 <!-- Purpose: the build → test → release → support workflow for people, and the commands behind it.
-Shared by the YayCommerce plugin repos; canonical copy YayCommerce/YayLoyalty, replaced whole elsewhere
+Shared by the YayCommerce plugin repos; canonical copy YayCommerce/Yay-Release-Kit, replaced whole elsewhere
 by `yr kit sync`. A repo's own facts (branches, editions, build commands) are in .claude/release.config.json. -->
 
 The release kit builds zips, writes notes and manages git state. **It never uploads, deploys or
@@ -50,8 +50,8 @@ Tags only ever mean "customers have exactly this". They are never moved or delet
   targets, version locations, build commands, changelog format, zip rules.
 - `~/.config/yayrelease/registry.json` (your machine): where each plugin's repo is, the admin-shell pin,
   concurrency.
-- `.claude/release-kit/`: the scripts (`bin/yr help`), templates and docs (`docs/changelog-style.md`,
-  `docs/gates.md`, `docs/config-reference.md`).
+- `.claude/release-kit/`: the scripts (`bin/yr help`), templates and docs (`.claude/release-kit/reference/changelog-style.md`,
+  `.claude/release-kit/reference/gates.md`, `.claude/release-kit/reference/config-reference.md`).
 
 ## QA gates (every build)
 
@@ -70,10 +70,10 @@ yr status --all                                   # the yaystatus table
 yr build --plugin=yaypricing --edition=free --type=test --dry-run
 yr version propose --plugin=yaypricing --edition=free
 yr shared pin --ref=v2.9.0 --save                 # set the admin-shell revision builds use
-yr kit sync --from=<YayLoyalty checkout> --dry-run   # update this repo's copy of the kit
+yr kit sync --from=<Yay-Release-Kit checkout> --dry-run   # update this repo's copy of the kit
 ```
 
 ## Updating the kit
 
-Change it in YayLoyalty first (PR), then `yr kit sync --from=<YayLoyalty>` in each repo and commit the
+Change it in YayCommerce/Yay-Release-Kit first (PR, then a new tag), then `yr kit sync --from=<Yay-Release-Kit>` in each repo and commit the
 result on every edition dev branch. Never edit a copy in place.

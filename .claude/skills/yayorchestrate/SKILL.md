@@ -4,7 +4,7 @@ description: Runs one release action (status, build, release, release-fix) for m
 disable-model-invocation: true
 # Purpose: parallel builds/releases without shared state: one pin, one worker per edition, one review.
 # Update when: the run folder, task file, report shape or serialized finish changes.
-#   Shared by the YayCommerce plugins; canonical copy YayCommerce/YayLoyalty .claude/skills/yayorchestrate/,
+#   Shared by the YayCommerce plugins; canonical copy YayCommerce/Yay-Release-Kit .claude/skills/yayorchestrate/,
 #   replaced whole elsewhere by `yr kit sync`, never edited.
 ---
 

@@ -6,7 +6,7 @@
  * The config is repo-specific and committed identically on every long-lived edition dev branch.
  * Lookup order: --config=<file>; <cwd worktree>/.claude/release.config.json; the main checkout's
  * copy; the registry's config_ref branch via `git show` (for repos whose checkout is on a branch
- * that predates the kit). Shape and field meanings: docs/config-reference.md.
+ * that predates the kit). Shape and field meanings: .claude/release-kit/reference/config-reference.md.
  */
 
 declare(strict_types=1);
@@ -420,8 +420,8 @@ function cmd_registry( array $pos ): int {
 	}
 	if ( $sub === 'set' ) {
 		$k = req( 'key' );
-		if ( ! in_array( $k, [ 'concurrency', 'worktree_root', 'cache_root' ], true ) ) {
-			throw new Fail( 'settable keys: concurrency, worktree_root, cache_root', EXIT_USAGE );
+		if ( ! in_array( $k, [ 'concurrency', 'worktree_root', 'cache_root', 'plugin_check_path' ], true ) ) {
+			throw new Fail( 'settable keys: concurrency, worktree_root, cache_root, plugin_check_path', EXIT_USAGE );
 		}
 		$reg->data['settings'][ $k ] = $k === 'concurrency' ? max( 1, (int) req( 'value' ) ) : req( 'value' );
 		$reg->save( "set $k" );

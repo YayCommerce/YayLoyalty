@@ -4,7 +4,7 @@ description: Read-only release status of YayCommerce plugin editions: released v
 # Purpose: read-only release status for plugin editions, from git refs, dist/ and the support logs.
 # Update when: yr status output changes, or a new kind of drift should be reported.
 #   The YayCommerce plugins share this skill: keep it repo-neutral; a repo's facts live in its
-#   .claude/release.config.json. Canonical copy: YayCommerce/YayLoyalty .claude/skills/yaystatus/;
+#   .claude/release.config.json. Canonical copy: YayCommerce/Yay-Release-Kit .claude/skills/yaystatus/;
 #   a copy elsewhere is replaced whole by `yr kit sync`, never edited.
 ---
 

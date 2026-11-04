@@ -5,7 +5,8 @@
 #
 # A small host repo (~/.yayrelease/pcp/host, slug yr-pcp-host, empty WordPress) gets its own
 # branchpress site. The build is copied to ~/.yayrelease/pcp/plugins/<slug>/ and mounted with
-# --with, next to the plugin-check plugin (from settings or your yaydevs site). Then
+# --with, next to the plugin-check plugin (YR_PLUGIN_CHECK_PATH, else the registry's plugin_check_path,
+# else the first Local site that has it). Then
 # `wp plugin check <slug> --categories=plugin_repo` runs; errors there block a wp.org upload.
 # Exit: 0 no errors, 1 errors found, 2 could not run (no branchpress/Docker/plugin-check).
 set -uo pipefail
@@ -14,8 +15,15 @@ set -uo pipefail
 dir="$(reqval dir)"; slug="$(reqval slug)"; out="$(argval out)"
 command -v branchpress >/dev/null 2>&1 || { say "branchpress is not installed (https://github.com/thithiennta/branchpress)"; exit 2; }
 docker info >/dev/null 2>&1 || { say "Docker is not running"; exit 2; }
-pcp_src="$(expand_home "${YR_PLUGIN_CHECK_PATH:-$HOME/Local-Sites/yaydevs/app/public/wp-content/plugins/plugin-check}")"
-[ -f "$pcp_src/plugin.php" ] || [ -f "$pcp_src/plugin-check.php" ] || { say "plugin-check plugin not found at $pcp_src (set YR_PLUGIN_CHECK_PATH)"; exit 2; }
+pcp_src="${YR_PLUGIN_CHECK_PATH:-}"
+[ -n "$pcp_src" ] || pcp_src="$(yrphp registry list | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["settings"]["plugin_check_path"] ?? "";')"
+if [ -z "$pcp_src" ]; then
+	for c in "$HOME/Local Sites"/*/app/public/wp-content/plugins/plugin-check "$HOME/Local-Sites"/*/app/public/wp-content/plugins/plugin-check; do
+		[ -d "$c" ] && { pcp_src="$c"; break; }
+	done
+fi
+pcp_src="$(expand_home "$pcp_src")"
+[ -n "$pcp_src" ] && { [ -f "$pcp_src/plugin.php" ] || [ -f "$pcp_src/plugin-check.php" ]; } || { say "plugin-check plugin not found. Install it in any WordPress folder and run: yr registry set --key=plugin_check_path --value=<that plugin-check folder>"; exit 2; }
 
 base="$HOME/.yayrelease/pcp"
 host="$base/host"

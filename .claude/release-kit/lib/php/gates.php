@@ -5,7 +5,7 @@
  *
  * Gates: structure, php_lint, phpcs, plugin_check, versions, headers, contents, edition_rules,
  * shared_code, size, and the repo's own validators (extra_gates). What each checks and how to
- * configure it: docs/gates.md.
+ * configure it: .claude/release-kit/reference/gates.md.
  */
 
 declare(strict_types=1);
@@ -21,7 +21,7 @@ final class Gates {
 		'tests'          => '#(^|/)(tests?|__tests__|e2e|spec)/#',
 		'phpunit'        => '#(^|/)phpunit(\.xml)?(\.dist)?$#',
 		'dev_configs'    => '#(^|/)(\.eslintrc[^/]*|\.prettierrc[^/]*|\.editorconfig|\.stylelintrc[^/]*|\.phpcs\.xml(\.dist)?|phpcs\.xml(\.dist)?|phpstan\.neon(\.dist)?|vite\.config\.[jt]s|tsconfig\.json|\.nvmrc|\.npmrc|\.env[^/]*|\.distignore|\.gitignore|\.gitattributes|\.DS_Store|Thumbs\.db)$#',
-		'claude'         => '#(^|/)(\.claude/|CLAUDE(\.local)?\.md$|AGENTS\.md$|plans/|\.opencode/|\.qoder/)#',
+		'claude'         => '#(^|/)(\.claude/|CLAUDE(\.local)?\.md$|AGENTS\.md$|plans/|\.(?:open)code/|\.qoder/)#',
 		'source_maps'    => '#\.map$#',
 		'nested_zips'    => '#\.zip$#',
 		'lockfiles'      => '#(^|/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml)$#',

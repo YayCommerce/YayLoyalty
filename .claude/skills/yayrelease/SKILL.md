@@ -4,7 +4,7 @@ description: Prepares the final release zip of one YayCommerce plugin edition af
 # Purpose: release preparation for one edition (or one branch group), interactive, or as a worker
 #   step inside yayorchestrate (then every question becomes a report entry).
 # Update when: the release steps, branch naming or HANDOFF content change.
-#   Shared by the YayCommerce plugins; canonical copy YayCommerce/YayLoyalty .claude/skills/yayrelease/,
+#   Shared by the YayCommerce plugins; canonical copy YayCommerce/Yay-Release-Kit .claude/skills/yayrelease/,
 #   replaced whole elsewhere by `yr kit sync`, never edited.
 ---
 
@@ -24,7 +24,7 @@ description: Prepares the final release zip of one YayCommerce plugin edition af
    - Exit 3 = it exists. Ask: resume it (use it as is) or start fresh (`--fresh` moves the old one aside to `<b>-old-<timestamp>`; nothing is deleted).
    - Then `YR worktree add --repo=<repo> --name=<b with / → -> --branch=<b>`; work only in that worktree.
 5. **Bump.** `YR version bump --plugin=<p> [--edition=<e>] --to=X.Y.Z --tree=<worktree>` (for a branch group, once per edition; they share the files). It verifies every location after writing; stop if it reports a mismatch.
-6. **Changelog.** `YR changelog collect --plugin=<p> --edition=<e> --ref=<approved sha>`. Write the draft JSON following `.claude/release-kit/docs/changelog-style.md`: merge related commits into one line, plain words, groups New / Improved / Fixed / Security, include every `support_fixes` entry, and fold in `existing_unreleased` text if present. Save it as `<worktree>/../<b>-changelog.json` (outside the repo). `YR changelog render --draft=<file>` and show the user the rendered entry plus a "left out" list (internal commits you dropped). Apply their edits. Then `YR changelog insert --draft=<file> --tree=<worktree>` (add `--replace-unreleased` when the file had an Unreleased/TBD block and the user agreed to replace it).
+6. **Changelog.** `YR changelog collect --plugin=<p> --edition=<e> --ref=<approved sha>`. Write the draft JSON following `.claude/release-kit/reference/changelog-style.md`: merge related commits into one line, plain words, groups New / Improved / Fixed / Security, include every `support_fixes` entry, and fold in `existing_unreleased` text if present. Save it as `<worktree>/../<b>-changelog.json` (outside the repo). `YR changelog render --draft=<file>` and show the user the rendered entry plus a "left out" list (internal commits you dropped). Apply their edits. Then `YR changelog insert --draft=<file> --tree=<worktree>` (add `--replace-unreleased` when the file had an Unreleased/TBD block and the user agreed to replace it).
 7. **Commit** on the release branch: `YR git commit --worktree=<wt> --paths=<the changed version files and changelog file> --message="chore(release): <plugin> <edition> X.Y.Z"`. (The build runs from a commit, so this comes before the build.)
 8. **Build and gates.** For each edition in the group: `YR build --plugin=<p> --edition=<e> --type=release --ref=<b>` (background; it takes minutes). If a candidate of this version exists that the manager never received, the build stops with exit 3: re-run with `--supersede`. Gate failures: fix on the release branch (commit with `YR git commit`), rebuild. Don't skip gates without the user's explicit OK.
 9. **HANDOFF.md.** Write the rendered changelog to `<file>.txt`, and notes on anything unusual (gate warnings, skipped gates, untested newer commits, a `Woo:` header missing, a shared-code pin with a warning, a sibling left behind) to `<notes>.md`. Then `YR handoff write --build-json=<dist/…/X.Y.Z.BUILD.json> --changelog=<file>.txt --notes=<notes>.md`. Print its path and the zip path + sha256.
@@ -43,4 +43,4 @@ description: Prepares the final release zip of one YayCommerce plugin edition af
 ## Reference
 
 - `.claude/skills/yayrelease/references/handoff-notes.md`: what goes into the notes per target.
-- Kit: `.claude/release-kit/docs/changelog-style.md`, `.claude/release-kit/docs/gates.md`, `.claude/release-kit/templates/handoff-<target>.md`.
+- Kit: `.claude/release-kit/reference/changelog-style.md`, `.claude/release-kit/reference/gates.md`, `.claude/release-kit/templates/handoff-<target>.md`.

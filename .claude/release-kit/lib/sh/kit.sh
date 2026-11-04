@@ -2,7 +2,7 @@
 # The kit's own upkeep.
 #
 #   sync --from=<canonical repo or worktree> [--to=<repo or worktree>] [--dry-run]
-#        Replace the shared files whole (the canonical copy is YayCommerce/YayLoyalty): the
+#        Replace the shared files whole (the canonical copy is YayCommerce/Yay-Release-Kit): the
 #        release-kit folder, the eight release skills, the worker agent and RELEASING.md.
 #        Never touches .claude/release.config.json or support logs, and never commits.
 #   hook-install [--to=<tree>] [--dry-run]   register hooks/guard-release.sh in .claude/settings.json
@@ -21,7 +21,7 @@ to="$(expand_home "$to")"
 case "$sub" in
 sync)
 	from="$(expand_home "$(reqval from)")"
-	[ -f "$from/.claude/release-kit/VERSION" ] || die "$from has no .claude/release-kit (point --from at the canonical YayLoyalty checkout or worktree)" 64
+	[ -f "$from/.claude/release-kit/VERSION" ] || die "$from has no .claude/release-kit (point --from at a checkout of YayCommerce/Yay-Release-Kit)" 64
 	[ "$(cd "$from" && pwd -P)" != "$(cd "$to" && pwd -P)" ] || die "--from and --to are the same tree" 64
 	say "kit $(cat "$from/.claude/release-kit/VERSION") from $from → $to ($( [ -f "$to/.claude/release-kit/VERSION" ] && cat "$to/.claude/release-kit/VERSION" || echo 'not installed'))"
 	flags="-a --delete --checksum --exclude=.DS_Store"

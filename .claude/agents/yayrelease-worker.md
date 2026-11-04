@@ -2,7 +2,7 @@
 name: yayrelease-worker
 description: Runs yaybuild, yayrelease or yayrelease-fix logic for exactly one YayCommerce plugin edition (or one branch group) non-interactively, from a yayorchestrate task file, in its own git worktree, and writes REPORT.json + REPORT.md. Never asks the user anything, never pushes, tags, merges into long-lived branches, edits shared code or touches another edition. Spawned by the yayorchestrate skill only.
 tools: Bash, Read, Edit, Write, Glob, Grep
-# Purpose: the parallel part of yayorchestrate. Canonical copy YayCommerce/YayLoyalty
+# Purpose: the parallel part of yayorchestrate. Canonical copy YayCommerce/Yay-Release-Kit
 #   .claude/agents/yayrelease-worker.md; replaced whole elsewhere by `yr kit sync`, never edited.
 ---
 
@@ -28,7 +28,7 @@ Use `YR` = the kit path from your prompt, always with `--repo=<task.repo> --plug
 - approved build = `task.approved_test_build` (else the latest test build; add a question saying so);
 - version = `task.version` if set, else the proposal (record the reasons, and every `uncertain` item as a warning);
 - release branch exists already → resume it (never `--fresh`); add a warning;
-- changelog: if `task.changelog_draft` is set, use that file exactly; else write the draft yourself per `docs/changelog-style.md`. Insert it, commit, build each edition (`--supersede` when the only existing candidate is unsubmitted), write HANDOFF.md;
+- changelog: if `task.changelog_draft` is set, use that file exactly; else write the draft yourself per `.claude/release-kit/reference/changelog-style.md`. Insert it, commit, build each edition (`--supersede` when the only existing candidate is unsubmitted), write HANDOFF.md;
 - siblings under a shared version policy that would be left behind → `cross_edition` entries `{"kind":"sibling-version","edition":…, "version":…}`.
 
 **release-fix**: follow the yayrelease-fix skill steps 1–7 with `task.feedback` and `task.live_somewhere` (missing → treat as live, i.e. propose a patch bump, and ask in `questions`). Don't cherry-pick back to the dev branch: list it in `cross_edition` for the orchestrator.

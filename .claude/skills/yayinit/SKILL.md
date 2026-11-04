@@ -3,14 +3,14 @@ name: yayinit
 description: Sets up or updates the release kit for a YayCommerce plugin repo: detects edition branches without assuming names, proposes each edition (dev and released branch, wp.org/EDD/Woo target, slug, build command), asks about version policy and fix flow in small batches, confirms what is released now and tags those baselines, then writes .claude/release.config.json and the registry entry. Use to set up releases, add a plugin, or on YayInit.
 # Purpose: produce and maintain .claude/release.config.json, so the other release skills never ask
 #   for these values again.
-# Update when: the config schema (docs/config-reference.md) or the baseline method changes.
-#   Shared by the YayCommerce plugins; canonical copy YayCommerce/YayLoyalty .claude/skills/yayinit/,
+# Update when: the config schema (.claude/release-kit/reference/config-reference.md) or the baseline method changes.
+#   Shared by the YayCommerce plugins; canonical copy YayCommerce/Yay-Release-Kit .claude/skills/yayinit/,
 #   replaced whole elsewhere by `yr kit sync`, never edited.
 ---
 
 # YayInit
 
-`YR` = `.claude/release-kit/bin/yr` (from the kit copy in this repo; if the repo has no kit yet, copy it first: `<canonical>/.claude/release-kit/bin/yr kit sync --from=<canonical YayLoyalty tree> --to=<this repo or a branch worktree>`).
+`YR` = `.claude/release-kit/bin/yr` (from the kit copy in this repo; if the repo has no kit yet, copy it first from a checkout of YayCommerce/Yay-Release-Kit: `<kit checkout>/install --to=<this repo or a branch worktree>`).
 
 Nothing long-lived is created, renamed or pushed without the user's yes. Ask in batches of 2–3 questions (AskUserQuestion), each standing on its own.
 
@@ -26,7 +26,7 @@ Nothing long-lived is created, renamed or pushed without the user's yes. Ask in 
    - version policy: do the editions share one version number, or are they independent? (branch groups are always shared);
    - how fixes move between editions: cherry-pick, merge from a base edition, or by hand; and in which direction (`propagation.flow`, e.g. pro-edd → free → woo-free);
    - released-code branches: confirm each one; for an edition without one, propose creating it from the commit of its last release (step 6) and wait. Create it only after a yes, with plain `git branch <name> <sha>` (never move an existing branch).
-5. **Fill the rest of each edition** (show it; the user can correct): `version_files` (header `Version:`, the `*_VERSION` define, readme `Stable tag`, README badges: patterns per `.claude/release-kit/docs/config-reference.md`), `prepare` (deps the repo's script doesn't install itself), `build.env`, `changelog` (wporg → `readme.txt` in the repo's existing heading/prefix style, read from its last entries; edd/woo → `CHANGELOG.md` with the same line style), `zip_rules` from the repo's own Pro/Lite guards (e.g. `includes/Pro/`, `@premium-start`, `vendor-prefixed/src/License/` in Lite), `extra_gates` for its validators (e.g. `php scripts/validate-build.php {zip} lite`), `shared_code`, `store` (EDD item / Woo product, ask).
+5. **Fill the rest of each edition** (show it; the user can correct): `version_files` (header `Version:`, the `*_VERSION` define, readme `Stable tag`, README badges: patterns per `.claude/release-kit/reference/config-reference.md`), `prepare` (deps the repo's script doesn't install itself), `build.env`, `changelog` (wporg → `readme.txt` in the repo's existing heading/prefix style, read from its last entries; edd/woo → `CHANGELOG.md` with the same line style), `zip_rules` from the repo's own Pro/Lite guards (e.g. `includes/Pro/`, `@premium-start`, `vendor-prefixed/src/License/` in Lite), `extra_gates` for its validators (e.g. `php scripts/validate-build.php {zip} lite`), `shared_code`, `store` (EDD item / Woo product, ask).
 6. **Baselines** (what is released now), per edition:
    - find the released version: Stable tag / header on the released branch; local SVN `~/Documents/svns/<slug>/trunk/readme.txt` and its `tags/`; for wporg the public API (read-only GET) `https://api.wordpress.org/plugins/info/1.2/?action=plugin_information&request[slug]=<slug>`; for EDD/Woo ask the user (store records).
    - propose the commit: `YR detect baseline --plugin=<p> --edition=<e> --version=<v> [--svn-tag-dir=~/Documents/svns/<slug>/tags/<v>]` ranks candidates (released branch, last commit before the version changed, byte-for-byte match with the SVN tag). Show the top candidates with their evidence.

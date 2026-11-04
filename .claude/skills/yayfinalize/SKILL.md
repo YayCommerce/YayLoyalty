@@ -4,7 +4,7 @@ description: Closes a YayCommerce release once the manager confirms it is live: 
 disable-model-invocation: true
 # Purpose: the only place release tags are created, so tags always match what customers have.
 # Update when: the finalize order, tag message or support-log update changes.
-#   Shared by the YayCommerce plugins; canonical copy YayCommerce/YayLoyalty .claude/skills/yayfinalize/,
+#   Shared by the YayCommerce plugins; canonical copy YayCommerce/Yay-Release-Kit .claude/skills/yayfinalize/,
 #   replaced whole elsewhere by `yr kit sync`, never edited.
 ---
 

@@ -48,7 +48,7 @@ branch** (yaystatus flags drift). Skills read it and never re-ask for these valu
             "env": {},
             "output": "release/yaypricing.zip"   // path or glob, relative to the repo root; newest new match wins
           },
-          "changelog": {                    // see docs/changelog-style.md
+          "changelog": {                    // see reference/changelog-style.md
             "file": "readme.txt",           // wporg: readme.txt; edd/woo: CHANGELOG.md
             "section": "== Changelog ==",
             "heading": "= {date:M j, Y} - Version {version} =",
