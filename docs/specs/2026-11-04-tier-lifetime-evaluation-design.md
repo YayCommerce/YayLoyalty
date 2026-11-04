@@ -72,7 +72,7 @@ A Pro merchant turns tiers on, and every customer is placed into the tier their 
 - **Slice 5:** the launcher badge and progress line.
 - **Never:**
   - tier emails;
-  - the dashboard tier-distribution card;
+  - anything about tiers on the dashboard: no tier-distribution card, and an entry bonus row in Recent activity reads "Bonus points";
   - clawing back an entry bonus;
   - a daily-cap clamp on the bonus;
   - campaign tier conditions.

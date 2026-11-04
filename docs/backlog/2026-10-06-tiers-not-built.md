@@ -22,9 +22,10 @@ Still missing:
 
 The branch `trace/chore/remove-tiers-referrals` removed these placeholders. Restore them from its squash commit only as a starting point:
 
-- the dashboard's Tier distribution card and its Lite teaser;
 - the Design keys `tier.badges`, `storefront_text.tier_progress_line` and `panel.show_progress_to_next_tier`, with the Tier badges section;
 - the Tier reached, Tier ending soon and Tier lost emails, and the Loyalty: Tiers group.
+
+The dashboard's Tier distribution card and its Lite teaser stay removed: the dashboard shows nothing about tiers, and an entry bonus reads "Bonus points" in its Recent activity.
 
 ## Why it matters
 
@@ -41,7 +42,6 @@ Start from a spec. Tiers need a table with a rank, because the `TIER` conditions
 - [x] Merchants can manage tiers on a Tiers page, behind a capability.
 - [x] The Customers list filters by tier, and saved segments store it.
 - [x] The drawer shows a customer's tier and lets staff assign one.
-- [ ] The dashboard shows the tier distribution.
 - [ ] The storefront shows tier badges and progress to the next tier, configured in Design.
 - [ ] Tier emails send on a real trigger.
 - [ ] `TIER` leaves `UNAVAILABLE` in both condition types, and `ConditionsEvaluator` evaluates it.

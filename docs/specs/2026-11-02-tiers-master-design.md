@@ -61,7 +61,7 @@ Pro merchants group customers into ranked tiers by the points they earn. Each ti
 - Coupon or free-shipping entry rewards, and automatic tier discounts.
 - Per-tier expiry or redemption rate.
 - A spend-based metric, a calendar-year mode, and an inactivity-based downgrade.
-- The dashboard tier-distribution card.
+- Anything about tiers on the dashboard: no tier-distribution card, and an entry bonus row in Recent activity reads "Bonus points", not the tier's name.
 - My Account → Rewards tier section, and the shortcodes and blocks. My Account's reward list still hides tier-gated rewards (D16).
 - A TIER condition on `flexible_discount`.
 - Clawing back an entry bonus.
