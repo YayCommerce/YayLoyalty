@@ -11,6 +11,7 @@ use YayLoyalty\Controllers\DesignRestController;
 use YayLoyalty\Controllers\EmailsRestController;
 use YayLoyalty\Controllers\LedgerRestController;
 use YayLoyalty\Controllers\LookupRestController;
+use YayLoyalty\Controllers\OrderPointsRestController;
 use YayLoyalty\Controllers\RedemptionsRestController;
 use YayLoyalty\Controllers\RewardRestController;
 use YayLoyalty\Controllers\SettingsRestController;
@@ -78,6 +79,8 @@ class RestAPI {
             // $customers is read-only here too.
             new CustomerAdjustPreviewRestController( $customers, $dashboard ),
             new LedgerRestController( $ledger ),
+            // Grants an order's missed points through EarningService's own LedgerService, built per request. $ledger is read-only here.
+            new OrderPointsRestController( $ledger ),
             new ActivityRestController( $customer_meta ),
             // Shopper route (storefront launcher): session identity, no capability. $ledger is read-only here.
             new StorefrontActivityRestController( $ledger ),

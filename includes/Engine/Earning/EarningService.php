@@ -3,9 +3,15 @@ namespace YayLoyalty\Engine\Earning;
 
 use YayLoyalty\Database\Transaction;
 use YayLoyalty\Engine\Points\Context;
+use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Points\Result;
+use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
+use YayLoyalty\Enums\OrderStatus;
+use YayLoyalty\Enums\ReferenceType;
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -214,6 +220,95 @@ final class EarningService {
         );
 
         return $awarded;
+    }
+
+    /** Whether the order is the kind that earns on completion: completed, with a registered customer. */
+    public static function is_awardable_order( \WC_Order $order ): bool {
+        return OrderStatus::AWARD === $order->get_status() && $order->get_customer_id() > 0;
+    }
+
+    /** Whether an awardable order has no earn row, so its points were never awarded. */
+    public static function is_missing_points( \WC_Order $order, LedgerRepository $ledger ): bool {
+        return self::is_awardable_order( $order ) && [] === $ledger->earn_rows_for_order( (int) $order->get_id() );
+    }
+
+    /** The gate reason that stops the order's customer earning today (paused, opted out, excluded role), or null. */
+    public static function grant_blocked_reason( \WC_Order $order ): ?string {
+        return self::gate_reason( CampaignTrigger::PURCHASE, ContextFactory::from_order( $order, Dates::now() ) );
+    }
+
+    /** What the order would earn under today's campaigns and settings, for an admin granting missed points. */
+    public function suggest_for_order( \WC_Order $order ): Result {
+        return $this->preview( CampaignTrigger::PURCHASE, ContextFactory::from_order( $order, Dates::now() ) );
+    }
+
+    /**
+     * Grants an admin-chosen number of points for an order that missed its award, as the order's own earn row:
+     * same key as award(), so a second grant or a later award is a duplicate, and refunds claw it back.
+     * Today's gates apply; the award filter does not, and the row carries the admin as actor, which keeps it
+     * out of the daily earning count. No campaign: the figure is the admin's, so a refund prorates over every line.
+     *
+     * @return Outcome awarded, duplicate, or skipped( gate reason ).
+     * @throws \InvalidArgumentException When the order is not completed, has no customer, or $points < 1.
+     */
+    public function grant_for_order( \WC_Order $order, int $points, int $actor_id, string $note ): Outcome {
+        $order_id = (int) $order->get_id();
+        $user_id  = (int) $order->get_customer_id();
+
+        if ( ! self::is_awardable_order( $order ) || $points < 1 ) {
+            throw new \InvalidArgumentException( sprintf( 'YayLoyalty: order %d cannot be granted %d points.', (int) $order_id, (int) $points ) );
+        }
+
+        $reason = $this->blocked_reason( CampaignTrigger::PURCHASE, ContextFactory::from_order( $order, Dates::now() ) );
+
+        if ( null !== $reason ) {
+            return Outcome::skipped( $reason );
+        }
+
+        $draft = new LedgerEntry(
+            null,
+            $user_id,
+            $points,
+            0,
+            LedgerType::EARN,
+            LedgerSource::ORDER,
+            ReferenceType::ORDER,
+            $order_id,
+            null,
+            null,
+            $order_id,
+            $note,
+            $actor_id > 0 ? $actor_id : null,
+            Dates::now(),
+            IdempotencyKey::for_earn( $user_id, ReferenceType::ORDER, $order_id, CampaignTrigger::PURCHASE )
+        );
+
+        $outcome = Transaction::run(
+            function () use ( $draft, $order_id ): Outcome {
+                $outcome = $this->ledger->earn( $draft );
+
+                if ( Outcome::AWARDED === $outcome->get_status() ) {
+                    $this->pending->release( $order_id );
+                    $this->pending->mark_awarded( $order_id, $outcome->get_entry() );
+                }
+
+                return $outcome;
+            }
+        );
+
+        if ( Outcome::AWARDED === $outcome->get_status() ) {
+            $actor = get_userdata( $actor_id );
+            $name  = $actor ? $actor->display_name : '-';
+
+            Transaction::after_commit(
+                static function () use ( $order, $points, $name, $note ): void {
+                    /* translators: 1: points in the store's format, as "1.250 Points", 2: admin's display name, 3: the admin's reason */
+                    $order->add_order_note( sprintf( __( '%1$s granted manually by %2$s: %3$s', 'yayloyalty' ), SettingsHelper::points_text( $points ), $name, $note ) );
+                }
+            );
+        }
+
+        return $outcome;
     }
 
     /** Announces, after commit, an award an earning limit cut: awarded below its evaluation, or skipped( REASON_LIMIT_REACHED ). */

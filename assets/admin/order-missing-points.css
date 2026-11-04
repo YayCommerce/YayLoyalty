@@ -1,0 +1,29 @@
+/* The orders list's "Missing" badge and the order screen's grant box. Markup: includes/Engine/Admin/OrderMissingPoints.php. */
+.yayloyalty-missing-badge {
+  display: inline-block;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: #f8d7da;
+  color: #8a1f11;
+  line-height: 2;
+  white-space: nowrap;
+}
+
+.yayloyalty-missing-badge.is-blocked {
+  background: #f0f0f1;
+  color: #50575e;
+}
+
+.column-yayloyalty_points {
+  width: 9ch;
+}
+
+.yayloyalty-missing-points label:not(.yayloyalty-missing-points__check) {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.yayloyalty-missing-points__error {
+  color: #b32d2e;
+}

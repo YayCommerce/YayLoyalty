@@ -82,6 +82,12 @@ class Emails {
         return $entry ? $entry->get_id() : null;
     }
 
+    /** Passes an admin's grant for a missed order to the Points earned email. Called by the grant endpoint when its admin asked to notify. */
+    public static function relay_grant( LedgerEntry $entry ): void {
+        /** This action is documented in relay_award(). */
+        do_action( self::POINTS_EARNED_ACTION, $entry->get_id() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+    }
+
     /**
      * Passes a manual adjustment to the Points adjusted email. Called by the adjust endpoint, not hooked,
      * because only that request knows whether its admin asked to notify.

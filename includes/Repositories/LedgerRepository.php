@@ -68,8 +68,9 @@ class LedgerRepository extends AbstractRepository {
     /**
      * SUM(points) of one source's earn rows written on the site-timezone
      * calendar day holding $at; a null source sums every source, for the
-     * per-customer daily limit. Gross EARN only: adjustments and
-     * refunds neither count nor free up room. Rows count by created_at, their
+     * per-customer daily limit. Gross automatic EARN only: adjustments,
+     * admin grants for an order (EARN rows with an actor) and refunds
+     * neither count nor free up room. Rows count by created_at, their
      * write time, so $at should be the moment being awarded. 0 for a guest.
      *
      * @param string      $at     UTC MySQL datetime.
@@ -82,7 +83,8 @@ class LedgerRepository extends AbstractRepository {
             return 0;
         }
 
-        $where  = 'user_id = %d AND type = %s';
+        // An automatic award has no actor; an admin's grant for a missed order has one and is not the customer's earning today.
+        $where  = 'user_id = %d AND type = %s AND actor_id IS NULL';
         $values = [ $user_id, LedgerType::EARN ];
 
         if ( null !== $source ) {
@@ -103,6 +105,60 @@ class LedgerRepository extends AbstractRepository {
      */
     public function earn_rows_for_order( int $order_id ): array {
         return $this->select_entries( 'type = %s AND order_id = %d', [ LedgerType::EARN, $order_id ] );
+    }
+
+    /**
+     * Earned and net points per order, for the orders that have earn rows; an order with none is absent.
+     * Net is what is left after cancels and refunds (REFUND_EARN, and ADJUST rows a deleted refund restored).
+     *
+     * @param int[] $order_ids
+     * @return array<int, array{earned: int, net: int}> Order id to points.
+     */
+    public function points_by_orders( array $order_ids ): array {
+        $ids = array_values( array_filter( array_map( 'intval', $order_ids ) ) );
+
+        if ( [] === $ids ) {
+            return [];
+        }
+
+        global $wpdb;
+
+        $in = Sql::in_placeholders( $ids, '%d' );
+
+        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $in carries a placeholder list; every value is bound below.
+        $rows = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT order_id, SUM(CASE WHEN type = %s THEN points ELSE 0 END) AS earned, SUM(points) AS net
+                 FROM `' . esc_sql( $this->table() ) . "`
+                 WHERE order_id IN ({$in}) AND ( type IN (%s, %s) OR ( type = %s AND reference_type = %s ) )
+                 GROUP BY order_id
+                 HAVING earned > 0",
+                array_merge( [ LedgerType::EARN ], $ids, [ LedgerType::EARN, LedgerType::REFUND_EARN, LedgerType::ADJUST, ReferenceType::REFUND ] )
+            ),
+            ARRAY_A
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+
+        $totals = [];
+
+        foreach ( is_array( $rows ) ? $rows : [] as $row ) {
+            $totals[ (int) $row['order_id'] ] = [
+                'earned' => (int) $row['earned'],
+                'net'    => (int) $row['net'],
+            ];
+        }
+
+        return $totals;
+    }
+
+    /** SQL that is true when the order whose id is in $order_id_column has no earn row; for the orders list's "Missing points" filter. */
+    public function no_earn_row_sql( string $order_id_column ): string {
+        global $wpdb;
+
+        return $wpdb->prepare(
+            'NOT EXISTS ( SELECT 1 FROM `' . esc_sql( $this->table() ) . '` yl_earn WHERE yl_earn.type = %s AND yl_earn.order_id = ' . $order_id_column . ' )', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- the column is a fixed name from the caller, never input.
+            LedgerType::EARN
+        );
     }
 
     /** The earn row a non-order reference paid (a review's comment), or null. */

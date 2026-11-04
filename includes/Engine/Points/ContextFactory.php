@@ -16,21 +16,22 @@ final class ContextFactory {
 
     /**
      * occurred_at is the order's creation date, so the order scores the same at creation and at award,
-     * whatever campaigns changed in between.
+     * whatever campaigns changed in between. A caller scoring an old order against today's rules passes $occurred_at.
      *
+     * @param string|null $occurred_at UTC MySQL datetime to score at; null for the order's creation date.
      * @throws \InvalidArgumentException When the order carries no creation date; the caller decides, never now().
      */
-    public static function from_order( \WC_Order $order ): Context {
+    public static function from_order( \WC_Order $order, ?string $occurred_at = null ): Context {
         $created = $order->get_date_created();
 
-        if ( ! $created ) {
+        if ( ! $created && null === $occurred_at ) {
             throw new \InvalidArgumentException(
                 sprintf( 'YayLoyalty: order %d has no creation date to evaluate at.', (int) $order->get_id() )
             );
         }
 
         $user_id     = (int) $order->get_customer_id();
-        $occurred_at = gmdate( Dates::MYSQL_FORMAT, $created->getTimestamp() );
+        $occurred_at = $occurred_at ?? gmdate( Dates::MYSQL_FORMAT, $created->getTimestamp() );
         $order_id    = $order->get_id() > 0 ? (int) $order->get_id() : null;
         $line_items  = [];
 
