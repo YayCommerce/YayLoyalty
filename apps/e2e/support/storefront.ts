@@ -1,3 +1,4 @@
+import { expect } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 
 import type { Api } from './api';
@@ -54,4 +55,17 @@ export async function redeemRows(api: Api, customerId: number): Promise<number[]
   const rows = await api.ledger(customerId);
 
   return rows.filter((row) => row.type === 'redeem' || row.type === 'refund_redeem').map((row) => row.points);
+}
+
+/** A reward's checkbox, named by its row: "$5 off 500 Points …". */
+export function rewardBox(page: Page, name: string): Locator {
+  return card(page).getByRole('checkbox', { name: new RegExp(`^${name.replace(/\$/g, '\\$')}`) });
+}
+
+/** Five E2E Widgets: a $100 cart. */
+export async function addWidgetsToCart(page: Page): Promise<void> {
+  await page.goto('/product/e2e-widget/');
+  await page.locator('input.qty').fill('5');
+  await page.getByRole('button', { name: 'Add to cart', exact: true }).click();
+  await expect(page.getByText('have been added to your cart')).toBeVisible();
 }

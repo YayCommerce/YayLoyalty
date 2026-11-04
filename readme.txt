@@ -96,3 +96,4 @@ To build them: install Node 22 and pnpm 11, run `pnpm install` in the repository
 
 = 1.0.0 =
 * Initial release.
+* Removing a loyalty discount from an order now asks whether to return the customer's points.

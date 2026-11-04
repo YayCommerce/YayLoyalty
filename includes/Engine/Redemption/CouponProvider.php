@@ -5,7 +5,9 @@ use YayLoyalty\Engine\Points\Context as EarnContext;
 use YayLoyalty\Engine\Rewards\Result;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Models\Redemption;
 use YayLoyalty\Models\Reward;
+use YayLoyalty\Repositories\RedemptionRepository;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -38,19 +40,25 @@ final class CouponProvider {
 
     private SessionIntent $intent;
 
+    /** Read-only: whether an order's redemption debited a loyalty code put on it. */
+    private RedemptionRepository $redemptions;
+
     /** @var array<int, true> Rewards already given the "was removed" notice this request. */
     private array $notified = [];
 
-    public function __construct( RedemptionService $service, SessionIntent $intent ) {
-        $this->service = $service;
-        $this->intent  = $intent;
+    public function __construct( RedemptionService $service, SessionIntent $intent, RedemptionRepository $redemptions ) {
+        $this->service     = $service;
+        $this->intent      = $intent;
+        $this->redemptions = $redemptions;
     }
 
     /**
-     * Attaches the six hooks. sync_cart() runs last on
+     * Attaches the seven hooks. sync_cart() runs last on
      * `woocommerce_before_calculate_totals`, after every other plugin's
      * coupon logic, and sync_before_check() runs before WooCommerce's own
-     * coupon check. Called once at boot by the plugin.
+     * coupon check. only_redeemed_on_order() sits on `woocommerce_coupon_is_valid`:
+     * the admin "Apply coupon" and REST v3 validate through WC_Discounts( $order ),
+     * while checkout and recalculate_coupons() do not. Called once at boot by the plugin.
      */
     public function register(): void {
         add_filter( 'woocommerce_get_shop_coupon_data', [ $this, 'virtual_coupon_data' ], 10, 2 );
@@ -60,6 +68,33 @@ final class CouponProvider {
         // Before WC_Cart::check_cart_coupons() at priority 1.
         add_action( 'woocommerce_check_cart_items', [ $this, 'sync_before_check' ], 0 );
         add_filter( 'woocommerce_cart_totals_coupon_label', [ $this, 'label' ], 10, 2 );
+        add_filter( 'woocommerce_coupon_is_valid', [ $this, 'only_redeemed_on_order' ], 10, 3 );
+    }
+
+    /**
+     * Refuses a loyalty code on an order unless that order has an `applied` redemption row for it, so no order
+     * carries a loyalty discount no ledger row debited. A REST v3 update that keeps an existing line still passes.
+     * Postcondition: $valid unchanged for a cart, for any other coupon and for a debited code.
+     *
+     * @param mixed $valid
+     * @return mixed
+     * @throws \Exception With the refusal WooCommerce shows; WC_Discounts::is_coupon_valid() catches it.
+     */
+    public function only_redeemed_on_order( $valid, \WC_Coupon $coupon, \WC_Discounts $discounts ) {
+        $order = $discounts->get_object();
+        $code  = (string) $coupon->get_code();
+
+        if ( ! $order instanceof \WC_Order || ! EarnContext::is_loyalty_code( $code ) ) {
+            return $valid;
+        }
+
+        $row = $this->redemptions->find_by_order_and_coupon_code( (int) $order->get_id(), $code );
+
+        if ( null === $row || Redemption::STATUS_APPLIED !== $row->get_status() ) {
+            throw new \Exception( esc_html__( 'This loyalty discount can only be applied by the customer at checkout.', 'yayloyalty' ) );
+        }
+
+        return $valid;
     }
 
     /** The points discount's name, as the merchant set it; "Points discount", with the merchant's label, when there is no reward. */

@@ -6,6 +6,7 @@ use YayLoyalty\Engine\Redemption\Reversal;
 use YayLoyalty\Engine\Rewards\Result;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Enums\LedgerType;
+use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Models\Redemption;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -302,5 +303,90 @@ final class ReversalTest extends IntegrationTestCase {
             array_column( array_slice( $this->ledger_rows( 7 ), 3 ), 'idempotency_key' )
         );
         $this->assertSame( 9850, (int) $this->customer_row( 7 )['balance'] );
+    }
+
+    public function test_removing_a_coupon_restores_what_is_left_and_marks_the_row_removed(): void {
+        $reward = $this->seeded_reward();
+        $order  = $this->redeemed_order( $reward );
+
+        $outcome = $this->reversal()->coupon_removed( $order, $reward->get_coupon_code() );
+
+        $this->assertSame( Outcome::AWARDED, $outcome->get_status() );
+        $this->assertSame( [ 1000, -500, 500 ], $this->ledger_points( 7 ) );
+        $this->assertSame( 1000, (int) $this->customer_row( 7 )['balance'] );
+        $this->assertSame( Redemption::STATUS_REMOVED, $this->row()['status'] );
+        $this->assertSame( 500, (int) $this->row()['restored_points'] );
+
+        $ledger = $this->last_ledger_row();
+        $this->assertSame( LedgerType::REFUND_REDEEM, $ledger['type'] );
+        $this->assertSame( ReferenceType::REDEMPTION, $ledger['reference_type'] );
+        $this->assertSame( (int) $this->row()['id'], (int) $ledger['reference_id'] );
+        $this->assertSame( sprintf( 'refund_redeem:7:redemption:%d:flexible_discount', (int) $this->row()['id'] ), $ledger['idempotency_key'] );
+    }
+
+    public function test_a_line_removed_without_restore_leaves_the_row_for_the_cancel(): void {
+        $reward = $this->seeded_reward();
+        $order  = $this->redeemed_order( $reward );
+
+        $order->remove_coupon( $reward->get_coupon_code() );
+        $order->save();
+
+        $this->assertSame( [ 1000, -500 ], $this->ledger_points( 7 ) );
+        $this->assertSame( Redemption::STATUS_APPLIED, $this->row()['status'] );
+        $this->assertSame( 0, (int) $this->row()['restored_points'] );
+
+        $this->reversal()->cancelled( $order );
+
+        $this->assertSame( [ 1000, -500, 500 ], $this->ledger_points( 7 ) );
+        $this->assertSame( Redemption::STATUS_CANCELLED, $this->row()['status'] );
+    }
+
+    public function test_removing_a_coupon_after_a_part_refund_restores_only_the_rest(): void {
+        $reward = $this->seeded_reward();
+        $order  = $this->redeemed_order( $reward );
+        $this->reversal()->refunded( $order, $this->refund_of( $order, 6.0 ) );
+        $this->assertSame( 200, (int) $this->row()['restored_points'] );
+
+        $this->reversal()->coupon_removed( $order, $reward->get_coupon_code() );
+
+        $this->assertSame( [ 1000, -500, 200, 300 ], $this->ledger_points( 7 ) );
+        $this->assertSame( Redemption::STATUS_REMOVED, $this->row()['status'] );
+        $this->assertSame( 500, (int) $this->row()['restored_points'] );
+    }
+
+    public function test_no_order_event_moves_a_removed_row(): void {
+        $reward = $this->seeded_reward();
+        $order  = $this->redeemed_order( $reward );
+        $this->reversal()->coupon_removed( $order, $reward->get_coupon_code() );
+
+        $outcomes  = array_merge(
+            $this->reversal()->cancelled( $order ),
+            $this->reversal()->refunded_status( $order ),
+            $this->reversal()->uncancelled( $order )
+        );
+        $refund_id = $this->refund_of( $order, 7.5 );
+        $outcomes  = array_merge( $outcomes, $this->reversal()->refunded( $order, $refund_id ) );
+        wc_get_order( $refund_id )->delete( true );
+        $outcomes = array_merge( $outcomes, $this->reversal()->refund_deleted( $refund_id, $order->get_id() ) );
+
+        $this->assertCount( 5, $outcomes );
+        foreach ( $outcomes as $outcome ) {
+            $this->assertSame( Reversal::REASON_NOTHING_TO_MOVE, $outcome->get_reason() );
+        }
+        $this->assertSame( [ 1000, -500, 500 ], $this->ledger_points( 7 ) );
+        $this->assertSame( Redemption::STATUS_REMOVED, $this->row()['status'] );
+    }
+
+    public function test_removing_the_same_coupon_twice_writes_once(): void {
+        $reward = $this->seeded_reward();
+        $order  = $this->redeemed_order( $reward );
+        $this->reversal()->coupon_removed( $order, $reward->get_coupon_code() );
+
+        $outcome = $this->reversal()->coupon_removed( $order, $reward->get_coupon_code() );
+
+        $this->assertSame( Outcome::SKIPPED, $outcome->get_status() );
+        $this->assertSame( Reversal::REASON_NOTHING_TO_MOVE, $outcome->get_reason() );
+        $this->assertSame( [ 1000, -500, 500 ], $this->ledger_points( 7 ) );
+        $this->assertNull( $this->reversal()->coupon_removed( $order, 'summer10' ) );
     }
 }
