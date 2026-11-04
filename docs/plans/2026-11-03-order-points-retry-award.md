@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. Read the spec linked below before starting; the plan argues from it.
 
-**Status:** active
+**Status:** done 2026-11-04
 **Goal:** The order screen's "Give N points" button re-runs the standard purchase award for an order whose award never completed, instead of writing a separate `:recovery` ledger row.
 **Spec:** [docs/specs/2026-10-30-order-points-recovery-design.md](../specs/2026-10-30-order-points-recovery-design.md), amended by Task 1 of this plan. Supersedes [docs/plans/2026-10-30-order-points-recovery/](2026-10-30-order-points-recovery/README.md).
 **Architecture:** "Missing" is decided by the order alone: `completed`, has a customer, no EARN row for the order (any user), and either an unreleased staged figure (signal A) or `_yayloyalty_points_earned` without an EARN row (signal C). The button runs the same code `completed` runs (`OrderAward::run()`, extracted from `OrderListener`), so the row is a normal purchase earn keyed `earn:{user}:order:{id}:purchase` and every existing guard, reversal and refund path applies unchanged. The rejected alternative is the separate recovery row this branch shipped first: it needed its own qualifier, guard, figure rules and reversal tweaks, and produced the double-pay and refund bugs found on 2026-11-03.
