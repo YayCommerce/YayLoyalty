@@ -20,8 +20,10 @@ import {
   activityMembershipStartedSubLine,
   activityPointsAdjustedSubLine,
   activityRewardRedeemedSubLine,
+  activityTierChangedSubLine,
   AUTOMATIC_ACTOR_LABEL,
   CUSTOMER_ACTOR_LABEL,
+  tierChangeReasonLabel,
 } from './customer-drawer.activity.copy';
 
 export type ActivityRow = {
@@ -93,8 +95,12 @@ function subLineFor(entry: ActivityEntry): string {
     case 'points_adjusted':
       return activityPointsAdjustedSubLine(formatSignedPoints(num(data, 'points')), str(data, 'note'));
     case 'tier_changed':
-      // Nothing records this event until tiers ship, so its data has no agreed shape yet.
-      return '';
+      // Data keys from CustomerActivityService::record_tier_changed(). Names are frozen at write time, so a deleted tier still reads.
+      return activityTierChangedSubLine(
+        str(data, 'from_name'),
+        str(data, 'to_name'),
+        tierChangeReasonLabel(str(data, 'reason'), entry.actor_name ?? ''),
+      );
     case 'expiry_reset':
       return activityExpiryResetSubLine(
         formatStoredDate(str(data, 'from')),

@@ -2,6 +2,9 @@ import { HTTPError } from 'ky';
 
 import { api } from '@/lib/api/api';
 import {
+  AssignCustomerTierInput,
+  CustomerTier,
+  customerTierSchema,
   Tier,
   TierInput,
   TierInUse,
@@ -54,4 +57,18 @@ export async function getTierSettings(signal?: AbortSignal): Promise<TierSetting
 /** PUT tiers/settings. Turning tiers on starts the placement sweep; turning them off drops any pending sweep. */
 export async function updateTierSettings(input: { tiers_enabled: boolean }): Promise<TierSettings> {
   return tierSettingsSchema.parse(await api.put('tiers/settings', { json: input }).json());
+}
+
+export async function getCustomerTier(userId: number, signal?: AbortSignal): Promise<CustomerTier> {
+  return customerTierSchema.parse(await api.get(`customers/${userId}/tier`, { signal }).json());
+}
+
+/** POST customers/{id}/tier: sets the manual floor, which raises the customer now when it outranks their tier. */
+export async function assignCustomerTier(userId: number, input: AssignCustomerTierInput): Promise<CustomerTier> {
+  return customerTierSchema.parse(await api.post(`customers/${userId}/tier`, { json: input }).json());
+}
+
+/** DELETE customers/{id}/tier: clears the floor and moves the customer to the tier their points qualify for. */
+export async function removeCustomerTier(userId: number): Promise<CustomerTier> {
+  return customerTierSchema.parse(await api.delete(`customers/${userId}/tier`).json());
 }

@@ -10,13 +10,14 @@ defined( 'ABSPATH' ) || exit;
  * The args `GET /customers/{id}/activity` takes. `search`, `from` and `to` match
  * LedgerQueryArgs' args field for field, so the two tabs' filter rows behave the same.
  *
- * `group` is a lens over the eight `event_type`s, not a partition: `expiring_soon_email_sent`
+ * `group` is a lens over the `event_type`s, not a partition: `expiring_soon_email_sent`
  * belongs to both `expiry` and `emails` on purpose, so do not "fix" the overlap.
- * `membership_started` is in no group, and `all` still shows it.
+ * `membership_started` is in no group, and `all` still shows it. `tiers` is offered only by the Pro
+ * drawer; on Lite it just finds the rows a Pro install left.
  */
 final class ActivityQueryArgs {
 
-    public const GROUPS = [ 'all', 'admin', 'expiry', 'emails' ];
+    public const GROUPS = [ 'all', 'admin', 'expiry', 'emails', 'tiers' ];
 
     public const ACTOR_KINDS = ActorKind::ALL;
 
@@ -63,6 +64,8 @@ final class ActivityQueryArgs {
                 return [ ActivityEvent::EXPIRY_RESET, ActivityEvent::EXPIRING_SOON_EMAIL_SENT ];
             case 'emails':
                 return [ ActivityEvent::BALANCE_EMAIL_SENT, ActivityEvent::EXPIRING_SOON_EMAIL_SENT ];
+            case 'tiers':
+                return [ ActivityEvent::TIER_CHANGED ];
             default:
                 return ActivityEvent::ALL;
         }

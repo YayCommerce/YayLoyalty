@@ -68,3 +68,24 @@ export const tierSettingsSchema = z.object({
 });
 
 export type TierSettings = z.infer<typeof tierSettingsSchema>;
+
+/** Mirrors CustomerTierRestController::respond(), the source of truth. */
+export const customerTierSchema = z.object({
+  /** Null when the customer has no tier, or their stored tier was deleted. */
+  tier: z
+    .object({ id: z.number().int(), name: z.string(), color: z.string(), tier_rank: z.number().int() })
+    .nullable(),
+  /** The points the tier was last judged on. */
+  progress_value: z.number().int(),
+  /** The lowest live tier above `tier`, or null at the top tier. */
+  next: z.object({ id: z.number().int(), name: z.string(), threshold: z.number().int() }).nullable(),
+  achieved_at: z.string().nullable(),
+  /** The manual floor; `until` is null for no end. */
+  manual: z
+    .object({ tier_id: z.number().int(), name: z.string(), color: z.string(), until: z.string().nullable() })
+    .nullable(),
+});
+
+export type CustomerTier = z.infer<typeof customerTierSchema>;
+
+export type AssignCustomerTierInput = { tier_id: number; days: number | null };

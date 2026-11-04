@@ -21,6 +21,7 @@ export { CampaignTable } from './campaigns/CampaignTable';
 export { CampaignCreator, CampaignEditor } from './campaigns/editor/CampaignEditor';
 export { CampaignPerformance } from './campaigns/performance/CampaignPerformance';
 export { CustomersSavedSegmentRow } from './customers/CustomersSavedSegmentRow';
+export { CustomerTierCard } from './customers/CustomerTierCard';
 export { DashboardProPanels } from './dashboard/DashboardProPanels';
 export { DesignPanelSection } from './design/DesignPanelSection';
 export { DesignCustomCssSection } from './design/DesignCustomCssSection';

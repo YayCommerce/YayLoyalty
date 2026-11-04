@@ -19,7 +19,7 @@ import { settleInChunks } from '@/lib/helpers/settle-in-chunks.helper';
 import type { AdjustPointsInput, AdjustPointsPreviewInput } from '@/lib/schema/customer.schema';
 
 /** `['customer', kind, userId]`, built in one place so the query keys and the adjust invalidations cannot drift apart. */
-function customerKeyPrefix(kind: 'detail' | 'ledger' | 'activity' | 'redemptions', userId: number) {
+export function customerKeyPrefix(kind: 'detail' | 'ledger' | 'activity' | 'redemptions', userId: number) {
   return ['customer', kind, userId] as const;
 }
 
