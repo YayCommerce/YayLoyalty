@@ -18,14 +18,14 @@ disable-model-invocation: true
 2. **Verify.** For each accepted zip: `YR builds verify --zip=<path>`. A checksum mismatch stops this release: the file the manager uploaded is not the one the kit built. Ask the user to compare with what was uploaded.
    The tag goes on `BUILD.json → git.sha` of the accepted zip (for a resubmission, the last accepted one). Check that sha is on the release branch: `git merge-base --is-ancestor <sha> <release branch>`.
 3. **Plan, then confirm.** Show, in one block:
-   - merge `<release branch>` → `<released_branch>` (`--no-ff`); if the edition has no released branch, say so and skip this merge;
+   - merge `<release branch>` → `<released_branch>` (`--no-ff`). If the config names a released branch that doesn't exist yet (a first release), propose creating it at the tagged commit instead of merging; if the config names none, say so and skip this step;
    - tag `<tag name>` (from `tag_format`) on `<sha>` with a message carrying version, zip names, sha256 and shared-code pin;
    - merge `<release branch>` → `<dev branch>` (`--no-ff`) so the bump and changelog are on dev;
    - support log: unreleased fixes whose dev commit is in this release → `released in X.Y.Z`;
    - the push list.
    Ask for one yes. If the release branch's tip is ahead of `<sha>` (commits after the accepted build), say so: they are merged but are not in the tagged zip.
 4. **Do it**, stopping at the first failure:
-   1. `YR git merge --from=<release branch> --into=<released_branch> --approved --message="Merge <release branch> (X.Y.Z live)"`
+   1. `YR git merge --from=<release branch> --into=<released_branch> --approved --message="Merge <release branch> (X.Y.Z live)"`. For a released branch that doesn't exist yet: after the user's yes, `git -C <repo> branch --no-track <released_branch> <sha>` (the only long-lived branch the release skills create, and only here).
    2. Write the tag message to a temp file; `YR git tag --name=<tag> --sha=<sha> --message-file=<file> --approved`. Exit 3 = the tag exists: stop; the kit never moves tags.
    3. `YR git merge --from=<release branch> --into=<dev branch> --approved`
    4. In a worktree of the dev branch (the merge printed where; or `YR worktree add --branch=<dev branch>` when it is not checked out anywhere): `YR support mark-released --plugin=<p> --edition=<e> --tree=<that worktree> --version=X.Y.Z [--tickets=…]`, then `YR git commit --worktree=<it> --paths=<support log> --message="chore(support): X.Y.Z released" --approved`.
