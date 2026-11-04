@@ -6,7 +6,14 @@
  * Names (the zip's internal folder always stays the plugin's real slug):
  *   test     <stem>-X.Y.Z-test.<n>-<shortsha>.zip
  *   release  <stem>-X.Y.Z.zip, resubmissions <stem>-X.Y.Z-r<n>.zip
- *   support  <stem>-X.Y.Z-support-<ticket>-<shortsha>.zip
+ *   hotfix   <stem>-T-hotfix.<n>-<shortsha>.zip              client build from a hotfix/release branch
+ *   support  <stem>-T-hotfix.<n>-support-<ticket>-<shortsha>.zip   client build from a support branch
+ *
+ * Client builds (hotfix, support) carry the version T-hotfix.<n> inside the zip, where T is the
+ * release the fix is headed for: a hotfix branch's own version, or for a support build the patch
+ * after the live version. <n> counts up per T across dist/ and the committed support log, so two
+ * client builds never share a version. See Version (lib/php/version.php) for why this ordering
+ * makes every later client build and the real release an update.
  */
 
 declare(strict_types=1);
@@ -37,12 +44,52 @@ final class Builds {
 		return null;
 	}
 
+	/**
+	 * Version for a client build: [target, n, "target-hotfix.n"].
+	 * hotfix: target = the X.Y.Z of a release branch name (release/<stem>-X.Y.Z), else the commit's
+	 *   version; it must be above the live one.
+	 * support: target = the patch after the live version (the customer may run an older one).
+	 */
+	public static function client_version( Config $cfg, string $plugin, string $edition, string $type, string $commit_version, ?string $ref = null ): array {
+		$base = Version::base( $cfg, $plugin, $edition );
+		if ( ! $base || ! empty( $base['first_release'] ) ) {
+			throw new Fail( "$plugin/$edition has no live version yet (no tag or confirmed baseline); a client build has nothing to replace", EXIT_NOT_CONFIG );
+		}
+		if ( $type === 'hotfix' ) {
+			$target = $ref !== null && preg_match( '#^release/.+-(\d+\.\d+(?:\.\d+){0,2})$#', $ref, $m ) ? $m[1] : $commit_version;
+			if ( Version::cmp( $target, $base['version'] ) <= 0 ) {
+				throw new Fail( "$target is not above the live {$base['version']}. Client builds come from a hotfix or release branch (release/<stem>-X.Y.Z, start one with: yr hotfix start)", EXIT_USAGE );
+			}
+		} else {
+			$target = Version::bump( $base['version'], 'patch' );
+		}
+		$n = 0;
+		foreach ( self::all( $cfg->dist_dir( $plugin, $edition ) ) as $b ) {
+			$cp = Version::client_parts( (string) ( $b['version'] ?? '' ) );
+			if ( $cp && $cp[0] === $target ) {
+				$n = max( $n, $cp[1] );
+			}
+		}
+		$e = $cfg->edition( $plugin, $edition );
+		foreach ( SupportLog::rows( SupportLog::read( $cfg, $e, $e['dev_branch'] ) ) as $r ) {
+			$cp = Version::client_parts( (string) ( $r['build_version'] ?? '' ) );
+			if ( $cp && $cp[0] === $target ) {
+				$n = max( $n, $cp[1] );
+			}
+		}
+		$n++;
+		return [ $target, $n, "$target-hotfix.$n" ];
+	}
+
 	/** Next number and file name for a build. */
-	public static function next( Config $cfg, string $plugin, string $edition, string $type, string $version, string $short, ?string $ticket ): array {
+	public static function next( Config $cfg, string $plugin, string $edition, string $type, string $version, string $short, ?string $ticket, ?string $ref = null ): array {
 		$dir  = $cfg->dist_dir( $plugin, $edition );
 		$stem = $cfg->stem( $plugin, $edition );
 		$all  = self::all( $dir );
 		switch ( $type ) {
+			case 'hotfix':
+				[ $target, $n, $cv ] = self::client_version( $cfg, $plugin, $edition, 'hotfix', $version, $ref );
+				return [ 'number' => $n, 'resubmission' => null, 'version' => $cv, 'source_version' => $version, 'target' => $target, 'file' => "$stem-$cv-$short.zip" ];
 			case 'test':
 				$n = 0;
 				foreach ( $all as $b ) {
@@ -78,9 +125,10 @@ final class Builds {
 					throw new Fail( 'support builds need --ticket', EXIT_USAGE );
 				}
 				$t = preg_replace( '/[^A-Za-z0-9._-]+/', '-', $ticket );
-				return [ 'number' => null, 'resubmission' => null, 'file' => "$stem-$version-support-$t-$short.zip" ];
+				[ $target, $n, $cv ] = self::client_version( $cfg, $plugin, $edition, 'support', $version );
+				return [ 'number' => $n, 'resubmission' => null, 'version' => $cv, 'source_version' => $version, 'target' => $target, 'file' => "$stem-$cv-support-$t-$short.zip" ];
 		}
-		throw new Fail( "unknown build type '$type' (test|release|support)", EXIT_USAGE );
+		throw new Fail( "unknown build type '$type' (test|release|hotfix|support)", EXIT_USAGE );
 	}
 
 	/** Entries, top-level folders and size of a zip. */
@@ -137,7 +185,7 @@ function cmd_builds( array $pos ): int {
 
 	if ( $sub === 'next' ) {
 		[ $plugin, $eds ] = $cfg->resolve( opt( 'plugin' ), opt( 'edition' ) );
-		out_json( Builds::next( $cfg, $plugin, $eds[0], req( 'type' ), req( 'version' ), req( 'short' ), opt( 'ticket' ) ) );
+		out_json( Builds::next( $cfg, $plugin, $eds[0], req( 'type' ), req( 'version' ), req( 'short' ), opt( 'ticket' ), opt( 'ref' ) ) );
 		return 0;
 	}
 	if ( $sub === 'list' || $sub === 'latest' ) {
@@ -190,6 +238,8 @@ function cmd_builds( array $pos ): int {
 			'target'        => $e['target'],
 			'slug'          => $e['slug'],
 			'version'       => req( 'version' ),
+			'source_version' => opt( 'source-version' ) ?: null,
+			'client_build'  => in_array( req( 'type' ), [ 'hotfix', 'support' ], true ),
 			'build_type'    => req( 'type' ),
 			'build_number'  => opt( 'number' ) !== null && opt( 'number' ) !== '' ? (int) opt( 'number' ) : null,
 			'resubmission'  => opt( 'resubmission' ) !== null && opt( 'resubmission' ) !== '' ? (int) opt( 'resubmission' ) : null,

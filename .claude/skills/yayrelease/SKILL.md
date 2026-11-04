@@ -19,7 +19,8 @@ description: Prepares the final release zip of one YayCommerce plugin edition af
 1. **Edition and baseline.** `YR config resolve --plugin=<p> --edition=<e>`; ask for the edition if the plugin has several and none was named. `YR version propose --plugin=<p> --edition=<e>` must find a tag or confirmed baseline; if not, stop: "run /yayinit to confirm what is released first".
    Editions that share a dev branch (`branch_group`, e.g. Pro and Lite built from one branch) are released together: one branch, one bump, one changelog, one zip per edition.
 2. **Approved test build.** `YR builds list --plugin=<p> --edition=<e>`. Ask which test build the tester approved (default: the latest). Then `git rev-list --count <its sha>..<dev branch>`: if the dev branch has newer commits, list them and warn that they are not tested; release from the approved commit unless the user wants a new test build first.
-3. **Version.** `YR version propose --plugin=<p> --edition=<e> --ref=<approved sha>`. Show: current release → proposed version, the bump reason in one line, every `uncertain` item, and `notes`. Under a shared version policy, list each sibling and whether it would be left behind (`siblings[].left_behind`); offer to release them too (one `/yayrelease` each, or `/yayorchestrate release`). The user may override the version; it must be higher than the released one.
+3. **Version.** `YR version propose --plugin=<p> --edition=<e> --ref=<approved sha>`. Show: current release → proposed version, the bump reason in one line, every `uncertain` item, and `notes`. Under a shared version policy, list each sibling and whether it would be left behind (`siblings[].left_behind`); offer to release them too (one `/yayrelease` each, or `/yayorchestrate release`). The user may override the version; it must be higher than the released one and than every client build in `client_builds`.
+   **Client guards:** `YR support check --plugin=<p> --edition=<e> --ref=<approved sha> --version=X.Y.Z`. It fails when a client received a client build at or above X.Y.Z, or a logged client fix (yaysupport/yayhotfix) is not in the approved commit; the release build refuses in the same cases. Show the tickets. The fix is to bring the fix to the dev branch (and test again), or, with the user's decision, `YR support set-status --ticket=<t> --status=wont-release --note=<why>`. In worker mode: report `blocked` with the problems.
 4. **Release branch.** Name: `release/<plugin>-<edition>-X.Y.Z` (a branch group: `release/<group>-X.Y.Z`; the kit computes it from the config). `YR git branch-create --name=<b> --from=<approved sha>`.
    - Exit 3 = it exists. Ask: resume it (use it as is) or start fresh (`--fresh` moves the old one aside to `<b>-old-<timestamp>`; nothing is deleted).
    - Then `YR worktree add --repo=<repo> --name=<b with / → -> --branch=<b>`; work only in that worktree.
@@ -35,6 +36,8 @@ description: Prepares the final release zip of one YayCommerce plugin edition af
 ## Failure handling
 
 - **No baseline:** stop; `/yayinit`.
+- **Client guards fail:** see step 3; never release over a client build or without a client's fix.
+- **A bug in what is live now** (not a new release): that is `/yayhotfix`, from the live tag instead of the dev branch.
 - **Version mismatch after bump:** a pattern in the config doesn't match the file any more. Show the problem; fix the config with the user (`/yayinit` re-run for this plugin), never hand-edit around it.
 - **Gates fail:** as in yaybuild: explain, fix the plugin on the release branch, rebuild.
 - **Push rejected** (branch moved on the remote): never force. Show the state and ask.

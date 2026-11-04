@@ -3,14 +3,14 @@
 #
 #   sync --from=<canonical repo or worktree> [--to=<repo or worktree>] [--dry-run]
 #        Replace the shared files whole (the canonical copy is YayCommerce/Yay-Release-Kit): the
-#        release-kit folder, the eight release skills, the worker agent and RELEASING.md.
+#        release-kit folder, the nine release skills, the worker agent and RELEASING.md.
 #        Never touches .claude/release.config.json or support logs, and never commits.
 #   hook-install [--to=<tree>] [--dry-run]   register hooks/guard-release.sh in .claude/settings.json
 #   doctor                                   check the tools the kit needs
 set -euo pipefail
 . "$YR_KIT_DIR/lib/sh/common.sh"
 
-SHARED_DIRS=".claude/release-kit .claude/skills/yayinit .claude/skills/yaystatus .claude/skills/yaybuild .claude/skills/yayrelease .claude/skills/yayrelease-fix .claude/skills/yayfinalize .claude/skills/yaysupport .claude/skills/yayorchestrate"
+SHARED_DIRS=".claude/release-kit .claude/skills/yayinit .claude/skills/yaystatus .claude/skills/yaybuild .claude/skills/yayrelease .claude/skills/yayrelease-fix .claude/skills/yayfinalize .claude/skills/yayhotfix .claude/skills/yaysupport .claude/skills/yayorchestrate"
 SHARED_FILES=".claude/agents/yayrelease-worker.md RELEASING.md"
 
 sub="${1:-doctor}"
@@ -38,6 +38,17 @@ sync)
 			mkdir -p "$(dirname "$to/$f")"; cp "$from/$f" "$to/$f"
 		fi
 	done
+	# A shared path the repo's .gitignore hides would silently never be committed (e.g. per-skill negations).
+	ignored=""
+	for p in $SHARED_DIRS $SHARED_FILES; do
+		probe="$p"; [ -d "$from/$p" ] && probe="$p/$(cd "$from/$p" && ls | head -1)"
+		if git -C "$to" check-ignore -q "$probe" 2>/dev/null; then ignored="$ignored $p"; fi
+	done
+	if [ -n "$ignored" ]; then
+		say ""
+		say "warning: the repo's .gitignore hides these kit paths, so they would not be committed:"
+		for p in $ignored; do say "  $p   (add: !$p$( [ -d "$from/$p" ] && echo /))"; done
+	fi
 	say ""
 	say "done. Review with: git -C $to status --short; commit on each edition dev branch only after approval."
 	;;

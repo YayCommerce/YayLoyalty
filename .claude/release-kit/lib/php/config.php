@@ -368,6 +368,8 @@ function cmd_config( array $pos ): int {
 			'YR_DEV_BRANCH'    => $e['dev_branch'],
 			'YR_RELEASED_BRANCH' => $e['released_branch'] ?? '',
 			'YR_BRANCH_GROUP'  => $e['branch_group'],
+			'YR_GROUP_EDITIONS' => implode( ',', $cfg->editions_in_group( $plugin, $e['branch_group'] ) ),
+			'YR_TAG_FORMAT'    => $e['tag_format'],
 			'YR_PREPARE_CMD'   => $e['prepare'] ?? '',
 			'YR_NODE'          => (string) ( $e['node'] ?? ( $cfg->plugin( $plugin )['node'] ?? '' ) ),
 			'YR_BUILD_CMD'     => $e['build']['cmd'],
@@ -389,11 +391,16 @@ function cmd_config( array $pos ): int {
 		echo shell_env( $vars );
 		return 0;
 	}
+	if ( $sub === 'release-branch' ) {
+		[ $plugin, $eds ] = $cfg->resolve( opt( 'plugin' ), opt( 'edition' ) );
+		echo $cfg->release_branch( $plugin, $eds[0], req( 'version' ) ) . "\n";
+		return 0;
+	}
 	if ( $sub === 'long-lived' ) {
 		echo implode( "\n", $cfg->long_lived_branches() ) . "\n";
 		return 0;
 	}
-	throw new Fail( "unknown: config $sub (get|resolve|validate|env|long-lived)", EXIT_USAGE );
+	throw new Fail( "unknown: config $sub (get|resolve|validate|env|release-branch|long-lived)", EXIT_USAGE );
 }
 
 function cmd_registry( array $pos ): int {

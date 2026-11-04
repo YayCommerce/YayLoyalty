@@ -5,6 +5,15 @@
  * write a new version into every location.
  *
  * Versions may have 3 or 4 parts (3.5.7.2). A bump always yields 3 parts: patch on 3.5.7.2 → 3.5.8.
+ *
+ * Client versions: a zip handed to clients before (or instead of) a release is labelled
+ * `<target>-hotfix.<n>`, where target is the version the fix will be released as (3.6.3-hotfix.2).
+ * PHP's version_compare, which WordPress, the EDD updater and the Woo updater use, orders
+ *   3.6.2 < 3.6.3-hotfix.1 < 3.6.3-hotfix.2 < 3.6.3 < 3.7.0
+ * so a client build replaces the buggy live version, a later client build replaces an earlier
+ * one, and the real release replaces every client build. A suffix on the *live* version would
+ * sort below it (3.6.2-hotfix.1 < 3.6.2), which is why the target is always above the release.
+ * Client versions live only inside zips (set in the throwaway build tree), never in git.
  */
 
 declare(strict_types=1);
@@ -14,6 +23,16 @@ namespace YR;
 final class Version {
 	public static function valid( string $v ): bool {
 		return (bool) preg_match( '/^\d+\.\d+(\.\d+){0,2}$/', $v );
+	}
+
+	/** A client build version: <release version>-hotfix.<n>. */
+	public static function valid_client( string $v ): bool {
+		return (bool) preg_match( '/^\d+\.\d+(\.\d+){0,2}-hotfix\.\d+$/', $v );
+	}
+
+	/** [target, n] of a client version, or null. */
+	public static function client_parts( string $v ): ?array {
+		return preg_match( '/^(\d+\.\d+(?:\.\d+){0,2})-hotfix\.(\d+)$/', $v, $m ) ? [ $m[1], (int) $m[2] ] : null;
 	}
 
 	/** @return int[] */
@@ -50,8 +69,12 @@ final class Version {
 				? ( is_file( "$tree/{$vf['path']}" ) ? (string) file_get_contents( "$tree/{$vf['path']}" ) : null )
 				: git_show( $cfg->repo, (string) $ref, $vf['path'] );
 			$value = null;
-			if ( $content !== null && preg_match( rx( $vf['pattern'] ), $content, $m ) ) {
-				$value = trim( $m['v'] );
+			if ( $content !== null && preg_match( rx( $vf['pattern'] ), $content, $m, PREG_OFFSET_CAPTURE ) ) {
+				$value = trim( $m['v'][0] );
+				// Patterns written for plain versions ([0-9][0-9.]*) stop before a client suffix; read it too.
+				if ( preg_match( '/\G-hotfix\.\d+/', $content, $sx, 0, $m['v'][1] + strlen( $m['v'][0] ) ) ) {
+					$value .= $sx[0];
+				}
 			}
 			$out[] = [ 'path' => $vf['path'], 'pattern' => $vf['pattern'], 'value' => $value, 'optional' => ! empty( $vf['optional'] ), 'present' => $content !== null ];
 		}
@@ -194,6 +217,17 @@ function cmd_version( array $pos ): int {
 		return ( $sub === 'check' && $bad ) ? EXIT_FAIL : 0;
 	}
 
+	if ( $sub === 'base' ) {
+		// What is live now for an edition: its latest tag, else the confirmed baseline.
+		$k    = $eds[0];
+		$base = Version::base( $cfg, $plugin, $k );
+		if ( ! $base ) {
+			throw new Fail( "$plugin/$k has no release tag and no confirmed baseline. Run the yayinit skill first.", EXIT_NOT_CONFIG );
+		}
+		out_json( [ 'plugin' => $plugin, 'edition' => $k ] + $base );
+		return 0;
+	}
+
 	if ( $sub === 'propose' ) {
 		$k    = $eds[0];
 		$e    = $cfg->edition( $plugin, $k );
@@ -220,6 +254,13 @@ function cmd_version( array $pos ): int {
 		if ( $next && Version::cmp( (string) $current, $base['version'] ) > 0 ) {
 			$notes[] = "the dev branch already says $current (released: {$base['version']}); proposal counts from the release, so $next" . ( Version::cmp( $next, (string) $current ) < 0 ? " is below $current: pick $current or higher" : '' );
 		}
+		// Client builds out (support log): the release must be above every one of them.
+		$clients = array_values( array_filter( array_column( SupportLog::rows( SupportLog::read( $cfg, $e, $e['dev_branch'] ), 'unreleased' ), 'build_version' ), 'strlen' ) );
+		foreach ( $clients as $cv ) {
+			if ( $next && Version::cmp( $next, $cv ) <= 0 ) {
+				$notes[] = "a client received $cv: $next would never reach them; release above $cv";
+			}
+		}
 		$siblings = [];
 		if ( $cfg->plugin( $plugin )['version_policy'] === 'shared' ) {
 			foreach ( $cfg->siblings( $plugin, $k ) as $s ) {
@@ -239,15 +280,16 @@ function cmd_version( array $pos ): int {
 			'plugin' => $plugin, 'edition' => $k, 'base' => $base, 'head' => $head, 'dev_version' => $current,
 			'bump' => $proposal['bump'], 'proposed' => $next, 'reasons' => $proposal['reasons'],
 			'uncertain' => $proposal['uncertain'], 'notes' => $notes, 'siblings' => $siblings,
-			'commit_count' => count( $commits ), 'from_version' => $from,
+			'commit_count' => count( $commits ), 'from_version' => $from, 'client_builds' => $clients,
 		] );
 		return 0;
 	}
 
 	if ( $sub === 'bump' ) {
 		$to = req( 'to' );
-		if ( ! Version::valid( $to ) ) {
-			throw new Fail( "not a version: $to", EXIT_USAGE );
+		// --client: a client version (X.Y.Z-hotfix.N), written only into a throwaway build tree.
+		if ( ! Version::valid( $to ) && ! ( flag( 'client' ) && Version::valid_client( $to ) ) ) {
+			throw new Fail( "not a version: $to" . ( Version::valid_client( $to ) ? ' (client versions are set only inside build trees, with --client)' : '' ), EXIT_USAGE );
 		}
 		$tree = expand_home( req( 'tree' ) );
 		$changed = [];
@@ -267,5 +309,5 @@ function cmd_version( array $pos ): int {
 		return 0;
 	}
 
-	throw new Fail( "unknown: version $sub (get|check|propose|bump)", EXIT_USAGE );
+	throw new Fail( "unknown: version $sub (get|check|base|propose|bump)", EXIT_USAGE );
 }

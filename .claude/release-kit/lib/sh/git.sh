@@ -12,6 +12,8 @@
 #   commit        --worktree=<path> --paths=a,b --message=<msg> [--approved]
 #   cherry-pick   --commits=<sha,sha> --onto=<branch> --approved
 #   merge         --from=<branch> --into=<branch> --approved [--message=<msg>]
+#                 [--resolve-release-files [--plugin=<p>]]   settle version/changelog conflicts
+#                 (lib/php/conflicts.php: higher version, both changelog entries); anything else aborts
 #   tag           --name=<tag> --sha=<sha> --message-file=<file> --approved
 #   push-plan     --refs=<branch,tags/x,…>
 #   push          --refs=<…> --confirmed
@@ -111,7 +113,13 @@ merge)
 	if [ "$YR_DRY" = 1 ]; then say "[dry-run] would merge --no-ff $from into $into: $msg"; exit 0; fi
 	wt="$(checkout_for "$into")"
 	trap drop_tmp EXIT
-	if ! git -C "$wt" merge --no-ff --no-edit -m "$msg" "$from" >&2; then
+	if ! git -C "$wt" -c merge.conflictStyle=merge merge --no-ff --no-edit -m "$msg" "$from" >&2; then
+		if hasflag resolve-release-files && yrphp conflicts resolve --repo="$repo" $(passthru_opts | grep -e '^--plugin=' || true) --tree="$wt" >&2; then
+			git -C "$wt" commit --quiet --no-edit
+			say "merged $from into $into: $(git -C "$wt" rev-parse --short HEAD). The conflicts were settled automatically (version and changelog rules, see above); review: git -C $wt show HEAD"
+			git -C "$wt" rev-parse HEAD
+			exit 0
+		fi
 		git -C "$wt" merge --abort || true
 		die "merging $from into $into conflicts; nothing was changed. Resolve it by hand." 4
 	fi

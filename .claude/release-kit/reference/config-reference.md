@@ -79,7 +79,7 @@ branch** (yaystatus flags drift). Skills read it and never re-ask for these valu
 replaces every match (badges); `optional: true` lets the file be absent.
 
 **Names derived from the config**
-- zips: `<plugin>-<edition>-X.Y.Z-test.<n>-<sha>.zip`, `<plugin>-<edition>-X.Y.Z[-r<n>].zip`, `<plugin>-<edition>-X.Y.Z-support-<ticket>-<sha>.zip`
+- zips: `<plugin>-<edition>-X.Y.Z-test.<n>-<sha>.zip`, `<plugin>-<edition>-X.Y.Z[-r<n>].zip`, client builds `<plugin>-<edition>-X.Y.Z-hotfix.<n>-<sha>.zip` (hotfix) and `<plugin>-<edition>-X.Y.Z-hotfix.<n>-support-<ticket>-<sha>.zip` (support), whose plugin version is X.Y.Z-hotfix.<n>
 - release branch: `release/<plugin>-<edition>-X.Y.Z` (editions sharing a dev branch: `release/<group name>-X.Y.Z`)
 - support branch: `support/<plugin>-<edition>-<ticket>`
 - tag: `tag_format`, created only by yayfinalize when the release is live

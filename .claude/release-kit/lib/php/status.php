@@ -63,12 +63,46 @@ final class Status {
 			}
 		}
 		$row['open_branches'] = array_keys( $open );
+		// Hotfix branches (start commit made by `yr hotfix start`) and branches a newer release overtook.
+		$row['hotfixes'] = [];
+		foreach ( $row['open_branches'] as $b ) {
+			if ( strncmp( $b, 'release/', 8 ) !== 0 || ! preg_match( '/-(\d+\.\d+(?:\.\d+){0,2})$/', $b, $vm ) ) {
+				continue;
+			}
+			$ref = ref_exists( $repo, $b ) ? $b : ( ref_exists( $repo, 'origin/' . $b ) ? 'origin/' . $b : null );
+			if ( ! $ref ) {
+				continue;
+			}
+			// Made by `yr hotfix start`: its start commit is on the branch and not on dev.
+			$is_hotfix = trim( (string) git_try( $repo, [ 'log', '-n', '1', '--format=%h', '--grep=^chore(release): start hotfix', $e['dev_branch'] . '..' . $ref ] ) ) !== '';
+			if ( $is_hotfix ) {
+				$row['hotfixes'][] = [ 'branch' => $b, 'version' => $vm[1] ];
+			}
+			if ( ref_exists( $repo, 'refs/tags/' . $cfg->tag_name( $plugin, $k, $vm[1] ) ) ) {
+				$row['problems'][] = "$b was released as $vm[1] (tagged); the local branch can be deleted (yayfinalize offers it)";
+			} elseif ( $tag && Version::cmp( $vm[1], $tag[1] ) < 0 ) {
+				$row['problems'][] = "$b ($vm[1]) is below the released {$tag[1]}: superseded, it will never be tagged. Its fixes reached clients through {$tag[1]} only if they are in it (yr support check).";
+			}
+		}
 		$latest = Builds::latest( $cfg->dist_dir( $plugin, $k ), 'test' );
-		$row['latest_test_build'] = $latest ? [ 'file' => $latest['zip']['file'], 'date' => $latest['date'], 'sha' => $latest['git']['short'] ] : null;
-		if ( $latest && ref_exists( $repo, $latest['git']['sha'] ) ) {
+		$row['latest_test_build'] = $latest ? [ 'file' => $latest['zip']['file'], 'date' => $latest['date'], 'sha' => $latest['git']['short'], 'branch' => $latest['git']['branch'] ?? null ] : null;
+		if ( $latest && ! empty( $latest['git']['branch'] ) && $latest['git']['branch'] !== $e['dev_branch'] ) {
+			$row['latest_test_build']['from_other_branch'] = true; // e.g. a hotfix test build: not comparable with dev
+		} elseif ( $latest && ref_exists( $repo, $latest['git']['sha'] ) ) {
 			$row['latest_test_build']['commits_since'] = (int) git( $repo, [ 'rev-list', '--count', $latest['git']['sha'] . '..' . $e['dev_branch'] ] );
 		}
-		$row['support_unreleased'] = array_map( static fn( $r ) => "{$r['ticket']}: {$r['fix']}", SupportLog::rows( SupportLog::read( $cfg, $e, $e['dev_branch'] ), 'unreleased' ) );
+		$unrel = SupportLog::rows( SupportLog::read( $cfg, $e, $e['dev_branch'] ), 'unreleased' );
+		$row['support_unreleased'] = array_map( static fn( $r ) => "{$r['ticket']}: {$r['fix']}" . ( $r['build_version'] !== '' ? " (client build {$r['build_version']})" : '' ), $unrel );
+		$row['client_builds'] = [];
+		foreach ( $unrel as $r ) {
+			$in_dev = SupportLog::fix_in( $cfg, $e['dev_branch'], $r );
+			if ( $r['build_version'] !== '' ) {
+				$row['client_builds'][] = [ 'ticket' => $r['ticket'], 'build_version' => $r['build_version'], 'fix_on_dev' => $in_dev ];
+			}
+			if ( ! $in_dev ) {
+				$row['problems'][] = "ticket {$r['ticket']}'s fix is not on {$e['dev_branch']} yet: a release from it would be refused (it would remove the fix from that client). Bring it over (cherry-pick), or mark it wont-release.";
+			}
+		}
 		$row['kit'] = [
 			'config_blob' => git_try( $repo, [ 'rev-parse', $e['dev_branch'] . ':.claude/release.config.json' ] ),
 			'kit_version' => trim( (string) git_show( $repo, $e['dev_branch'], '.claude/release-kit/VERSION' ) ) ?: null,
@@ -110,19 +144,25 @@ final class Status {
 	}
 
 	public static function markdown( array $plugins, array $unconfigured ): string {
-		$o = [ '| Plugin | Edition | Target | Released | Dev | Unreleased | Latest test build | Open branches | Support fixes |', '|---|---|---|---|---|---|---|---|---|' ];
+		$o = [ '| Plugin | Edition | Target | Released | Dev | Unreleased | Latest test build | Open branches | Client fixes |', '|---|---|---|---|---|---|---|---|---|' ];
 		$notes = [];
 		foreach ( $plugins as $p ) {
 			foreach ( $p['editions'] as $r ) {
 				$rel  = $r['released']['version'] ?? '—';
 				$un   = ! isset( $r['unreleased'] ) ? '—' : ( $r['unreleased']['since'] === 'first release pending' ? 'first release pending' : "{$r['unreleased']['commits']} ({$r['unreleased']['user_facing']} user-facing)" );
-				$tb   = $r['latest_test_build'] ? $r['latest_test_build']['file'] . ( ! empty( $r['latest_test_build']['commits_since'] ) ? " (+{$r['latest_test_build']['commits_since']} since)" : '' ) : '—';
-				$o[]  = "| {$p['plugin']} | {$r['edition']} | {$r['target']} | $rel | " . ( $r['dev_version'] ?? '?' ) . " | $un | $tb | " . ( implode( ', ', $r['open_branches'] ?? [] ) ?: '—' ) . ' | ' . count( $r['support_unreleased'] ?? [] ) . ' |';
+				$tb   = $r['latest_test_build'] ? $r['latest_test_build']['file'] . ( ! empty( $r['latest_test_build']['from_other_branch'] ) ? " (from {$r['latest_test_build']['branch']})" : ( ! empty( $r['latest_test_build']['commits_since'] ) ? " (+{$r['latest_test_build']['commits_since']} since)" : '' ) ) : '—';
+				$hot  = array_column( $r['hotfixes'] ?? [], 'branch' );
+				$ob   = array_map( static fn( $b ) => in_array( $b, $hot, true ) ? "$b (hotfix)" : $b, $r['open_branches'] ?? [] );
+				$o[]  = "| {$p['plugin']} | {$r['edition']} | {$r['target']} | $rel | " . ( $r['dev_version'] ?? '?' ) . " | $un | $tb | " . ( implode( ', ', $ob ) ?: '—' ) . ' | ' . count( $r['support_unreleased'] ?? [] ) . ' |';
+				if ( ! empty( $r['client_builds'] ) ) {
+					$top     = array_reduce( array_column( $r['client_builds'], 'build_version' ), static fn( $m, $v ) => $m === null || version_compare( $v, $m, '>' ) ? $v : $m );
+					$notes[] = "- {$p['plugin']}/{$r['edition']}: client builds out: " . implode( ', ', array_map( static fn( $c ) => "{$c['ticket']} {$c['build_version']}", $r['client_builds'] ) ) . ". The next release must be above $top and contain these fixes.";
+				}
 				foreach ( $r['problems'] as $pr ) {
 					$notes[] = "- {$p['plugin']}/{$r['edition']}: $pr";
 				}
 				foreach ( $r['support_unreleased'] ?? [] as $s ) {
-					$notes[] = "- {$p['plugin']}/{$r['edition']}: unreleased support fix $s";
+					$notes[] = "- {$p['plugin']}/{$r['edition']}: unreleased client fix $s";
 				}
 			}
 			foreach ( $p['problems'] as $pr ) {

@@ -3,9 +3,14 @@
  * The committed support log, support/<plugin>-<edition>.md on that edition's dev branch, and the
  * cross-edition port scan.
  *
- * The log has two tables: "Fixes" (one row per customer patch build: status unreleased until the
- * release that includes it is finalized) and "Port decisions" (a sibling's fix this edition will
- * not take, so yaystatus stops listing it). Only `yr support …` writes it.
+ * The log has two tables: "Fixes" (one row per client that received a build: status unreleased
+ * until the release that includes it is finalized) and "Port decisions" (a sibling's fix this
+ * edition will not take, so yaystatus stops listing it). Only `yr support …` writes it.
+ *
+ * Fix rows also guard releases (`yr support check`, run by every release build): a release must be
+ * higher than every unreleased client build (else those clients are never offered it) and must
+ * contain every unreleased client fix (else the update removes the fix). A row the team decides
+ * not to release is set to `wont-release` with a note, and stops blocking.
  */
 
 declare(strict_types=1);
@@ -13,7 +18,10 @@ declare(strict_types=1);
 namespace YR;
 
 final class SupportLog {
-	public const FIX_COLS  = [ 'ticket', 'date', 'customer_version', 'fix', 'support_commit', 'dev_commit', 'status', 'released_in' ];
+	public const FIX_COLS  = [ 'ticket', 'date', 'customer_version', 'build_version', 'fix', 'support_commit', 'dev_commit', 'status', 'released_in' ];
+	/** Kit 0.1 logs had no build_version column. */
+	public const FIX_COLS_V1 = [ 'ticket', 'date', 'customer_version', 'fix', 'support_commit', 'dev_commit', 'status', 'released_in' ];
+	public const STATUSES  = [ 'unreleased', 'released', 'wont-release' ];
 	public const PORT_COLS = [ 'commit', 'from', 'subject', 'decision', 'reason', 'date' ];
 
 	public static function read( Config $cfg, array $e, string $ref ): ?string {
@@ -21,7 +29,7 @@ final class SupportLog {
 	}
 
 	/** Parse one table (under "## Fixes" or "## Port decisions"). */
-	public static function table( ?string $md, string $section, array $cols ): array {
+	public static function table( ?string $md, string $section, array $cols, array $legacy = [] ): array {
 		if ( $md === null ) {
 			return [];
 		}
@@ -36,16 +44,20 @@ final class SupportLog {
 				continue;
 			}
 			$cells = array_map( static fn( $c ) => str_replace( '\|', '|', trim( $c ) ), preg_split( '/(?<!\\\\)\|/', $m[1] ) );
-			if ( count( $cells ) !== count( $cols ) || preg_match( '/^-+$/', $cells[0] ) || strcasecmp( $cells[0], ucfirst( $cols[0] ) ) === 0 ) {
+			if ( preg_match( '/^-+$/', $cells[0] ) || strcasecmp( $cells[0], ucfirst( $cols[0] ) ) === 0 ) {
 				continue;
 			}
-			$rows[] = array_combine( $cols, $cells );
+			if ( count( $cells ) === count( $cols ) ) {
+				$rows[] = array_combine( $cols, $cells );
+			} elseif ( $legacy && count( $cells ) === count( $legacy ) ) {
+				$rows[] = array_merge( array_fill_keys( $cols, '' ), array_combine( $legacy, $cells ) );
+			}
 		}
 		return $rows;
 	}
 
 	public static function rows( ?string $md, ?string $status = null ): array {
-		$rows = self::table( $md, 'Fixes', self::FIX_COLS );
+		$rows = self::table( $md, 'Fixes', self::FIX_COLS, self::FIX_COLS_V1 );
 		return $status ? array_values( array_filter( $rows, static fn( $r ) => strcasecmp( $r['status'], $status ) === 0 ) ) : $rows;
 	}
 
@@ -60,7 +72,7 @@ final class SupportLog {
 	/** Rewrite one table in the file content, keeping everything else. */
 	public static function put_table( string $md, string $section, array $cols, array $rows ): string {
 		$headers = [
-			'ticket' => 'Ticket', 'date' => 'Date', 'customer_version' => 'Customer runs', 'fix' => 'Fix',
+			'ticket' => 'Ticket', 'date' => 'Date', 'customer_version' => 'Customer runs', 'build_version' => 'Client build', 'fix' => 'Fix',
 			'support_commit' => 'Support commit', 'dev_commit' => 'Dev commit', 'status' => 'Status', 'released_in' => 'Released in',
 			'commit' => 'Commit', 'from' => 'From edition', 'subject' => 'Subject', 'decision' => 'Decision', 'reason' => 'Reason',
 		];
@@ -101,6 +113,60 @@ final class SupportLog {
 			array_push( $out, ...$tbl );
 		}
 		return rtrim( preg_replace( "/\n{3,}/", "\n\n", implode( "\n", $out ) ), "\n" ) . "\n";
+	}
+
+	/** Is $sha's change in $ref: an ancestor, a patch-equivalent commit, or a commit naming it in a -x trailer? */
+	public static function has_commit( string $repo, string $sha, string $ref ): bool {
+		if ( ! preg_match( '/^[0-9a-f]{7,40}$/', $sha ) || ! ref_exists( $repo, $sha ) ) {
+			return false;
+		}
+		if ( run( [ 'git', '-C', $repo, 'merge-base', '--is-ancestor', $sha, $ref ] )[0] === 0 ) {
+			return true;
+		}
+		// Ported by cherry-pick: a patch-equivalent commit, or the -x trailer naming it.
+		$cherry = git_try( $repo, [ 'cherry', $ref, $sha, $sha . '^' ] );
+		if ( $cherry !== null && strncmp( trim( $cherry ), '-', 1 ) === 0 ) {
+			return true;
+		}
+		return trim( (string) git_try( $repo, [ 'log', '-n', '1', '--format=%H', '--grep=cherry picked from commit ' . $sha, $ref ] ) ) !== '';
+	}
+
+	/** Is a fix row's change in $ref? Its dev commit, or every one of its support commits. */
+	public static function fix_in( Config $cfg, string $ref, array $r ): bool {
+		$dev = trim( (string) ( $r['dev_commit'] ?? '' ) );
+		if ( $dev !== '' && self::has_commit( $cfg->repo, $dev, $ref ) ) {
+			return true;
+		}
+		$shas = preg_split( '/[\s,]+/', trim( (string) ( $r['support_commit'] ?? '' ) ), -1, PREG_SPLIT_NO_EMPTY ) ?: [];
+		if ( ! $shas ) {
+			return false;
+		}
+		foreach ( $shas as $sha ) {
+			if ( ! self::has_commit( $cfg->repo, $sha, $ref ) ) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Release guards for releasing $version from $ref. Problems are plain sentences.
+	 *
+	 * @return array{problems:string[],checked:int}
+	 */
+	public static function check( Config $cfg, array $e, string $ref, string $version, string $log_ref ): array {
+		$problems = [];
+		$rows     = self::rows( self::read( $cfg, $e, $log_ref ), 'unreleased' );
+		foreach ( $rows as $r ) {
+			$bv = trim( (string) $r['build_version'] );
+			if ( $bv !== '' && Version::cmp( $version, $bv ) <= 0 ) {
+				$problems[] = "ticket {$r['ticket']} received $bv; releasing $version would never reach that client (WordPress only offers higher versions). Release a version above $bv.";
+			}
+			if ( ! self::fix_in( $cfg, $ref, $r ) ) {
+				$problems[] = "ticket {$r['ticket']}'s fix (\"{$r['fix']}\", commit " . ( trim( (string) $r['support_commit'] ) ?: '?' ) . ") is not in this release; the update would remove it from that client. Bring it to this branch, or mark it: yr support set-status --ticket={$r['ticket']} --status=wont-release --note=<why>";
+			}
+		}
+		return [ 'problems' => $problems, 'checked' => count( $rows ) ];
 	}
 
 	public static function template( string $plugin, string $edition ): string {
@@ -232,7 +298,23 @@ final class Ports {
 function cmd_support( array $pos ): int {
 	$sub = $pos[1] ?? 'list';
 	$cfg = Config::load();
-	[ $plugin, $eds ] = $cfg->resolve( opt( 'plugin' ), opt( 'edition' ), $sub === 'list' );
+	[ $plugin, $eds ] = $cfg->resolve( opt( 'plugin' ), opt( 'edition' ), $sub === 'list' || $sub === 'check' );
+
+	if ( $sub === 'check' ) {
+		// Release guards: yr support check --ref=<release commit> --version=X.Y.Z [--log-ref=<branch>]
+		$res = [];
+		$bad = false;
+		foreach ( $eds as $k ) {
+			$e         = $cfg->edition( $plugin, $k );
+			$res[ $k ] = SupportLog::check( $cfg, $e, req( 'ref' ), req( 'version' ), opt( 'log-ref', $e['dev_branch'] ) );
+			$bad       = $bad || $res[ $k ]['problems'];
+			foreach ( $res[ $k ]['problems'] as $p ) {
+				say( "$plugin/$k: $p" );
+			}
+		}
+		out_json( [ 'ok' => ! $bad, 'version' => req( 'version' ), 'ref' => req( 'ref' ), 'editions' => $res ] );
+		return $bad ? EXIT_FAIL : 0;
+	}
 
 	if ( $sub === 'list' ) {
 		$res = [];
@@ -254,7 +336,8 @@ function cmd_support( array $pos ): int {
 		$rows   = SupportLog::rows( $md );
 		$rows[] = [
 			'ticket' => req( 'ticket' ), 'date' => opt( 'date', gmdate( 'Y-m-d' ) ), 'customer_version' => req( 'customer-version' ),
-			'fix' => req( 'fix' ), 'support_commit' => req( 'support-commit' ), 'dev_commit' => opt( 'dev-commit', 'not yet' ),
+			'build_version' => opt( 'build-version', '' ),
+			'fix' => req( 'fix' ), 'support_commit' => str_replace( ',', ' ', req( 'support-commit' ) ), 'dev_commit' => opt( 'dev-commit', 'not yet' ),
 			'status' => 'unreleased', 'released_in' => '',
 		];
 		$md = SupportLog::put_table( $md, 'Fixes', SupportLog::FIX_COLS, $rows );
@@ -272,13 +355,39 @@ function cmd_support( array $pos ): int {
 			throw new Fail( 'no row for ticket ' . opt( 'ticket' ) );
 		}
 		$md = SupportLog::put_table( $md, 'Fixes', SupportLog::FIX_COLS, $rows );
+	} elseif ( $sub === 'set-status' ) {
+		$status = req( 'status' );
+		if ( ! in_array( $status, [ 'unreleased', 'wont-release' ], true ) ) {
+			throw new Fail( '--status must be unreleased or wont-release (released is set by mark-released)', EXIT_USAGE );
+		}
+		$rows = SupportLog::rows( $md );
+		$hit  = 0;
+		foreach ( $rows as &$r ) {
+			if ( $r['ticket'] === req( 'ticket' ) && strcasecmp( $r['status'], 'released' ) !== 0 ) {
+				$r['status']      = $status;
+				$r['released_in'] = $status === 'wont-release' ? 'not released: ' . req( 'note' ) : '';
+				$hit++;
+			}
+		}
+		unset( $r );
+		if ( ! $hit ) {
+			throw new Fail( 'no unreleased or wont-release row for ticket ' . opt( 'ticket' ) );
+		}
+		$md = SupportLog::put_table( $md, 'Fixes', SupportLog::FIX_COLS, $rows );
 	} elseif ( $sub === 'mark-released' ) {
+		// --ref=<tagged commit>: only rows whose fix is in that commit (others stay unreleased).
 		$version = req( 'version' );
 		$only    = opt_list( 'tickets' );
+		$ref     = opt( 'ref' );
 		$rows    = SupportLog::rows( $md );
 		$n       = 0;
+		$left    = [];
 		foreach ( $rows as &$r ) {
 			if ( strcasecmp( $r['status'], 'unreleased' ) === 0 && ( ! $only || in_array( $r['ticket'], $only, true ) ) ) {
+				if ( $ref !== null && ! SupportLog::fix_in( $cfg, $ref, $r ) ) {
+					$left[] = $r['ticket'];
+					continue;
+				}
 				$r['status']      = 'released';
 				$r['released_in'] = $version;
 				$n++;
@@ -286,13 +395,13 @@ function cmd_support( array $pos ): int {
 		}
 		unset( $r );
 		$md = SupportLog::put_table( $md, 'Fixes', SupportLog::FIX_COLS, $rows );
-		say( "$n fix(es) marked released in $version" );
+		say( "$n fix(es) marked released in $version" . ( $left ? '; not in this release, still unreleased: ' . implode( ', ', $left ) : '' ) );
 	} elseif ( $sub === 'port-decision' ) {
 		$rows   = SupportLog::ports( $md );
 		$rows[] = [ 'commit' => req( 'commit' ), 'from' => req( 'from' ), 'subject' => opt( 'subject', '' ), 'decision' => opt( 'decision', 'skip' ), 'reason' => req( 'reason' ), 'date' => gmdate( 'Y-m-d' ) ];
 		$md     = SupportLog::put_table( $md, 'Port decisions', SupportLog::PORT_COLS, $rows );
 	} else {
-		throw new Fail( "unknown: support $sub (list|add|set-dev-commit|mark-released|port-decision)", EXIT_USAGE );
+		throw new Fail( "unknown: support $sub (list|check|add|set-dev-commit|set-status|mark-released|port-decision)", EXIT_USAGE );
 	}
 	write_file( $file, $md, "support log $sub" );
 	out_json( [ 'file' => $e['support_log'], 'fixes' => SupportLog::rows( $md ), 'port_decisions' => SupportLog::ports( $md ), 'dry_run' => Ctx::$dry ] );

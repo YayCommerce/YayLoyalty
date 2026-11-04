@@ -13,7 +13,7 @@ if ( PHP_VERSION_ID < 80000 ) {
 	exit( 1 );
 }
 
-foreach ( [ 'bootstrap', 'config', 'commits', 'version', 'builds', 'gates', 'changelog', 'support', 'status', 'outputs', 'detect' ] as $f ) {
+foreach ( [ 'bootstrap', 'config', 'commits', 'version', 'builds', 'gates', 'changelog', 'support', 'status', 'outputs', 'detect', 'conflicts' ] as $f ) {
 	require_once __DIR__ . "/$f.php";
 }
 
@@ -24,7 +24,7 @@ Ctx::$dry = flag( 'dry-run' );
 $map = [
 	'config' => 'cmd_config', 'registry' => 'cmd_registry', 'version' => 'cmd_version', 'commits' => 'cmd_commits',
 	'builds' => 'cmd_builds', 'gates' => 'cmd_gates', 'changelog' => 'cmd_changelog', 'support' => 'cmd_support',
-	'ports' => 'cmd_ports', 'status' => 'cmd_status', 'report' => 'cmd_report', 'handoff' => 'cmd_handoff', 'detect' => 'cmd_detect',
+	'ports' => 'cmd_ports', 'status' => 'cmd_status', 'report' => 'cmd_report', 'handoff' => 'cmd_handoff', 'detect' => 'cmd_detect', 'conflicts' => 'cmd_conflicts',
 ];
 $cmd = $pos[0] ?? '';
 if ( ! isset( $map[ $cmd ] ) ) {

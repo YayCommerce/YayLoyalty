@@ -30,12 +30,38 @@ exactly what will be pushed and say yes.
 | Manager uploads | — | By hand, following `HANDOFF.md` (SVN steps for WordPress.org, EDD store notes, Woo notes). |
 | Woo (or a store) sends feedback | `/yayrelease-fix` | Fix on the release branch. Not live anywhere yet → same version, file `…-X.Y.Z-r1.zip`. Already live somewhere → patch version. HANDOFF gets "Changes since previous submission". Reminds you to bring the fix to the dev branch and siblings. |
 | Live everywhere | `/yayfinalize` | Checks the zip checksums, merges the release branch into the released-code and dev branches, **creates the tag `<plugin>-<edition>/vX.Y.Z` on the exact commit of the accepted zip**, marks support fixes released, pushes after you confirm. |
-| A customer needs a fix now | `/yaysupport` | `support/<plugin>-<edition>-<ticket>` from the version they run, fix, zip `…-X.Y.Z-support-<ticket>-<sha>.zip` with the version unchanged (they still get the next update), logged in `support/<plugin>-<edition>.md`, fix brought to the dev branch (asks first), customer note printed. |
+| Production has a bug | `/yayhotfix` | `release/<plugin>-<edition>-X.Y.Z` from the live tag (next patch, none of the unreleased dev work), fix, a client build `…-X.Y.Z-hotfix.N` that the tester checks and the clients who need it now get, fix brought to the dev branch, then the release prepared and held until you decide to upload. |
+| A customer needs a fix now | `/yaysupport` | `support/<plugin>-<edition>-<ticket>` from the version they run, fix, client build `…-X.Y.Z-hotfix.N-support-<ticket>-<sha>.zip`, logged in `support/<plugin>-<edition>.md`, fix brought to the dev branch (asks first), customer note printed. |
 | Anytime | `/yaystatus` | What's released, unreleased, open, unported between editions, drifting. Read-only. |
 | Many plugins at once | `/yayorchestrate build\|release\|release-fix <plugin:edition …>` | One pinned admin-shell, one worker per edition in parallel (3 at a time), one review table for all of them, then pushes one by one after you confirm, plus a combined `HANDOFF-<date>.md` per target. |
 | New repo / config change | `/yayinit` | Detects branches and editions, asks what it can't detect, confirms what is released now (baseline tags), writes `.claude/release.config.json`. |
 
 Tags only ever mean "customers have exactly this". They are never moved or deleted.
+
+## Fixes for clients before a release (client builds)
+
+A zip sent to clients by `/yayhotfix` or `/yaysupport` never carries the version that will be
+released. It says **X.Y.Z-hotfix.N**, where X.Y.Z is the release the fix is headed for:
+
+| | Version inside the zip |
+|---|---|
+| live now | 3.6.2 |
+| client builds | 3.6.3-hotfix.1, 3.6.3-hotfix.2, … |
+| the release (wp.org / EDD / Woo) | 3.6.3 (or any later version, e.g. 3.7.0) |
+
+WordPress and the EDD/Woo updaters order these with PHP `version_compare`, so each client build
+replaces the buggy version, a later client build replaces an earlier one, and the real release is
+offered to every client as a normal update, even if more was fixed after they got their zip. The
+client version is set only inside the zip; nothing in git changes.
+
+Two guards protect those clients. Every release build runs `yr support check`, and refuses when:
+
+1. the release is not above every client build in the support log (those clients would never be offered it);
+2. a client fix in the support log is not in the release (the update would remove it from them).
+
+So bring every client fix to the dev branch (cherry-pick; a hand port says `(cherry picked from commit <sha>)` in
+its message), or record the team's decision not to release it (`yr support set-status --status=wont-release`).
+`/yaystatus` lists the client builds out and any client fix still missing on a dev branch.
 
 ## Where things are
 
@@ -68,6 +94,8 @@ Everything the skills do goes through `.claude/release-kit/bin/yr`, and every co
 ```bash
 yr status --all                                   # the yaystatus table
 yr build --plugin=yaypricing --edition=free --type=test --dry-run
+yr hotfix start --plugin=yaypricing --edition=free --dry-run   # release branch from the live tag
+yr support check --plugin=yaypricing --edition=free --ref=dev/free --version=3.7.0   # client guards
 yr version propose --plugin=yaypricing --edition=free
 yr shared pin --ref=v2.9.0 --save                 # set the admin-shell revision builds use
 yr kit sync --from=<Yay-Release-Kit checkout> --dry-run   # update this repo's copy of the kit

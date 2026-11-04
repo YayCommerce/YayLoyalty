@@ -83,7 +83,8 @@ The release skills take a finished change from a test build to a tagged release.
 | [`/yayrelease`](.claude/skills/yayrelease/SKILL.md) | testing passed | a release branch, the version bump and changelog, the release zip and HANDOFF.md |
 | [`/yayrelease-fix`](.claude/skills/yayrelease-fix/SKILL.md) | a store (usually Woo) sent the zip back | a fix on the release branch and a resubmission zip |
 | [`/yayfinalize`](.claude/skills/yayfinalize/SKILL.md) | the manager confirms the release is live | merges, the release tag, released support fixes |
-| [`/yaysupport`](.claude/skills/yaysupport/SKILL.md) | a customer needs a patched zip now | a support branch, the zip, a support-log entry, a customer note |
+| [`/yayhotfix`](.claude/skills/yayhotfix/SKILL.md) | the live release has a bug and the dev branch has unreleased work | a release branch from the live tag, client builds (X.Y.Z-hotfix.N), the held release |
+| [`/yaysupport`](.claude/skills/yaysupport/SKILL.md) | a customer needs a patched zip now | a support branch, a client build, a support-log entry, a customer note |
 | [`/yayorchestrate`](.claude/skills/yayorchestrate/SKILL.md) | you build or release several plugin editions at once | the same, for every edition, after one review |
 | [`/yayinit`](.claude/skills/yayinit/SKILL.md) | a repo starts using the release skills, or its editions change | `.claude/release.config.json`, baseline tags |
 
