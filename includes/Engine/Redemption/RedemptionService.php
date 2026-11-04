@@ -570,6 +570,9 @@ final class RedemptionService {
      * through commit(), reward lines through commit_rewards(), and an order
      * carrying both kinds through commit_all().
      *
+     * First, on an order checkout reused, every row whose line is gone gets its points back (settle_gone_lines()),
+     * so the debit below sees them.
+     *
      * Postconditions, exactly one of:
      * - The order has no coupon line of ours: Outcome::skipped( REASON_NO_INTENT ), nothing else happens.
      * - Outcome::redeemed: the order carries `_yayloyalty_points_redeemed` /
@@ -578,21 +581,20 @@ final class RedemptionService {
      * - Outcome::duplicate: this order was already committed.
      * - Outcome::skipped( reason ): nothing was debited, so every loyalty
      *   coupon line is taken off the order — it must not stay payable with
-     *   a discount and no debit — and the adapter fails the checkout.
+     *   a discount and no debit — their rows get their points back, and the
+     *   adapter fails the checkout.
      * The session intent is cleared in the last three.
      *
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails (rolled back).
      */
     public function commit( \WC_Order $order ): Outcome {
-        $codes                 = array_map( 'strval', $order->get_coupon_codes() );
+        $codes                 = array_values( array_filter( array_map( 'strval', $order->get_coupon_codes() ), [ EarnContext::class, 'is_loyalty_code' ] ) );
         $has_flexible_discount = false;
         $reward_codes          = [];
 
-        foreach ( $codes as $code ) {
-            if ( ! EarnContext::is_loyalty_code( $code ) ) {
-                continue;
-            }
+        $this->settle_gone_lines( $order, $codes );
 
+        foreach ( $codes as $code ) {
             if ( self::is_flexible_discount( $this->reward_for_code( $code ) ) ) {
                 $has_flexible_discount = true;
             } else {
@@ -637,13 +639,35 @@ final class RedemptionService {
 
         if ( Outcome::SKIPPED === $outcome->get_status() ) {
             foreach ( $codes as $code ) {
-                if ( EarnContext::is_loyalty_code( $code ) ) {
-                    $order->remove_coupon( $code );
-                }
+                $order->remove_coupon( $code );
             }
+
+            $this->settle_gone_lines( $order, [] );
         }
 
         return $outcome;
+    }
+
+    /**
+     * Gives back the points of every `applied` row whose line is not among $codes, notes them on the order and freezes
+     * what is left. A reused order keeps the rows of its first attempt while WooCommerce rebuilds its lines from the cart.
+     *
+     * @param string[] $codes The loyalty codes on the order.
+     */
+    private function settle_gone_lines( \WC_Order $order, array $codes ): void {
+        $points = 0;
+
+        foreach ( $this->reversal->lines_gone( $order, $codes ) as $outcome ) {
+            if ( Outcome::AWARDED === $outcome->get_status() ) {
+                $points += $outcome->get_entry()->get_points();
+            }
+        }
+
+        if ( $points > 0 ) {
+            $this->writer->freeze( $order );
+            /* translators: %s: points in the store's format, as "500 Points". */
+            $order->add_order_note( sprintf( __( '%s restored: their discount is no longer on this order.', 'yayloyalty' ), SettingsHelper::points_text( $points ) ) );
+        }
     }
 
     /**

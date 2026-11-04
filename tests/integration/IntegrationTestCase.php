@@ -40,6 +40,9 @@ abstract class IntegrationTestCase extends TestCase {
 
         // The campaign list is object-cached; a truncated table would still be served from the previous test.
         ( new CampaignRepository() )->flush_cache();
+
+        // TRUNCATE restarts the order item ids, so a new item would read the meta cached for the last test's item of that id.
+        wp_cache_flush_group( 'order_item_meta' );
     }
 
     protected function ledger_service(): LedgerService {

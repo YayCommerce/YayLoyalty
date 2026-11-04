@@ -30,8 +30,11 @@ defined( 'ABSPATH' ) || exit;
  * per order and reward. A failed re-check writes nothing and the caller
  * fails the checkout. commit_rewards() does the same for an order's reward
  * coupon lines, all of them or none, and commit_all() for an order carrying
- * both kinds, the rewards first. Cancel and refund are not here: they are
- * Reversal's.
+ * both kinds, the rewards first. A checkout that reuses an order debits only
+ * the lines with no row: a line whose row is `applied` is already paid, and a
+ * line whose row is in any other status cannot be debited again, as its key is
+ * spent, so it fails the checkout. Cancel and refund are not here: they are
+ * Reversal's, which also settles a row whose line left a reused order.
  */
 final class CommitWriter {
 
@@ -74,8 +77,9 @@ final class CommitWriter {
      * - Outcome::duplicate: this order was already committed; nothing written.
      * - Outcome::skipped( reason ), nothing written: the order has no
      *   customer or no discount, a gate denies, the locked balance or a
-     *   limit covers fewer points than the line costs, or the re-quoted
-     *   value is not the line's amount. The caller fails the checkout.
+     *   limit covers fewer points than the line costs, the re-quoted
+     *   value is not the line's amount, or the line's row is not held_flexible_discount().
+     *   The caller fails the checkout.
      * Nothing slow runs inside.
      *
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails (rolled back).
@@ -95,8 +99,7 @@ final class CommitWriter {
                 $existing = $this->redemptions->find_by_order( $order_id, (int) $reward->get_id() );
 
                 if ( null !== $existing ) {
-                    // The key is already in the ledger, so this answers duplicate with the existing row and writes nothing.
-                    return $this->ledger->redeem( $this->draft_from( $user_id, $order_id, $existing->get_points(), (int) $existing->get_id() ) );
+                    return $this->held_flexible_discount( $order, $reward, $existing );
                 }
 
                 $quote = $this->requote_flexible_discount( $order, $reward, $customer->get_balance() );
@@ -114,7 +117,7 @@ final class CommitWriter {
                     return $debit;
                 }
 
-                $this->freeze( $order, $quote );
+                $this->freeze( $order );
 
                 return Outcome::redeemed( $debit->get_entry(), $quote );
             }
@@ -128,13 +131,13 @@ final class CommitWriter {
      * offered. Any number of firings.
      *
      * One Transaction::run() under the customer lock, exactly one of:
-     * - Outcome::redeemed (the last row's debit): per code a redemptions row
+     * - Outcome::redeemed (the last row's debit): per code with no row a redemptions row
      *   (status `applied`, points the full cost, value the line's discount)
      *   and its REDEEM row keyed `reward_{id}`, then the summed meta.
-     * - Outcome::duplicate: every code already has its row; nothing written.
-     * - Outcome::skipped( reason ), nothing written: no customer; a null
-     *   reward, a denied re-quote or a line worth nothing
-     *   (REASON_REWARD_UNAVAILABLE); or a summed cost above the locked
+     * - Outcome::duplicate: every code already has its `applied` row; nothing written.
+     * - Outcome::skipped( reason ), nothing written: no customer; a code whose
+     *   row is not `applied`, a null reward, a denied re-quote or a line worth
+     *   nothing (REASON_REWARD_UNAVAILABLE); or a summed cost above the locked
      *   balance (REASON_REWARDS_BALANCE).
      * - A debit that is not AWARDED: the whole commit is rolled back and that
      *   debit's Outcome answered.
@@ -156,10 +159,15 @@ final class CommitWriter {
                     }
 
                     $customer = $this->customers->ensure_and_lock( $user_id );
-                    $existing = $this->existing_rows( $order_id, array_keys( $rewards ) );
+                    $rows     = $this->rows_by_code( $order_id );
+                    $unpaid   = self::unpaid_lines( $rewards, $rows );
 
-                    if ( [] !== $rewards && count( $existing ) === count( $rewards ) ) {
-                        $last = end( $existing );
+                    if ( null === $unpaid ) {
+                        return Outcome::skipped( RedemptionService::REASON_REWARD_UNAVAILABLE );
+                    }
+
+                    if ( [] !== $rewards && [] === $unpaid ) {
+                        $last = $rows[ array_key_last( $rewards ) ];
 
                         // Every key is already in the ledger, so this answers duplicate with the last row and writes nothing.
                         return $this->ledger->redeem( $this->reward_draft( $user_id, $order_id, $last->get_reward_id(), $last->get_points(), (int) $last->get_id() ) );
@@ -167,17 +175,15 @@ final class CommitWriter {
 
                     $lines   = [];
                     $cost    = 0;
-                    $skipped = $this->requote_reward_lines( $order, $rewards, $customer->get_balance(), $lines, $cost );
+                    $skipped = $this->requote_reward_lines( $order, $unpaid, $customer->get_balance(), $lines, $cost );
 
                     if ( null !== $skipped ) {
                         return $skipped;
                     }
 
-                    list( $debit, $quote, $total ) = $this->write_reward_lines( $order, $lines, $failed );
+                    list( $debit, $quote ) = $this->write_reward_lines( $order, $lines, $failed );
 
-                    $order->update_meta_data( self::META_POINTS, $cost );
-                    $order->update_meta_data( self::META_VALUE, $this->money( $total ) );
-                    $order->save();
+                    $this->freeze( $order );
 
                     return Outcome::redeemed( $debit->get_entry(), $quote );
                 }
@@ -197,10 +203,10 @@ final class CommitWriter {
      * it; $flexible is the flexible reward. Any number of firings.
      *
      * One Transaction::run() under the customer lock, exactly one of:
-     * - Outcome::redeemed (the flexible discount's debit): commit_rewards()'s rows for
-     *   the reward lines, then commit()'s for the flexible discount's, quoted against
-     *   the locked balance less the rewards' cost, then the summed meta.
-     * - Outcome::duplicate: every line already has its row; nothing written.
+     * - Outcome::redeemed (the last debit): commit_rewards()'s rows for the reward
+     *   lines with no row, then commit()'s for the flexible discount's unless it has
+     *   its row, quoted against the locked balance less the rewards' cost, then the summed meta.
+     * - Outcome::duplicate: every line already has its `applied` row; nothing written.
      * - Outcome::skipped( reason ), nothing written: what commit_rewards()
      *   skips for, then what commit() skips the flexible discount's line for.
      * - A debit that is not AWARDED: the whole commit is rolled back and that
@@ -224,18 +230,32 @@ final class CommitWriter {
 
                     $customer     = $this->customers->ensure_and_lock( $user_id );
                     $flexible_row = $this->redemptions->find_by_order( $order_id, (int) $flexible->get_id() );
+                    $unpaid       = self::unpaid_lines( $rewards, $this->rows_by_code( $order_id ) );
 
-                    if ( null !== $flexible_row && count( $this->existing_rows( $order_id, array_keys( $rewards ) ) ) === count( $rewards ) ) {
-                        // Every key is already in the ledger, so this answers duplicate with the flexible discount's row and writes nothing.
-                        return $this->ledger->redeem( $this->draft_from( $user_id, $order_id, $flexible_row->get_points(), (int) $flexible_row->get_id() ) );
+                    if ( null === $unpaid ) {
+                        return Outcome::skipped( RedemptionService::REASON_REWARD_UNAVAILABLE );
+                    }
+
+                    $held = null === $flexible_row ? null : $this->held_flexible_discount( $order, $flexible, $flexible_row );
+
+                    if ( null !== $held && ( [] === $unpaid || Outcome::SKIPPED === $held->get_status() ) ) {
+                        return $held;
                     }
 
                     $lines   = [];
                     $cost    = 0;
-                    $skipped = $this->requote_reward_lines( $order, $rewards, $customer->get_balance(), $lines, $cost );
+                    $skipped = $this->requote_reward_lines( $order, $unpaid, $customer->get_balance(), $lines, $cost );
 
                     if ( null !== $skipped ) {
                         return $skipped;
+                    }
+
+                    if ( null !== $held ) {
+                        list( $debit, $quote ) = $this->write_reward_lines( $order, $lines, $failed );
+
+                        $this->freeze( $order );
+
+                        return Outcome::redeemed( $debit->get_entry(), $quote );
                     }
 
                     $quote = $this->requote_flexible_discount( $order, $flexible, $customer->get_balance() - $cost );
@@ -244,7 +264,7 @@ final class CommitWriter {
                         return $quote;
                     }
 
-                    list( , , $total ) = $this->write_reward_lines( $order, $lines, $failed );
+                    $this->write_reward_lines( $order, $lines, $failed );
 
                     $redemption_id = $this->redemptions->insert( $this->redemption_from( $quote, $order ) );
                     $debit         = $this->ledger->redeem( $this->draft_from( $user_id, $order_id, $quote->get_points(), $redemption_id ) );
@@ -256,9 +276,7 @@ final class CommitWriter {
                         throw new \RuntimeException( 'YayLoyalty: a points discount debit was not written.' );
                     }
 
-                    $order->update_meta_data( self::META_POINTS, $cost + $quote->get_points() );
-                    $order->update_meta_data( self::META_VALUE, $this->money( $total + (float) $this->decimal( $quote ) ) );
-                    $order->save();
+                    $this->freeze( $order );
 
                     return Outcome::redeemed( $debit->get_entry(), $quote );
                 }
@@ -270,6 +288,26 @@ final class CommitWriter {
 
             throw $e;
         }
+    }
+
+    /**
+     * The flexible discount's line on an order that already has its row: duplicate while the row is `applied` and worth
+     * the line, nothing written. Else skipped REASON_REWARD_UNAVAILABLE, because the row's key is spent and no second debit can be written.
+     */
+    private function held_flexible_discount( \WC_Order $order, Reward $reward, Redemption $row ): Outcome {
+        $line = $this->contexts->points_discount_of( $order, $reward );
+
+        if ( Redemption::STATUS_APPLIED !== $row->get_status() || abs( (float) $row->get_value() - $line ) >= self::half_a_cent() ) {
+            return Outcome::skipped( RedemptionService::REASON_REWARD_UNAVAILABLE );
+        }
+
+        // The key is already in the ledger, so this answers duplicate with the existing row and writes nothing.
+        return $this->ledger->redeem( $this->draft_from( $row->get_user_id(), (int) $order->get_id(), $row->get_points(), (int) $row->get_id() ) );
+    }
+
+    /** The difference below which two amounts round to the same money. */
+    private static function half_a_cent(): float {
+        return 0.5 / pow( 10, wc_get_price_decimals() );
     }
 
     /**
@@ -298,7 +336,7 @@ final class CommitWriter {
         }
 
         // The order carries a discount these points do not buy: debit nothing.
-        if ( abs( $quote->get_value() - $this->contexts->points_discount_of( $order, $reward ) ) >= 0.5 / pow( 10, wc_get_price_decimals() ) ) {
+        if ( abs( $quote->get_value() - $this->contexts->points_discount_of( $order, $reward ) ) >= self::half_a_cent() ) {
             return Outcome::skipped( Clamp::BOUND_CART, $quote );
         }
 
@@ -337,14 +375,13 @@ final class CommitWriter {
      * RuntimeException thrown, so the caller's Transaction::run() rolls back every row written.
      *
      * @param array<int, array{0: string, 1: Reward, 2: Result, 3: float}> $lines requote_reward_lines()'s.
-     * @return array{0: Outcome, 1: Result, 2: float} The last debit, the last quote, and the lines' summed value.
+     * @return array{0: Outcome|null, 1: Result|null} The last debit and the last quote; null with no lines.
      */
     private function write_reward_lines( \WC_Order $order, array $lines, ?Outcome &$failed ): array {
         $user_id  = (int) $order->get_customer_id();
         $order_id = (int) $order->get_id();
         $debit    = null;
         $quote    = null;
-        $total    = 0.0;
 
         foreach ( $lines as list( $code, $reward, $quote, $value ) ) {
             $redemption_id = $this->redemptions->insert( $this->reward_row( $order, $reward, $quote->get_points(), $value, $code ) );
@@ -356,20 +393,40 @@ final class CommitWriter {
                 // Thrown so Transaction::run() rolls back every row this commit wrote.
                 throw new \RuntimeException( 'YayLoyalty: a reward debit was not written.' );
             }
-
-            $total += (float) $this->money( $value );
         }
 
-        return [ $debit, $quote, $total ];
+        return [ $debit, $quote ];
     }
 
     /**
-     * The order's redemption rows for these reward codes, one per code that has one.
+     * The reward lines still to debit: those with no row. Null when a line's row is not `applied`: its key is spent, so it cannot be debited.
      *
-     * @param string[] $codes
-     * @return Redemption[]
+     * @param array<string, Reward|null> $rewards
+     * @param array<string, Redemption>  $rows    rows_by_code().
+     * @return array<string, Reward|null>|null
      */
-    private function existing_rows( int $order_id, array $codes ): array {
+    private static function unpaid_lines( array $rewards, array $rows ): ?array {
+        $unpaid = [];
+
+        foreach ( $rewards as $code => $reward ) {
+            $row = $rows[ (string) $code ] ?? null;
+
+            if ( null === $row ) {
+                $unpaid[ $code ] = $reward;
+            } elseif ( Redemption::STATUS_APPLIED !== $row->get_status() ) {
+                return null;
+            }
+        }
+
+        return $unpaid;
+    }
+
+    /**
+     * The order's redemption rows, keyed by coupon code.
+     *
+     * @return array<string, Redemption>
+     */
+    private function rows_by_code( int $order_id ): array {
         $by_code = [];
 
         // Oldest first, so the first row per code wins, as one row per code is all a commit writes.
@@ -381,15 +438,7 @@ final class CommitWriter {
             }
         }
 
-        $rows = [];
-
-        foreach ( $codes as $code ) {
-            if ( isset( $by_code[ (string) $code ] ) ) {
-                $rows[] = $by_code[ (string) $code ];
-            }
-        }
-
-        return $rows;
+        return $by_code;
     }
 
     /** A reward line's redemptions row: the full cost, the line's discount as value, no rate. */
@@ -463,10 +512,29 @@ final class CommitWriter {
         return RedemptionDraft::of( $user_id, $order_id, $redemption_id, LedgerType::REDEEM, -$points, ReferenceType::ORDER, $order_id );
     }
 
-    /** Freezes points and value onto the order (HPOS-safe update_meta_data + save) so the order screen and emails never re-derive them. */
-    private function freeze( \WC_Order $order, Result $quote ): void {
-        $order->update_meta_data( self::META_POINTS, $quote->get_points() );
-        $order->update_meta_data( self::META_VALUE, $this->decimal( $quote ) );
+    /**
+     * Freezes what the order's `applied` rows add up to onto the order (HPOS-safe update_meta_data + save) so the order
+     * screen and emails never re-derive them; with no such row, takes both off.
+     */
+    public function freeze( \WC_Order $order ): void {
+        $points = 0;
+        $value  = 0.0;
+
+        foreach ( $this->redemptions->for_order( (int) $order->get_id() ) as $row ) {
+            if ( Redemption::STATUS_APPLIED === $row->get_status() ) {
+                $points += $row->get_points();
+                $value  += (float) $row->get_value();
+            }
+        }
+
+        if ( 0 === $points ) {
+            $order->delete_meta_data( self::META_POINTS );
+            $order->delete_meta_data( self::META_VALUE );
+        } else {
+            $order->update_meta_data( self::META_POINTS, $points );
+            $order->update_meta_data( self::META_VALUE, $this->money( $value ) );
+        }
+
         $order->save();
     }
 
