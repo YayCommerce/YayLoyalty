@@ -35,8 +35,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import EllipsisIcon from '@/components/icons/EllipsisIcon';
 import { newTierValues, tierFormSchema, TierFormValues, tierFormValues, toTierInput } from './tier-catalog.form';
+import { TierBadge } from './TierBadge';
 import { readTierInUse } from './tiers.api';
-import { useCreateTierMutation, useDeleteTierMutation, useTiersQuery, useUpdateTierMutation } from './tiers.queries';
+import {
+  useCreateTierMutation,
+  useDeleteTierMutation,
+  useTiersEnabled,
+  useTiersQuery,
+  useUpdateTierMutation,
+} from './tiers.queries';
 
 /** Which dialog is open: a new tier, or a snapshot of the row being edited, so a refetch can't swap it. */
 type FormTarget = { mode: 'create' } | { mode: 'edit'; tier: Tier };
@@ -57,6 +64,8 @@ export function TierCatalog() {
   const { data: tiers, isPending, isError, refetch } = useTiersQuery();
   const [formTarget, setFormTarget] = useState<FormTarget>();
   const [deleteTarget, setDeleteTarget] = useState<Tier>();
+  // While tiers are off the stored counts are frozen, so they would read as live.
+  const showMembers = useTiersEnabled();
 
   const atLimit = (tiers?.length ?? 0) >= TIER_LIMITS.maxLive;
   const addButton = (
@@ -108,6 +117,7 @@ export function TierCatalog() {
                         <TierRow
                           key={tier.id}
                           tier={tier}
+                          showMembers={showMembers}
                           onEdit={() => setFormTarget({ mode: 'edit', tier })}
                           onDelete={() => setDeleteTarget(tier)}
                         />
@@ -128,13 +138,22 @@ export function TierCatalog() {
   );
 }
 
-function TierRow({ tier, onEdit, onDelete }: { tier: Tier; onEdit: () => void; onDelete: () => void }) {
+function TierRow({
+  tier,
+  showMembers,
+  onEdit,
+  onDelete,
+}: {
+  tier: Tier;
+  showMembers: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   return (
     <TableRow>
       <TableCell>
-        <span className="flex items-center gap-2 font-medium">
-          <span className="size-3 shrink-0 rounded-full border" style={{ backgroundColor: tier.color }} aria-hidden />
-          {tier.name}
+        <span className="font-medium">
+          <TierBadge name={tier.name} color={tier.color} />
         </span>
       </TableCell>
       <TableCell className="text-right tabular-nums">{formatPoints(tier.threshold)}</TableCell>
@@ -146,7 +165,9 @@ function TierRow({ tier, onEdit, onDelete }: { tier: Tier; onEdit: () => void; o
         )}
       </TableCell>
       <TableCell className="text-right tabular-nums">{formatPoints(tier.entry_bonus)}</TableCell>
-      <TableCell className="text-right tabular-nums">{formatStoreNumber(tier.member_count, 0)}</TableCell>
+      <TableCell className="text-right tabular-nums">
+        {showMembers ? formatStoreNumber(tier.member_count, 0) : '—'}
+      </TableCell>
       <TableCell>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

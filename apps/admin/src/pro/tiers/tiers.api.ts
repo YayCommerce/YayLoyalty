@@ -1,7 +1,16 @@
 import { HTTPError } from 'ky';
 
 import { api } from '@/lib/api/api';
-import { Tier, TierInput, TierInUse, tierInUseErrorSchema, tierSchema, tiersSchema } from '@/lib/schema/tier.schema';
+import {
+  Tier,
+  TierInput,
+  TierInUse,
+  tierInUseErrorSchema,
+  tierSchema,
+  TierSettings,
+  tierSettingsSchema,
+  tiersSchema,
+} from '@/lib/schema/tier.schema';
 
 /** Client for Pro's tier catalogue routes. Lite has none of them. */
 
@@ -36,4 +45,13 @@ export async function readTierInUse(error: unknown): Promise<TierInUse | null> {
   const parsed = tierInUseErrorSchema.safeParse(body);
 
   return parsed.success ? { message: parsed.data.message, rewards: parsed.data.data.rewards } : null;
+}
+
+export async function getTierSettings(signal?: AbortSignal): Promise<TierSettings> {
+  return tierSettingsSchema.parse(await api.get('tiers/settings', { signal }).json());
+}
+
+/** PUT tiers/settings. Turning tiers on starts the placement sweep; turning them off drops any pending sweep. */
+export async function updateTierSettings(input: { tiers_enabled: boolean }): Promise<TierSettings> {
+  return tierSettingsSchema.parse(await api.put('tiers/settings', { json: input }).json());
 }

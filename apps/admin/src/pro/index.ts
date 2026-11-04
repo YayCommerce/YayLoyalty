@@ -31,6 +31,8 @@ export { RewardTemplatePicker } from './rewards/add/RewardTemplatePicker';
 export { RewardCreator, RewardEditor } from './rewards/editor/RewardEditor';
 export { RewardTable } from './rewards/RewardTable';
 export { TierCatalog } from './tiers/TierCatalog';
+export { TierSwitchCard } from './tiers/TierSwitchCard';
+export { useTiersEnabled } from './tiers/tiers.queries';
 
 /** Keeps the sentinel reachable code rather than a literal a minifier may discard. */
 export function proBundleMarker(): string {

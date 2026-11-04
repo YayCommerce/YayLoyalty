@@ -49,3 +49,22 @@ export type TierInUseReward = z.infer<typeof tierInUseErrorSchema>['data']['rewa
 
 /** Why a delete was refused, in the server's words, and the rewards that block it. */
 export type TierInUse = { message: string; rewards: TierInUseReward[] };
+
+/** Mirrors TiersRestController::get_settings(), the source of truth. */
+export const tierSettingsSchema = z.object({
+  tiers_enabled: z.boolean(),
+  tiers_mode: z.enum(['lifetime', 'rolling']),
+  tiers_rolling_months: z.number().int(),
+  /** Customer rows a placement would cover. */
+  customer_count: z.number().int(),
+  /** The pending placement or re-evaluation, or null when none is running. */
+  sweep: z
+    .object({
+      mode: z.enum(['placement', 'reevaluate']),
+      done: z.number().int(),
+      total: z.number().int(),
+    })
+    .nullable(),
+});
+
+export type TierSettings = z.infer<typeof tierSettingsSchema>;
