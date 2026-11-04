@@ -4,6 +4,7 @@ namespace YayLoyalty\Controllers;
 use YayLoyalty\Enums\CustomerFilters;
 use YayLoyalty\Repositories\CustomerMetaRepository;
 use YayLoyalty\Repositories\CustomerRepository;
+use YayLoyalty\Repositories\TierRepository;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -27,9 +28,11 @@ final class CustomerListFormatter {
         CustomerMetaRepository $customer_meta
     ): array {
         $filters = CustomerRowFilters::from_request( $request );
+        $orderby = (string) $request->get_param( 'orderby' );
         $order   = CustomerRowSort::to_order(
-            (string) $request->get_param( 'orderby' ),
-            (string) $request->get_param( 'order' )
+            $orderby,
+            (string) $request->get_param( 'order' ),
+            'tier' === $orderby ? self::tier_ids_by_rank() : []
         );
 
         $result = $customers->paginate_list(
@@ -77,6 +80,12 @@ final class CustomerListFormatter {
                 'default'           => CustomerFilters::EXPIRY_RANGES[0],
                 'sanitize_callback' => 'sanitize_text_field',
             ],
+            'tier'          => [
+                'description'       => __( 'Comma-separated tier ids and/or "none" (no tier) to filter by.', 'yayloyalty' ),
+                'type'              => 'string',
+                'default'           => '',
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
         ];
     }
 
@@ -106,7 +115,17 @@ final class CustomerListFormatter {
             'lifetime_earned'  => (int) $row['lifetime_earned'],
             'last_activity_at' => $row['last_activity_at'],
             'expires_at'       => $row['expires_at'],
+            'tier_id'          => null === $row['tier_id'] ? null : (int) $row['tier_id'],
         ];
+    }
+
+    /** @return int[] Live tier ids, lowest rank first, for CustomerRowSort's `tier` key. */
+    private static function tier_ids_by_rank(): array {
+        $tiers = ( new TierRepository() )->live();
+
+        usort( $tiers, fn( $a, $b ) => $a->get_tier_rank() <=> $b->get_tier_rank() );
+
+        return array_map( fn( $tier ) => (int) $tier->get_id(), $tiers );
     }
 
     /**

@@ -5,6 +5,7 @@ use YayLoyalty\Database\QueryException;
 use YayLoyalty\Enums\LotStatus;
 use YayLoyalty\Models\Customer;
 use YayLoyalty\Utils\Dates;
+use YayLoyalty\Utils\Sql;
 use YayLoyalty\Utils\Table;
 
 defined( 'ABSPATH' ) || exit;
@@ -24,6 +25,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         'lifetime'      => 'c.lifetime_earned',
         'last_activity' => 'c.last_activity_at',
         'expires'       => 'c.expires_at',
+        'tier'          => 'c.tier_id',
     ];
 
     protected function table_slug(): string {
@@ -583,7 +585,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
      * This is a read-side exception to the one-table rule, which is about write ownership.
      *
      * @param array<string, mixed>                                      $criteria CustomerRowFilters::to_criteria()'s shape.
-     * @param array{column: string, direction: string, nulls_last: bool} $order    CustomerRowSort::to_order()'s shape.
+     * @param array<string, mixed>                                      $order    CustomerRowSort::to_order()'s shape.
      * @return array{items: array<int, array<string, mixed>>, total: int, page: int, per_page: int}
      */
     public function paginate_list( array $criteria, array $order, int $page, int $per_page ): array {
@@ -601,7 +603,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
             $wpdb->prepare(
                 'SELECT c.user_id, u.display_name AS name, u.user_email AS email,
                         c.balance, c.pending_points, c.lifetime_earned,
-                        c.last_activity_at, c.expires_at
+                        c.last_activity_at, c.expires_at, c.tier_id
                  FROM `' . $table . '` c LEFT JOIN `' . $users . '` u ON u.ID = c.user_id'
                 . $where_sql . ' ORDER BY ' . $this->order_by_sql( $order )
                 . ' LIMIT %d OFFSET %d',
@@ -701,13 +703,49 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
             );
         }
 
+        $tier_where = $this->tier_where( (array) ( $criteria['tier_ids'] ?? [] ), ! empty( $criteria['tier_none'] ) );
+
+        if ( '' !== $tier_where ) {
+            $where[] = $tier_where;
+        }
+
         return $where;
     }
 
-    /** @param array{column: string, direction: string, nulls_last: bool} $order */
+    /** @param int[] $tier_ids */
+    private function tier_where( array $tier_ids, bool $tier_none ): string {
+        global $wpdb;
+
+        $in = empty( $tier_ids )
+            ? ''
+            : $wpdb->prepare( 'c.tier_id IN (' . Sql::in_placeholders( $tier_ids, '%d' ) . ')', ...$tier_ids ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders -- the IN list is placeholders only.
+
+        if ( '' !== $in && $tier_none ) {
+            return '(' . $in . ' OR c.tier_id IS NULL)';
+        }
+
+        return $tier_none ? 'c.tier_id IS NULL' : $in;
+    }
+
+    /** @param array<string, mixed> $order CustomerRowSort::to_order()'s shape. */
     private function order_by_sql( array $order ): string {
+        global $wpdb;
+
         $column    = self::LIST_ORDER_COLUMNS[ $order['column'] ] ?? self::LIST_ORDER_COLUMNS['balance'];
         $direction = 'ASC' === $order['direction'] ? 'ASC' : 'DESC';
+
+        if ( 'tier' === $order['column'] ) {
+            $tier_ids = array_map( 'intval', (array) ( $order['tier_ids'] ?? [] ) );
+
+            if ( empty( $tier_ids ) ) {
+                return 'c.user_id ASC';
+            }
+
+            // A tier's position in the rank-ordered list; tierless rows last in either direction.
+            return '(c.tier_id IS NULL) ASC, '
+                . $wpdb->prepare( 'FIELD(c.tier_id, ' . Sql::in_placeholders( $tier_ids, '%d' ) . ')', ...$tier_ids ) // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders -- the FIELD list is placeholders only.
+                . ' ' . $direction . ', c.user_id ASC';
+        }
 
         // "(col IS NULL) ASC" puts NULLs last regardless of $direction.
         $nulls_last = $order['nulls_last'] ? "({$column} IS NULL) ASC, " : '';
