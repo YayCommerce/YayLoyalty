@@ -49,10 +49,16 @@ export const ledgerEntrySchema = z.object({
   /** Shown to the customer in place of "Adjustment by {store}"; manual adjustments only. */
   customer_note: z.string().nullable(),
   /**
-   * The tier an entry bonus was paid for, deleted tiers included; null on every other row. Mirrors LedgerItemTierNames.
-   * Only the ledger list routes send it; the adjust route and the dashboard don't, so it defaults to null.
+   * The tier an entry bonus was paid for, or whose multiplier an earn row used, deleted tiers included; null on every
+   * other row. Mirrors LedgerItemTierNames. Only the ledger list routes send it; the adjust route and the dashboard
+   * don't, so it defaults to null.
    */
   tier_name: z.string().nullable().default(null),
+  /**
+   * The tier multiplier an earn row was awarded at, as "1.25"; null when none applied. Mirrors LedgerEntry::to_array(),
+   * the source of truth. Only the ledger list routes send it.
+   */
+  tier_multiplier: z.string().nullable().default(null),
   actor_id: z.number().int().nullable(),
   created_at: z.string(),
 });

@@ -78,88 +78,100 @@ final class LedgerRestController extends AbstractRestController {
             'title'      => 'yayloyalty_ledger_entry',
             'type'       => 'object',
             'properties' => [
-                'id'             => [
+                'id'              => [
                     'type'     => 'integer',
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],
-                'user_id'        => [
+                'user_id'         => [
                     'type'     => 'integer',
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],
-                'points'         => [
+                'points'          => [
                     'description' => __( 'Signed delta. Negative for redemptions, clawbacks and expiry.', 'yayloyalty' ),
                     'type'        => 'integer',
                     'context'     => [ 'view' ],
                     'readonly'    => true,
                 ],
-                'balance_after'  => [
+                'balance_after'   => [
                     'type'     => 'integer',
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],
-                'type'           => [
+                'type'            => [
                     'type'     => 'string',
                     'enum'     => LedgerType::all(),
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],
-                'source'         => [
+                'source'          => [
                     'type'     => 'string',
                     'enum'     => LedgerSource::all(),
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],
-                'reference_type' => [
+                'reference_type'  => [
                     'type'     => [ 'string', 'null' ],
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],
-                'reference_id'   => [
+                'reference_id'    => [
                     'type'     => [ 'integer', 'null' ],
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],
-                'campaign_id'    => [
+                'campaign_id'     => [
                     'type'     => [ 'integer', 'null' ],
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],
-                'redemption_id'  => [
+                'tier_id'         => [
+                    'description' => __( 'The tier whose multiplier an earn row was awarded at. Null when none applied.', 'yayloyalty' ),
+                    'type'        => [ 'integer', 'null' ],
+                    'context'     => [ 'view' ],
+                    'readonly'    => true,
+                ],
+                'tier_multiplier' => [
+                    'description' => __( 'The tier multiplier an earn row was awarded at, as "1.25". Null when none applied.', 'yayloyalty' ),
+                    'type'        => [ 'string', 'null' ],
+                    'context'     => [ 'view' ],
+                    'readonly'    => true,
+                ],
+                'redemption_id'   => [
                     'type'     => [ 'integer', 'null' ],
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],
-                'order_id'       => [
+                'order_id'        => [
                     'type'     => [ 'integer', 'null' ],
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],
-                'note'           => [
+                'note'            => [
                     'description' => __( 'Admin reason. Present on manual adjustments only; other rows compose their description client-side.', 'yayloyalty' ),
                     'type'        => [ 'string', 'null' ],
                     'context'     => [ 'view' ],
                     'readonly'    => true,
                 ],
-                'customer_note'  => [
+                'customer_note'   => [
                     'description' => __( 'Customer-facing description. Present on manual adjustments only.', 'yayloyalty' ),
                     'type'        => [ 'string', 'null' ],
                     'context'     => [ 'view' ],
                     'readonly'    => true,
                 ],
-                'tier_name'      => [
-                    'description' => __( 'The tier an entry bonus was paid for, deleted tiers included. Null on every other row.', 'yayloyalty' ),
+                'tier_name'       => [
+                    'description' => __( 'The tier an entry bonus was paid for, or whose multiplier an earn row used, deleted tiers included. Null on every other row.', 'yayloyalty' ),
                     'type'        => [ 'string', 'null' ],
                     'context'     => [ 'view' ],
                     'readonly'    => true,
                 ],
-                'actor_id'       => [
+                'actor_id'        => [
                     'type'     => [ 'integer', 'null' ],
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],
-                'created_at'     => [
+                'created_at'      => [
                     'type'     => 'string',
                     'context'  => [ 'view' ],
                     'readonly' => true,
