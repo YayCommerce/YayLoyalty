@@ -91,10 +91,8 @@ final class OrderPointsState {
             return new self( self::NO_POINTS, 0, $summary['net'] );
         }
 
-        // A fully refunded order owes nothing. A free order with no refund is not refunded. It queries, so it runs late.
-        list( $refunds, , $is_fully_refunded ) = Reversal::refund_state( $order );
-
-        if ( [] !== $refunds && $is_fully_refunded ) {
+        // A fully refunded order owes nothing (OrderAward refuses it too). It queries, so it runs late.
+        if ( OrderAward::is_fully_refunded( $order ) ) {
             return new self( self::NO_POINTS, 0, $summary['net'] );
         }
 

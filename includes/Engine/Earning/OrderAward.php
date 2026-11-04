@@ -16,6 +16,9 @@ defined( 'ABSPATH' ) || exit;
  */
 final class OrderAward {
 
+    /** Outcome::skipped reason: the order's refunds cover its total, so it earns nothing (completed again after a full refund). */
+    public const REASON_FULLY_REFUNDED = 'fully_refunded';
+
     private EarningService $service;
 
     private PendingPoints $pending;
@@ -30,13 +33,25 @@ final class OrderAward {
     }
 
     /**
-     * Calls award() once per order trigger and notes each outcome on the order.
+     * Calls award() once per order trigger and notes each outcome on the order. A fully refunded order
+     * (set back to completed after its refunds) earns nothing: one skipped outcome, noted.
      *
-     * @return Outcome[] One per trigger, in trigger order.
+     * @return Outcome[] One per trigger, in trigger order; one REASON_FULLY_REFUNDED skip for a fully refunded order.
      * @throws \InvalidArgumentException When the order has no creation date.
      */
     public function run( \WC_Order $order ): array {
         $order_id = (int) $order->get_id();
+
+        if ( self::is_fully_refunded( $order ) ) {
+            $outcome = Outcome::skipped( self::REASON_FULLY_REFUNDED );
+
+            PreviewLog::write_outcome( 'OrderListener', 'order #' . $order_id, $outcome );
+            $this->note( $order, $outcome );
+            $this->finish( $order_id );
+
+            return [ $outcome ];
+        }
+
         $outcomes = [];
 
         foreach ( self::triggers( $order ) as $trigger ) {
@@ -48,12 +63,16 @@ final class OrderAward {
             $outcomes[] = $outcome;
         }
 
-        // Completed ends staging whatever the triggers answered: a skipped award would otherwise leave pending forever.
-        $this->pending->release( $order_id );
-        // Not reached when an award throws: the order then stays missing (signal A, or D with nothing staged).
-        $this->pending->mark_award_ran( $order_id );
+        $this->finish( $order_id );
 
         return $outcomes;
+    }
+
+    /** Ends the award: not reached when an award throws, so the order then stays missing (signal A, or D). */
+    private function finish( int $order_id ): void {
+        // Completed ends staging whatever the triggers answered: a skipped award would otherwise leave pending forever.
+        $this->pending->release( $order_id );
+        $this->pending->mark_award_ran( $order_id );
     }
 
     /**
@@ -61,6 +80,10 @@ final class OrderAward {
      * campaign applies or the order has no creation date.
      */
     public function preview( \WC_Order $order ): int {
+        if ( self::is_fully_refunded( $order ) ) {
+            return 0;
+        }
+
         try {
             $ctx = ContextFactory::from_order( $order );
         } catch ( \InvalidArgumentException $e ) {
@@ -75,6 +98,13 @@ final class OrderAward {
         }
 
         return $points;
+    }
+
+    /** Whether the order has refunds and they cover its total. A free order with no refund is not refunded. */
+    public static function is_fully_refunded( \WC_Order $order ): bool {
+        list( $refunds, , $is_fully_refunded ) = Reversal::refund_state( $order );
+
+        return [] !== $refunds && $is_fully_refunded;
     }
 
     /** @return string[] */
@@ -113,6 +143,8 @@ final class OrderAward {
                 if ( EarningService::REASON_LIMIT_REACHED === $outcome->get_reason() ) {
                     /* translators: %d: points */
                     $order->add_order_note( sprintf( __( 'No points earned: an earning limit held back all %d points.', 'yayloyalty' ), $outcome->held_back() ) );
+                } elseif ( self::REASON_FULLY_REFUNDED === $outcome->get_reason() ) {
+                    $order->add_order_note( __( 'No points earned: the order is fully refunded.', 'yayloyalty' ) );
                 } elseif ( LedgerService::REASON_ORDER_HAS_POINTS === $outcome->get_reason() ) {
                     $order->add_order_note( __( 'No points earned: this order\'s points already went to another customer.', 'yayloyalty' ) );
                 } elseif ( ProgramGate::REASON_NO_CUSTOMER !== $outcome->get_reason() ) {

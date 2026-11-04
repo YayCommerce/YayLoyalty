@@ -139,6 +139,7 @@ Known false positives, accepted with the user: an order duplicated or migrated b
 | Retry and completion at the same time | Both write the same purchase key; the second is a duplicate. |
 | Campaign changed since checkout | The box states the checkout figure and adds "Campaigns changed since checkout: retrying gives N points now."; the button offers N. |
 | Campaign paused or archived since checkout | No button; the link prefills Adjust points with the checkout figure. |
+| Fully refunded order set back to `completed` | `OrderAward::run()` awards nothing: one `skipped( fully_refunded )` outcome and the note "No points earned: the order is fully refunded." Before 2026-11-04 the normal award paid it again. A partial refund does not block the award. |
 | Earning limit reached today | The award holds back as on completion; its note says so. |
 | The cause of the original failure persists | The retry fails again; the POST reports the error and writes nothing. |
 | Persistent object cache kept rolled-back meta | The box and REST read after `forget_cached()`. |
