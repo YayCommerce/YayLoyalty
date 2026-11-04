@@ -22,10 +22,10 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The only writer of the ledger and the customer aggregates, EarningService's award included.
- * Enforced by convention: it is constructed in exactly five places, Engine\RestAPI::controllers(),
+ * Enforced by convention: it is constructed in exactly six places, Engine\RestAPI::controllers(),
  * Engine\Earning\EarningService::build(), Engine\Earning\Reversal::build(),
- * Engine\Expiry\ExpiryRunner::run() and Engine\Redemption\RedemptionService::build().
- * Name a sixth here before adding it.
+ * Engine\Expiry\ExpiryRunner::run(), Engine\Redemption\RedemptionService::build() and
+ * Pro\Services\TierEvaluator::build() (the tier entry bonus). Name a seventh here before adding it.
  * Manual rows enter through adjust() and record(). System rows enter through earn(),
  * refund_earn(), restore_refund(), expire(), redeem() and recover_order(), which add the idempotency-key
  * duplicate branch.
