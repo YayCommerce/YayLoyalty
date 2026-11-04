@@ -13,7 +13,7 @@
  * so a client build replaces the buggy live version, a later client build replaces an earlier
  * one, and the real release replaces every client build. A suffix on the *live* version would
  * sort below it (3.6.2-hotfix.1 < 3.6.2), which is why the target is always above the release.
- * Client versions live only inside zips (set in the throwaway build tree), never in git.
+ * Client versions live only inside zips (written into the built zip by `yr builds set-version`), never in git.
  */
 
 declare(strict_types=1);
@@ -287,9 +287,9 @@ function cmd_version( array $pos ): int {
 
 	if ( $sub === 'bump' ) {
 		$to = req( 'to' );
-		// --client: a client version (X.Y.Z-hotfix.N), written only into a throwaway build tree.
+		// --client: a client version (X.Y.Z-hotfix.N); only for scratch trees, never a branch.
 		if ( ! Version::valid( $to ) && ! ( flag( 'client' ) && Version::valid_client( $to ) ) ) {
-			throw new Fail( "not a version: $to" . ( Version::valid_client( $to ) ? ' (client versions are set only inside build trees, with --client)' : '' ), EXIT_USAGE );
+			throw new Fail( "not a version: $to" . ( Version::valid_client( $to ) ? ' (client versions go only into built zips: yr builds set-version)' : '' ), EXIT_USAGE );
 		}
 		$tree = expand_home( req( 'tree' ) );
 		$changed = [];

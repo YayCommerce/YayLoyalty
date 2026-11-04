@@ -9,8 +9,10 @@
 #   (`yr builds mark-submitted` not run): move it to superseded/ and take its name.
 #
 # Client builds (hotfix: from a release/hotfix branch, target = its X.Y.Z; support: from a support
-# branch) get the version <target>-hotfix.<n> (lib/php/builds.php), written into the build tree only:
-# the branch keeps its version, and the zip sorts above the live release and below the real one.
+# branch) get the version <target>-hotfix.<n> (lib/php/builds.php). The repo's script builds the
+# branch unchanged (scripts may reject such a version); then `yr builds set-version` rewrites the
+# version locations inside the zip. Git keeps its version; the zip sorts above the live release
+# and below the real one.
 # Release builds first run the client guards (`yr support check`): the version must be above every
 # unreleased client build and the commit must contain every unreleased client fix.
 #
@@ -125,7 +127,7 @@ if [ "$YR_DRY" = 1 ]; then
 		"plugin"=>$argv[1],"edition"=>$argv[2],"type"=>$argv[3],"ref"=>$argv[4],"sha"=>$argv[5],"version"=>$argv[6],
 		"source_version"=>$argv[15]?:null,
 		"file"=>$argv[7],"dest"=>$argv[8],"build_id"=>$argv[9],"shared_code"=>$argv[10],
-		"steps"=>array_values(array_filter(["build tree: git clone --shared <repo> ".$argv[11]."/".$argv[9]." && checkout ".$argv[5], "shared apply (exact pin)", $argv[15] ? "client version: write ".$argv[6]." into every version location of the build tree (not committed)" : null, "prepare: ".($argv[12]?:"(none)"), "build: ".$argv[13]." </dev/null CI=1", "take ".$argv[14]." → copy to dist/.staging, add build-info.json", "gates", "on pass: ".$argv[8]." + .BUILD.json; remove worktree"]))]],
+		"steps"=>array_values(array_filter(["build tree: git clone --shared <repo> ".$argv[11]."/".$argv[9]." && checkout ".$argv[5], "shared apply (exact pin)", "prepare: ".($argv[12]?:"(none)"), "build: ".$argv[13]." </dev/null CI=1", "take ".$argv[14]." → copy to dist/.staging".($argv[15] ? ", write ".$argv[6]." into its version locations" : "").", add build-info.json", "gates", "on pass: ".$argv[8]." + .BUILD.json; remove worktree"]))]],
 		JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES)."\n";' \
 		"$YR_PLUGIN" "$YR_EDITION" "$type" "$ref" "$sha" "$version" "$file" "$dest" "$build_id" "$pins_note" "$YR_WORKTREE_ROOT" "$YR_PREPARE_CMD" "$YR_BUILD_CMD" "$YR_BUILD_OUTPUT" "$source_version"
 	exit 0
@@ -153,14 +155,6 @@ fail_build() { cleanup_fail; exit 1; }
 if [ -n "$pins" ]; then
 	IFS=, ; for p in $YR_SHARED_PKGS; do
 		bash "$YR_KIT_DIR/lib/sh/shared.sh" apply --worktree="$wt" --pins="$staging/pins.json" --package="$p" >>"$log" 2>&1 || { say "pinning $p failed"; fail_build; }
-	done; unset IFS
-fi
-
-if [ "$client" = 1 ]; then
-	step "client version $version in the build tree"
-	IFS=, ; for ge in $YR_GROUP_EDITIONS; do unset IFS
-		yrphp version bump --plugin="$YR_PLUGIN" --edition="$ge" $(passthru_opts | grep -v -e '^--plugin=' -e '^--edition=') --tree="$wt" --to="$version" --client >>"$log" 2>&1 \
-			|| { say "writing the client version failed (see the log)"; fail_build; }
 	done; unset IFS
 fi
 
@@ -200,6 +194,12 @@ say "  built $(basename "$raw")"
 
 cp "$raw" "$staging/raw.zip"
 cp "$raw" "$staging/$file"
+if [ "$client" = 1 ]; then
+	# The repo's script built the branch as it is ($source_version); only the zip gets the client version.
+	step "client version $version inside the zip"
+	yrphp builds set-version $(passthru_opts) --zip="$staging/$file" --version="$version" >>"$log" 2>&1 \
+		|| { say "writing the client version into the zip failed (see the log)"; fail_build; }
+fi
 yrphp builds info $(passthru_opts) --out="$staging/build-info.json" --version="$version" --type="$type" \
 	--number="$number" --resubmission="$resub" ${ticket:+--ticket="$ticket"} --build-id="$build_id" ${source_version:+--source-version="$source_version"} \
 	--sha="$sha" --branch="$branch" --ref="$ref" ${pins:+--shared="$staging/pins.json"}

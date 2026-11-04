@@ -168,6 +168,43 @@ final class Builds {
 		}
 	}
 
+	/**
+	 * Write a client version into the version locations inside a built zip (<slug>/<path>), after the
+	 * repo's own build ran on the unchanged tree: repo scripts may reject X.Y.Z-hotfix.N.
+	 *
+	 * @return string[] the zip entries changed
+	 */
+	public static function set_version( string $zip, array $e, string $version ): array {
+		$z = new \ZipArchive();
+		if ( $z->open( $zip ) !== true ) {
+			throw new Fail( "cannot open zip: $zip" );
+		}
+		$tmp = sys_get_temp_dir() . '/yr-setver-' . getmypid() . '-' . bin2hex( random_bytes( 3 ) );
+		$vfs = [];
+		foreach ( $e['version_files'] as $vf ) {
+			$raw = $z->getFromName( "{$e['slug']}/{$vf['path']}" );
+			if ( $raw === false ) {
+				continue; // not shipped (e.g. README.md)
+			}
+			@mkdir( dirname( "$tmp/{$vf['path']}" ), 0777, true );
+			file_put_contents( "$tmp/{$vf['path']}", $raw );
+			$vfs[] = $vf;
+		}
+		if ( ! $vfs ) {
+			$z->close();
+			throw new Fail( "no version file found inside $zip under {$e['slug']}/" );
+		}
+		$changed = Version::write( [ 'version_files' => $vfs ] + $e, $tmp, $version );
+		foreach ( $changed as $path ) {
+			$z->addFromString( "{$e['slug']}/$path", (string) file_get_contents( "$tmp/$path" ) );
+		}
+		if ( ! $z->close() ) {
+			throw new Fail( "cannot write $zip" );
+		}
+		run( [ 'rm', '-rf', $tmp ] );
+		return array_map( static fn( $p ) => "{$e['slug']}/$p", $changed );
+	}
+
 	public static function read_info( string $zip, string $slug ): ?array {
 		$z = new \ZipArchive();
 		if ( $z->open( $zip ) !== true ) {
@@ -251,6 +288,16 @@ function cmd_builds( array $pos ): int {
 			'kit_version'   => kit_version(),
 		];
 		write_json( req( 'out' ), $info );
+		return 0;
+	}
+	if ( $sub === 'set-version' ) {
+		// Client builds: yr builds set-version --zip=<built zip> --version=X.Y.Z-hotfix.N
+		$v = req( 'version' );
+		if ( ! Version::valid_client( $v ) ) {
+			throw new Fail( "set-version is for client versions (X.Y.Z-hotfix.N), got $v", EXIT_USAGE );
+		}
+		[ $plugin, $eds ] = $cfg->resolve( opt( 'plugin' ), opt( 'edition' ) );
+		out_json( [ 'version' => $v, 'changed' => Builds::set_version( req( 'zip' ), $cfg->edition( $plugin, $eds[0] ), $v ) ] );
 		return 0;
 	}
 	if ( $sub === 'inject' ) {
