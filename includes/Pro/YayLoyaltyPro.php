@@ -13,6 +13,7 @@ use YayLoyalty\Pro\Birthday\BirthdayHandler;
 use YayLoyalty\Pro\Birthday\BirthdayRunner;
 use YayLoyalty\Pro\Controllers\CampaignPerformanceRestController;
 use YayLoyalty\Pro\Controllers\CampaignPreviewRestController;
+use YayLoyalty\Pro\Controllers\CustomerTierRestController;
 use YayLoyalty\Pro\Controllers\CustomerSegmentsRestController;
 use YayLoyalty\Pro\Controllers\DashboardProRestController;
 use YayLoyalty\Pro\Controllers\StoreLedgerRestController;
@@ -341,6 +342,10 @@ final class YayLoyaltyPro {
             new TierRepository(),
             new RewardRepository(),
             new CustomerRepository()
+        );
+        $controllers[] = new CustomerTierRestController(
+            new CustomerRepository(),
+            new TierRepository()
         );
 
         return $controllers;

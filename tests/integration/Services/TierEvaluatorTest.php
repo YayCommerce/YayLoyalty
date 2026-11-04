@@ -153,6 +153,43 @@ final class TierEvaluatorTest extends IntegrationTestCase {
         $this->assertSame( [], $this->changes( $user ) );
     }
 
+    public function test_manual_floor_pays_bonus_once_and_low_floor_pays_none(): void {
+        $this->set_bonus( 'Gold', 50 );
+        $gold      = $this->tier_id( 'Gold' );
+        $user      = $this->customer();
+        $evaluator = TierEvaluator::build();
+        $this->ledger_service()->adjust( $user, 100, 'seed', 1 ); // Bronze.
+
+        $evaluator->assign_floor( $user, $gold, null, 1 );
+
+        $this->assertSame( 'Gold', $this->tier_of( $user ) );
+        $bonus = $this->bonus_rows( $user );
+        $this->assertCount( 1, $bonus );
+        $this->assertSame( 50, (int) $bonus[0]['points'] );
+        $this->assertSame( 'earn:' . $user . ':tier:' . $gold . ':tier_bonus', $bonus[0]['idempotency_key'] );
+        $this->assertSame( [ 'Bronze', 'Gold', 'manual', 1 ], $this->last_change( $user, [ 'from_name', 'to_name', 'reason', 'actor_id' ] ) );
+
+        $evaluator->clear_floor( $user, 1 ); // 150 → Bronze.
+
+        $this->assertSame( 'Bronze', $this->tier_of( $user ) );
+        $this->assertNull( $this->customer_row( $user )['tier_manual_id'] );
+
+        $evaluator->assign_floor( $user, $gold, 30, 1 );
+
+        $this->assertSame( 'Gold', $this->tier_of( $user ) );
+        $this->assertCount( 1, $this->bonus_rows( $user ) );
+
+        $changes = count( $this->changes( $user ) );
+        $evaluator->assign_floor( $user, $this->tier_id( 'Silver' ), null, 1 ); // Below Gold: stored only.
+
+        $row = $this->customer_row( $user );
+        $this->assertSame( 'Gold', $this->tier_of( $user ) );
+        $this->assertSame( $this->tier_id( 'Silver' ), (int) $row['tier_manual_id'] );
+        $this->assertNull( $row['tier_manual_until'] );
+        $this->assertCount( $changes, $this->changes( $user ) );
+        $this->assertCount( 1, $this->bonus_rows( $user ) );
+    }
+
     /** A purchase EARN row, written through LedgerService so the recorded hook fires. */
     private function earn( int $user_id, int $order_id, int $points ): LedgerEntry {
         return $this->ledger_service()->earn( $this->earn_draft( $user_id, $order_id, $points ) )->get_entry();
