@@ -291,6 +291,43 @@ final class CommitWriter {
     }
 
     /**
+     * An admin repairing a line nothing paid for (RewardMismatch): writes its `applied` row and its REDEEM row for $points
+     * under the key a commit would have used, so a cancel or a refund returns them as usual. No gate and no re-quote: the
+     * discount was given at checkout. The balance is checked, so a short one answers
+     * skipped( Rewards\Result::REASON_INSUFFICIENT_BALANCE ) with nothing written; duplicate when the key is spent.
+     *
+     * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails (rolled back).
+     */
+    public function debit_line( \WC_Order $order, Reward $reward, string $code, int $points ): Outcome {
+        return Transaction::run(
+            function () use ( $order, $reward, $code, $points ): Outcome {
+                $user_id  = (int) $order->get_customer_id();
+                $order_id = (int) $order->get_id();
+
+                $this->customers->ensure_and_lock( $user_id );
+
+                $value         = $this->contexts->line_discount_of( $order, $code );
+                $redemption_id = $this->redemptions->insert( $this->reward_row( $order, $reward, $points, $value, $code ) );
+                $debit         = $this->ledger->redeem(
+                    RedemptionService::is_flexible_discount( $reward )
+                        ? $this->draft_from( $user_id, $order_id, $points, $redemption_id )
+                        : $this->reward_draft( $user_id, $order_id, (int) $reward->get_id(), $points, $redemption_id )
+                );
+
+                if ( Outcome::AWARDED !== $debit->get_status() ) {
+                    $this->redemptions->delete( $redemption_id );
+
+                    return $debit;
+                }
+
+                $this->freeze( $order );
+
+                return $debit;
+            }
+        );
+    }
+
+    /**
      * The flexible discount's line on an order that already has its row: duplicate while the row is `applied` and worth
      * the line, nothing written. Else skipped REASON_REWARD_UNAVAILABLE, because the row's key is spent and no second debit can be written.
      */

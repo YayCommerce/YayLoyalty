@@ -588,7 +588,7 @@ final class RedemptionService {
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails (rolled back).
      */
     public function commit( \WC_Order $order ): Outcome {
-        $codes                 = array_values( array_filter( array_map( 'strval', $order->get_coupon_codes() ), [ EarnContext::class, 'is_loyalty_code' ] ) );
+        $codes                 = EarnContext::loyalty_codes( $order->get_coupon_codes() );
         $has_flexible_discount = false;
         $reward_codes          = [];
 
@@ -685,6 +685,30 @@ final class RedemptionService {
         }
 
         return $rewards;
+    }
+
+    /**
+     * An admin's repair of one RewardMismatch::find() answer: returns a stale row's points, or debits an unpaid line.
+     * A reward that is gone leaves the line with no price: REASON_REWARD_UNAVAILABLE, nothing written.
+     *
+     * @param array{kind: string, code: string, points: int, reward: ?Reward} $mismatch
+     * @return Outcome awarded when points moved, else skipped or duplicate.
+     * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails (rolled back).
+     */
+    public function repair_mismatch( \WC_Order $order, array $mismatch ): Outcome {
+        if ( RewardMismatch::KIND_UNPAID_LINE === $mismatch['kind'] ) {
+            return null === $mismatch['reward'] || $mismatch['points'] < 1
+                ? Outcome::skipped( self::REASON_REWARD_UNAVAILABLE )
+                : $this->writer->debit_line( $order, $mismatch['reward'], $mismatch['code'], $mismatch['points'] );
+        }
+
+        $outcome = $this->reversal->coupon_removed( $order, $mismatch['code'] ) ?? Outcome::skipped( Reversal::REASON_NOTHING_TO_MOVE );
+
+        if ( Outcome::AWARDED === $outcome->get_status() ) {
+            $this->writer->freeze( $order );
+        }
+
+        return $outcome;
     }
 
     /**

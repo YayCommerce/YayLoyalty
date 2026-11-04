@@ -3,7 +3,7 @@ namespace YayLoyalty\Controllers\Schemas;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Route args for `POST /orders/{id}/grant-points`. */
+/** Route args for `POST /orders/{id}/grant-points` and `POST /orders/{id}/reconcile-reward`. */
 final class OrderPointsRouteArgs {
 
     /**
@@ -38,6 +38,28 @@ final class OrderPointsRouteArgs {
                 'description' => __( 'Whether to send the customer the Points earned email.', 'yayloyalty' ),
                 'type'        => 'boolean',
                 'default'     => false,
+            ],
+        ];
+    }
+
+    /**
+     * Body args, with the order id.
+     *
+     * @return array<string, mixed>
+     */
+    public static function reconcile(): array {
+        return [
+            'id'   => [
+                'description' => __( 'WooCommerce order id.', 'yayloyalty' ),
+                'type'        => 'integer',
+                'minimum'     => 1,
+                'required'    => true,
+            ],
+            'code' => [
+                'description'       => __( 'The loyalty coupon code to repair.', 'yayloyalty' ),
+                'type'              => 'string',
+                'required'          => true,
+                'sanitize_callback' => 'sanitize_text_field',
             ],
         ];
     }

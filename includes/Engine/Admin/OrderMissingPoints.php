@@ -410,8 +410,12 @@ final class OrderMissingPoints {
         }
     }
 
-    /** @param mixed $post_or_order */
-    private static function order_of( $post_or_order ): ?\WC_Order {
+    /**
+     * The order an `add_meta_boxes` callback was given, for HPOS and legacy storage.
+     *
+     * @param mixed $post_or_order
+     */
+    public static function order_of( $post_or_order ): ?\WC_Order {
         if ( $post_or_order instanceof \WC_Order ) {
             return $post_or_order;
         }
