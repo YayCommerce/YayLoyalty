@@ -3,9 +3,11 @@ namespace YayLoyalty\Tests\Integration\Engine\Redemption;
 
 use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Redemption\CommitWriter;
+use YayLoyalty\Engine\Redemption\Gate;
 use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Redemption\SessionIntent;
 use YayLoyalty\Engine\Rewards\Clamp;
+use YayLoyalty\Engine\Rewards\Context;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Integrations\YayCurrency\OrderRateSnapshot;
@@ -505,5 +507,70 @@ final class CommitWriterTest extends IntegrationTestCase {
         $this->assertSame( RedemptionService::REASON_REWARD_UNAVAILABLE, RedemptionService::commit_error( $outcome ) );
         $this->assertSame( [ 1000, -500, 500 ], $this->ledger_points( 7 ) );
         $this->assertSame( [], wc_get_order( $order->get_id() )->get_coupon_codes() );
+    }
+
+    /** The real commit with a gate that throws, as a failed write would: an exception from inside the commit. */
+    private function failing_service(): RedemptionService {
+        $gate = new class() implements Gate {
+            public function check( Reward $reward, Context $ctx ): ?string {
+                throw new \LogicException( 'the commit failed' );
+            }
+        };
+        $add  = static function ( array $gates ) use ( $gate ): array {
+            $gates[] = $gate;
+
+            return $gates;
+        };
+
+        add_filter( 'yayloyalty_redemption_gates', $add );
+        $service = $this->service();
+        remove_filter( 'yayloyalty_redemption_gates', $add );
+
+        return $service;
+    }
+
+    /** The order must not stay payable with a discount and no debit, and the adapter must still see the failure. */
+    public function test_a_commit_that_throws_takes_its_lines_off(): void {
+        $this->ledger_service()->earn( $this->earn_draft( 7, 100, 1000 ) );
+        $a     = $this->pro_reward( RewardType::FIXED_COUPON, 500, [ 'amount' => 5 ] );
+        $order = $this->order_with_reward_lines( 7, 100.0, [ $a->get_coupon_code() => 5.0 ] );
+
+        try {
+            $this->failing_service()->commit( $order );
+            $this->fail( 'The exception must reach the adapter.' );
+        } catch ( \LogicException $e ) {
+            $this->assertSame( 'the commit failed', $e->getMessage() );
+        }
+
+        $this->assertSame( [], wc_get_order( $order->get_id() )->get_coupon_codes() );
+        $this->assertSame( [ 1000 ], $this->ledger_points( 7 ) );
+        $this->assertCount( 0, $this->redemption_rows( 7 ) );
+    }
+
+    public function test_a_commit_that_throws_on_a_reused_order_restores_its_row(): void {
+        $this->ledger_service()->earn( $this->earn_draft( 7, 100, 1000 ) );
+        $a     = $this->pro_reward( RewardType::FIXED_COUPON, 500, [ 'amount' => 5 ] );
+        $b     = $this->pro_reward( RewardType::FIXED_COUPON, 300, [ 'amount' => 5 ] );
+        $order = $this->order_with_reward_lines( 7, 100.0, [ $a->get_coupon_code() => 5.0 ] );
+
+        $this->service()->commit( $order );
+        $order = $this->rebuilt_with(
+            $order,
+            [
+                $a->get_coupon_code() => 5.0,
+                $b->get_coupon_code() => 5.0,
+            ]
+        );
+
+        try {
+            $this->failing_service()->commit( $order );
+            $this->fail( 'The exception must reach the adapter.' );
+        } catch ( \LogicException $e ) {
+            $this->assertSame( 'the commit failed', $e->getMessage() );
+        }
+
+        $this->assertSame( [], wc_get_order( $order->get_id() )->get_coupon_codes() );
+        $this->assertSame( [ 1000, -500, 500 ], $this->ledger_points( 7 ) );
+        $this->assertSame( Redemption::STATUS_REMOVED, $this->statuses()[ $a->get_coupon_code() ] );
     }
 }

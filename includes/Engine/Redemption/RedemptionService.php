@@ -20,6 +20,7 @@ use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Services\LedgerService;
 use YayLoyalty\Utils\CurrencyRate;
 use YayLoyalty\Utils\Dates;
+use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -585,10 +586,56 @@ final class RedemptionService {
      *   adapter fails the checkout.
      * The session intent is cleared in the last three.
      *
+     * A commit that throws wrote nothing, so the order is treated as skipped: its loyalty lines come off and the
+     * intent is cleared before the exception goes on, or the order would stay payable with a discount and no debit.
+     *
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails (rolled back).
      */
     public function commit( \WC_Order $order ): Outcome {
-        $codes                 = EarnContext::loyalty_codes( $order->get_coupon_codes() );
+        $codes = EarnContext::loyalty_codes( $order->get_coupon_codes() );
+
+        try {
+            $outcome = $this->commit_lines( $order, $codes );
+        } catch ( \Throwable $e ) {
+            $this->intent->clear();
+            $this->take_lines_off_after_failure( $order, $codes );
+
+            throw $e;
+        }
+
+        if ( [] === $codes ) {
+            return $outcome;
+        }
+
+        $this->intent->clear();
+
+        if ( Outcome::REDEEMED === $outcome->get_status() ) {
+            Transaction::after_commit(
+                static function () use ( $outcome, $order ): void {
+                    /**
+                     * Fires after a redemption commits, once per order.
+                     *
+                     * @param Outcome   $outcome Carries the REDEEM row and the quote it was written from.
+                     * @param \WC_Order $order
+                     */
+                    do_action( 'yayloyalty_points_redeemed', $outcome, $order );
+                }
+            );
+        }
+
+        if ( Outcome::SKIPPED === $outcome->get_status() ) {
+            $this->take_lines_off( $order, $codes );
+        }
+
+        return $outcome;
+    }
+
+    /**
+     * Settles the lines the order lost, then debits the ones it carries, through the writer call that fits them.
+     *
+     * @param string[] $codes The loyalty codes on the order.
+     */
+    private function commit_lines( \WC_Order $order, array $codes ): Outcome {
         $has_flexible_discount = false;
         $reward_codes          = [];
 
@@ -611,41 +658,42 @@ final class RedemptionService {
             $reward = $this->flexible_reward();
 
             if ( null === $reward ) {
-                $outcome = Outcome::skipped( self::REASON_NO_REWARD );
-            } elseif ( [] === $reward_codes ) {
-                $outcome = $this->writer->commit( $order, $reward );
-            } else {
-                $outcome = $this->writer->commit_all( $order, $this->offered_rewards_of( $reward_codes ), $reward );
-            }
-        } else {
-            $outcome = $this->writer->commit_rewards( $order, $this->offered_rewards_of( $reward_codes ) );
-        }
-
-        $this->intent->clear();
-
-        if ( Outcome::REDEEMED === $outcome->get_status() ) {
-            Transaction::after_commit(
-                static function () use ( $outcome, $order ): void {
-                    /**
-                     * Fires after a redemption commits, once per order.
-                     *
-                     * @param Outcome   $outcome Carries the REDEEM row and the quote it was written from.
-                     * @param \WC_Order $order
-                     */
-                    do_action( 'yayloyalty_points_redeemed', $outcome, $order );
-                }
-            );
-        }
-
-        if ( Outcome::SKIPPED === $outcome->get_status() ) {
-            foreach ( $codes as $code ) {
-                $order->remove_coupon( $code );
+                return Outcome::skipped( self::REASON_NO_REWARD );
             }
 
-            $this->settle_gone_lines( $order, [] );
+            return [] === $reward_codes
+                ? $this->writer->commit( $order, $reward )
+                : $this->writer->commit_all( $order, $this->offered_rewards_of( $reward_codes ), $reward );
         }
 
-        return $outcome;
+        return $this->writer->commit_rewards( $order, $this->offered_rewards_of( $reward_codes ) );
+    }
+
+    /**
+     * Takes the loyalty lines off an order nothing was debited for, and gives back the rows they leave behind.
+     *
+     * @param string[] $codes The loyalty codes on the order.
+     */
+    private function take_lines_off( \WC_Order $order, array $codes ): void {
+        foreach ( $codes as $code ) {
+            $order->remove_coupon( $code );
+        }
+
+        $this->settle_gone_lines( $order, [] );
+    }
+
+    /**
+     * take_lines_off() while a commit's exception is on its way out: a second failure is logged, not thrown, so that
+     * exception still reaches the adapter. What is left of the order shows in the order screen's repair box.
+     *
+     * @param string[] $codes The loyalty codes on the order.
+     */
+    private function take_lines_off_after_failure( \WC_Order $order, array $codes ): void {
+        try {
+            $this->take_lines_off( $order, $codes );
+        } catch ( \Throwable $e ) {
+            Log::error( 'RedemptionService', sprintf( 'Taking the loyalty lines off order #%d failed: %s', (int) $order->get_id(), $e->getMessage() ) );
+        }
     }
 
     /**
