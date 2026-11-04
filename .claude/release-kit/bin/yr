@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# yr: the release kit's single entry point. Every command supports --dry-run.
+# Purpose: route `yr <command>` to lib/php/cli.php (data: config, versions, changelogs, gates,
+#   reports) or lib/sh/<command>.sh (git and builds). Runs under macOS /bin/bash 3.2.
+# Canonical copy: YayCommerce/YayLoyalty .claude/release-kit/; copies elsewhere are replaced
+#   whole by `yr kit sync`, never edited.
+set -euo pipefail
+
+KIT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+export YR_KIT_DIR="$KIT_DIR"
+PHP_BIN="${YR_PHP:-php}"
+
+usage() {
+	cat <<'USAGE'
+yr — YayCommerce release kit (never uploads or publishes anything)
+
+Data (PHP):
+  config   get|resolve|validate|env|long-lived     Read .claude/release.config.json
+  registry list|add|set                            ~/.config/yayrelease/registry.json
+  detect   [--ref=<branch>]                        Read-only repo scan for yayinit
+  version  get|check|propose|bump                  Version locations, bump proposal, bump
+  commits  --range=A..B                            Classified commits
+  changelog collect|render|insert                  Changelog raw data, rendering, insertion
+  builds   next|list|latest|info|inject|finalize|inspect|verify
+  gates    --zip=… --version=…                     QA gates on a zip
+  support  list|add|set-dev-commit|mark-released|port-decision
+  ports    [--edition=<from>]                      Fixes not yet in sibling editions
+  status   [--all]                                 Status table (read-only)
+  report   write|collect                           Worker reports, consolidated review
+  handoff  write|combine                           HANDOFF.md for the manager
+
+Git and builds (bash):
+  build    --type=test|release|support …           Build in a throwaway worktree, gate, write dist/
+  worktree add|remove|list|prune                   Worktrees under ~/.yayrelease/worktrees
+  shared   pin|apply|show                          Pin and apply the shared-code revision
+  git      branch-create|commit|cherry-pick|merge|tag|push-plan|push|delete-branch
+  kit      sync|hook-install|doctor                Copy the kit between repos, safety hook, tool check
+  orchestrate plan|collect|handoff                 Multi-edition runs (yayorchestrate)
+
+Common options: --plugin=<key> --edition=<key> --repo=<path> --dry-run --json
+USAGE
+}
+
+cmd="${1:-help}"
+[ $# -gt 0 ] && shift
+case "$cmd" in
+	config|registry|detect|version|commits|changelog|builds|gates|support|ports|status|report|handoff)
+		exec "$PHP_BIN" "$KIT_DIR/lib/php/cli.php" "$cmd" "$@" ;;
+	build|worktree|shared|git|kit|orchestrate)
+		exec bash "$KIT_DIR/lib/sh/$cmd.sh" "$@" ;;
+	help|-h|--help) usage ;;
+	*) echo "yr: unknown command '$cmd'" >&2; usage >&2; exit 64 ;;
+esac

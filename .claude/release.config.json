@@ -1,0 +1,176 @@
+{
+    "schema": 1,
+    "settings": {
+        "dist": "dist",
+        "size_jump_pct": 25,
+        "remote": "origin"
+    },
+    "plugins": {
+        "yayloyalty": {
+            "name": "YayLoyalty",
+            "version_policy": "shared",
+            "propagation": {
+                "method": "none",
+                "flow": [],
+                "note": "Pro and Lite are built from the same dev/edd branch"
+            },
+            "group_names": {
+                "dev/edd": "yayloyalty"
+            },
+            "tag_format": "{plugin}-{edition}/v{version}",
+            "shared_code": [
+                {
+                    "package": "yaycommerce/admin-shell"
+                }
+            ],
+            "editions": {
+                "pro": {
+                    "label": "YayLoyalty Pro (EDD store)",
+                    "target": "edd",
+                    "dev_branch": "dev/edd",
+                    "released_branch": "released/pro",
+                    "slug": "yayloyalty",
+                    "main_file": "yayloyalty.php",
+                    "version_files": [
+                        {
+                            "path": "yayloyalty.php",
+                            "pattern": "^[ \\t/*#@]*Version:\\s*(?<v>[0-9][0-9.]*)"
+                        },
+                        {
+                            "path": "yayloyalty.php",
+                            "pattern": "define\\(\\s*'YAYLOYALTY_VERSION',\\s*'(?<v>[^']+)'"
+                        },
+                        {
+                            "path": "readme.txt",
+                            "pattern": "^Stable tag:\\s*(?<v>\\S+)"
+                        }
+                    ],
+                    "build": {
+                        "cmd": "./scripts/run.sh release pro --no-prompt",
+                        "output": "release/yayloyalty-[0-9]*.zip"
+                    },
+                    "changelog": {
+                        "file": "CHANGELOG.md",
+                        "section": "# Changelog",
+                        "heading": "## {version} - {date:Y-m-d}",
+                        "line": "* {prefix}: {text}",
+                        "prefixes": {
+                            "new": "New",
+                            "improved": "Improved",
+                            "fixed": "Fixed",
+                            "security": "Security"
+                        }
+                    },
+                    "zip_rules": {
+                        "must_contain": [
+                            {
+                                "path": "^includes/Pro/YayLoyaltyPro\\.php$",
+                                "why": "the Pro build"
+                            },
+                            {
+                                "content": "implements[^{]*LicenseConfigAdapter",
+                                "files": "PluginAdapter\\.php$",
+                                "why": "Pro has no EDD licensing yet: customers will not get updates from the store",
+                                "severity": "warn"
+                            }
+                        ]
+                    },
+                    "extra_gates": [
+                        {
+                            "id": "validate-build",
+                            "cmd": "php scripts/validate-build.php {zip} pro",
+                            "label": "scripts/validate-build.php pro"
+                        }
+                    ],
+                    "store": {
+                        "item": "(EDD download not created yet)",
+                        "url": ""
+                    },
+                    "baseline": {
+                        "first_release": true,
+                        "version": null,
+                        "sha": null,
+                        "tag": null,
+                        "confirmed": true,
+                        "confirmed_by": "Trace Bui",
+                        "confirmed_on": "2026-11-04",
+                        "source": "never released (not on WordPress.org, no store record); the first release ships the dev version"
+                    }
+                },
+                "lite": {
+                    "label": "YayLoyalty Lite (WordPress.org)",
+                    "target": "wporg",
+                    "dev_branch": "dev/edd",
+                    "released_branch": "released/lite",
+                    "slug": "yayloyalty",
+                    "main_file": "yayloyalty.php",
+                    "version_files": [
+                        {
+                            "path": "yayloyalty.php",
+                            "pattern": "^[ \\t/*#@]*Version:\\s*(?<v>[0-9][0-9.]*)"
+                        },
+                        {
+                            "path": "yayloyalty.php",
+                            "pattern": "define\\(\\s*'YAYLOYALTY_VERSION',\\s*'(?<v>[^']+)'"
+                        },
+                        {
+                            "path": "readme.txt",
+                            "pattern": "^Stable tag:\\s*(?<v>\\S+)"
+                        }
+                    ],
+                    "build": {
+                        "cmd": "./scripts/run.sh release lite --no-prompt",
+                        "output": "release/yayloyalty-lite-*.zip"
+                    },
+                    "changelog": {
+                        "file": "readme.txt",
+                        "section": "== Changelog ==",
+                        "heading": "= {version} =",
+                        "line": "* {prefix}: {text}",
+                        "prefixes": {
+                            "new": "New",
+                            "improved": "Improved",
+                            "fixed": "Fixed",
+                            "security": "Security"
+                        }
+                    },
+                    "zip_rules": {
+                        "must_not_contain": [
+                            {
+                                "path": "^includes/Pro/",
+                                "why": "Lite is Pro without includes/Pro/"
+                            },
+                            {
+                                "path": "^vendor-prefixed/src/License/",
+                                "why": "Lite strips admin-shell licensing"
+                            }
+                        ],
+                        "must_contain": [
+                            {
+                                "path": "^readme\\.txt$"
+                            }
+                        ]
+                    },
+                    "extra_gates": [
+                        {
+                            "id": "validate-build",
+                            "cmd": "php scripts/validate-build.php {zip} lite",
+                            "label": "scripts/validate-build.php lite"
+                        }
+                    ],
+                    "plugin_check": true,
+                    "baseline": {
+                        "first_release": true,
+                        "version": null,
+                        "sha": null,
+                        "tag": null,
+                        "confirmed": true,
+                        "confirmed_by": "Trace Bui",
+                        "confirmed_on": "2026-11-04",
+                        "source": "never released (not on WordPress.org, no store record); the first release ships the dev version"
+                    }
+                }
+            }
+        }
+    }
+}
