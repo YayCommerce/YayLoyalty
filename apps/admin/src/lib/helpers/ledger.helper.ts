@@ -65,6 +65,15 @@ function describeEarn(entry: LedgerEntry): string {
     case 'import':
       return __('Imported balance', 'yayloyalty');
 
+    case 'tier_bonus':
+      return entry.tier_name
+        ? sprintf(
+            /* translators: %s: the tier's name. */
+            __('%s tier bonus', 'yayloyalty'),
+            entry.tier_name,
+          )
+        : __('Tier bonus', 'yayloyalty');
+
     default:
       return __('Points earned', 'yayloyalty');
   }

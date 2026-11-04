@@ -21,6 +21,7 @@ export const LEDGER_SOURCES = [
   'import',
   'expiry',
   'system',
+  'tier_bonus',
 ] as const;
 
 export const ledgerTypeSchema = z.enum(LEDGER_TYPES);
@@ -47,6 +48,8 @@ export const ledgerEntrySchema = z.object({
   note: z.string().nullable(),
   /** Shown to the customer in place of "Adjustment by {store}"; manual adjustments only. */
   customer_note: z.string().nullable(),
+  /** The tier an entry bonus was paid for, deleted tiers included; null on every other row. Mirrors LedgerItemTierNames. */
+  tier_name: z.string().nullable(),
   actor_id: z.number().int().nullable(),
   created_at: z.string(),
 });

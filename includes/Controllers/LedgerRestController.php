@@ -64,9 +64,12 @@ final class LedgerRestController extends AbstractRestController {
             ]
         );
 
-        $counts = LedgerQueryArgs::group_counts( $this->ledger->count_by_type_for_user( $user_id ) );
+        $counts   = LedgerQueryArgs::group_counts( $this->ledger->count_by_type_for_user( $user_id ) );
+        $response = $this->respond_paginated( $result );
 
-        return $this->respond_paginated( $result ) + [ 'type_counts' => $counts ];
+        $response['data'] = LedgerItemTierNames::attach( $response['data'] );
+
+        return $response + [ 'type_counts' => $counts ];
     }
 
     protected function define_item_schema(): array {
@@ -141,6 +144,12 @@ final class LedgerRestController extends AbstractRestController {
                 ],
                 'customer_note'  => [
                     'description' => __( 'Customer-facing description. Present on manual adjustments only.', 'yayloyalty' ),
+                    'type'        => [ 'string', 'null' ],
+                    'context'     => [ 'view' ],
+                    'readonly'    => true,
+                ],
+                'tier_name'      => [
+                    'description' => __( 'The tier an entry bonus was paid for, deleted tiers included. Null on every other row.', 'yayloyalty' ),
                     'type'        => [ 'string', 'null' ],
                     'context'     => [ 'view' ],
                     'readonly'    => true,
