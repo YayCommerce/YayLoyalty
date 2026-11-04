@@ -14,6 +14,7 @@ use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Services\LedgerService;
+use YayLoyalty\Utils\WooOrders;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -40,6 +41,9 @@ final class Reversal {
 
     /** Outcome::skipped reason: every key this event may write under is already in the ledger. */
     public const REASON_KEY_SPENT = 'key_spent';
+
+    /** Order meta: the codes whose line an admin removed with "Don't restore", so their rows stay `applied` on purpose. */
+    public const META_KEPT_CODES = '_yayloyalty_kept_codes';
 
     private LedgerService $ledger;
 
@@ -193,13 +197,14 @@ final class Reversal {
 
     /**
      * Checkout reused the order, which now carries only $codes: returns what is left of each `applied` row whose line
-     * is gone; the row becomes `removed`. A row with no stored code is left alone, as no line can be matched to it.
+     * is gone; the row becomes `removed`. A row with no stored code is left alone, as no line can be matched to it,
+     * and so is one an admin chose to keep debited.
      *
      * @param string[] $codes The loyalty codes on the order.
      * @return Outcome[] One per redemption row of the order.
      */
     public function lines_gone( \WC_Order $order, array $codes ): array {
-        $on_order = array_map( 'wc_format_coupon_code', $codes );
+        $on_order = array_merge( array_map( 'wc_format_coupon_code', $codes ), self::kept_codes( $order ) );
 
         return $this->settle_each(
             (int) $order->get_id(),
@@ -214,6 +219,23 @@ final class Reversal {
                 return $this->restore( $row, $row->get_points(), Redemption::STATUS_REMOVED, [ [ ReferenceType::REDEMPTION, (int) $row->get_id() ] ], 'Coupon left the order at checkout' );
             }
         );
+    }
+
+    /** An admin removed the line $code with "Don't restore": remembers it, so nothing reads the row as a line that went missing. Moves no points. */
+    public static function keep_debited( \WC_Order $order, string $code ): void {
+        $order->update_meta_data( self::META_KEPT_CODES, array_values( array_unique( array_merge( self::kept_codes( $order ), [ wc_format_coupon_code( $code ) ] ) ) ) );
+        WooOrders::save_meta_only( $order );
+    }
+
+    /**
+     * The codes keep_debited() remembered on the order.
+     *
+     * @return string[]
+     */
+    public static function kept_codes( \WC_Order $order ): array {
+        $codes = $order->get_meta( self::META_KEPT_CODES );
+
+        return is_array( $codes ) ? array_map( 'strval', $codes ) : [];
     }
 
     /**

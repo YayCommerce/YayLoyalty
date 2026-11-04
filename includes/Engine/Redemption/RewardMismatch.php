@@ -14,7 +14,8 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Where an order's loyalty coupon lines and its redemption rows disagree, as orders committed before lines
  * were reconciled can: a line nothing paid for, or an `applied` row with points still out and no line.
- * Reads only. A stale row can also be an admin's "Don't restore", which looks the same, so the admin decides.
+ * Reads only. A line an admin removed with "Don't restore" is that admin's decision, not a mismatch; one that left
+ * some other way (REST v3, code) still shows, as nobody decided about its points.
  * RedemptionService::repair_mismatch() acts on what this finds.
  */
 final class RewardMismatch {
@@ -61,6 +62,7 @@ final class RewardMismatch {
             'wc_format_coupon_code',
             array_filter( array_map( static fn( Redemption $row ): string => (string) $row->get_coupon_code(), $rows ) )
         );
+        $kept  = Reversal::kept_codes( $order );
         $found = [];
 
         foreach ( array_diff( $lines, $coded ) as $code ) {
@@ -72,7 +74,7 @@ final class RewardMismatch {
             $code   = wc_format_coupon_code( (string) $row->get_coupon_code() );
             $points = $row->get_points() - $row->get_restored_points();
 
-            if ( '' !== $code && Redemption::STATUS_APPLIED === $row->get_status() && $points > 0 && ! in_array( $code, $lines, true ) ) {
+            if ( '' !== $code && Redemption::STATUS_APPLIED === $row->get_status() && $points > 0 && ! in_array( $code, array_merge( $lines, $kept ), true ) ) {
                 $found[] = self::mismatch( self::KIND_STALE_ROW, $code, $points, $this->rewards->find_reward( $row->get_reward_id() ) );
             }
         }
