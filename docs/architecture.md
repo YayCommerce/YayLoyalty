@@ -63,6 +63,7 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
   - A customer row is created at zero by `CustomerRepository::ensure_row()`, which `PendingPoints` and `CustomerActivityListener` call directly, and `LedgerService`, `CommitWriter` and `Redemption\Reversal` call through `ensure_and_lock()` before they lock the row. Creating the row is not a ledger write.
   - [The decision record](decisions/2026-10-01-ledger-service-sole-writer.md) says why there is one writer and a cached total.
   - Points pending on an open order sit in order meta, and their sum is a separate cached column on the customer. `includes/Engine/Earning/PendingPoints.php` writes both.
+- `TierEvaluator` (Pro) is the only writer of the customer tier columns; it runs after the ledger commit. [The decision record](decisions/2026-11-04-tier-evaluator-sole-writer.md) says why.
 - The domain lives in `includes/Engine/`:
   - Earning listeners (`includes/Engine/Earning/Listeners/`) hook WooCommerce order events and WordPress comment and registration events. They stage pending points through `EarningService::preview()` and award through `EarningService::award()` (`includes/Engine/Earning/EarningService.php`).
   - `award()` runs the gates and asks the Points engine. Then, in one transaction, it calls `LedgerService::earn()`, releases the order's pending points and records the award on the order.
