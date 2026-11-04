@@ -17,6 +17,9 @@ final class PointsEngine {
     /** Filter that attaches a campaign-conditions evaluator (Pro); nothing subscribes in Lite. Internal seam. */
     public const CONDITIONS_EVALUATOR_FILTER = 'yayloyalty_campaign_conditions_evaluator';
 
+    /** Filter that multiplies an event's points (Pro: the customer's tier); nothing subscribes in Lite. Internal seam. */
+    public const MULTIPLIER_FILTER = 'yayloyalty_points_multiplier';
+
     /** @var Registry */
     private $registry;
 
@@ -63,11 +66,27 @@ final class PointsEngine {
         $breakdown = $handler->compute_points( $campaign, $ctx );
         $points    = $this->caps->apply( $breakdown->get_points(), $campaign );
 
+        /**
+         * The factor an event's points are multiplied by. Runs after the campaign's rounding and
+         * max_points_per_order; advertised() never calls it. An answer that isn't a Multiplier from
+         * 1.00 to 10.00 is ignored and logged. Internal seam, not a public API.
+         *
+         * @param Multiplier $multiplier Multiplier::none().
+         * @param Campaign   $campaign   The campaign that pays.
+         * @param Context    $ctx        The event.
+         */
+        $multiplier = Multiplier::from_filter( apply_filters( self::MULTIPLIER_FILTER, Multiplier::none(), $campaign, $ctx ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name.
+
+        if ( ! $multiplier->is_neutral() ) {
+            $breakdown = $breakdown->with_multiplier( $points, $multiplier, $multiplier->apply( $points ) );
+            $points    = $breakdown->get_points();
+        }
+
         if ( $points <= 0 ) {
             return Result::none( Result::REASON_ZERO_POINTS );
         }
 
-        return Result::awarded( $points, $campaign, $breakdown, $handler->reference_type(), $handler->reference_id( $ctx ), $handler->source() );
+        return Result::awarded( $points, $campaign, $breakdown, $handler->reference_type(), $handler->reference_id( $ctx ), $handler->source(), $multiplier );
     }
 
     /**

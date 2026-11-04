@@ -26,16 +26,23 @@ final class Breakdown {
     /** @var string[] */
     private $notes;
 
+    /** @var int The points before the multiplier: the campaign's, after its cap. */
+    private $campaign_points;
+
+    /** @var string The multiplier's factor, as "1.25". */
+    private $multiplier = '1.00';
+
     /**
      * @param string[] $notes
      */
     public function __construct( int $points, float $base_amount, float $rate, float $raw_points, string $rounding, array $notes = [] ) {
-        $this->points      = $points;
-        $this->base_amount = $base_amount;
-        $this->rate        = $rate;
-        $this->raw_points  = $raw_points;
-        $this->rounding    = $rounding;
-        $this->notes       = $notes;
+        $this->points          = $points;
+        $this->base_amount     = $base_amount;
+        $this->rate            = $rate;
+        $this->raw_points      = $raw_points;
+        $this->rounding        = $rounding;
+        $this->notes           = $notes;
+        $this->campaign_points = $points;
     }
 
     /** A flat award: no base, no rate, nothing rounded. */
@@ -68,15 +75,41 @@ final class Breakdown {
         return $this->notes;
     }
 
+    public function get_campaign_points(): int {
+        return $this->campaign_points;
+    }
+
+    public function get_multiplier(): string {
+        return $this->multiplier;
+    }
+
+    /**
+     * A copy that records the multiplier step.
+     *
+     * @param int        $campaign_points The campaign's points, after its cap.
+     * @param Multiplier $multiplier      The factor applied to them.
+     * @param int        $points          The result, now the points awarded.
+     */
+    public function with_multiplier( int $campaign_points, Multiplier $multiplier, int $points ): self {
+        $copy                  = clone $this;
+        $copy->campaign_points = $campaign_points;
+        $copy->multiplier      = $multiplier->get_factor();
+        $copy->points          = $points;
+
+        return $copy;
+    }
+
     /** @return array<string, mixed> */
     public function to_array(): array {
         return [
-            'points'      => $this->points,
-            'base_amount' => $this->base_amount,
-            'rate'        => $this->rate,
-            'raw_points'  => $this->raw_points,
-            'rounding'    => $this->rounding,
-            'notes'       => $this->notes,
+            'points'          => $this->points,
+            'base_amount'     => $this->base_amount,
+            'rate'            => $this->rate,
+            'raw_points'      => $this->raw_points,
+            'rounding'        => $this->rounding,
+            'notes'           => $this->notes,
+            'campaign_points' => $this->campaign_points,
+            'multiplier'      => $this->multiplier,
         ];
     }
 }
