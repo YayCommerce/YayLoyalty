@@ -133,7 +133,12 @@ final class OrderMissingPoints {
         $ids    = [];
 
         foreach ( is_array( $orders ) ? $orders : [] as $order ) {
-            $ids[] = $order instanceof \WC_Order ? (int) $order->get_id() : (int) $order;
+            // This filter also sees refund queries, whose objects are not WC_Order and earn nothing.
+            if ( $order instanceof \WC_Order ) {
+                $ids[] = (int) $order->get_id();
+            } elseif ( is_numeric( $order ) ) {
+                $ids[] = (int) $order;
+            }
         }
 
         $this->prime( $ids );
