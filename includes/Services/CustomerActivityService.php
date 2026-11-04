@@ -175,6 +175,33 @@ final class CustomerActivityService {
     }
 
     /**
+     * One `tier_changed` row per change TierEvaluator writes. Names are frozen at write time, so a renamed or
+     * deleted tier still reads as it was. Staff-only: the storefront shows tiers through its own surfaces.
+     *
+     * @param string   $from_name '' when the customer had no tier.
+     * @param string   $to_name   '' when the customer is left with no tier.
+     * @param string   $reason    A TierChangeReason constant.
+     * @param int|null $actor_id  The staff member behind a manual change; null for an automatic one.
+     * @param string   $at        UTC MySQL datetime of the change.
+     */
+    public function record_tier_changed( int $user_id, ?int $from_tier_id, ?int $to_tier_id, string $from_name, string $to_name, string $reason, ?int $actor_id, string $at ): void {
+        $data = [
+            'from_tier_id' => $from_tier_id,
+            'to_tier_id'   => $to_tier_id,
+            'from_name'    => $from_name,
+            'to_name'      => $to_name,
+            'reason'       => $reason,
+            'actor_id'     => null !== $actor_id && $actor_id > 0 ? $actor_id : null,
+        ];
+
+        list( $actor_kind, $actor_name ) = $this->actor( $actor_id );
+
+        $this->meta->insert(
+            CustomerMeta::event( $user_id, ActivityEvent::TIER_CHANGED, $data, $actor_kind, $actor_name, true, $at )
+        );
+    }
+
+    /**
      * Kind + display name for a write's actor. `> 0` is the one rule for
      * "was this a person" — `get_current_user_id()` and a ledger row's
      * `actor_id` both use 0/null for a cron or system context.

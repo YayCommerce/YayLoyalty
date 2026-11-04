@@ -37,6 +37,9 @@ final class ReferenceType {
     /** Import batch id. */
     public const IMPORT = 'import';
 
+    /** yayloyalty_tiers id, for a tier's entry bonus. */
+    public const TIER = 'tier';
+
     /** @return string[] */
     public static function all(): array {
         return [
@@ -48,6 +51,7 @@ final class ReferenceType {
             self::USER,
             self::BIRTHDAY,
             self::IMPORT,
+            self::TIER,
         ];
     }
 

@@ -198,6 +198,103 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         );
     }
 
+    /** The tier columns set_tier_state() may write, with their formats. */
+    private const TIER_COLUMNS = [
+        'tier_id'             => '%d',
+        'tier_evaluated_at'   => '%s',
+        'tier_progress_value' => '%s',
+        'tier_achieved_at'    => '%s',
+        'tier_manual_id'      => '%d',
+        'tier_manual_until'   => '%s',
+    ];
+
+    /**
+     * The only write to the tier columns. Called only by Pro\Services\TierEvaluator, under the customer row
+     * lock (D20 in the tiers design). A null value writes SQL NULL.
+     *
+     * @param array<string, int|string|null> $columns Any of TIER_COLUMNS' keys.
+     * @throws \InvalidArgumentException When $columns names any other column.
+     * @throws QueryException When the write fails.
+     */
+    public function set_tier_state( int $user_id, array $columns ): void {
+        $unknown = array_diff( array_keys( $columns ), array_keys( self::TIER_COLUMNS ) );
+
+        if ( [] !== $unknown ) {
+            throw new \InvalidArgumentException( esc_html( 'YayLoyalty: set_tier_state() writes tier columns only, not ' . implode( ', ', $unknown ) . '.' ) );
+        }
+
+        if ( [] === $columns ) {
+            return;
+        }
+
+        $format = [];
+
+        foreach ( array_keys( $columns ) as $column ) {
+            $format[] = self::TIER_COLUMNS[ $column ];
+        }
+
+        $this->update( $user_id, $columns, $format );
+    }
+
+    /** Every customer row. */
+    public function count_all(): int {
+        global $wpdb;
+
+        return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM `' . esc_sql( $this->table() ) . '`' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- no values; the table name is escaped.
+    }
+
+    /**
+     * The next customers by ascending user id after $after_user_id, so a batched run can resume.
+     *
+     * @return int[]
+     */
+    public function user_ids_after( int $after_user_id, int $limit ): array {
+        global $wpdb;
+
+        $ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT user_id FROM `' . esc_sql( $this->table() ) . '` WHERE user_id > %d ORDER BY user_id ASC LIMIT %d',
+                $after_user_id,
+                $limit
+            )
+        );
+
+        return array_map( 'intval', is_array( $ids ) ? $ids : [] );
+    }
+
+    /** Customers with a user id up to and including $user_id: a batched run's progress. */
+    public function count_up_to( int $user_id ): int {
+        global $wpdb;
+
+        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT COUNT(*) FROM `' . esc_sql( $this->table() ) . '` WHERE user_id <= %d',
+                $user_id
+            )
+        );
+    }
+
+    /**
+     * Customers whose manual tier floor has an end at or before $now.
+     *
+     * @return int[]
+     */
+    public function floor_ended_user_ids( string $now, int $limit ): array {
+        global $wpdb;
+
+        $ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT user_id FROM `' . esc_sql( $this->table() ) . '`
+                 WHERE tier_manual_id IS NOT NULL AND tier_manual_until IS NOT NULL AND tier_manual_until <= %s
+                 ORDER BY user_id LIMIT %d',
+                $now,
+                $limit
+            )
+        );
+
+        return array_map( 'intval', is_array( $ids ) ? $ids : [] );
+    }
+
     /**
      * Customers whose birthday is one of $days, with that birthday, by ascending user id after $after_user_id,
      * so a batched run can resume.

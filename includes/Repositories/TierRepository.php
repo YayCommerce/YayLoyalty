@@ -3,6 +3,7 @@ namespace YayLoyalty\Repositories;
 
 use YayLoyalty\Database\QueryException;
 use YayLoyalty\Models\Tier;
+use YayLoyalty\Utils\Sql;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -36,6 +37,44 @@ final class TierRepository extends AbstractRepository {
         $tier = $this->find_tier( $id );
 
         return null !== $tier && $tier->is_live() ? $tier : null;
+    }
+
+    /**
+     * The tiers with these ids, deleted ones included, for name lookups (a ledger label, an activity row).
+     *
+     * @param int[] $ids
+     * @return array<int, Tier> Keyed by id; an unknown id is absent.
+     */
+    public function find_many( array $ids ): array {
+        global $wpdb;
+
+        $ids = array_values( array_unique( array_filter( array_map( 'intval', $ids ), static fn( int $id ): bool => $id > 0 ) ) );
+
+        if ( [] === $ids ) {
+            return [];
+        }
+
+        $table = esc_sql( $this->table() );
+        $in    = Sql::in_placeholders( $ids, '%d' );
+
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $in is a placeholder list; every id is bound below, and the table name is escaped.
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare( "SELECT * FROM `{$table}` WHERE id IN ({$in})", $ids ),
+            ARRAY_A
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+
+        $tiers = [];
+
+        foreach ( (array) $rows as $row ) {
+            $tier = $this->hydrate( $row );
+
+            if ( $tier instanceof Tier ) {
+                $tiers[ (int) $tier->get_id() ] = $tier;
+            }
+        }
+
+        return $tiers;
     }
 
     /**

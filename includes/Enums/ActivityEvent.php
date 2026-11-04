@@ -5,9 +5,9 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The `meta_key` vocabulary of `yayloyalty_customer_meta`, which is also the activity log's `event_type`.
- * Today CustomerActivityService writes only `membership_started`, `points_adjusted`, `earning_limited`,
- * `expiring_soon_email_sent` and `account_deleted`. A customer whose only history is one of the other four
- * has zero activity rows. That count is correct, not a bug.
+ * Today CustomerActivityService writes only `membership_started`, `points_adjusted`, `tier_changed`,
+ * `earning_limited`, `expiring_soon_email_sent` and `account_deleted`. A customer whose only history is one of
+ * the other three has zero activity rows. That count is correct, not a bug.
  */
 final class ActivityEvent {
 
