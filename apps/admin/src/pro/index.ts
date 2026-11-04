@@ -22,6 +22,8 @@ export { CampaignCreator, CampaignEditor } from './campaigns/editor/CampaignEdit
 export { CampaignPerformance } from './campaigns/performance/CampaignPerformance';
 export { CustomersSavedSegmentRow } from './customers/CustomersSavedSegmentRow';
 export { CustomerTierCard } from './customers/CustomerTierCard';
+export { CustomersTierCell } from './customers/CustomersTierCell';
+export { CustomersTierFilter, useTierFilterLabel } from './customers/CustomersTierFilter';
 export { DashboardProPanels } from './dashboard/DashboardProPanels';
 export { DesignPanelSection } from './design/DesignPanelSection';
 export { DesignCustomCssSection } from './design/DesignCustomCssSection';

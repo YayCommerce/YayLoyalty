@@ -21,7 +21,7 @@ import { addsToLiability } from '../customers-adjust-points.copy';
 import { bulkLiabilityProjection, bulkTotalPoints, type AdjustFormState } from '../customers-adjust-points.form-state';
 
 /** The active filters as text. */
-function filterSummary(filters: CustomerListFilters): string | null {
+function filterSummary(filters: CustomerListFilters, tierLabel: string | null): string | null {
   const parts: string[] = [];
 
   if (filters.search.trim()) parts.push(`"${filters.search.trim()}"`);
@@ -31,6 +31,8 @@ function filterSummary(filters: CustomerListFilters): string | null {
 
   const expiringLabel = EXPIRING_SOON_OPTIONS.find((option) => option.value === filters.expiringSoon)?.label;
   if (filters.expiringSoon !== 'off' && expiringLabel) parts.push(expiringLabel);
+
+  if (filters.tier !== '' && tierLabel) parts.push(tierLabel);
 
   return parts.length > 0 ? parts.join(' · ') : null;
 }
@@ -42,6 +44,7 @@ export function AdjustPointsBulkPanels({
   isCountLoading,
   selectionMode,
   filters,
+  tierLabel,
   notShownOnPage,
   liabilityPoints,
   hasPreviewError,
@@ -54,6 +57,8 @@ export function AdjustPointsBulkPanels({
   isCountLoading: boolean;
   selectionMode: 'partial' | 'all';
   filters: CustomerListFilters;
+  /** The tier filter's choices as text; null without one. */
+  tierLabel: string | null;
   /** Rows the filter matches beyond the current page; 0 when none. */
   notShownOnPage: number;
   liabilityPoints: number | null;
@@ -63,7 +68,7 @@ export function AdjustPointsBulkPanels({
   acknowledged: boolean;
   onAcknowledgedChange: (checked: boolean) => void;
 }) {
-  const summary = selectionMode === 'all' ? filterSummary(filters) : null;
+  const summary = selectionMode === 'all' ? filterSummary(filters, tierLabel) : null;
   const total = bulkTotalPoints(state, effectiveCount);
   const projection = bulkLiabilityProjection(state.direction, total, liabilityPoints);
 

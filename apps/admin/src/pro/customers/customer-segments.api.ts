@@ -23,6 +23,8 @@ const savedSegmentWireSchema = z.object({
   filters: z.object({
     balance_range: balanceRangeSchema,
     expiring_soon: expiringSoonSchema,
+    /** Live tier ids as strings, plus `none`; a segment saved before tiers has no key. */
+    tier: z.array(z.string()).default([]),
   }),
 });
 
@@ -33,19 +35,25 @@ export const savedSegmentSchema = z.object({
   filters: z.object({
     balanceRange: balanceRangeSchema,
     expiringSoon: expiringSoonSchema,
+    /** CustomerListFilters' comma-separated spelling of the wire list. */
+    tier: z.string(),
   }),
 });
 
 export type SavedSegment = z.infer<typeof savedSegmentSchema>;
 
-function toWireFilters({ balanceRange, expiringSoon }: SavedSegment['filters']): SavedSegmentWire['filters'] {
-  return { balance_range: balanceRange, expiring_soon: expiringSoon };
+function toWireFilters({ balanceRange, expiringSoon, tier }: SavedSegment['filters']): SavedSegmentWire['filters'] {
+  return { balance_range: balanceRange, expiring_soon: expiringSoon, tier: tier ? tier.split(',') : [] };
 }
 
 function fromWire({ name, filters }: SavedSegmentWire): SavedSegment {
   return {
     name,
-    filters: { balanceRange: filters.balance_range, expiringSoon: filters.expiring_soon },
+    filters: {
+      balanceRange: filters.balance_range,
+      expiringSoon: filters.expiring_soon,
+      tier: filters.tier.join(','),
+    },
   };
 }
 

@@ -1,7 +1,9 @@
 <?php
 namespace YayLoyalty\Pro\Helpers;
 
+use YayLoyalty\Controllers\CustomerRowFilters;
 use YayLoyalty\Enums\CustomerFilters;
+use YayLoyalty\Repositories\TierRepository;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -10,7 +12,9 @@ defined( 'ABSPATH' ) || exit;
  * segment is { name, filters }; name is the identity, and a collision is
  * rejected rather than upserted. Filters are whitelisted on read as well as
  * write: the blob is localised straight into the page and drives Select
- * values. Writes are read-check-write without locking, accepted: a small
+ * values. `tier` is the one list-valued filter: live tier ids as strings,
+ * plus `none`, so a deleted tier drops out on the next read and the rest of
+ * the segment still applies. Writes are read-check-write without locking, accepted: a small
  * admin-edited list where a retry fixes a lost race.
  */
 final class CustomerSegmentsHelper {
@@ -28,7 +32,7 @@ final class CustomerSegmentsHelper {
 
     /**
      * Allowed filter values by field; the first is the default. Same keys as
-     * CustomerRowFilters::DEFAULTS minus `search`.
+     * CustomerRowFilters::DEFAULTS minus `search` and the list-valued `tier`.
      *
      * @var array<string, string[]>
      */
@@ -40,7 +44,7 @@ final class CustomerSegmentsHelper {
     /**
      * Stored segments, sanitised for output; a corrupt option degrades to an empty list.
      *
-     * @return array<int, array{name: string, filters: array<string, string>}>
+     * @return array<int, array{name: string, filters: array<string, string|string[]>}>
      */
     public static function get_segments(): array {
         $stored = get_option( self::OPTION_SEGMENTS, [] );
@@ -53,9 +57,10 @@ final class CustomerSegmentsHelper {
         $items = isset( $stored['items'] ) && is_array( $stored['items'] ) ? $stored['items'] : $stored;
 
         $segments = [];
+        $tiers    = self::tier_tokens();
 
         foreach ( $items as $item ) {
-            $segment = self::sanitize_one( $item );
+            $segment = self::sanitize_one( $item, $tiers );
 
             if ( null !== $segment ) {
                 $segments[] = $segment;
@@ -103,13 +108,13 @@ final class CustomerSegmentsHelper {
      * Appends a segment and persists. Does not re-check rejection_reason().
      *
      * @param array<string, mixed> $filters
-     * @return array<int, array{name: string, filters: array<string, string>}>
+     * @return array<int, array{name: string, filters: array<string, string|string[]>}>
      */
     public static function append_segment( string $name, array $filters ): array {
         $segments   = self::get_segments();
         $segments[] = [
             'name'    => $name,
-            'filters' => self::sanitize_filters( $filters ),
+            'filters' => self::sanitize_filters( $filters, self::tier_tokens() ),
         ];
 
         // Not autoloaded: read on one admin screen only.
@@ -128,7 +133,7 @@ final class CustomerSegmentsHelper {
     /**
      * Removes a segment by name (case-insensitive) and persists.
      *
-     * @return array<int, array{name: string, filters: array<string, string>}>|null Remaining list, or null when nothing matched.
+     * @return array<int, array{name: string, filters: array<string, string|string[]>}>|null Remaining list, or null when nothing matched.
      */
     public static function remove_segment( string $name ): ?array {
         $normalized = mb_strtolower( $name );
@@ -158,10 +163,11 @@ final class CustomerSegmentsHelper {
     }
 
     /**
-     * @param mixed $item
-     * @return array{name: string, filters: array<string, string>}|null
+     * @param mixed    $item
+     * @param string[] $tiers tier_tokens().
+     * @return array{name: string, filters: array<string, string|string[]>}|null
      */
-    private static function sanitize_one( $item ): ?array {
+    private static function sanitize_one( $item, array $tiers ): ?array {
         if ( ! is_array( $item ) ) {
             return null;
         }
@@ -176,19 +182,21 @@ final class CustomerSegmentsHelper {
 
         return [
             'name'    => $name,
-            'filters' => self::sanitize_filters( $filters ),
+            'filters' => self::sanitize_filters( $filters, $tiers ),
         ];
     }
 
     /**
      * Whitelists and coerces; always returns every key so the SPA reads a
      * complete CustomerListFilters patch. is_scalar() guards the cast: the REST arg is
-     * an open object, so a value can arrive as an array.
+     * an open object, so a value can arrive as an array. `tier` keeps only
+     * tier_tokens() entries, in the stored order, and reads as [] when missing.
      *
      * @param array<string, mixed> $filters
-     * @return array<string, string>
+     * @param string[]             $tiers tier_tokens().
+     * @return array<string, string|string[]>
      */
-    private static function sanitize_filters( array $filters ): array {
+    private static function sanitize_filters( array $filters, array $tiers ): array {
         $clean = [];
 
         foreach ( self::FILTER_SCHEMA as $field => $allowed ) {
@@ -197,6 +205,31 @@ final class CustomerSegmentsHelper {
             $clean[ $field ] = in_array( $value, $allowed, true ) ? $value : $allowed[0];
         }
 
+        $tier          = is_array( $filters['tier'] ?? null ) ? $filters['tier'] : [];
+        $clean['tier'] = array_values(
+            array_unique(
+                array_filter(
+                    array_map(
+                        static fn( $token ) => is_scalar( $token ) ? (string) $token : '',
+                        $tier
+                    ),
+                    static fn( $token ) => in_array( $token, $tiers, true )
+                )
+            )
+        );
+
         return $clean;
+    }
+
+    /** @return string[] The values a segment's `tier` may hold: live tier ids as strings, and `none`. */
+    private static function tier_tokens(): array {
+        $tokens = array_map(
+            static fn( $tier ) => (string) $tier->get_id(),
+            ( new TierRepository() )->live()
+        );
+
+        $tokens[] = CustomerRowFilters::TIER_NONE;
+
+        return $tokens;
     }
 }

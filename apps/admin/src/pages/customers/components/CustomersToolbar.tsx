@@ -17,6 +17,7 @@ import {
 /**
  * Search and filter row.
  * `exportSlot` is Lite-only. In Pro, Export moves to the segment row.
+ * `extraFilters` sits after the built-in filters; Pro puts the Tier filter there.
  */
 export function CustomersToolbar({
   filters,
@@ -24,11 +25,13 @@ export function CustomersToolbar({
   /** Empty store: controls go inert but stay in place, so the table does not shift. */
   disabled,
   exportSlot,
+  extraFilters,
 }: {
   filters: CustomerListFilters;
   onFiltersChange: (patch: Partial<CustomerListFilters>) => void;
   disabled: boolean;
   exportSlot?: ReactNode;
+  extraFilters?: ReactNode;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -53,6 +56,7 @@ export function CustomersToolbar({
         options={EXPIRING_SOON_OPTIONS}
         disabled={disabled}
       />
+      {extraFilters}
       {countActiveFilters(filters) > 0 && (
         <Button
           variant="link"
