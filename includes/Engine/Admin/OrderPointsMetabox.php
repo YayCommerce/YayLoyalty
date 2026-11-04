@@ -47,14 +47,15 @@ final class OrderPointsMetabox {
             return;
         }
 
-        $state = OrderPointsState::resolve( $order, new LedgerRepository() );
+        $award = new OrderAward( EarningService::build(), new PendingPoints( new CustomerRepository() ), new LedgerRepository() );
+        $state = OrderPointsState::resolve( $order, new LedgerRepository(), $award );
 
         echo '<div class="yayloyalty-order-points" data-order-id="' . esc_attr( (string) $order_id ) . '">';
-        self::render_state( $order, $state );
+        self::render_state( $order, $state, $award );
         echo '</div>';
     }
 
-    private static function render_state( \WC_Order $order, OrderPointsState $state ): void {
+    private static function render_state( \WC_Order $order, OrderPointsState $state, OrderAward $award ): void {
         switch ( $state->get_status() ) {
             case OrderPointsState::NOT_PAID:
                 self::paragraph( __( 'Points are added when the order is completed.', 'yayloyalty' ) );
@@ -71,7 +72,7 @@ final class OrderPointsMetabox {
                 self::paragraph( __( 'Assign a customer in the Customer field and update the order to add points.', 'yayloyalty' ) );
                 return;
             case OrderPointsState::MISSING:
-                self::render_confirm( $order, $state );
+                self::render_confirm( $order, $state, $award );
                 return;
             case OrderPointsState::EARNED:
                 /* translators: %d: points */
@@ -89,12 +90,12 @@ final class OrderPointsMetabox {
      * retry writes. When the two differ the box says so, and when the award gives nothing it links to
      * Adjust points prefilled with checkout's figure.
      */
-    private static function render_confirm( \WC_Order $order, OrderPointsState $state ): void {
+    private static function render_confirm( \WC_Order $order, OrderPointsState $state, OrderAward $award ): void {
         $customer_id = (int) $order->get_customer_id();
         $name        = Text::user_display_name( $customer_id );
-        $expected    = $state->get_figure();
-        $pending     = new PendingPoints( new CustomerRepository() );
-        $now         = ( new OrderAward( EarningService::build(), $pending, new LedgerRepository() ) )->preview( $order );
+        $now         = $award->preview( $order );
+        // Signal D (never processed) left no checkout figure: what the award gives now is the only one.
+        $expected = $state->get_figure() > 0 ? $state->get_figure() : $now;
 
         if ( $now < 1 ) {
             /* translators: %d: points */

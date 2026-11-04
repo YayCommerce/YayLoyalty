@@ -22,6 +22,13 @@ final class PendingPoints {
     /** The release flag, separate from the figure: set exactly once, at award or cancel. */
     public const META_RELEASED_AT = '_yayloyalty_points_released_at';
 
+    /**
+     * Set by OrderAward::run() every time the order's award runs, whatever it answers. Its absence on a
+     * completed order with no EARN row and no release flag means the plugin never processed the order
+     * (inactive, or not yet installed, when it completed): OrderPointsState's signal D.
+     */
+    public const META_AWARD_RAN_AT = '_yayloyalty_award_ran_at';
+
     /** Projections written at award for the order screen and emails; never read to compute a balance. */
     public const META_EARNED   = '_yayloyalty_points_earned';
     public const META_CAMPAIGN = '_yayloyalty_campaign_id';
@@ -108,6 +115,18 @@ final class PendingPoints {
             $order->update_meta_data( self::META_CAMPAIGN, $entry->get_campaign_id() );
         }
 
+        $this->save_meta( $order );
+    }
+
+    /** Records that the order's award ran (META_AWARD_RAN_AT). Meta only, like every write here. */
+    public function mark_award_ran( int $order_id ): void {
+        $order = wc_get_order( $order_id );
+
+        if ( ! $order instanceof \WC_Order ) {
+            return;
+        }
+
+        $order->update_meta_data( self::META_AWARD_RAN_AT, Dates::now() );
         $this->save_meta( $order );
     }
 

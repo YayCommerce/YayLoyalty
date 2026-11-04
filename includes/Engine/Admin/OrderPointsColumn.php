@@ -2,7 +2,11 @@
 namespace YayLoyalty\Engine\Admin;
 
 use YayLoyalty\Access\Capabilities;
+use YayLoyalty\Engine\Earning\EarningService;
+use YayLoyalty\Engine\Earning\OrderAward;
 use YayLoyalty\Engine\Earning\OrderPointsState;
+use YayLoyalty\Engine\Earning\PendingPoints;
+use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Utils\Log;
 
@@ -11,12 +15,16 @@ defined( 'ABSPATH' ) || exit;
 /**
  * The "Loyalty points" column on WooCommerce › Orders, for HPOS and legacy storage: the order's net
  * earned points, a Missing badge that leads the merchant to the order's box (OrderPointsMetabox), or "–".
- * One OrderPointsState::resolve() per row, a few indexed `order_id` queries. It reads the order as
+ * One OrderPointsState::resolve() per row, a few indexed `order_id` queries, plus an in-memory award
+ * preview for a completed order the plugin never processed (signal D). It reads the order as
  * the list loaded it, cached copy included: stale "earned" meta with no EARN row still shows Missing.
  */
 final class OrderPointsColumn {
 
     public const KEY = 'yayloyalty_points';
+
+    /** @var OrderAward|null */
+    private static $award = null;
 
     public static function register(): void {
         add_filter( 'manage_edit-shop_order_columns', [ self::class, 'add' ] );
@@ -72,7 +80,7 @@ final class OrderPointsColumn {
         }
 
         try {
-            $state = OrderPointsState::resolve( $order, new LedgerRepository() );
+            $state = OrderPointsState::resolve( $order, new LedgerRepository(), self::award() );
         } catch ( \Throwable $e ) {
             // The orders list outranks the cell.
             Log::warning( 'OrderPointsColumn', 'order #' . $order->get_id() . ': ' . $e->getMessage() );
@@ -97,5 +105,14 @@ final class OrderPointsColumn {
         }
 
         return '&ndash;';
+    }
+
+    /** One award per request, shared by every row: it previews signal D's orders (campaigns load once). */
+    private static function award(): OrderAward {
+        if ( null === self::$award ) {
+            self::$award = new OrderAward( EarningService::build(), new PendingPoints( new CustomerRepository() ), new LedgerRepository() );
+        }
+
+        return self::$award;
     }
 }

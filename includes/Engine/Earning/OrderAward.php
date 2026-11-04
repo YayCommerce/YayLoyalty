@@ -50,6 +50,8 @@ final class OrderAward {
 
         // Completed ends staging whatever the triggers answered: a skipped award would otherwise leave pending forever.
         $this->pending->release( $order_id );
+        // Not reached when an award throws: the order then stays missing (signal A, or D with nothing staged).
+        $this->pending->mark_award_ran( $order_id );
 
         return $outcomes;
     }

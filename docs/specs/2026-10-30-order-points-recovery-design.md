@@ -5,6 +5,7 @@
 **Amended:** 2026-10-30, with the user: case 4 (the award crashed, but the order meta says the points were earned). The ledger is the truth and the order cache is dropped before reading.
 **Amended:** 2026-11-03, with the user: one click, no reason field and no Manual entry flow. Every other manual grant goes to SPA Adjust points through a link in the box (`#/customers/{id}?adjust=1`). An order earns points only through customer actions; the admin only repairs an award that never completed.
 **Amended:** 2026-11-03, with the user: **retry the award.** The button re-runs the standard purchase award instead of writing a separate recovery row. "Missing" is decided by the order alone. A `processing` order and an order reversed then restored are not missing. The first version (a `…:recovery` EARN row) shipped on this branch and was replaced; see Alternatives.
+**Amended:** 2026-11-04, with the user: signal D. An order completed while the plugin was inactive, or before it was installed, is missing when a campaign would pay it now. `OrderAward::run()` marks every order it processes (`_yayloyalty_award_ran_at`); the orders list shows **Missing** for D too.
 
 ## Goal
 
@@ -26,6 +27,7 @@ An order is **missing** when it is `completed`, has a customer, has no EARN row 
 |---|---|---|
 | A. Staged, never released | `_yayloyalty_points_pending = N`, no release flag | The award threw and `ListenerGuard` swallowed it; the plugin was inactive when the order completed; the status was changed without `woocommerce_order_status_changed` (import, direct SQL); the request died mid-award. |
 | C. Earned on paper only | `_yayloyalty_points_earned = N`, no EARN row | A persistent object cache (Redis, Memcached) kept order meta that the database rolled back; ledger rows deleted by hand. |
+| D. Never processed | No `_yayloyalty_award_ran_at` and no `_yayloyalty_points_released_at`, and the award would pay the order now (`OrderAward::preview() > 0`) | The order was created and completed while the plugin was inactive, or before it was installed. No checkout figure exists, so the box offers what the award gives now. |
 
 Not missing:
 
@@ -34,10 +36,10 @@ Not missing:
 | Paid, not `completed` (`processing`, `on-hold`) | Only `completed` awards: the points are waiting (`awaiting_completion`). |
 | Earned, then reversed (cancel, trash, refunded status), then restored | The reversal is final by design; the order note already says "adjust manually". The box links to Adjust points. |
 | Award skipped on purpose (no campaign, limit, excluded customer) | The figure was released and nothing was earned. |
-| Guest order assigned a customer after completion; order completed before the plugin was installed | Nothing was staged for that customer. |
+| Guest order assigned a customer after completion | Its award ran (and skipped: no customer), so it carries the marker. |
 | Fully refunded | Nothing is owed. |
 
-Known false positive: an order duplicated or migrated by a tool that copies all meta carries the original's signals. Out of scope.
+Known false positives, accepted with the user: an order duplicated or migrated by a tool that copies all meta carries the original's signals; an order completed on a version before 2026-11-04 whose award ran and skipped on purpose with nothing staged carries no marker, so it reads as D when a campaign would pay it now (for example an earning limit that has since reset).
 
 ## Scope
 
@@ -60,6 +62,7 @@ Known false positive: an order duplicated or migrated by a tool that copies all 
 1. Given a `completed` order with a customer, no EARN row and `_yayloyalty_points_pending = 120` unreleased, when an admin with `yayloyalty_manage_points` opens the order, then the box says the order should have earned **120** points and shows a **Give N points** button, where N is what the award gives now (what the retry writes). When N differs from 120, the box also says "Campaigns changed since checkout: retrying gives N points now."
 2. When the admin clicks it, the order's award runs as on completion: one purchase EARN row keyed `earn:{user}:order:{order_id}:purchase` with its campaign, `pending_points` released, `_yayloyalty_points_earned = N`, the usual award note, and the order note "Points award retried by {admin display name}."
 3. When the award gives 0 now (the campaign was paused, archived or changed), the box shows no button. It says "No campaign gives this order points any more. At checkout it was expected to earn 120 points." and links to Adjust points with `points=120`.
+3b. Signal D: given a `completed` order with a customer and no plugin meta at all (it completed while the plugin was inactive), when a campaign would pay it N points now, the order is missing, the column shows **Missing**, and the box says it should have earned N points with a **Give N points** button. The retry writes the standard purchase row and the marker. An order whose award ran and skipped (marker set) is not missing, even once a campaign would pay it.
 3a. Signal C: given a `completed` order with a customer, no EARN row, `_yayloyalty_points_earned = 40`, the release flag set and `customers.pending_points = 40`, the order is missing. The retry writes one 40-point row, leaves `_yayloyalty_points_earned` at 40 (not 80) and sets `pending_points` to 0. The box and the REST route read the order after dropping its cached copy.
 4. An order that is paid, has a customer and is neither earned nor missing shows only the link "Adjust points →" to `admin.php?page=yayloyalty#/customers/{customer_id}?adjust=1`; an earned order shows "Earned N points." and the same link. A POST for it returns 409 `yayloyalty_not_eligible` (409 `yayloyalty_order_has_points` when earned) and writes nothing. The POST takes no body. Opening the link shows the drawer with the Adjust points dialog open once; the parameters are dropped from the URL, and the dialog does not open without `yayloyalty_manage_points` or for a deleted account.
 5. A second POST, or a POST racing a completion, writes nothing and returns 409 `yayloyalty_order_has_points`.
@@ -101,7 +104,7 @@ Known false positive: an order duplicated or migrated by a tool that copies all 
 
 | Path | Responsibility |
 |---|---|
-| `includes/Engine/Earning/OrderAward.php` | New. `run( \WC_Order $order ): Outcome[]`: awards each order trigger, notes each outcome, releases the staged figure. |
+| `includes/Engine/Earning/OrderAward.php` | New. `run( \WC_Order $order ): Outcome[]`: awards each order trigger, notes each outcome, releases the staged figure, and sets `_yayloyalty_award_ran_at` (`PendingPoints::mark_award_ran()`). `preview( \WC_Order ): int` sums what the same triggers would award now. |
 | `includes/Engine/Earning/Listeners/OrderListener.php` | `on_awardable()` calls `OrderAward::run()`. |
 | `includes/Engine/Earning/OrderPointsState.php` | New, read only. States `not_paid`, `guest`, `earned`, `awaiting_completion`, `missing` (figure: the staged figure, else the earned meta) and `no_points`. The box and the REST route call `PendingPoints::forget_cached()` before resolving; the column does not. |
 | `includes/Engine/Earning/OrderPointsRetry.php` | New. Drops the order's cache, clears the earned projection (`PendingPoints::forget_earned()`: the ledger has no EARN row, so it is wrong), runs `OrderAward::run()`, recomputes the customer's `pending_points`, and adds "Points award retried by {admin}." when anything was awarded. |
@@ -139,7 +142,7 @@ Known false positive: an order duplicated or migrated by a tool that copies all 
 | Earning limit reached today | The award holds back as on completion; its note says so. |
 | The cause of the original failure persists | The retry fails again; the POST reports the error and writes nothing. |
 | Persistent object cache kept rolled-back meta | The box and REST read after `forget_cached()`. |
-| Column cost | One indexed `order_id` ledger query per row, plus a refunds query for a `completed` order with no live earn. |
+| Column cost | One indexed `order_id` ledger query per row; for a `completed` order with no EARN row and a signal, a refunds query; for signal D, an in-memory award preview with one `EarningService` per request. |
 
 **Decision record:** None. No new kind of ledger movement.
 
@@ -160,6 +163,8 @@ Known false positive: an order duplicated or migrated by a tool that copies all 
 - `test_retry_after_stale_earned_meta` (signal C): one 40-point row, `_yayloyalty_points_earned` stays 40, `pending_points` 0.
 - `test_reassigned_order_is_not_paid_twice`: the new customer gets nothing.
 - `test_reversed_order_is_not_missing`: a cancelled-then-restored order is not missing and the POST writes nothing.
+- `test_order_never_processed_is_missing` (signal D, accepted 2026-11-04): an order with no plugin meta is missing with no checkout figure; the POST writes one standard purchase row and the marker.
+- `test_skipped_award_is_not_missing` (accepted 2026-11-04): an order whose award ran and skipped is not missing once a campaign appears; the POST writes nothing.
 
 ## Rollout
 

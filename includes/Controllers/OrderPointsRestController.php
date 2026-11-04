@@ -2,6 +2,7 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
+use YayLoyalty\Engine\Earning\OrderAward;
 use YayLoyalty\Engine\Earning\OrderPointsRetry;
 use YayLoyalty\Engine\Earning\OrderPointsState;
 use YayLoyalty\Engine\Earning\Outcome;
@@ -23,9 +24,13 @@ final class OrderPointsRestController extends AbstractRestController {
 
     private LedgerRepository $ledger;
 
-    public function __construct( OrderPointsRetry $retry, LedgerRepository $ledger ) {
+    /** Lets the state detect an order the plugin never processed (signal D). */
+    private OrderAward $award;
+
+    public function __construct( OrderPointsRetry $retry, LedgerRepository $ledger, OrderAward $award ) {
         $this->retry  = $retry;
         $this->ledger = $ledger;
+        $this->award  = $award;
     }
 
     public function get_rest_base(): string {
@@ -62,7 +67,7 @@ final class OrderPointsRestController extends AbstractRestController {
             return $this->order_not_found();
         }
 
-        $state = OrderPointsState::resolve( $order, $this->ledger );
+        $state = OrderPointsState::resolve( $order, $this->ledger, $this->award );
 
         if ( OrderPointsState::EARNED === $state->get_status() ) {
             return $this->order_has_points();
@@ -86,7 +91,7 @@ final class OrderPointsRestController extends AbstractRestController {
         if ( $is_awarded ) {
             $fresh = PendingPoints::fresh_order( (int) $order->get_id() );
 
-            return OrderPointsState::resolve( null === $fresh ? $order : $fresh, $this->ledger )->to_array();
+            return OrderPointsState::resolve( null === $fresh ? $order : $fresh, $this->ledger, $this->award )->to_array();
         }
 
         if ( $has_points ) {

@@ -25,6 +25,7 @@
 - `test_retry_after_stale_earned_meta` (signal C): one row, `_yayloyalty_points_earned` stays 40, not 80;
 - `test_reassigned_order_is_not_paid_twice`: the `write_keyed()` guard for reassigned orders;
 - `test_reversed_order_is_not_missing`: a cancelled-then-restored order is not missing and the POST writes nothing.
+- `test_order_never_processed_is_missing` and `test_skipped_award_is_not_missing` (signal D, accepted 2026-11-04; Task 6).
 
 ## Global constraints
 
@@ -381,3 +382,10 @@ With `./scripts/run.sh dev` running:
 
 Stage: the three files above
 Message: `feat(admin): show the retried award's points and prefill Adjust points`
+
+### Task 6: Signal D, orders the plugin never processed (added 2026-11-04)
+
+**Files:** `includes/Engine/Earning/PendingPoints.php` (`META_AWARD_RAN_AT`, `mark_award_ran()`), `includes/Engine/Earning/OrderAward.php` (`run()` marks the order), `includes/Engine/Earning/OrderPointsState.php` (`resolve( \WC_Order, LedgerRepository, ?OrderAward $award = null )`), `includes/Controllers/OrderPointsRestController.php` and `includes/Engine/RestAPI.php` (the controller takes the shared `OrderAward`), `includes/Engine/Admin/OrderPointsMetabox.php`, `includes/Engine/Admin/OrderPointsColumn.php` (one `OrderAward` per request); tests in `OrderPointsRetryTest.php`.
+
+- [x] Tests `test_order_never_processed_is_missing`, `test_skipped_award_is_not_missing`: `composer test:integration -- --filter OrderPointsRetryTest` → `OK (6 tests, …)`.
+- [x] Full suite: only the 2 known failures.

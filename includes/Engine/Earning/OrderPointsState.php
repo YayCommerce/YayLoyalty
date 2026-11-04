@@ -10,7 +10,8 @@ defined( 'ABSPATH' ) || exit;
  * Where one order's points stand, for the order screen's box, its REST route and the orders list.
  * Read only, and decided by the order alone: an order is missing points when it is completed, has a
  * customer, has no EARN row (for anyone) and still shows that its award should have paid: an
- * unreleased staged figure, or earned meta the ledger lacks. A caller that must see the database rather
+ * unreleased staged figure (A), earned meta the ledger lacks (C), or no sign the award ever ran while a
+ * campaign would pay it now (D: completed while the plugin was inactive or not yet installed). A caller that must see the database rather
  * than the object cache reads the order with PendingPoints::fresh_order().
  */
 final class OrderPointsState {
@@ -46,7 +47,11 @@ final class OrderPointsState {
     }
 
     /** The first matching state wins, in this order: not paid, guest, earned, awaiting completion, then missing or no points. */
-    public static function resolve( \WC_Order $order, LedgerRepository $ledger ): self {
+    /**
+     * @param OrderAward|null $award Detects signal D (an order the plugin never processed) by previewing the
+     *                               award; without it such an order resolves as NO_POINTS.
+     */
+    public static function resolve( \WC_Order $order, LedgerRepository $ledger, ?OrderAward $award = null ): self {
         if ( ! in_array( $order->get_status(), wc_get_is_paid_statuses(), true ) ) {
             return new self( self::NOT_PAID, 0, 0 );
         }
@@ -70,20 +75,35 @@ final class OrderPointsState {
             return new self( self::NO_POINTS, 0, $summary['net'] );
         }
 
+        // Signal A, the staged figure never released; else C, earned meta the ledger lacks.
         $figure = PendingPoints::unreleased( $order );
 
         if ( $figure < 1 ) {
             $figure = (int) $order->get_meta( PendingPoints::META_EARNED );
         }
 
-        if ( $figure < 1 ) {
+        // Signal D: the award never ran (no marker, no release flag), so the plugin never processed the order.
+        $is_unprocessed = $figure < 1
+            && '' === (string) $order->get_meta( PendingPoints::META_AWARD_RAN_AT )
+            && '' === (string) $order->get_meta( PendingPoints::META_RELEASED_AT );
+
+        if ( $figure < 1 && ! $is_unprocessed ) {
             return new self( self::NO_POINTS, 0, $summary['net'] );
         }
 
-        // A fully refunded order owes nothing. A free order with no refund is not refunded. Checked last: it queries.
+        // A fully refunded order owes nothing. A free order with no refund is not refunded. It queries, so it runs late.
         list( $refunds, , $is_fully_refunded ) = Reversal::refund_state( $order );
 
-        return [] !== $refunds && $is_fully_refunded ? new self( self::NO_POINTS, 0, $summary['net'] ) : new self( self::MISSING, $figure, 0 );
+        if ( [] !== $refunds && $is_fully_refunded ) {
+            return new self( self::NO_POINTS, 0, $summary['net'] );
+        }
+
+        // D counts only when a campaign would pay the order now; checkout left no figure, so MISSING carries 0.
+        if ( $is_unprocessed && ( null === $award || $award->preview( $order ) < 1 ) ) {
+            return new self( self::NO_POINTS, 0, $summary['net'] );
+        }
+
+        return new self( self::MISSING, $figure, 0 );
     }
 
     /** One of the class constants. */
@@ -91,7 +111,7 @@ final class OrderPointsState {
         return $this->status;
     }
 
-    /** What checkout expected the award to pay, in MISSING and AWAITING_COMPLETION; else 0. */
+    /** What checkout expected the award to pay, in MISSING (0 for signal D) and AWAITING_COMPLETION; else 0. */
     public function get_figure(): int {
         return $this->figure;
     }

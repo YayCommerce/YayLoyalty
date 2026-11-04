@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Tests\Integration\Earning;
 
+use YayLoyalty\Engine\Earning\EarningService;
+use YayLoyalty\Engine\Earning\OrderAward;
 use YayLoyalty\Engine\Earning\OrderPointsState;
 use YayLoyalty\Engine\Earning\PendingPoints;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -104,6 +106,43 @@ final class OrderPointsRetryTest extends IntegrationTestCase {
         $this->assertSame( [ 40, -40 ], $this->ledger_points( $user_id ) );
     }
 
+    /** Signal D: the order completed while the plugin was inactive (or before it was installed), so it holds no plugin meta at all. */
+    public function test_order_never_processed_is_missing(): void {
+        $user_id = $this->create_customer();
+        $order   = $this->create_order( $user_id, [ 40 ], 'completed' ); // No campaign yet: the award runs and skips.
+        $order->delete_meta_data( PendingPoints::META_AWARD_RAN_AT ); // As if the plugin never saw the order.
+        $order->save_meta_data();
+        $this->create_campaign();
+
+        $state = $this->fresh_state( $order->get_id() );
+        $this->assertSame( OrderPointsState::MISSING, $state->get_status() );
+        $this->assertSame( 0, $state->get_figure() ); // No checkout figure: nothing was staged.
+
+        $this->act_as_admin();
+        $this->assertSame( 200, $this->send( 'POST', '/yayloyalty/v1/orders/' . $order->get_id() . '/points' )->get_status() );
+
+        $rows = $this->ledger_rows( $user_id );
+        $this->assertCount( 1, $rows );
+        $this->assertSame( 40, (int) $rows[0]['points'] );
+        $this->assertSame( 'earn:' . $user_id . ':order:' . $order->get_id() . ':purchase', $rows[0]['idempotency_key'] );
+        $this->assertNotSame( '', (string) PendingPoints::fresh_order( $order->get_id() )->get_meta( PendingPoints::META_AWARD_RAN_AT ) );
+    }
+
+    /** An award that ran and skipped on purpose is not missing, even once a campaign would pay it. */
+    public function test_skipped_award_is_not_missing(): void {
+        $user_id = $this->create_customer();
+        $order   = $this->create_order( $user_id, [ 40 ], 'completed' ); // No campaign: the award runs and skips.
+        $this->create_campaign();
+
+        $this->assertSame( OrderPointsState::NO_POINTS, $this->fresh_state( $order->get_id() )->get_status() );
+
+        $this->act_as_admin();
+        $response = $this->send( 'POST', '/yayloyalty/v1/orders/' . $order->get_id() . '/points' );
+
+        $this->assertSame( 'yayloyalty_not_eligible', $response->as_error()->get_error_code() );
+        $this->assertSame( [], $this->ledger_points( $user_id ) );
+    }
+
     /** An order reassigned after it earned does not pay its new customer when it completes again. */
     public function test_reassigned_order_is_not_paid_twice(): void {
         $this->create_campaign();
@@ -124,6 +163,8 @@ final class OrderPointsRetryTest extends IntegrationTestCase {
 
     /** The state as the order screen's box resolves it: the order read past its cached copy. */
     private function fresh_state( int $order_id ): OrderPointsState {
-        return OrderPointsState::resolve( PendingPoints::fresh_order( $order_id ), new LedgerRepository() );
+        $award = new OrderAward( EarningService::build(), new PendingPoints( new CustomerRepository() ), new LedgerRepository() );
+
+        return OrderPointsState::resolve( PendingPoints::fresh_order( $order_id ), new LedgerRepository(), $award );
     }
 }
