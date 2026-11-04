@@ -5,6 +5,8 @@ use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\AbstractRestController;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Tier;
+use YayLoyalty\Pro\Services\TierEvaluator;
+use YayLoyalty\Pro\Services\TierSweep;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Repositories\TierRepository;
@@ -17,6 +19,10 @@ defined( 'ABSPATH' ) || exit;
  * are validation, checked in full before any write. Every write first locks the live tiers, so two
  * requests can't both pass the count and uniqueness checks. Ranks are rewritten in threshold order
  * after each write. $rewards and $customers are read-only here: reference checks and member counts.
+ *
+ * Catalogue writes never touch a customer's tier: while tiers are on, a create, a threshold change or a
+ * delete requests a re-evaluation sweep, and TierEvaluator moves customers. The switch lives here too
+ * (`/tiers/settings`), behind the same capability, since `POST /settings` drops the tier keys.
  */
 final class TiersRestController extends AbstractRestController {
 
@@ -43,6 +49,31 @@ final class TiersRestController extends AbstractRestController {
     }
 
     public function register_routes(): void {
+        // Before `/tiers/(?P<id>…)`, which can never match it, but kept first so the static route reads first.
+        register_rest_route(
+            self::REST_NAMESPACE,
+            '/tiers/settings',
+            [
+                [
+                    'methods'             => \WP_REST_Server::READABLE,
+                    'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_settings' ], $request ),
+                    'permission_callback' => $this->requires( Capabilities::MANAGE_TIERS ),
+                ],
+                [
+                    'methods'             => \WP_REST_Server::EDITABLE,
+                    'callback'            => fn( $request ) => $this->exec_write( [ $this, 'update_settings' ], $request ),
+                    'permission_callback' => $this->requires( Capabilities::MANAGE_TIERS ),
+                    'args'                => [
+                        'tiers_enabled' => [
+                            'description' => __( 'Whether customers are placed into tiers.', 'yayloyalty' ),
+                            'type'        => 'boolean',
+                            'required'    => true,
+                        ],
+                    ],
+                ],
+            ]
+        );
+
         register_rest_route(
             self::REST_NAMESPACE,
             '/tiers',
@@ -81,6 +112,55 @@ final class TiersRestController extends AbstractRestController {
                 'schema' => [ $this, 'get_item_schema' ],
             ]
         );
+    }
+
+    /**
+     * The tier settings, the customer count a placement would cover, and the pending sweep's progress.
+     *
+     * @return array{tiers_enabled: bool, tiers_mode: string, tiers_rolling_months: int, customer_count: int, sweep: array{mode: string, done: int, total: int}|null}
+     */
+    public function get_settings( \WP_REST_Request $request ): array {
+        $settings = SettingsHelper::get_settings();
+
+        return [
+            'tiers_enabled'        => true === ( $settings['tiers_enabled'] ?? false ),
+            'tiers_mode'           => (string) $settings['tiers_mode'],
+            'tiers_rolling_months' => (int) $settings['tiers_rolling_months'],
+            'customer_count'       => $this->customers->count_all(),
+            'sweep'                => TierSweep::progress(),
+        ];
+    }
+
+    /**
+     * Turns tiers on or off. On places every customer through a sweep; off freezes stored tiers and drops
+     * any pending sweep. Only `tiers_enabled` is writable until rolling mode exists.
+     *
+     * @return array<string, mixed>
+     */
+    public function update_settings( \WP_REST_Request $request ): array {
+        $was_enabled = TierEvaluator::is_enabled();
+        $enabled     = (bool) $request['tiers_enabled'];
+
+        SettingsHelper::update_settings( [ 'tiers_enabled' => $enabled ] );
+
+        if ( $enabled && ! $was_enabled ) {
+            TierSweep::request( TierSweep::MODE_PLACEMENT );
+        } elseif ( ! $enabled && $was_enabled ) {
+            TierSweep::cancel();
+        }
+
+        $response = $this->get_settings( $request );
+
+        // The sweep option is written after commit, so report the placement that is about to start.
+        if ( $enabled && ! $was_enabled ) {
+            $response['sweep'] = [
+                'mode'  => TierSweep::MODE_PLACEMENT,
+                'done'  => 0,
+                'total' => $response['customer_count'],
+            ];
+        }
+
+        return $response;
     }
 
     /** @return array<int, array<string, mixed>> Live tiers, lowest threshold first. */
@@ -129,6 +209,7 @@ final class TiersRestController extends AbstractRestController {
         );
 
         $this->tiers->rerank();
+        $this->request_reevaluation();
 
         return $this->respond_saved( $id );
     }
@@ -155,6 +236,8 @@ final class TiersRestController extends AbstractRestController {
             return $error;
         }
 
+        $threshold_changed = $fields['threshold'] !== $tier->get_threshold();
+
         $tier->set_name( $fields['name'] );
         $tier->set_threshold( $fields['threshold'] );
         $tier->set_multiplier( $fields['multiplier'] );
@@ -165,6 +248,10 @@ final class TiersRestController extends AbstractRestController {
         $row = $tier->to_update_row();
         $this->tiers->update( (int) $tier->get_id(), $row['data'], $row['format'] );
         $this->tiers->rerank();
+
+        if ( $threshold_changed ) {
+            $this->request_reevaluation();
+        }
 
         return $this->respond_saved( (int) $tier->get_id() );
     }
@@ -215,11 +302,19 @@ final class TiersRestController extends AbstractRestController {
 
         $this->tiers->soft_delete( $id, Dates::now() );
         $this->tiers->rerank();
+        $this->request_reevaluation();
 
         return [
             'deleted' => true,
             'id'      => $id,
         ];
+    }
+
+    /** While tiers are on, asks for every customer to be evaluated against the changed catalogue. */
+    private function request_reevaluation(): void {
+        if ( TierEvaluator::is_enabled() ) {
+            TierSweep::request( TierSweep::MODE_REEVALUATE );
+        }
     }
 
     /**
