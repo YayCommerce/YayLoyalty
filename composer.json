@@ -3,7 +3,7 @@
   "type": "wordpress-plugin",
   "require": {
     "php": "^7.4 || ^8.0",
-    "yaycommerce/admin-shell": "^2.5"
+    "yaycommerce/admin-shell": "^2.10"
   },
   "repositories": {
     "admin-shell": {

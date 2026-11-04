@@ -42,7 +42,7 @@ A loyalty plugin for WooCommerce: points, rewards, referrals and VIP tiers. One 
    pnpm install
    ```
 
-   On a fresh clone, `pnpm install` fails until the dev script has created `vendor-prefixed/` ([known issue](docs/known-issues.md#a-fresh-clones-first-install-fails-on-vendor-prefixedsrc)). The dev script ends by starting Vite on port 3030, which keeps running. Run `git status` once it has started: the dev script can rewrite `composer.json` and `scoper.inc.php`.
+   `vendor-prefixed/` (the scoped admin-shell) is committed, so the dev script only runs `composer install` when `vendor/` is missing, and never rebuilds `vendor-prefixed/`. The dev script ends by starting Vite on port 3030, which keeps running. To move to a newer admin-shell, run `./scripts/run.sh shell-update` and commit what it changes.
 
 4. Activate the plugin in wp-admin. Activation installs the tables. `YAYLOYALTY_IS_DEVELOPMENT` defaults to `true`, so wp-admin loads the SPA from the dev server: keep `./scripts/run.sh dev` running while you work in the admin. To load a built bundle instead, define the constant as `false` in `wp-config.php`, then run `./scripts/run.sh build`.
 

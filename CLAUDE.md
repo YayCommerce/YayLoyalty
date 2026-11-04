@@ -12,7 +12,7 @@ PHP lives in `includes/`. The admin SPA is `apps/admin/` (React, Vite, TypeScrip
 
 Run from the repo root on Node 22: `nvm use` reads `.nvmrc`, and pnpm 11 fails on older Node. Use pnpm only; `apps/admin` rejects npm and Yarn. Composer tooling needs PHP ≥ 8.2.
 
-- `pnpm install`: JS dependencies, then `composer install` (root `postinstall`). On a fresh clone, run `./scripts/run.sh dev` first.
+- `pnpm install`: JS dependencies, then `composer install` (root `postinstall`).
 - `composer lint`: phpcs, WordPress-Extra with a PHP 7.4 floor. [Fails today](docs/known-issues.md).
 - `composer test`: PHPUnit unit suite, no WordPress.
 - `composer test:integration`: PHPUnit inside the WordPress site this plugin is installed in, with the plugin active. Local sites set `YAYLOYALTY_TEST_SOCKET` (see the header of `tests/integration/bootstrap.php`). [Exit 0 doesn't prove it ran](docs/known-issues.md).
@@ -29,7 +29,7 @@ Any pnpm command may [run `pnpm install`, and with it `composer install`, first]
 
 ## Hard rules
 
-1. Never hand-edit generated output: `vendor/`, `vendor-prefixed/`, `node_modules/`, `assets/dist/`, `release/`. Change the input and rerun the command that builds it.
+1. Never hand-edit generated output: `vendor/`, `vendor-prefixed/`, `node_modules/`, `assets/dist/`, `release/`. Change the input and rerun the command that builds it (`vendor-prefixed/` is committed; rebuild it with `./scripts/run.sh shell-update` and commit the result).
 2. Lite names Pro in exactly one place: the guarded `YayLoyaltyPro::boot()` call in `includes/YayLoyalty.php`. Pro attaches only through the filters that `boot()` adds in `includes/Pro/YayLoyaltyPro.php`. `scripts/validate-build.php` fails a Lite zip that names Pro anywhere else.
 3. SPA Pro code lives in `apps/admin/src/pro/` and is imported only through `apps/admin/src/pro/index.ts`. It renders only behind `IS_PRO_BUILD` (`apps/admin/src/lib/is-pro-build.ts`), a build-time constant; never use a runtime or localized flag. `<ProGate>` alone still ships the Pro code into Lite, and the validator's sentinel check misses that, so only review catches it.
 4. Product PHP must run on PHP 7.4: no enums, `match`, `readonly`, promoted constructor properties, `?->`, named arguments or union types. phpcs does not detect PHP 8-only syntax and the dev tooling runs on PHP 8, so only review catches it.

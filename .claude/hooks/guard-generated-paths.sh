@@ -34,7 +34,7 @@ rel="${rel#.claude/worktrees/*/}"
 
 case "$rel" in
     vendor/*)                        rebuild='composer install' ;;
-    vendor-prefixed/*)               rebuild='the admin-shell sync in ./scripts/run.sh dev' ;;
+    vendor-prefixed/*)               rebuild='./scripts/run.sh shell-update (then commit it)' ;;
     node_modules/*|*/node_modules/*) rebuild='pnpm install' ;;
     assets/dist/*)                   rebuild='./scripts/run.sh build' ;;
     release/*)                       rebuild='./scripts/run.sh release' ;;
