@@ -15,8 +15,8 @@ defined( 'ABSPATH' ) || exit;
  * every source. Subscribes to EarningService::AWARD_POINTS_FILTER, so it
  * lowers an award to what is left under the cap and never writes itself.
  *
- * Today's total is gross EARN (LedgerRepository::points_earned_on_site_day with no
- * source): manual adjustments are neither capped nor counted, and a refund
+ * Today's total is gross automatic EARN (LedgerRepository::points_earned_on_site_day with no
+ * source): manual adjustments and admin grants for a missed order are neither capped nor counted, and a refund
  * does not free up room. preview() is not capped, so pending points stay
  * the uncapped best case; the storefront reads left_today() instead.
  *
