@@ -51,7 +51,7 @@ remove)
 	[ -d "$path" ] || { say "already gone: $path"; exit 0; }
 	if [ -f "$path/.git/yr-throwaway" ]; then
 		run rm -rf "$path"   # throwaway build clone: nothing in it is ever committed
-		say "removed $path"
+		[ "$YR_DRY" = 1 ] || say "removed $path"
 		exit 0
 	fi
 	gd="$(git -C "$path" rev-parse --absolute-git-dir)"
@@ -65,7 +65,7 @@ remove)
 		# Untracked build output (node_modules, vendor, release/) is expected; tracked work is safe in git.
 		run git -C "$repo" worktree remove --force "$path"
 	fi
-	say "removed $path"
+	[ "$YR_DRY" = 1 ] || say "removed $path"
 	;;
 list)
 	repo="$(argval repo)"

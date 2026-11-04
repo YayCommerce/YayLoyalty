@@ -3,7 +3,7 @@
 #
 #   yr build --plugin=<p> --edition=<e> --type=test|release|support [--ref=<commit-ish>]
 #            [--ticket=<id>] [--pins=<file>] [--no-fetch] [--keep-worktree] [--skip-gates=a,b]
-#            [--supersede] [--dry-run]
+#            [--supersede] [--dry-run [--version=X.Y.Z]]
 #
 # --supersede: a release zip of this version exists but the manager does not have it yet
 #   (`yr builds mark-submitted` not run): move it to superseded/ and take its name.
@@ -67,6 +67,12 @@ if [ -n "$vproblems" ]; then
 	[ "$type" = test ] && say "  warning: version locations disagree at $short: $vproblems (the versions gate will fail)" || die "version locations disagree at $short: $vproblems" 1
 fi
 
+# --version: only with --dry-run, to preview the name a release gets after its bump commit.
+if [ -n "$(argval version)" ]; then
+	[ "$YR_DRY" = 1 ] || die "--version is only for --dry-run previews; a real build takes the version from the commit" 64
+	say "  previewing as version $(argval version) (the commit says $version)"
+	version="$(argval version)"
+fi
 next="$(yrphp builds next $(passthru_opts) --type="$type" --version="$version" --short="$short" ${ticket:+--ticket="$ticket"})"
 file="$(printf '%s' "$next" | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["file"];')"
 number="$(printf '%s' "$next" | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["number"] ?? "";')"
@@ -99,7 +105,7 @@ if [ "$YR_DRY" = 1 ]; then
 	php -r 'echo json_encode(["dry_run"=>true,"plan"=>[
 		"plugin"=>$argv[1],"edition"=>$argv[2],"type"=>$argv[3],"ref"=>$argv[4],"sha"=>$argv[5],"version"=>$argv[6],
 		"file"=>$argv[7],"dest"=>$argv[8],"build_id"=>$argv[9],"shared_code"=>$argv[10],
-		"steps"=>["worktree add --detach ".$argv[11]."/".$argv[9]." ".$argv[5], "shared apply (exact pin)", "prepare: ".($argv[12]?:"(none)"), "build: ".$argv[13]." </dev/null CI=1", "take ".$argv[14]." → copy to dist/.staging, add build-info.json", "gates", "on pass: ".$argv[8]." + .BUILD.json; remove worktree"]]],
+		"steps"=>["build tree: git clone --shared <repo> ".$argv[11]."/".$argv[9]." && checkout ".$argv[5], "shared apply (exact pin)", "prepare: ".($argv[12]?:"(none)"), "build: ".$argv[13]." </dev/null CI=1", "take ".$argv[14]." → copy to dist/.staging, add build-info.json", "gates", "on pass: ".$argv[8]." + .BUILD.json; remove worktree"]]],
 		JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES)."\n";' \
 		"$YR_PLUGIN" "$YR_EDITION" "$type" "$ref" "$sha" "$version" "$file" "$dest" "$build_id" "$pins_note" "$YR_WORKTREE_ROOT" "$YR_PREPARE_CMD" "$YR_BUILD_CMD" "$YR_BUILD_OUTPUT"
 	exit 0

@@ -61,7 +61,7 @@ branch-create)
 		if hasflag fresh; then
 			aside="$name-old-$(ts)"
 			run git -C "$repo" branch -m "$name" "$aside"
-			say "moved the existing $name aside to $aside (nothing deleted)"
+			[ "$YR_DRY" = 1 ] || say "moved the existing $name aside to $aside (nothing deleted)"
 		else
 			say "$name already exists at $(git -C "$repo" rev-parse --short "$name"): resume it, or pass --fresh to set it aside and start again"
 			exit 3
@@ -71,7 +71,7 @@ branch-create)
 		exit 3
 	fi
 	run git -C "$repo" branch --no-track "$name" "$from"
-	say "created $name at $(git -C "$repo" rev-parse --short "$from")"
+	[ "$YR_DRY" = 1 ] || say "created $name at $(git -C "$repo" rev-parse --short "$from")"
 	;;
 commit)
 	wt="$(expand_home "$(reqval worktree)")"
@@ -128,7 +128,7 @@ tag)
 		die "tag $name already exists on $remote; the kit never moves or deletes tags" 3
 	fi
 	run git -C "$repo" tag -a "$name" "$sha" -F "$mf"
-	say "tagged $name → $(printf '%s' "$sha" | cut -c1-8)"
+	[ "$YR_DRY" = 1 ] || say "tagged $name → $(printf '%s' "$sha" | cut -c1-8)"
 	;;
 push-plan|push)
 	refs="$(reqval refs)"
@@ -170,7 +170,7 @@ delete-branch)
 	is_short_lived "$name" || die "only short-lived branches (release/, support/, yr/) can be deleted here" 64
 	hasflag confirmed || die "delete-branch needs --confirmed" 64
 	run git -C "$repo" branch -d "$name"
-	say "deleted local $name (git refused if it was not merged). The copy on $remote is untouched; delete it on GitHub if you want."
+	[ "$YR_DRY" = 1 ] || say "deleted local $name (git refused if it was not merged). The copy on $remote is untouched; delete it on GitHub if you want."
 	;;
 *) die "unknown: git $sub (branch-create|commit|cherry-pick|merge|tag|push-plan|push|delete-branch)" 64 ;;
 esac

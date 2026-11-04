@@ -26,13 +26,16 @@ final class Status {
 		}
 		$dev = Version::check( Version::read( $cfg, $e, $e['dev_branch'], null ) );
 		$row['dev_version'] = $dev['version'];
+		if ( $tag && $dev['version'] && Version::cmp( $dev['version'], $tag[1] ) < 0 ) {
+			$row['problems'][] = "dev branch says {$dev['version']} but {$tag[1]} is released (the release was bumped without a commit); the next release must be above {$tag[1]}";
+		}
 		foreach ( $dev['problems'] as $p ) {
 			$row['problems'][] = "dev branch: $p";
 		}
 		if ( ! empty( $e['released_branch'] ) ) {
 			$rb = ref_exists( $repo, $e['released_branch'] ) ? $e['released_branch'] : ( ref_exists( $repo, 'origin/' . $e['released_branch'] ) ? 'origin/' . $e['released_branch'] : null );
 			$row['released_branch'] = $rb ? [ 'name' => $rb, 'version' => Version::check( Version::read( $cfg, $e, $rb, null ) )['version'] ] : null;
-			if ( ! $rb ) {
+			if ( ! $rb && empty( $base['first_release'] ) ) {
 				$row['problems'][] = "released branch {$e['released_branch']} not found";
 			}
 		}
@@ -92,7 +95,7 @@ final class Status {
 			$plugin_problems[] = 'release.config.json differs between dev branches; run `yr kit sync` and commit it on each';
 		}
 		if ( $missing ) {
-			$plugin_problems[] = 'release.config.json not committed on: ' . implode( ', ', array_map( static fn( $k ) => $rows[ $k ]['dev_branch'], $missing ) );
+			$plugin_problems[] = 'release.config.json not committed on: ' . implode( ', ', array_unique( array_map( static fn( $k ) => $rows[ $k ]['dev_branch'], $missing ) ) );
 		}
 		$unported = [];
 		if ( $ports ) {
@@ -112,7 +115,7 @@ final class Status {
 		foreach ( $plugins as $p ) {
 			foreach ( $p['editions'] as $r ) {
 				$rel  = $r['released']['version'] ?? '—';
-				$un   = isset( $r['unreleased'] ) ? "{$r['unreleased']['commits']} ({$r['unreleased']['user_facing']} user-facing)" : '—';
+				$un   = ! isset( $r['unreleased'] ) ? '—' : ( $r['unreleased']['since'] === 'first release pending' ? 'first release pending' : "{$r['unreleased']['commits']} ({$r['unreleased']['user_facing']} user-facing)" );
 				$tb   = $r['latest_test_build'] ? $r['latest_test_build']['file'] . ( ! empty( $r['latest_test_build']['commits_since'] ) ? " (+{$r['latest_test_build']['commits_since']} since)" : '' ) : '—';
 				$o[]  = "| {$p['plugin']} | {$r['edition']} | {$r['target']} | $rel | " . ( $r['dev_version'] ?? '?' ) . " | $un | $tb | " . ( implode( ', ', $r['open_branches'] ?? [] ) ?: '—' ) . ' | ' . count( $r['support_unreleased'] ?? [] ) . ' |';
 				foreach ( $r['problems'] as $pr ) {
