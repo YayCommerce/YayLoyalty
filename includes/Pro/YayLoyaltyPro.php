@@ -28,6 +28,7 @@ use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Pro\Services\DailyEarningLimit;
 use YayLoyalty\Pro\Services\DiscountRewardHandler;
 use YayLoyalty\Pro\Services\TierLedgerListener;
+use YayLoyalty\Pro\Services\TierMultiplier;
 use YayLoyalty\Pro\Services\TierRunner;
 use YayLoyalty\Pro\Storefront\RewardsPanel;
 use YayLoyalty\Repositories\CampaignRepository;
@@ -113,6 +114,7 @@ final class YayLoyaltyPro {
         ( new BirthdayFields() )->register();
         ( new BirthdayEarnRow() )->register();
         ( new TierLedgerListener() )->register();
+        ( new TierMultiplier() )->register();
         ( new TierRunner() )->register();
 
         /** Fires once Pro has attached its hooks. Pro-internal; absent from Lite. */

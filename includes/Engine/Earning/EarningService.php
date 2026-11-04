@@ -264,13 +264,16 @@ final class EarningService {
      * is not an actor), created_at = Dates::now() (the write time; the
      * event time lives on the Context and in the key's reference), and
      * idempotency_key = IdempotencyKey::for_earn( user_id,
-     * reference_type, reference_id, $trigger ).
+     * reference_type, reference_id, $trigger ), and tier_id/tier_multiplier from the Result's
+     * multiplier, null when it is neutral.
      */
     private function draft_from( Result $result, Context $ctx, string $trigger ): LedgerEntry {
         $user_id        = (int) $ctx->get_user_id();
         $reference_type = (string) $result->get_reference_type();
         $reference_id   = (int) $result->get_reference_id();
         $campaign       = $result->get_campaign();
+        $multiplier     = $result->get_multiplier();
+        $multiplied     = ! $multiplier->is_neutral();
 
         return new LedgerEntry(
             null,
@@ -287,7 +290,10 @@ final class EarningService {
             null,
             null,
             Dates::now(),
-            IdempotencyKey::for_earn( $user_id, $reference_type, $reference_id, $trigger )
+            IdempotencyKey::for_earn( $user_id, $reference_type, $reference_id, $trigger ),
+            null,
+            $multiplied ? $multiplier->get_tier_id() : null,
+            $multiplied ? $multiplier->get_factor() : null
         );
     }
 
