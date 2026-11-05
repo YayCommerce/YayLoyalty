@@ -82,6 +82,18 @@ final class Reversal {
     }
 
     /**
+     * Refunds made before the order had an earn row wrote nothing: claws back their share now, as a refund does.
+     * Cumulative, so the latest refund settles every refund so far. For an order that earned late (an admin grant, a linked guest order).
+     *
+     * @return Outcome[] One per earn row; none when the order has no refund.
+     */
+    public function settle_earlier_refunds( \WC_Order $order ): array {
+        $latest_refund = self::refunds( (int) $order->get_id(), 1 )[0] ?? null;
+
+        return $latest_refund instanceof \WC_Order_Refund ? $this->refund( $order, (int) $latest_refund->get_id() ) : [];
+    }
+
+    /**
      * The `refunded` status. Reverses in full, keyed on the order, only when no refund object exists:
      * then the order was marked refunded outside WooCommerce's refunds. Otherwise the refunds drive it.
      *

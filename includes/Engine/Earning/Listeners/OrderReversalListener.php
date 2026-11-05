@@ -170,6 +170,13 @@ final class OrderReversalListener {
         }
     }
 
+    /** A guest order awarded on being linked to an account: claws back the share of the refunds it had by then. */
+    public function settle_earlier_refunds( \WC_Order $order ): void {
+        $reversed = Transaction::run( fn(): array => $this->reversal->settle_earlier_refunds( $order ) );
+
+        $this->note_reversed( $order, $reversed, __( 'refunded before the order was linked', 'yayloyalty' ) );
+    }
+
     /**
      * Returns the redeemed points, then claws back the earned ones, in one transaction and in that order:
      * the restore row sits before the clawback row, and a failure in either leaves neither. Notes both.
