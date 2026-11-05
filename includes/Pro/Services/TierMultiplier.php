@@ -15,7 +15,8 @@ defined( 'ABSPATH' ) || exit;
  * customer holds now, not the one they held when the event happened: the award is authoritative, and
  * the order that lifts a customer into a tier earns at the old tier's multiplier, because the tier
  * moves only after that award commits. Guests, tierless customers, a deleted tier and tiers off all
- * leave the multiplier neutral.
+ * leave the multiplier neutral. A customer's entry is forgotten when their tier changes, so a later
+ * award in the same request, such as the next order of a bulk status change, reads the new tier.
  */
 final class TierMultiplier {
 
@@ -24,6 +25,12 @@ final class TierMultiplier {
 
     public function register(): void {
         add_filter( PointsEngine::MULTIPLIER_FILTER, [ $this, 'for_context' ], 10, 3 );
+        add_action( 'yayloyalty_tier_changed', [ $this, 'forget' ] );
+    }
+
+    /** @param int $user_id The customer whose tier changed. */
+    public function forget( $user_id ): void {
+        unset( $this->by_user[ (int) $user_id ] );
     }
 
     /**
