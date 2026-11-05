@@ -16,6 +16,7 @@ Tiers work in Pro:
 - The drawer's tier card assigns and removes a manual tier floor, the activity log has a Tier changes filter, and the Customers list shows, sorts and filters by tier, with the tier kept in saved segments.
 - Every campaign award is multiplied by the customer's tier multiplier (`Pro\Services\TierMultiplier`), and the ledger row records `tier_id` and `tier_multiplier`.
 - Coupon rewards can require a "Minimum tier", set in the reward editor: `RewardConditionType::TIER`, enforced by `Pro\Services\RewardTierCondition`. Customers below it don't see the reward on the redeem card, in the launcher or in My Account, and can't claim it.
+- The launcher's member panel shows the tier badge and progress to the next tier, with the window and hold in Rolling.
 
 Still missing:
 
@@ -24,7 +25,6 @@ Still missing:
 
 The branch `trace/chore/remove-tiers-referrals` removed these placeholders. Restore them from its squash commit only as a starting point:
 
-- the Design keys `tier.badges`, `storefront_text.tier_progress_line` and `panel.show_progress_to_next_tier`, with the Tier badges section;
 - the Tier reached, Tier ending soon and Tier lost emails, and the Loyalty: Tiers group.
 
 The dashboard's Tier distribution card and its Lite teaser stay removed: the dashboard shows nothing about tiers, and an entry bonus reads "Bonus points" in its Recent activity.
@@ -44,6 +44,6 @@ Start from a spec. Tiers need a table with a rank, because the `TIER` conditions
 - [x] Merchants can manage tiers on a Tiers page, behind a capability.
 - [x] The Customers list filters by tier, and saved segments store it.
 - [x] The drawer shows a customer's tier and lets staff assign one.
-- [ ] The storefront shows tier badges and progress to the next tier, configured in Design.
+- [x] The launcher shows the tier badge and progress to the next tier.
 - [ ] Tier emails send on a real trigger.
 - [x] `RewardConditionType::TIER` leaves `UNAVAILABLE` and is enforced; `CampaignConditionType::TIER` stays unavailable (master D9).
