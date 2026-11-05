@@ -25,6 +25,7 @@ use YayLoyalty\Pro\Repositories\StoreLedgerRepository;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Pro\Services\DailyEarningLimit;
 use YayLoyalty\Pro\Services\DiscountRewardHandler;
+use YayLoyalty\Pro\Storefront\ConditionalOfferRows;
 use YayLoyalty\Pro\Storefront\RewardsPanel;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\LedgerRepository;
@@ -105,6 +106,7 @@ final class YayLoyaltyPro {
         ( new BirthdayRunner() )->register();
         ( new BirthdayFields() )->register();
         ( new BirthdayEarnRow() )->register();
+        ( new ConditionalOfferRows() )->register();
 
         /** Fires once Pro has attached its hooks. Pro-internal; absent from Lite. */
         do_action( 'yayloyalty_pro_booted' );
