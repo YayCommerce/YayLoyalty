@@ -84,11 +84,11 @@ check_imports() {
 }
 
 # Backticked repo paths in harness docs exist. Templates, path:line suffixes,
-# the dev/edd branch and gitignored build output are allowed.
+# the dev branch and gitignored build output are allowed.
 check_backticked_paths() {
     for f in CLAUDE.md README.md docs/*.md .claude/rules/*.md .claude/skills/*/SKILL.md; do
         grep -oE '`[A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+(:[0-9,-]+)?`' "$f" | tr -d '`' | sed -E 's/:[0-9,-]+$//' \
-            | grep -vE 'YYYY|^docs/specs/?$|^(origin/)?dev/edd$' \
+            | grep -vE 'YYYY|^docs/specs/?$|^origin/dev$' \
             | while read -r p; do [ -e "$p" ] || git check-ignore -q "$p" || echo "MISSING $f -> $p"; done
     done
 }
