@@ -1,8 +1,6 @@
 <?php
 namespace YayLoyalty\Engine\Rewards;
 
-use YayLoyalty\Engine\Points\CustomerFacts;
-
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -29,7 +27,7 @@ final class Context {
     /** @var string UTC MySQL datetime the claim is evaluated at. */
     private $at;
 
-    /** @var CustomerFacts|null Read once by ContextFactory for the conditions gate (tier, lifetime points); null for a guest. */
+    /** @var RewardFacts|null Read once by ContextFactory for the conditions gate (tier, lifetime points); null for a guest. */
     private $facts;
 
     /** @var \WC_Cart|null The cart a coupon-describing handler dry-runs against; null at commit and for a catalog claim. */
@@ -45,7 +43,7 @@ final class Context {
         ?float $discountable_amount,
         string $currency,
         string $at,
-        ?CustomerFacts $facts = null,
+        ?RewardFacts $facts = null,
         ?\WC_Cart $cart = null,
         float $currency_rate = 1.0
     ) {
@@ -100,7 +98,7 @@ final class Context {
         return $this->at;
     }
 
-    public function get_facts(): ?CustomerFacts {
+    public function get_facts(): ?RewardFacts {
         return $this->facts;
     }
 
