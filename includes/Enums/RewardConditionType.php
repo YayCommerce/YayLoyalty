@@ -26,7 +26,10 @@ final class RewardConditionType {
     public const USER_ROLE    = 'user_role';
     public const CUSTOMER_IDS = 'customer_ids';
 
-    /** Defined ahead of the tier system, so UNAVAILABLE keeps it out of all(). gte/lte are ordinal. */
+    /**
+     * The minimum tier: `gte` with one tier id as the value, met when the customer's tier ranks at or above it.
+     * Only coupon rewards may carry it (RewardRestController), and only Pro's RewardTierCondition enforces it.
+     */
     public const TIER = 'tier';
 
     // Needs its own read beyond what is already loaded.
@@ -38,9 +41,7 @@ final class RewardConditionType {
      *
      * @var string[]
      */
-    public const UNAVAILABLE = [
-        self::TIER,
-    ];
+    public const UNAVAILABLE = [];
 
     /**
      * Per-type rules, in evaluation-cost order. The fields are CampaignConditionType::schema()'s.
@@ -61,7 +62,7 @@ final class RewardConditionType {
                 'normalize' => [ 'array', 'int', 'dedupe' ],
             ],
             self::TIER            => [
-                'operators' => [ self::OP_IN, self::OP_NOT_IN, self::OP_GTE, self::OP_LTE ],
+                'operators' => [ self::OP_GTE ],
                 'value'     => 'tier',
                 'normalize' => [ 'dedupe' ],
             ],

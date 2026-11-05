@@ -196,6 +196,12 @@ final class RewardConditionSet {
             case 'int':
                 ConditionValueRules::validate_int( $type, $operator, $value );
                 break;
+
+            case 'tier':
+                if ( ! ConditionValueRules::is_int_like( $value ) || (int) $value <= 0 ) {
+                    throw ConditionValueRules::bad( esc_html( $type ), 'expects a positive tier id' );
+                }
+                break;
         }
     }
 }
