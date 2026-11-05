@@ -231,6 +231,13 @@ final class ContextFactory {
         return Context::advert( $at, $currency, self::to_base_factor( $currency, null ) );
     }
 
+    /** For a member's "Ways to earn": no event, but conditions about this shopper can be told. */
+    public static function for_member_advert( string $at, int $user_id ): Context {
+        $currency = get_woocommerce_currency();
+
+        return Context::advert( $at, $currency, self::to_base_factor( $currency, null ), $user_id, self::user_roles( $user_id ), static fn() => self::shared_facts( $user_id ) );
+    }
+
     /** For the cart/checkout earn preview: an estimate, as from_product(). */
     public static function from_cart( \WC_Cart $cart, ?int $user_id = null ): Context {
         $line_items = [];

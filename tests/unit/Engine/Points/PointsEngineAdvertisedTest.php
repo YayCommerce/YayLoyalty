@@ -116,6 +116,41 @@ final class PointsEngineAdvertisedTest extends EngineTestCase {
         $this->assertSame( [ true ], $seen );
     }
 
+    public function test_member_who_qualifies_is_advertised_the_conditional_rate(): void {
+        $this->attach_verdicts();
+        $conditional = $this->member_conditional( 'yes', 3 );
+        $engine      = $this->engine( [ $conditional, $this->everyone( 1 ) ] );
+
+        $advert = $engine->advertised( CampaignTrigger::PURCHASE, $this->member_advert() );
+
+        $this->assertSame( $conditional, $advert['campaign'] );
+        $this->assertSame( 3.0, $advert['value'] );
+    }
+
+    public function test_member_who_does_not_qualify_is_advertised_the_rate_below(): void {
+        $this->attach_verdicts();
+        $engine = $this->engine( [ $this->member_conditional( 'no', 0.5 ), $this->everyone( 1 ) ] );
+
+        $this->assertSame( 1.0, $engine->advertised( CampaignTrigger::PURCHASE, $this->member_advert() )['value'] );
+    }
+
+    public function test_unknown_campaign_only_lowers_a_members_rate(): void {
+        $this->attach_verdicts();
+
+        $lower  = $this->engine( [ $this->member_conditional( 'unknown', 0.5 ), $this->everyone( 1 ) ] );
+        $higher = $this->engine( [ $this->member_conditional( 'unknown', 3 ), $this->everyone( 1 ) ] );
+
+        $this->assertSame( 0.5, $lower->advertised( CampaignTrigger::PURCHASE, $this->member_advert() )['value'] );
+        $this->assertSame( 1.0, $higher->advertised( CampaignTrigger::PURCHASE, $this->member_advert() )['value'] );
+    }
+
+    public function test_only_unknown_campaigns_advertise_nothing_to_a_member(): void {
+        $this->attach_verdicts();
+        $engine = $this->engine( [ $this->member_conditional( 'unknown', 3 ) ] );
+
+        $this->assertNull( $engine->advertised( CampaignTrigger::PURCHASE, $this->member_advert() ) );
+    }
+
     public function test_event_context_is_refused(): void {
         $this->expectException( \InvalidArgumentException::class );
 
@@ -143,6 +178,40 @@ final class PointsEngineAdvertisedTest extends EngineTestCase {
                 }
             }
         );
+    }
+
+    /** An evaluator answering by the condition's type: `yes`, `no` or `unknown`. */
+    private function attach_verdicts(): void {
+        add_filter(
+            PointsEngine::CONDITIONS_EVALUATOR_FILTER,
+            static fn() => new class() {
+                public function evaluate( array $conditions, Context $ctx ): bool {
+                    return true;
+                }
+
+                public function verdict( array $conditions, Context $ctx ): ?bool {
+                    $verdicts = [
+                        'yes'     => true,
+                        'no'      => false,
+                        'unknown' => null,
+                    ];
+
+                    return $verdicts[ $conditions[0]['type'] ];
+                }
+            }
+        );
+    }
+
+    private function member_advert(): Context {
+        return Context::advert( self::AT, 'USD', 1.0, 7, [ 'customer' ] );
+    }
+
+    private function member_conditional( string $type, float $rate ): Campaign {
+        return new Campaign( 2, 'Conditional', 'conditional', CampaignTrigger::PURCHASE, Status::ACTIVE, 10, [ 'points_per_unit' => $rate ], [ [ 'type' => $type ] ] );
+    }
+
+    private function everyone( float $rate ): Campaign {
+        return $this->purchase_campaign( [ 'points_per_unit' => $rate ], 0, 3, Status::ACTIVE, null, null, 'everyone' );
     }
 
     private function conditional_purchase( float $rate ): Campaign {

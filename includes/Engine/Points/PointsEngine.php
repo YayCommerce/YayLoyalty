@@ -68,14 +68,15 @@ final class PointsEngine {
     }
 
     /**
-     * The value the storefront may promise for a trigger: never more than any shopper gets. Walks evaluate()'s
-     * candidates down to the first campaign for everyone; a conditional campaign above it may catch some
-     * shoppers, so its value lowers the promise. Null when that lowest value is 0, or no campaign is for
-     * everyone. The handlers' event gates (min_subtotal, require_verified, one_per_product) are the row's
+     * The value the storefront may promise for a trigger: never more than the shopper gets. Walks evaluate()'s
+     * candidates down to the first campaign sure to apply: one for everyone, or for a member (Context::advert()
+     * with a user), one whose conditions all match. A campaign above it that may catch this shopper lowers the
+     * promise, and one a member fails is skipped. Null when that lowest value is 0, or no campaign is sure to
+     * apply. The handlers' event gates (min_subtotal, require_verified, one_per_product) are the row's
      * terms, not uncertainty: a gated campaign stops the walk like evaluate() stops at it. Not applied without an event: caps, and the purchase filters and rounding.
      *
      * @param string  $trigger A CampaignTrigger constant.
-     * @param Context $ctx     Context::advert(); liveness is evaluated at its occurred_at.
+     * @param Context $ctx     Context::advert(), for any shopper or a member; liveness is evaluated at its occurred_at.
      * @return array{campaign: Campaign, value: float}|null The campaign that set the value: points per currency
      *                                                       unit or flat points.
      * @throws \InvalidArgumentException When $ctx is an event, or no handler owns the trigger.
@@ -89,10 +90,9 @@ final class PointsEngine {
         $lowest  = null;
 
         foreach ( $this->candidates( $trigger, $ctx ) as $campaign ) {
-            // No shopper to compare conditions with, so a conditional campaign is neither matched nor skipped.
-            $for_everyone = self::applies_to_everyone( $campaign );
+            $verdict = $this->verdict( $campaign, $ctx );
 
-            if ( $for_everyone && ! $this->matches( $campaign, $ctx ) ) {
+            if ( false === $verdict ) {
                 continue;
             }
 
@@ -105,7 +105,7 @@ final class PointsEngine {
                 ];
             }
 
-            if ( $for_everyone ) {
+            if ( true === $verdict ) {
                 return $lowest['value'] > 0 ? $lowest : null;
             }
         }
@@ -202,9 +202,8 @@ final class PointsEngine {
     private function filtered_match( bool $matches, Campaign $campaign, Context $ctx ): bool {
         /**
          * Whether a campaign's conditions match this event. Also fires on storefront pages with an
-         * advertising Context (Context::is_advert()), which stands for any shopper and no event; there it
-         * fires only for a campaign for everyone, with true. On an estimate (Context::is_estimate()) it
-         * fires only for a campaign whose conditions all match, with true.
+         * advertising Context (Context::is_advert()), which stands for no event, and on an estimate
+         * (Context::is_estimate()); there it fires only for a campaign sure to apply, with true.
          *
          * @param bool     $matches
          * @param Campaign $campaign

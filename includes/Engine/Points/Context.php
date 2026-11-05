@@ -7,7 +7,8 @@ defined( 'ABSPATH' ) || exit;
  * Everything the engine may know about the event. Immutable and WordPress-free, so the engine is
  * testable without a bootstrap. No actor_id: who is logged in is a ledger argument, not a scoring input.
  * `extra` holds one-trigger facts. A fact that two triggers need becomes a typed property.
- * An advertising Context (advert()) stands for "any shopper, no event"; only PointsEngine::advertised() takes one.
+ * An advertising Context (advert()) stands for "any shopper, no event", or one known shopper and no event;
+ * only PointsEngine::advertised() takes one.
  */
 final class Context {
 
@@ -112,9 +113,15 @@ final class Context {
         $this->customer_facts       = $customer_facts;
     }
 
-    /** A guest with an empty cart and no event, at $at (UTC MySQL), for advertising what a campaign pays. */
-    public static function advert( string $at, string $currency, float $to_base_factor ): self {
-        $ctx         = new self( null, $at, $currency, $to_base_factor, [], 0.0, 0.0, [], [] );
+    /**
+     * An empty cart and no event, at $at (UTC MySQL), for advertising what a campaign pays: to any shopper,
+     * or with $user_id to that member.
+     *
+     * @param string[]                    $user_roles
+     * @param CustomerFacts|\Closure|null $customer_facts As the constructor takes them.
+     */
+    public static function advert( string $at, string $currency, float $to_base_factor, ?int $user_id = null, array $user_roles = [], $customer_facts = null ): self {
+        $ctx         = new self( $user_id, $at, $currency, $to_base_factor, [], 0.0, 0.0, [], $user_roles, null, null, [], $customer_facts );
         $ctx->advert = true;
 
         return $ctx;
