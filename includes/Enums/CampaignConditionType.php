@@ -21,9 +21,10 @@ final class CampaignConditionType {
     public const OP_EQ      = 'eq';
     public const OP_BETWEEN = 'between';
 
-    // What a condition is compared against: the customer, their CustomerFacts, or the order being scored.
+    // What a condition is compared against: the customer, their CustomerFacts, the lines being bought (an order's or a shopper's), or the order being scored.
     public const INPUT_CUSTOMER = 'customer';
     public const INPUT_FACTS    = 'facts';
+    public const INPUT_BASKET   = 'basket';
     public const INPUT_ORDER    = 'order';
 
     // Which address a `country` condition reads. ANY matches either.
@@ -86,7 +87,7 @@ final class CampaignConditionType {
                 'normalize' => [ 'array', 'int', 'dedupe' ],
             ],
             self::CURRENCY         => [
-                'input'     => self::INPUT_ORDER,
+                'input'     => self::INPUT_BASKET,
                 'operators' => [ self::OP_IN, self::OP_NOT_IN ],
                 'value'     => 'currency_list',
                 'normalize' => [ 'array', 'uppercase', 'dedupe' ],
@@ -106,13 +107,13 @@ final class CampaignConditionType {
                 'normalize'     => [ 'array', 'uppercase', 'dedupe' ],
             ],
             self::PRODUCT_IN_CART  => [
-                'input'     => self::INPUT_ORDER,
+                'input'     => self::INPUT_BASKET,
                 'operators' => [ self::OP_IN, self::OP_NOT_IN ],
                 'value'     => 'int_list',
                 'normalize' => [ 'array', 'int', 'dedupe' ],
             ],
             self::CATEGORY_IN_CART => [
-                'input'     => self::INPUT_ORDER,
+                'input'     => self::INPUT_BASKET,
                 'operators' => [ self::OP_IN, self::OP_NOT_IN ],
                 'value'     => 'int_list',
                 'normalize' => [ 'array', 'int', 'dedupe' ],

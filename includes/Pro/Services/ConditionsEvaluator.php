@@ -16,7 +16,8 @@ defined( 'ABSPATH' ) || exit;
  *
  * Unknown conditions fail here, while Lite, with no evaluator, lets them match: Pro can evaluate,
  * so an unrecognised type is a real error. Do not harmonise them. A condition whose input is missing
- * fails too: `no_customer` for a guest, `needs_order` when the Context has no order (the admin preview).
+ * fails too: `no_customer` for a guest, `needs_order` when the Context has no order (the admin preview)
+ * or, for a condition on the lines being bought, no lines either.
  */
 final class ConditionsEvaluator {
 
@@ -54,6 +55,30 @@ final class ConditionsEvaluator {
         }
 
         return true;
+    }
+
+    /**
+     * Whether every condition matches, before an order exists: false when one fails, else null while one
+     * needs an order, else true. Folds over explain(), so it cannot disagree with evaluate().
+     *
+     * @param array $conditions Flat list of {type, operator, value} objects.
+     */
+    public function verdict( array $conditions, Context $ctx ): ?bool {
+        $verdict = true;
+
+        foreach ( $this->explain( $conditions, $ctx ) as $result ) {
+            if ( $result['matched'] ) {
+                continue;
+            }
+
+            if ( self::REASON_NEEDS_ORDER !== $result['reason'] ) {
+                return false;
+            }
+
+            $verdict = null;
+        }
+
+        return $verdict;
     }
 
     /**
@@ -143,6 +168,8 @@ final class ConditionsEvaluator {
                 return null === $ctx->get_user_id() ? self::REASON_NO_CUSTOMER : null;
             case CampaignConditionType::INPUT_FACTS:
                 return null === $ctx->get_customer_facts() ? self::REASON_NO_CUSTOMER : null;
+            case CampaignConditionType::INPUT_BASKET:
+                return null === $ctx->get_order_id() && [] === $ctx->get_line_items() ? self::REASON_NEEDS_ORDER : null;
             case CampaignConditionType::INPUT_ORDER:
                 return null === $ctx->get_order_id() ? self::REASON_NEEDS_ORDER : null;
         }
