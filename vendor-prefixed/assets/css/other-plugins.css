@@ -1,0 +1,96 @@
+.yay-recommended-plugins-layout {
+  margin-top: 20px;
+}
+#wpcontent .notice,
+#wpcontent .error {
+  display: none !important;
+}
+.yay-recommended-plugins-layout-header {
+  background: #fff;
+  box-sizing: border-box;
+  padding: 0;
+  z-index: 1001;
+}
+
+.yay-recommended-plugins-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  box-sizing: border-box;
+  margin: 12px 0 25px;
+  padding: 0 10px;
+  width: 100%;
+  box-shadow: 0 1px 1px rgb(0 0 0 / 4%);
+  border: 1px solid #c3c4c7;
+  background: #fff;
+  color: #50575e;
+  font-size: 13px;
+}
+.yay-recommended-plugins-header-title {
+  font-size: 1.2em;
+  margin-left: 8px;
+}
+
+.yay-recommended-plugins-layout #the-list{
+  display: grid !important;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(500px, 100%), 1fr)
+  ) !important;
+  gap: 12px !important;
+}
+
+.yay-recommended-plugins-layout .plugin-card {
+  width: 100% !important;  
+}
+.yay-recommended-plugins-layout .plugin-card .column-updated {
+  width: fit-content !important;
+}
+
+.yay-recommended-plugins-layout .plugin-card .desc,
+.plugin-card .name {
+  margin-right: 0;
+}
+.yay-recommended-plugins-layout .plugin-card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.yay-recommended-plugins-layout .plugin-action-buttons,
+.yay-recommended-plugins-layout .plugin-action-buttons li,
+.plugin-card .column-rating,
+.plugin-card .column-updated {
+  margin-bottom: 0;
+}
+.yay-recommended-plugins-layout .loading-process {
+  pointer-events: none;
+}
+.yay-recommended-plugins-layout .column-rating {
+  min-height: 30px;
+  line-height: 30px;
+}
+.yay-recommended-plugins-layout .plugin-status-inactive {
+  color: #ff4d4f;
+}
+.yay-recommended-plugins-layout .plugin-status-active {
+  color: #52c41a;
+}
+.yay-recommended-plugins-layout .plugin-status-not-install {
+  color: #1d2327;
+}
+.yay-recommended-plugins-layout .plugin-status-update-available {
+  color: #2271b1;
+}
+@media screen and (max-width: 1100px) and (min-width: 782px),
+  (max-width: 480px) {
+  .yay-recommended-plugins-layout .plugin-card .column-compatibility,
+  .yay-recommended-plugins-layout .plugin-card .column-updated {
+    width: calc(100% - 220px);
+  }
+  .yay-recommended-plugins-layout .plugin-action-buttons li .button,
+  .yay-recommended-plugins-layout .plugin-action-buttons {
+    margin: 0;
+  }
+}

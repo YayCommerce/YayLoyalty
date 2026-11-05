@@ -18,13 +18,13 @@ Accepted, 2026-10-01, by Trace Bui, who confirmed the reasons. Backfilled: the d
 
 - YayLoyalty requires admin-shell through Composer, and ships only a copy scoped under the `YayLoyaltyScoped` prefix (`scoper.inc.php`). The copy is generated into `vendor-prefixed/` and loads through Composer's classmap.
 - `YayLoyaltyPluginAdapter.php` stays global and unscoped. It tells the shell about this plugin, and it sees the real WordPress classes.
-- The package's own scripts do the scoping, run by `./scripts/run.sh dev` and `release`. [architecture.md](../architecture.md#admin-shell-sync-and-scoping) has the steps.
+- The package's own scripts do the scoping, run by `./scripts/run.sh shell-update` and, into the staged copy only, `release`. [architecture.md](../architecture.md#admin-shell-sync-and-scoping) has the steps.
 
 ## Consequences
 
 - YayLoyalty runs beside any other YayCommerce plugin, whatever admin-shell version each one bundles.
-- `vendor-prefixed/` is generated and gitignored, so a fresh clone can't install until the sync has run once: see [known-issues.md](../known-issues.md#a-fresh-clones-first-install-fails-on-vendor-prefixedsrc).
-- The sync updates dependencies and may rewrite `composer.json` and `scoper.inc.php`: see [known-issues.md](../known-issues.md#scriptsrunsh-dev-updates-dependencies-and-may-rewrite-tracked-files).
+- `vendor-prefixed/` is generated but committed (since admin-shell 2.10), so a fresh clone installs with `composer install`; `./scripts/run.sh shell-update` regenerates it.
+- The sync updates dependencies and may rewrite `composer.json` and `scoper.inc.php`: see [known-issues.md](../known-issues.md#scriptsrunsh-shell-update-updates-dependencies-and-may-rewrite-tracked-files).
 - The tooling needs a newer PHP than the product: php-scoper needs PHP 8.2 or later, while the plugin must still run on 7.4.
 - Every global name the shell uses, such as a WordPress function, class or constant, has to be excluded in `scoper.inc.php`. A name that isn't excluded gets the prefix and no longer reaches WordPress.
 - Each sync fetches the newest admin-shell, so two builds can bundle different versions: see [known-issues.md](../known-issues.md#untracked-lockfiles-let-installs-drift).

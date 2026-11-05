@@ -95,24 +95,23 @@ install_admin_deps() {
     fi
 }
 
-# Install or update admin-shell and regenerate vendor-prefixed/ through php-scoper.
-# "prerelease" uses the shell's release updater when it has one.
-update_shell() {
-    local mode=${1:-dev}
-    print_step "Check Admin Shell"
+# Composer autoload for dev and release. vendor-prefixed/ is committed, so this never rescopes it: a running
+# site keeps working. Only installs when vendor/ is missing or lacks php-scoper (a release needs it).
+ensure_composer() {
     cd "$PLUGIN_DIR"
-    mkdir -p "$PLUGIN_DIR/vendor-prefixed/src"
-    composer update
-    local bin="$PLUGIN_DIR/vendor/bin/yaycommerce-update"
-    if [ "$mode" = "prerelease" ] && [ -f "$PLUGIN_DIR/vendor/bin/yaycommerce-prerelease" ]; then
-        bin="$PLUGIN_DIR/vendor/bin/yaycommerce-prerelease"
+    if [ ! -f "$PLUGIN_DIR/vendor/autoload.php" ] || [ ! -x "$PLUGIN_DIR/vendor/bin/php-scoper" ]; then
+        print_step "Installing Composer dependencies..."
+        composer install --no-interaction
     fi
-    if [ -f "$bin" ]; then
-        "$bin"
-        print_success "Admin Shell updated"
-    else
-        print_warning "Admin Shell updater not found, skipped"
-    fi
+}
+
+# Update admin-shell and rebuild vendor-prefixed/ through php-scoper (yaycommerce-update). The rebuild goes
+# into a temp folder that is swapped in, so the site never loses vendor-prefixed/. Commit the result.
+update_shell() {
+    print_step "Update Admin Shell"
+    ensure_composer
+    "$PLUGIN_DIR/vendor/bin/yaycommerce-update"
+    print_success "Admin Shell updated: review and commit vendor-prefixed/"
 }
 
 # Version helpers
@@ -203,7 +202,7 @@ cmd_dev() {
     build_type=$(resolve_edition_alias "${1:-pro}")
     validate_build_type "$build_type"
 
-    update_shell
+    ensure_composer
     resolve_pnpm
     install_admin_deps
 
@@ -293,12 +292,9 @@ build_package() {
     print_info "Output: release/$zip_name"
     echo ""
 
-    update_shell prerelease
-
-    # Autoload without dev packages. Safe before the Pro strip: the classmap covers only vendor-prefixed/src
-    # and the adapter, and plugin classes load through yayloyalty.php's file_exists-guarded autoloader.
-    cd "$PLUGIN_DIR"
-    composer dump-autoload --no-dev --classmap-authoritative --quiet
+    # The release never changes the plugin folder's vendor/ or vendor-prefixed/: the shell is rescoped
+    # into the staged copy below (yaycommerce-prerelease --stage) and its autoload dumped there.
+    ensure_composer
 
     cmd_build "$build_type"
 
@@ -329,6 +325,9 @@ build_package() {
     cp "$PLUGIN_DIR/vendor/autoload.php" "$temp_dir/vendor/"
     cp -r "$PLUGIN_DIR/vendor/composer" "$temp_dir/vendor/"
 
+    # Rescope the installed admin-shell into the staged copy (warns if the committed vendor-prefixed/ is stale).
+    (cd "$PLUGIN_DIR" && ./vendor/bin/yaycommerce-prerelease --stage "$temp_dir")
+
     # The Lite strip, inside $temp_dir, never $PLUGIN_DIR. apps/ never ships, so the SPA's Pro code is
     # kept out by BUILD_TYPE=lite alone, which validate-build.php's sentinel check verifies.
     if [ "$build_type" = "lite" ]; then
@@ -353,11 +352,13 @@ build_package() {
                 exit 1
             fi
         done
-
-        # The classmap dumped above still lists the stripped classes, and a reviewer reads a listed
-        # EDD_SL_Plugin_Updater as an updater. Re-dump it from the staged copy.
-        (cd "$temp_dir" && composer dump-autoload --no-dev --classmap-authoritative --quiet)
     fi
+
+    # The copied classmap is the dev one, and for Lite it still lists the stripped classes (a reviewer reads a
+    # listed EDD_SL_Plugin_Updater as an updater). Rebuild it, without dev packages, from what the staged copy holds.
+    # Safe after the Pro strip: the classmap covers only vendor-prefixed/src and the adapter, and plugin classes
+    # load through yayloyalty.php's file_exists-guarded autoloader.
+    composer dump-autoload --no-dev --classmap-authoritative --no-scripts --quiet --working-dir="$temp_dir"
 
     # The scoped shell keeps its upstream 'yaycommerce' text domain, which nothing loads and
     # translate.wordpress.org never imports. Gettext calls end with the domain, so this leaves
@@ -382,10 +383,6 @@ build_package() {
     rm -f "$zip_name"
     zip -r -q -9 "$zip_name" "$PLUGIN_SLUG"
     rm -rf "$temp_dir"
-
-    # Restore the dev autoload maps for local development.
-    cd "$PLUGIN_DIR"
-    composer dump-autoload --classmap-authoritative --quiet
 
     # A failed validation ends the release: a strip that misses a file fails silently, so a warning would be ignored.
     print_step "Validating package..."
@@ -543,7 +540,8 @@ cmd_help() {
     echo "Usage: ./scripts/run.sh [command]"
     echo ""
     echo "Commands:"
-    echo "  dev [pro|lite]               Start Vite dev server with HMR (:3030) (default: pro)"
+    echo "  dev [pro|lite]               Start Vite dev server with HMR (:3030) (default: pro); vendor-prefixed/ untouched"
+    echo "  shell-update                 Update admin-shell, rebuild vendor-prefixed/ (atomic swap); commit it"
     echo "  build [pro|lite]             Build admin dashboard (default: pro)"
     echo "  release [pro|lite] [version] Create release ZIP in release/ (default: pro)"
     echo "  bump <version>               Bump version in plugin files"
@@ -576,6 +574,7 @@ main() {
 
     case $cmd in
         dev)     cmd_dev "$@" ;;
+        shell-update) update_shell ;;
         build)   cmd_build "$@" ;;
         release) cmd_release "$@" ;;
         bump)    cmd_bump "$@" ;;

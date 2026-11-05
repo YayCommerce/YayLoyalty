@@ -11,13 +11,6 @@
 - **Workaround:** run `nvm use` in the repo root, which reads `.nvmrc`, before any pnpm command.
 - **Remove when:** every teammate's shell defaults to Node 22 or later.
 
-## A fresh clone's first install fails on `vendor-prefixed/src`
-
-- **Symptom:** on a fresh clone, `pnpm install` fails in the root `postinstall` with `Could not scan for classes inside "vendor-prefixed/src" which does not appear to be a file nor a folder`. Any other pnpm command fails the same way, because it installs first (next entry). Composer downloads the packages but never writes `vendor/autoload.php`, so the plugin can't load.
-- **Cause:** `composer.json` classmaps `vendor-prefixed/src`, a gitignored directory that only the [admin-shell sync](architecture.md#admin-shell-sync-and-scoping) creates. Composer stops on a classmap path that doesn't exist.
-- **Workaround:** on a fresh clone, run `./scripts/run.sh dev` first. It creates and fills `vendor-prefixed/`, and `pnpm install` succeeds after it.
-- **Remove when:** `composer install` succeeds on a fresh clone.
-
 ## pnpm installs on its own, and the install runs `composer install`
 
 - **Symptom:** a command that should only read or run first runs `pnpm install`. Examples are `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` and the `pnpm dev` inside `./scripts/run.sh dev`. The root `postinstall` then runs `composer install`, which rewrites `vendor/`. `.claude/settings.json` lets Claude run the admin lint, test and type-check without asking, so Claude can set off both installs with no prompt.
@@ -57,19 +50,12 @@
   4. Read the output: an exit code of 0 alone doesn't mean anything ran.
 - **Remove when:** the bootstrap checks the database connection itself and exits non-zero on failure.
 
-## `./scripts/run.sh dev` updates dependencies and may rewrite tracked files
+## `./scripts/run.sh shell-update` updates dependencies and may rewrite tracked files
 
-- **Symptom:** each run starts with a full `composer update`, then deletes and rebuilds `vendor-prefixed/`, rewrites `composer.json` and regenerates `scoper.inc.php`. Both files usually come out unchanged. They change when php-scoper, its Safe library or admin-shell's template moves on.
-- **Cause:** `update_shell` in `scripts/run.sh`, which runs admin-shell's `vendor/bin/yaycommerce-update` ([architecture.md](architecture.md#admin-shell-sync-and-scoping)).
-- **Workaround:** run `git status` after `dev`. Commit a change to `composer.json` or `scoper.inc.php` only on purpose, in its own commit.
-- **Remove when:** starting the dev server no longer runs the sync.
-
-## Release leaves only `--no-dev` Composer packages
-
-- **Symptom:** after `./scripts/run.sh release`, even one that failed, `vendor/bin/phpcs` and `vendor/bin/phpunit` are gone, so `composer lint` and `composer test` stop working.
-- **Cause:** admin-shell's `vendor/bin/yaycommerce-prerelease` ends with `composer install --no-dev`, and nothing in `scripts/run.sh` reinstalls the dev packages.
-- **Workaround:** run `composer install` after every release run.
-- **Remove when:** `release` restores the dev packages itself.
+- **Symptom:** each run updates admin-shell, rebuilds `vendor-prefixed/`, may rewrite `composer.json` and may regenerate `scoper.inc.php`. Both files usually come out unchanged. They change when php-scoper, its Safe library or admin-shell's template moves on.
+- **Cause:** `update_shell` in `scripts/run.sh`, which runs admin-shell's `vendor/bin/yaycommerce-update` ([architecture.md](architecture.md#admin-shell-sync-and-scoping)). `dev` and `release` no longer run it.
+- **Workaround:** run `git status` after `shell-update`. Commit `vendor-prefixed/`, and a change to `composer.json` or `scoper.inc.php` only on purpose.
+- **Remove when:** the sync no longer touches `composer.json` or `scoper.inc.php`.
 
 ## wp-env can't run the plugin on PHP 7.4
 
@@ -95,6 +81,6 @@
 ## Untracked lockfiles let installs drift
 
 - **Symptom:** two checkouts, or two release runs, can resolve different dependency versions, including the admin-shell that ships in the zip. A check can pass on one machine and fail on another.
-- **Cause:** `.gitignore` ignores `composer.lock` and `pnpm-lock.yaml`, and `./scripts/run.sh dev` and `release` run a full `composer update` every time.
+- **Cause:** `.gitignore` ignores `composer.lock` and `pnpm-lock.yaml`, so each checkout resolves its own versions on its first install. `vendor-prefixed/` is committed, so the shipped admin-shell is the same everywhere unless a `shell-update` changes it; a release warns when the installed admin-shell differs from the committed copy.
 - **Workaround:** when results differ between machines, compare versions first, with `composer show` and `pnpm list`.
 - **Remove when:** the lockfiles are committed.
