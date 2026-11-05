@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name:       YayLoyalty — Points, Rewards, Referral & VIP for WooCommerce
+ * Plugin Name:       YayLoyalty Pro — Points, Rewards, Referral & VIP for WooCommerce
  * Plugin URI:        https://yaycommerce.com/
  * Description:       Loyalty program plugin for WooCommerce: points, rewards, referral & VIP tiers.
  * Version:           1.0.0

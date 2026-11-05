@@ -381,7 +381,9 @@ foreach ( $php_files as $rel ) {
     if ( 0 !== strpos( $rel, 'vendor-prefixed/' ) ) {
         continue;
     }
-    if ( preg_match( "/'yaycommerce'\s*\)/", (string) file_get_contents( $root . '/' . $rel ) ) ) {
+    // remove_submenu_page( 'yaycommerce', 'yaycommerce' ) ends with a menu slug, not a text domain.
+    $shell_source = preg_replace( '/^.*remove_submenu_page.*$/m', '', (string) file_get_contents( $root . '/' . $rel ) );
+    if ( preg_match( "/'yaycommerce'\s*\)/", (string) $shell_source ) ) {
         $foreign_domains[] = $rel;
     }
 }

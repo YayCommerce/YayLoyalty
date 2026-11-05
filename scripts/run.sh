@@ -281,7 +281,7 @@ build_package() {
     local version=$2
     validate_build_type "$build_type"
 
-    local zip_name="${PLUGIN_SLUG}-${version}.zip"
+    local zip_name="${PLUGIN_SLUG}-pro-${version}.zip"
     if [ "$build_type" = "lite" ]; then
         zip_name="${PLUGIN_SLUG}-lite-${version}.zip"
     fi
@@ -362,11 +362,12 @@ build_package() {
 
     # The scoped shell keeps its upstream 'yaycommerce' text domain, which nothing loads and
     # translate.wordpress.org never imports. Gettext calls end with the domain, so this leaves
-    # the shell's 'yaycommerce' menu slugs alone.
+    # the shell's 'yaycommerce' menu slugs alone. remove_submenu_page() also ends with a slug:
+    # rewriting it removes this plugin's own menu item, so it is skipped here and in the validator.
     print_step "Rewriting the admin-shell text domain to $PLUGIN_SLUG..."
     local shell_php
     find "$temp_dir/vendor-prefixed" -name '*.php' | while IFS= read -r shell_php; do
-        sed_inplace "s/'yaycommerce'\([[:space:]]*\))/'$PLUGIN_SLUG'\1)/g" "$shell_php"
+        sed_inplace "/remove_submenu_page/!s/'yaycommerce'\([[:space:]]*\))/'$PLUGIN_SLUG'\1)/g" "$shell_php"
     done
 
     # Strip dev-only files. validate-build.php's dev-artifact check mirrors this list.
