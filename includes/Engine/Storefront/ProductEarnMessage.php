@@ -2,6 +2,7 @@
 namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Engine\Earning\EarningService;
+use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Register\ScriptName;
@@ -163,6 +164,22 @@ final class ProductEarnMessage {
         } catch ( \Throwable $e ) {
             // A broken estimate must never take the product page down with it.
             Log::warning( 'ProductEarnMessage', 'guest estimate failed: ' . $e->getMessage() );
+
+            return 0;
+        }
+    }
+
+    /** What this cart earns a guest, by the same rule as guest_points(). 0 while the program is off, or on failure. */
+    public static function guest_cart_points( \WC_Cart $cart ): int {
+        if ( ! ProgramGate::program_enabled() ) {
+            return 0;
+        }
+
+        try {
+            return self::engine()->evaluate( CampaignTrigger::PURCHASE, ContextFactory::from_cart( $cart ) )->get_points();
+        } catch ( \Throwable $e ) {
+            // A broken estimate must never take the sign-in card down with it.
+            Log::warning( 'ProductEarnMessage', 'guest cart estimate failed: ' . $e->getMessage() );
 
             return 0;
         }

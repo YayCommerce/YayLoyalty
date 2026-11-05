@@ -10,7 +10,8 @@
  * No input has a `name`, so nothing here rides on the cart or checkout form it may sit in; redeem.js posts the request.
  * Styled by assets/storefront/redeem.css alone: the Design tab's colours belong to the launcher.
  *
- * @var array $view RedeemCard::view() plus endpoint, nonce, account_url and money; a customer's view also
+ * @var array $view RedeemCard::view() plus endpoint, nonce, account_url and money; a guest's view also carries
+ *                  guest_points, what the cart would earn; a customer's view also
  *                  carries heading_balance, worth, rows, summary (points, count) and dropped (the names for
  *                  the amber notice; '' for a deleted reward).
  */
@@ -63,7 +64,11 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
             <span class="yayloyalty-redeem__badge"><?php echo wp_kses( $yayloyalty_icon, Kses::svg() ); ?></span>
             <div class="yayloyalty-redeem__guest-text">
                 <h3 class="yayloyalty-redeem__heading"><?php echo wp_kses( RedeemCard::heading( null, null ), Kses::inline() ); ?></h3>
-                <p class="yayloyalty-redeem__text"><?php echo esc_html( RedemptionService::message_for( ProgramGate::REASON_NO_CUSTOMER ) ); ?></p>
+                <?php if ( $view['guest_points'] > 0 ) : ?>
+                    <p class="yayloyalty-redeem__text"><?php echo wp_kses( LauncherCopy::points_sentence_html( __( 'Sign in to earn {points} {points_label} with this order.', 'yayloyalty' ), $view['guest_points'] ), Kses::inline() ); ?></p>
+                <?php else : ?>
+                    <p class="yayloyalty-redeem__text"><?php echo esc_html( RedemptionService::message_for( ProgramGate::REASON_NO_CUSTOMER ) ); ?></p>
+                <?php endif; ?>
             </div>
             <a class="yayloyalty-redeem__signin" href="<?php echo esc_url( $view['account_url'] ); ?>"><?php esc_html_e( 'Sign in', 'yayloyalty' ); ?></a>
         </div>

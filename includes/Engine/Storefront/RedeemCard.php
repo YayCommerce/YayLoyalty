@@ -162,7 +162,7 @@ final class RedeemCard {
 
     /**
      * The card's HTML for the current shopper and cart, with its assets enqueued. A guest gets the sign-in card
-     * alone. A customer gets the header, then the list: the Points discount row from view(), then the rows
+     * alone, saying what the cart would earn. A customer gets the header, then the list: the Points discount row from view(), then the rows
      * ROWS_FILTER adds. '' when nothing renders: no cart, an empty cart, neither a flexible discount nor a row to show
      * (a customer the gates refuse, a missing reward), or a failure.
      */
@@ -179,12 +179,12 @@ final class RedeemCard {
             $user_id = RedemptionService::shopper_id();
 
             if ( null === $user_id ) {
-                // A guest gets the sign-in card whatever the cart holds, so nothing is quoted and no row is asked for.
+                // A guest gets the sign-in card whatever the cart holds, so nothing is quoted and no row is asked for; only what the cart would earn is shown.
                 $guest = Result::denied( ProgramGate::REASON_NO_CUSTOMER );
 
                 self::enqueue_assets();
 
-                return self::template( self::view( null, $guest, $guest, 0, wc_get_price_decimals() ) + self::chrome() );
+                return self::template( self::view( null, $guest, $guest, 0, wc_get_price_decimals() ) + [ 'guest_points' => ProductEarnMessage::guest_cart_points( $cart ) ] + self::chrome() );
             }
 
             $balance = (int) $this->balance_of( $user_id );
