@@ -27,6 +27,9 @@ final class LauncherPayload {
     /** Extra rows for "Ways to redeem", after the points discount. */
     public const REDEEM_OFFERS_FILTER = 'yayloyalty_launcher_redeem_offers';
 
+    /** The member's tier line under the points card in the launcher; member_tier() applies it. */
+    public const MEMBER_TIER_FILTER = 'yayloyalty_launcher_member_tier';
+
     /** A member's points count as expiring soon, for the launcher's dot and the My Points tab's notice, this many days ahead. */
     public const EXPIRING_SOON_DAYS = 30;
 
@@ -104,6 +107,12 @@ final class LauncherPayload {
         $rules    = null === $engine ? LauncherEarnRules::none() : LauncherEarnRules::advertise( $engine, ContextFactory::for_advert( $now ), null !== $register );
         $estimate = null !== $engine && null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate() : null;
 
+        $member = null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward );
+
+        if ( null !== $member ) {
+            $member['tier'] = self::member_tier( $user_id, $balance );
+        }
+
         return [
             'hide_mobile'       => ! empty( $design['visibility']['hide_on_mobile'] ),
             'earn'              => $rules['earn'],
@@ -111,7 +120,7 @@ final class LauncherPayload {
             'purchase_rounding' => $rules['purchase_rounding'],
             'redeem'            => $redeem,
             'offers'            => self::redeem_offers( $now, $user_id ),
-            'member'            => null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward ),
+            'member'            => $member,
             'left_today'        => $left_today,
             'estimate'          => $estimate,
             // What the estimate takes off an order, as checkout would grant it: null below the minimum.
@@ -139,8 +148,8 @@ final class LauncherPayload {
 
     /**
      * @param Reward|null $reward The cart-discount reward when it is live; null hides the worth.
-     * @return array{balance: int, worth: ?float, expires_at: ?string} `expires_at` stays null here; build() sets it
-     *         for a live member whose points expire within EXPIRING_SOON_DAYS.
+     * @return array{balance: int, worth: ?float, expires_at: ?string, tier?: ?array} `expires_at` stays null here; build() sets it
+     *         for a live member whose points expire within EXPIRING_SOON_DAYS. `tier` is member_tier()'s, set by for_balance().
      */
     private static function member( int $balance, ?Reward $reward ): array {
         return [
@@ -244,6 +253,87 @@ final class LauncherPayload {
                 }
             )
         );
+    }
+
+    /**
+     * The member's tier line, or null when nothing subscribes. A subscriber that throws or answers a malformed
+     * value gives null, so neither takes the launcher down.
+     *
+     * @param int|null $user_id The member; null for the Design preview.
+     * @param int      $balance The member's balance, or the preview's sample.
+     * @return array{name: ?string, color: ?string, next: ?array{name: string, threshold: int}, progress: int, needed: int, window_months: ?int, held_until: ?string}|null
+     */
+    private static function member_tier( ?int $user_id, int $balance ): ?array {
+        try {
+            /**
+             * The member's tier line in the launcher, printed under the points card by tier-progress.php.
+             * Applied only for a member. Internal seam for Pro, not a public API.
+             *
+             * Return null to print nothing, or an array with:
+             * - name:          ?string, the member's tier; null when they have none (no badge).
+             * - color:         ?string, the tier's '#RRGGBB'; null when they have none.
+             * - next:          ?array{name: string, threshold: int}, the next tier; null at the top tier.
+             * - progress:      int, the qualifying total shown.
+             * - needed:        int, max( 0, next threshold - progress ); 0 when next is null.
+             * - window_months: ?int, the qualifying window in months; null outside a rolling window.
+             * - held_until:    ?string, UTC MySQL datetime the tier is kept until; null when not held.
+             *
+             * @param array|null $tier    Null.
+             * @param int|null   $user_id The member; null for the Design preview.
+             * @param int        $balance The member's balance, or the preview's sample.
+             */
+            $tier = apply_filters( self::MEMBER_TIER_FILTER, null, $user_id, $balance ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+        } catch ( \Throwable $e ) {
+            Log::warning( 'LauncherPayload', 'member tier failed: ' . $e->getMessage() );
+
+            return null;
+        }
+
+        if ( null === $tier ) {
+            return null;
+        }
+
+        if ( ! self::is_member_tier( $tier ) ) {
+            Log::warning( 'LauncherPayload', 'member tier malformed' );
+
+            return null;
+        }
+
+        return [
+            'name'          => $tier['name'],
+            'color'         => $tier['color'],
+            'next'          => null === $tier['next'] ? null : [
+                'name'      => $tier['next']['name'],
+                'threshold' => $tier['next']['threshold'],
+            ],
+            'progress'      => $tier['progress'],
+            'needed'        => $tier['needed'],
+            'window_months' => $tier['window_months'],
+            'held_until'    => $tier['held_until'],
+        ];
+    }
+
+    /** @param mixed $tier A MEMBER_TIER_FILTER answer. */
+    private static function is_member_tier( $tier ): bool {
+        if ( ! is_array( $tier ) ) {
+            return false;
+        }
+
+        foreach ( [ 'name', 'color', 'next', 'progress', 'needed', 'window_months', 'held_until' ] as $key ) {
+            if ( ! array_key_exists( $key, $tier ) ) {
+                return false;
+            }
+        }
+
+        $next = $tier['next'];
+
+        return ( null === $tier['name'] || is_string( $tier['name'] ) )
+            && ( null === $tier['color'] || is_string( $tier['color'] ) )
+            && ( null === $next || ( is_array( $next ) && isset( $next['name'], $next['threshold'] ) && is_string( $next['name'] ) && '' !== $next['name'] && is_int( $next['threshold'] ) && $next['threshold'] >= 0 ) )
+            && is_int( $tier['progress'] ) && $tier['progress'] >= 0
+            && is_int( $tier['needed'] ) && $tier['needed'] >= 0
+            && ( null === $tier['window_months'] || ( is_int( $tier['window_months'] ) && $tier['window_months'] >= 1 ) )
+            && ( null === $tier['held_until'] || ( is_string( $tier['held_until'] ) && Dates::is_valid( $tier['held_until'] ) ) );
     }
 
     /**
