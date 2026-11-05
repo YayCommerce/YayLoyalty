@@ -66,6 +66,9 @@ final class Context {
     /** @var bool Set only by advert(). */
     private $advert = false;
 
+    /** @var bool Set only by as_estimate(). */
+    private $estimate = false;
+
     /**
      * @param ContextLineItem[]    $line_items
      * @param string[]             $coupon_codes
@@ -120,6 +123,18 @@ final class Context {
     /** Whether this stands for no event: the engine then skips the checks that need one. */
     public function is_advert(): bool {
         return $this->advert;
+    }
+
+    /** This shopper and these lines with no order yet: the engine then promises what the order may pay, never more. */
+    public function as_estimate(): self {
+        $ctx           = clone $this;
+        $ctx->estimate = true;
+
+        return $ctx;
+    }
+
+    public function is_estimate(): bool {
+        return $this->estimate;
     }
 
     public function get_user_id(): ?int {

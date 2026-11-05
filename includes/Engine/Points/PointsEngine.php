@@ -39,7 +39,7 @@ final class PointsEngine {
 
     /**
      * @param string  $trigger A CampaignTrigger constant.
-     * @param Context $ctx     The event; liveness is evaluated at its occurred_at.
+     * @param Context $ctx     The event, or an estimate (Context::as_estimate()); liveness is evaluated at its occurred_at.
      * @throws \InvalidArgumentException When $ctx is an advert, or no handler owns the trigger.
      */
     public function evaluate( string $trigger, Context $ctx ): Result {
@@ -54,20 +54,17 @@ final class PointsEngine {
             return Result::none( Result::REASON_NO_CAMPAIGNS );
         }
 
+        if ( $ctx->is_estimate() ) {
+            return $this->estimate( $handler, $candidates, $ctx );
+        }
+
         $campaign = $this->pick( $handler, $candidates, $ctx );
 
         if ( null === $campaign ) {
             return Result::none( Result::REASON_NOT_ELIGIBLE );
         }
 
-        $breakdown = $handler->compute_points( $campaign, $ctx );
-        $points    = $this->caps->apply( $breakdown->get_points(), $campaign );
-
-        if ( $points <= 0 ) {
-            return Result::none( Result::REASON_ZERO_POINTS );
-        }
-
-        return Result::awarded( $points, $campaign, $breakdown, $handler->reference_type(), $handler->reference_id( $ctx ), $handler->source() );
+        return $this->result( $handler, $campaign, $ctx );
     }
 
     /**
@@ -144,17 +141,76 @@ final class PointsEngine {
         return null;
     }
 
+    /**
+     * The most an estimate may promise: walks the candidates to the first sure to apply. One whose conditions
+     * can't be told yet may catch this shopper, so it lowers the figure, as in advertised().
+     *
+     * @param iterable<Campaign> $candidates
+     */
+    private function estimate( Triggers\TriggerHandler $handler, iterable $candidates, Context $ctx ): Result {
+        $lowest = null;
+
+        foreach ( $candidates as $campaign ) {
+            $verdict = $this->verdict( $campaign, $ctx );
+
+            if ( false === $verdict || ! $handler->is_eligible( $campaign, $ctx ) ) {
+                continue;
+            }
+
+            $result = $this->result( $handler, $campaign, $ctx );
+
+            if ( null === $lowest || $result->get_points() < $lowest->get_points() ) {
+                $lowest = $result;
+            }
+
+            if ( true === $verdict ) {
+                return $lowest;
+            }
+        }
+
+        return Result::none( Result::REASON_NOT_ELIGIBLE );
+    }
+
+    private function result( Triggers\TriggerHandler $handler, Campaign $campaign, Context $ctx ): Result {
+        $breakdown = $handler->compute_points( $campaign, $ctx );
+        $points    = $this->caps->apply( $breakdown->get_points(), $campaign );
+
+        if ( $points <= 0 ) {
+            return Result::none( Result::REASON_ZERO_POINTS );
+        }
+
+        return Result::awarded( $points, $campaign, $breakdown, $handler->reference_type(), $handler->reference_id( $ctx ), $handler->source() );
+    }
+
+    /** Whether a campaign applies when no order settles it: true, false, or null while its conditions can't be told. */
+    private function verdict( Campaign $campaign, Context $ctx ): ?bool {
+        if ( self::applies_to_everyone( $campaign ) ) {
+            $verdict = true;
+        } elseif ( $ctx->is_advert() && null === $ctx->get_user_id() ) {
+            return null;
+        } else {
+            $verdict = self::conditions_evaluator()->verdict( $campaign->get_conditions(), $ctx );
+        }
+
+        return true === $verdict ? $this->filtered_match( true, $campaign, $ctx ) : $verdict;
+    }
+
     private function matches( Campaign $campaign, Context $ctx ): bool {
+        return $this->filtered_match( $this->conditions_match( $campaign, $ctx ), $campaign, $ctx );
+    }
+
+    private function filtered_match( bool $matches, Campaign $campaign, Context $ctx ): bool {
         /**
          * Whether a campaign's conditions match this event. Also fires on storefront pages with an
          * advertising Context (Context::is_advert()), which stands for any shopper and no event; there it
-         * fires only for a campaign for everyone, with true.
+         * fires only for a campaign for everyone, with true. On an estimate (Context::is_estimate()) it
+         * fires only for a campaign whose conditions all match, with true.
          *
          * @param bool     $matches
          * @param Campaign $campaign
          * @param Context  $ctx
          */
-        return (bool) apply_filters( 'yayloyalty_campaign_matches', $this->conditions_match( $campaign, $ctx ), $campaign, $ctx );
+        return (bool) apply_filters( 'yayloyalty_campaign_matches', $matches, $campaign, $ctx );
     }
 
     /**
@@ -180,7 +236,8 @@ final class PointsEngine {
         /**
          * Evaluator for campaign `conditions`; null in Lite. Internal Pro seam, not a public API.
          *
-         * @param object|null $evaluator Exposes evaluate( array $conditions, Context $ctx ): bool.
+         * @param object|null $evaluator Exposes evaluate( array $conditions, Context $ctx ): bool for an event,
+         *                              and verdict( array $conditions, Context $ctx ): ?bool with no order yet.
          */
         $evaluator = apply_filters( self::CONDITIONS_EVALUATOR_FILTER, null ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name.
 
