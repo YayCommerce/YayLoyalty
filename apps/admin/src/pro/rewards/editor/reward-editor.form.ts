@@ -24,8 +24,8 @@ import type { EditorSaveIntent } from '@/hooks/useEditorSave';
 import { defaultRewardName } from '../reward-labels';
 
 /**
- * The form's fields. No `conditions`: the editor shows none, and a save sends
- * the stored list back untouched.
+ * The form's fields. Of the stored `conditions` the form shows only the tier
+ * entry, as `min_tier_id`; a save sends every other entry back untouched.
  */
 export interface RewardFormValues {
   name: string;
@@ -36,6 +36,8 @@ export interface RewardFormValues {
   config: Record<string, unknown>;
   starts_at: string | null;
   ends_at: string | null;
+  /** The minimum tier's id, or null for "Any tier". Only coupon rewards set it. */
+  min_tier_id: number | null;
 }
 
 export type RewardSaveIntent = EditorSaveIntent;
@@ -118,6 +120,7 @@ export function rewardCreateSeed(type: CatalogRewardType, currency: string): Rew
     config,
     starts_at: null,
     ends_at: null,
+    min_tier_id: null,
   };
 }
 
@@ -135,6 +138,7 @@ export function rewardToFormValues(reward: Reward, storeCurrency: string): Rewar
     config: structuredClone({ ...base, ...reward.config }),
     starts_at: reward.starts_at,
     ends_at: reward.ends_at,
+    min_tier_id: minTierOf(normalizeRewardConditions(reward.conditions)),
   };
 }
 
@@ -199,7 +203,7 @@ function formValuesToBody(
     status: resolveSaveStatus(values, intent),
     cost_points: values.cost_points,
     config: values.config,
-    conditions: storedConditions,
+    conditions: withMinTier(storedConditions, values.min_tier_id),
     starts_at: values.starts_at,
     ends_at: values.ends_at,
   };
@@ -221,11 +225,31 @@ export function rewardFormSchema(type: RewardType) {
           : z.number({ invalid_type_error: costMessage }).int().min(1, costMessage),
       config: REWARD_CONFIG_SCHEMAS[type],
       status: z.enum(EDITABLE_REWARD_STATUSES),
+      min_tier_id: z.number().int().positive().nullable(),
     })
     .refine((data) => isScheduleInOrder(data.starts_at, data.ends_at), {
       message: __('The reward must end after it starts.', 'yayloyalty'),
       path: ['ends_at'],
     });
+}
+
+/**
+ * Mirrors RewardConditionSet's `tier` entry, the source of truth: the id a
+ * `{type: "tier", operator: "gte"}` entry requires, or null without one.
+ */
+export function minTierOf(conditions: RewardCondition[]): number | null {
+  const entry = conditions.find((condition) => condition.type === 'tier' && condition.operator === 'gte');
+  const value = entry?.value;
+  const id = typeof value === 'number' || typeof value === 'string' ? Number(value) : NaN;
+
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+/** The stored list with its tier entries replaced by one requiring `tierId`, or with none when it is null. */
+export function withMinTier(conditions: RewardCondition[], tierId: number | null): RewardCondition[] {
+  const rest = conditions.filter((condition) => condition.type !== 'tier');
+
+  return tierId === null ? rest : [...rest, { type: 'tier', operator: 'gte', value: tierId }];
 }
 
 export function rewardFormResolver(type: RewardType): Resolver<RewardFormValues> {

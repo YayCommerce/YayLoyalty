@@ -1,5 +1,5 @@
-import { ReactNode, useState } from 'react';
-import { Package } from 'lucide-react';
+import { ReactNode, useEffect, useState } from 'react';
+import { InfoIcon, Package, TriangleAlert } from 'lucide-react';
 import { FieldError as HookFieldError, useFormContext, useWatch } from 'react-hook-form';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
@@ -7,17 +7,22 @@ import { numberConfig } from '@/lib/helpers/reward.helper';
 import { useProductSummaryQuery } from '@/lib/queries/lookup.queries';
 import { isCatalogRewardType, RewardType } from '@/lib/schema/reward.schema';
 import { cn } from '@/lib/utils';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { MoneyInput, OptionalMoneyInput, PointsInput } from '@/components/ui/custom/amount-inputs';
 import { EditorSection } from '@/components/ui/custom/editor-section';
+import { ErrorState } from '@/components/ui/custom/error-state';
 import { LookupMultiSelect } from '@/components/ui/custom/lookup-multi-select';
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { FlexibleDiscountConfig, FlexibleDiscountFields } from '@/pages/rewards/FlexibleDiscountFields';
 import { rewardCouponCodeCopy } from '@/pages/rewards/reward-coupon-code.copy';
+import { TierBadge } from '../../tiers/TierBadge';
+import { useTiersEnabled, useTiersQuery } from '../../tiers/tiers.queries';
 import { RewardFormValues } from './reward-editor.form';
 
 /**
@@ -41,6 +46,12 @@ export function RewardEditorSections({ type, couponCode }: { type: RewardType; c
       >
         {isCatalog ? <RewardEditorValue type={type} /> : <RewardEditorFlexibleDiscount />}
       </EditorSection>
+
+      {(type === 'fixed_coupon' || type === 'percent_coupon') && (
+        <EditorSection contentClassName="gap-5" step={3} title={__('Tier', 'yayloyalty')}>
+          <RewardEditorTier />
+        </EditorSection>
+      )}
     </div>
   );
 }
@@ -360,6 +371,84 @@ function productStockLabel(status: string, quantity: number | null): { label: st
   }
 
   return { label: __('In stock', 'yayloyalty'), isAvailable: true };
+}
+
+// Tier
+
+/** The select's value for "Any tier"; Radix Select reserves the empty string. */
+const ANY_TIER = 'any';
+
+function RewardEditorTier() {
+  const { control, setValue, formState } = useFormContext<RewardFormValues>();
+  const minTierId = useWatch({ control, name: 'min_tier_id' });
+  const tiersQuery = useTiersQuery();
+  const tiersEnabled = useTiersEnabled();
+  const tiers = tiersQuery.data;
+  const isRemoved = tiers !== undefined && minTierId !== null && !tiers.some((tier) => tier.id === minTierId);
+  const storedId = formState.defaultValues?.min_tier_id ?? null;
+  const wasRemoved = tiers !== undefined && storedId !== null && !tiers.some((tier) => tier.id === storedId);
+
+  // The server refuses a save naming a deleted tier, so a removed one is cleared; dirtying it lets Save write that.
+  useEffect(() => {
+    if (isRemoved) {
+      setValue('min_tier_id', null, EDIT);
+    }
+  }, [isRemoved, setValue]);
+
+  return (
+    <>
+      {!tiersEnabled && (
+        <Alert variant="outline">
+          <InfoIcon />
+          <AlertDescription>
+            {__(
+              'Tiers are off. Rewards that require a tier are hidden from every customer until you turn tiers on.',
+              'yayloyalty',
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Field orientation="responsive">
+        <FieldLabel htmlFor="reward-tier-min">{__('Minimum tier', 'yayloyalty')}</FieldLabel>
+        <FieldContent>
+          <Select
+            value={minTierId === null || isRemoved ? ANY_TIER : String(minTierId)}
+            onValueChange={(next) => setValue('min_tier_id', next === ANY_TIER ? null : Number(next), EDIT)}
+            disabled={tiersQuery.isPending || tiersQuery.isError}
+          >
+            <SelectTrigger id="reward-tier-min" className="w-full" aria-invalid={!!formState.errors.min_tier_id}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ANY_TIER}>{__('Any tier', 'yayloyalty')}</SelectItem>
+              {tiers?.map((tier) => (
+                <SelectItem key={tier.id} value={String(tier.id)}>
+                  <TierBadge name={tier.name} color={tier.color} />
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {tiersQuery.isError && (
+            <ErrorState
+              message={__('Could not load the tiers.', 'yayloyalty')}
+              onRetry={() => void tiersQuery.refetch()}
+            />
+          )}
+          {wasRemoved && minTierId === null && (
+            <Alert variant="warning">
+              <TriangleAlert />
+              <AlertDescription>{__('The tier this reward required was removed.', 'yayloyalty')}</AlertDescription>
+            </Alert>
+          )}
+          <FieldError errors={[formState.errors.min_tier_id]} />
+          <FieldDescription>
+            {__('Only customers in this tier or a higher one see and can claim this reward.', 'yayloyalty')}
+          </FieldDescription>
+        </FieldContent>
+      </Field>
+    </>
+  );
 }
 
 /* ─── field atoms ────────────────────────────────────────────────────── */
