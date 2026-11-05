@@ -3,10 +3,10 @@ namespace YayLoyalty\Pro\Controllers;
 
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\AbstractRestController;
-use YayLoyalty\Enums\TierMode;
 use YayLoyalty\Models\Customer;
 use YayLoyalty\Models\Tier;
 use YayLoyalty\Pro\Services\TierEvaluator;
+use YayLoyalty\Pro\Services\TierStanding;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\TierRepository;
@@ -147,39 +147,9 @@ final class CustomerTierRestController extends AbstractRestController {
      */
     private function respond( int $user_id ): array {
         $customer = $this->customers->find_by_user_id( $user_id ) ?? new Customer( $user_id );
-        $live     = $this->tiers->live();
-        $tier     = null;
-
-        foreach ( $live as $candidate ) {
-            if ( $candidate->get_id() === $customer->get_tier_id() ) {
-                $tier = $candidate;
-                break;
-            }
-        }
-
-        $rank = null === $tier ? 0 : $tier->get_tier_rank();
-        $next = null;
-
-        foreach ( $live as $candidate ) {
-            if ( $candidate->get_tier_rank() > $rank ) {
-                $next = $candidate;
-                break;
-            }
-        }
-
-        $mode       = TierEvaluator::mode();
-        $months     = TierMode::ROLLING === $mode ? TierEvaluator::rolling_months() : null;
-        $now        = Dates::now();
-        $held_until = $customer->get_tier_held_until();
-        $is_held    = null !== $held_until && $held_until > $now;
-
-        if ( null !== $months ) {
-            $progress = $this->ledger->window_total( $user_id, Dates::add_months( $now, -$months ), $now );
-        } else {
-            $progress = $customer->get_tier_progress_value();
-            // The evaluator's last value; a customer never evaluated reads their points earned.
-            $progress = null === $progress ? $customer->get_lifetime_earned() : (int) $progress;
-        }
+        $standing = ( new TierStanding( $this->ledger ) )->of( $customer, $this->tiers->live(), Dates::now() );
+        $tier     = $standing['tier'];
+        $next     = $standing['next'];
 
         return [
             'tier'           => null === $tier ? null : [
@@ -188,7 +158,7 @@ final class CustomerTierRestController extends AbstractRestController {
                 'color'     => $tier->get_color(),
                 'tier_rank' => $tier->get_tier_rank(),
             ],
-            'progress_value' => $progress,
+            'progress_value' => $standing['progress'],
             'next'           => null === $next ? null : [
                 'id'        => (int) $next->get_id(),
                 'name'      => $next->get_name(),
@@ -196,10 +166,10 @@ final class CustomerTierRestController extends AbstractRestController {
             ],
             'achieved_at'    => $customer->get_tier_achieved_at(),
             'manual'         => $this->manual( $customer ),
-            'mode'           => $mode,
-            'window_months'  => $months,
-            'held_from'      => $is_held ? $customer->get_tier_held_from() : null,
-            'held_until'     => $is_held ? $held_until : null,
+            'mode'           => $standing['mode'],
+            'window_months'  => $standing['window_months'],
+            'held_from'      => $standing['held_from'],
+            'held_until'     => $standing['held_until'],
         ];
     }
 
