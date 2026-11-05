@@ -123,6 +123,10 @@ export function tierChangeReasonLabel(reason: string, actorName: string): string
       return __('Tier deleted', 'yayloyalty');
     case 'placement':
       return __('Tiers turned on', 'yayloyalty');
+    case 'hold_end':
+      return __('Tier hold ended', 'yayloyalty');
+    case 'mode_change':
+      return __('Tier mode changed', 'yayloyalty');
     default:
       return '';
   }

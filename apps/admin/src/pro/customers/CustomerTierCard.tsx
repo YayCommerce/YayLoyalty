@@ -67,7 +67,17 @@ export function CustomerTierCard({ customer }: { customer: Customer }) {
     return <Skeleton className="h-36 w-full rounded-md" />;
   }
 
-  const { tier, next, progress_value: progress, achieved_at: achievedAt, manual } = query.data;
+  const {
+    tier,
+    next,
+    progress_value: progress,
+    achieved_at: achievedAt,
+    manual,
+    mode,
+    window_months: windowMonths,
+    held_until: heldUntil,
+  } = query.data;
+  const isRolling = mode === 'rolling' && windowMonths !== null;
 
   return (
     <div className="flex flex-col gap-2">
@@ -77,15 +87,7 @@ export function CustomerTierCard({ customer }: { customer: Customer }) {
             label={__('Tier', 'yayloyalty')}
             size="lg"
             value={tier ? <TierBadge name={tier.name} color={tier.color} /> : __('No tier', 'yayloyalty')}
-            subLine={
-              tier && achievedAt
-                ? sprintf(
-                    /* translators: %s: the date the customer reached the tier. */
-                    __('Since %s', 'yayloyalty'),
-                    formatStoredDate(achievedAt),
-                  )
-                : undefined
-            }
+            subLine={tier && achievedAt ? tierSince(achievedAt, isRolling ? heldUntil : null) : undefined}
           />
           <div className="flex min-w-0 flex-col gap-2">
             <CustomerDrawerStat
@@ -110,12 +112,20 @@ export function CustomerTierCard({ customer }: { customer: Customer }) {
                   />
                 </div>
                 <span className="text-muted-foreground text-xs tabular-nums">
-                  {sprintf(
-                    /* translators: 1: points earned, 2: points the next tier needs. */
-                    __('%1$s / %2$s', 'yayloyalty'),
-                    formatPoints(progress),
-                    formatPoints(next.threshold),
-                  )}
+                  {isRolling
+                    ? sprintf(
+                        /* translators: 1: points earned in the window, 2: points the next tier needs, 3: the window's length in months. */
+                        __('%1$s / %2$s in the last %3$s months', 'yayloyalty'),
+                        formatPoints(progress),
+                        formatPoints(next.threshold),
+                        String(windowMonths),
+                      )
+                    : sprintf(
+                        /* translators: 1: points earned, 2: points the next tier needs. */
+                        __('%1$s / %2$s', 'yayloyalty'),
+                        formatPoints(progress),
+                        formatPoints(next.threshold),
+                      )}
                 </span>
               </div>
             )}
@@ -163,6 +173,22 @@ export function CustomerTierCard({ customer }: { customer: Customer }) {
       />
     </div>
   );
+}
+
+/** The TIER sub-line; a running Rolling hold adds its end. */
+function tierSince(achievedAt: string, heldUntil: string | null): string {
+  return heldUntil
+    ? sprintf(
+        /* translators: 1: the date the customer reached the tier, 2: the date their tier hold ends. */
+        __('Since %1$s · held until %2$s', 'yayloyalty'),
+        formatStoredDate(achievedAt),
+        formatStoredDate(heldUntil),
+      )
+    : sprintf(
+        /* translators: %s: the date the customer reached the tier. */
+        __('Since %s', 'yayloyalty'),
+        formatStoredDate(achievedAt),
+      );
 }
 
 /** The bar's fill, 0–100. A next tier at 0 points is already reached. */

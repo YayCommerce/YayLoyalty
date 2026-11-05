@@ -90,7 +90,7 @@ final class TierEvaluator {
     }
 
     /** The rolling window's length in months, the stored setting or its default. */
-    private static function rolling_months(): int {
+    public static function rolling_months(): int {
         $settings = SettingsHelper::get_settings();
         $months   = $settings['tiers_rolling_months'] ?? null;
 

@@ -3,11 +3,14 @@ namespace YayLoyalty\Pro\Controllers;
 
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\AbstractRestController;
+use YayLoyalty\Enums\TierMode;
 use YayLoyalty\Models\Customer;
 use YayLoyalty\Models\Tier;
 use YayLoyalty\Pro\Services\TierEvaluator;
 use YayLoyalty\Repositories\CustomerRepository;
+use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\TierRepository;
+use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -23,9 +26,13 @@ final class CustomerTierRestController extends AbstractRestController {
     /** @var TierRepository */
     private $tiers;
 
-    public function __construct( CustomerRepository $customers, TierRepository $tiers ) {
+    /** @var LedgerRepository */
+    private $ledger;
+
+    public function __construct( CustomerRepository $customers, TierRepository $tiers, LedgerRepository $ledger ) {
         $this->customers = $customers;
         $this->tiers     = $tiers;
+        $this->ledger    = $ledger;
     }
 
     public function get_rest_base(): string {
@@ -132,9 +139,11 @@ final class CustomerTierRestController extends AbstractRestController {
 
     /**
      * The drawer card's shape. `tier` is null when the stored tier is deleted; `next` is the lowest live
-     * tier ranked above it, or the lowest tier when the customer has none.
+     * tier ranked above it, or the lowest tier when the customer has none. In Rolling, progress_value is
+     * the window total read now, so a row that aged out shows before the next evaluation. The hold dates
+     * are null unless the hold is still running.
      *
-     * @return array{tier: array<string, mixed>|null, progress_value: int, next: array<string, mixed>|null, achieved_at: string|null, manual: array<string, mixed>|null}
+     * @return array{tier: array<string, mixed>|null, progress_value: int, next: array<string, mixed>|null, achieved_at: string|null, manual: array<string, mixed>|null, mode: string, window_months: int|null, held_from: string|null, held_until: string|null}
      */
     private function respond( int $user_id ): array {
         $customer = $this->customers->find_by_user_id( $user_id ) ?? new Customer( $user_id );
@@ -158,7 +167,19 @@ final class CustomerTierRestController extends AbstractRestController {
             }
         }
 
-        $progress = $customer->get_tier_progress_value();
+        $mode       = TierEvaluator::mode();
+        $months     = TierMode::ROLLING === $mode ? TierEvaluator::rolling_months() : null;
+        $now        = Dates::now();
+        $held_until = $customer->get_tier_held_until();
+        $is_held    = null !== $held_until && $held_until > $now;
+
+        if ( null !== $months ) {
+            $progress = $this->ledger->window_total( $user_id, Dates::add_months( $now, -$months ), $now );
+        } else {
+            $progress = $customer->get_tier_progress_value();
+            // The evaluator's last value; a customer never evaluated reads their points earned.
+            $progress = null === $progress ? $customer->get_lifetime_earned() : (int) $progress;
+        }
 
         return [
             'tier'           => null === $tier ? null : [
@@ -167,8 +188,7 @@ final class CustomerTierRestController extends AbstractRestController {
                 'color'     => $tier->get_color(),
                 'tier_rank' => $tier->get_tier_rank(),
             ],
-            // The evaluator's last value; a customer never evaluated reads their points earned.
-            'progress_value' => null === $progress ? $customer->get_lifetime_earned() : (int) $progress,
+            'progress_value' => $progress,
             'next'           => null === $next ? null : [
                 'id'        => (int) $next->get_id(),
                 'name'      => $next->get_name(),
@@ -176,6 +196,10 @@ final class CustomerTierRestController extends AbstractRestController {
             ],
             'achieved_at'    => $customer->get_tier_achieved_at(),
             'manual'         => $this->manual( $customer ),
+            'mode'           => $mode,
+            'window_months'  => $months,
+            'held_from'      => $is_held ? $customer->get_tier_held_from() : null,
+            'held_until'     => $is_held ? $held_until : null,
         ];
     }
 

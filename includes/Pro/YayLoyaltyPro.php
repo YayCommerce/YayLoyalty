@@ -349,7 +349,8 @@ final class YayLoyaltyPro {
         );
         $controllers[] = new CustomerTierRestController(
             new CustomerRepository(),
-            new TierRepository()
+            new TierRepository(),
+            new LedgerRepository()
         );
 
         return $controllers;

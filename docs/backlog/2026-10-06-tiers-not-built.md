@@ -8,8 +8,9 @@
 
 ## Today
 
-Tiers work in Lifetime mode in Pro:
+Tiers work in Pro:
 
+- Tiers qualify in Lifetime or Rolling mode (3–24 months, with holds), set in Tiers → Qualification.
 - The tier catalogue: the `tiers` table seeded with Bronze, Silver and Gold, the `yayloyalty_manage_tiers` capability (`Capabilities` v3), Pro's tier CRUD routes (`TiersRestController`) and the Pro Tiers page with its on/off switch.
 - `Pro\Services\TierEvaluator` places customers, moves them on ledger writes, pays each tier's entry bonus once and emits `ActivityEvent::TIER_CHANGED`. Catalogue edits and the switch request sweeps that the daily `yayloyalty_tier_run` drains ([the decision record](../decisions/2026-11-04-tier-evaluator-sole-writer.md)).
 - The drawer's tier card assigns and removes a manual tier floor, the activity log has a Tier changes filter, and the Customers list shows, sorts and filters by tier, with the tier kept in saved segments.
@@ -18,7 +19,6 @@ Tiers work in Lifetime mode in Pro:
 
 Still missing:
 
-- Rolling mode and holds: `tier_held_until` is never written, and `PUT /tiers/settings` accepts only `tiers_enabled`.
 - Nothing more for conditions: `CampaignConditionType::TIER` stays in `UNAVAILABLE` by design, so campaigns stay tier-independent ([the tiers master](../specs/2026-11-02-tiers-master-design.md), D9). `ConditionsEvaluator` rejects it as `unsupported_condition_type`.
 - `CustomerFacts::$tier_id`, always null: `CustomerFactsReader` never passes it.
 

@@ -2,7 +2,7 @@ import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/r
 
 import { customerKeyPrefix } from '@/lib/queries/customer.queries';
 import { SETTINGS_QUERIES, useSettingsQuery } from '@/lib/queries/settings.queries';
-import type { AssignCustomerTierInput, TierInput } from '@/lib/schema/tier.schema';
+import type { AssignCustomerTierInput, TierInput, TierSettingsInput } from '@/lib/schema/tier.schema';
 import {
   assignCustomerTier,
   createTier,
@@ -52,7 +52,7 @@ export function useUpdateTierSettingsMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: { tiers_enabled: boolean }) => updateTierSettings(input),
+    mutationFn: (input: TierSettingsInput) => updateTierSettings(input),
     onSuccess: (settings) => {
       queryClient.setQueryData(TIER_QUERIES.settings().queryKey, settings);
       void queryClient.invalidateQueries({ queryKey: TIER_KEY });

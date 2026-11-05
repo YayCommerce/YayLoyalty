@@ -11,6 +11,7 @@ import {
   tierInUseErrorSchema,
   tierSchema,
   TierSettings,
+  TierSettingsInput,
   tierSettingsSchema,
   tiersSchema,
 } from '@/lib/schema/tier.schema';
@@ -54,8 +55,11 @@ export async function getTierSettings(signal?: AbortSignal): Promise<TierSetting
   return tierSettingsSchema.parse(await api.get('tiers/settings', { signal }).json());
 }
 
-/** PUT tiers/settings. Turning tiers on starts the placement sweep; turning them off drops any pending sweep. */
-export async function updateTierSettings(input: { tiers_enabled: boolean }): Promise<TierSettings> {
+/**
+ * PUT tiers/settings. Turning tiers on starts the placement sweep, and turning them off drops any pending sweep.
+ * A mode change while tiers are on starts a mode sweep, and is refused with a 409 while any sweep runs.
+ */
+export async function updateTierSettings(input: TierSettingsInput): Promise<TierSettings> {
   return tierSettingsSchema.parse(await api.put('tiers/settings', { json: input }).json());
 }
 
