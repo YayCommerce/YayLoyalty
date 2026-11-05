@@ -14,6 +14,9 @@ defined( 'ABSPATH' ) || exit;
  */
 final class ContextFactory {
 
+    /** @var array<int, CustomerFacts|null> A storefront page's facts by user id, for this request: a variable product builds a Context per variation. */
+    private static $shared_facts = [];
+
     /**
      * occurred_at is the order's creation date, so the order scores the same at creation and at award,
      * whatever campaigns changed in between. A caller scoring an old order against today's rules passes $occurred_at.
@@ -185,7 +188,7 @@ final class ContextFactory {
         return false;
     }
 
-    /** For the product-page earn preview. */
+    /** For the product-page earn preview: an estimate, so conditions it can't tell yet lower the figure. */
     public static function from_product( \WC_Product $product, int $qty = 1, ?int $user_id = null ): Context {
         $qty      = max( 1, $qty );
         $subtotal = (float) wc_get_price_excluding_tax( $product, [ 'qty' => $qty ] );
@@ -204,7 +207,7 @@ final class ContextFactory {
 
         $currency = get_woocommerce_currency();
 
-        return new Context(
+        return ( new Context(
             $user_id,
             Dates::now(),
             $currency,
@@ -213,8 +216,12 @@ final class ContextFactory {
             $subtotal,
             0.0,
             [],
-            self::user_roles( (int) $user_id )
-        );
+            self::user_roles( (int) $user_id ),
+            null,
+            null,
+            [],
+            static fn() => self::shared_facts( (int) $user_id )
+        ) )->as_estimate();
     }
 
     /** For the storefront launcher's "Ways to earn": any shopper, no event (PointsEngine::advertised()). */
@@ -224,7 +231,7 @@ final class ContextFactory {
         return Context::advert( $at, $currency, self::to_base_factor( $currency, null ) );
     }
 
-    /** For the cart/checkout earn preview. */
+    /** For the cart/checkout earn preview: an estimate, as from_product(). */
     public static function from_cart( \WC_Cart $cart, ?int $user_id = null ): Context {
         $line_items = [];
 
@@ -249,7 +256,7 @@ final class ContextFactory {
         $coupon_codes = (array) $cart->get_applied_coupons();
         $currency     = get_woocommerce_currency();
 
-        return new Context(
+        return ( new Context(
             $user_id,
             Dates::now(),
             $currency,
@@ -258,8 +265,21 @@ final class ContextFactory {
             (float) $cart->get_subtotal(),
             (float) $cart->get_discount_total(),
             $coupon_codes,
-            self::user_roles( (int) $user_id )
-        );
+            self::user_roles( (int) $user_id ),
+            null,
+            null,
+            [],
+            static fn() => self::shared_facts( (int) $user_id )
+        ) )->as_estimate();
+    }
+
+    /** customer_facts() as of now, read once per user for this request. Null for a guest. */
+    private static function shared_facts( int $user_id ): ?CustomerFacts {
+        if ( ! array_key_exists( $user_id, self::$shared_facts ) ) {
+            self::$shared_facts[ $user_id ] = self::customer_facts( $user_id, Dates::now() );
+        }
+
+        return self::$shared_facts[ $user_id ];
     }
 
     /**
