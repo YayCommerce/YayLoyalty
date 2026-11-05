@@ -47,7 +47,7 @@
 | Phase | Delivers (user-visible) | Exit criterion (exact check) | Status |
 |---|---|---|---|
 | 1 | Correct product-page figures, overpromise fixed | `composer test` passes, and spec criteria 2 to 6 hold on a Pro site | implemented |
-| 2 | A member's own rate in "Ways to earn" | `composer test` passes, and spec criteria 7 to 9 hold | pending |
+| 2 | A member's own rate in "Ways to earn" | `composer test` passes, and spec criteria 7 to 9 hold | implemented |
 | 3 | "Bonus offers" rows and their switch | `composer test` and `tsc --noEmit` pass, and spec criteria 10 to 15 hold | pending |
 | 4 | The nudge on classic and block cart and checkout | Spec criteria 16 to 18 hold, and `./scripts/run.sh release lite --no-prompt` passes | pending |
 

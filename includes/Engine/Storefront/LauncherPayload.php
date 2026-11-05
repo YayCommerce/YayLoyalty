@@ -70,7 +70,7 @@ final class LauncherPayload {
         }
 
         $customer = $this->customers->find_by_user_id( $user_id );
-        $payload  = $this->for_balance( $design, null === $customer ? 0 : $customer->get_balance(), EarningService::points_left_today( $user_id ) );
+        $payload  = $this->for_balance( $design, null === $customer ? 0 : $customer->get_balance(), EarningService::points_left_today( $user_id ), $user_id );
 
         if ( null !== $customer && $customer->get_balance() > 0 ) {
             $payload['member']['expires_at'] = self::expiring_soon( $customer->get_expires_at() );
@@ -92,14 +92,16 @@ final class LauncherPayload {
      * @param array    $design  DesignHelper::get_design() or DesignHelper::with_unsaved().
      * @param int|null $balance    The member's balance; null for a guest.
      * @param int|null $left_today Points the member may still earn today (EarningService::points_left_today()); null for no limit.
+     * @param int|null $user_id    The member the earn rates are for; null for what any shopper gets.
      */
-    public function for_balance( array $design, ?int $balance, ?int $left_today = null ): array {
+    public function for_balance( array $design, ?int $balance, ?int $left_today = null, ?int $user_id = null ): array {
         $now      = Dates::now();
         $reward   = $this->rewards->find_live_flexible_discount( $now );
         $redeem   = self::redeem_rule( $reward );
         $register = self::register_route();
         $engine   = $this->engine();
-        $rules    = null === $engine ? LauncherEarnRules::none() : LauncherEarnRules::advertise( $engine, ContextFactory::for_advert( $now ), null !== $register );
+        $advert   = null === $user_id ? ContextFactory::for_advert( $now ) : ContextFactory::for_member_advert( $now, $user_id );
+        $rules    = null === $engine ? LauncherEarnRules::none() : LauncherEarnRules::advertise( $engine, $advert, null !== $register );
         $estimate = null !== $engine && null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate() : null;
 
         return [

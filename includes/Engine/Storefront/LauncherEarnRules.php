@@ -23,7 +23,7 @@ final class LauncherEarnRules {
 
     /**
      * @param PointsEngine $engine       The engine that pays these triggers.
-     * @param Context      $ctx          ContextFactory::for_advert() at the time the rows are for.
+     * @param Context      $ctx          ContextFactory::for_advert() or for_member_advert() at the time the rows are for.
      * @param bool         $can_register Whether a shopper can create an account on this store. The signup
      *                                   campaign pays only a self-registration, so without one it isn't advertised.
      * @return array{earn: array{purchase: ?float, signup: ?int, review: ?int}, purchase_min: float, purchase_rounding: string}
