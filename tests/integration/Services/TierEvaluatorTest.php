@@ -8,6 +8,7 @@ use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Pro\Services\TierEvaluator;
 use YayLoyalty\Pro\Services\TierSweep;
 use YayLoyalty\Pro\YayLoyaltyPro;
+use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\TierRepository;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
 use YayLoyalty\Utils\Dates;
@@ -17,12 +18,20 @@ use YayLoyalty\Utils\Table;
 /**
  * TierEvaluator's ledger writes: the entry bonus is paid once per customer per tier, never on placement, and
  * never lifts the customer a second step in the same evaluation; a refund or deduction moves them down.
+ * In Rolling mode: the window total qualifies, an upgrade starts a hold, a negative row during a hold is
+ * judged on the qualifying total, a hold end moves or renews, and the mode sweeps set or clear holds.
  * Points move through LedgerService, whose recorded hook runs the evaluator after commit, as on a live site.
  */
 final class TierEvaluatorTest extends IntegrationTestCase {
 
     /** @var bool The pinned `tiers_enabled`. */
     private $tiers_enabled = true;
+
+    /** @var string The pinned `tiers_mode`. */
+    private $tiers_mode = 'lifetime';
+
+    /** @var int The pinned `tiers_rolling_months`. */
+    private $rolling_months = 6;
 
     /** @var int[] Users this test created, deleted in tearDown(). */
     private $users = [];
@@ -56,8 +65,10 @@ final class TierEvaluatorTest extends IntegrationTestCase {
     /** @return array<string, mixed> */
     public function pinned_settings(): array {
         return [
-            'schema_version' => SettingsHelper::SCHEMA_VERSION,
-            'tiers_enabled'  => $this->tiers_enabled,
+            'schema_version'       => SettingsHelper::SCHEMA_VERSION,
+            'tiers_enabled'        => $this->tiers_enabled,
+            'tiers_mode'           => $this->tiers_mode,
+            'tiers_rolling_months' => $this->rolling_months,
         ];
     }
 
@@ -188,6 +199,399 @@ final class TierEvaluatorTest extends IntegrationTestCase {
         $this->assertNull( $row['tier_manual_until'] );
         $this->assertCount( $changes, $this->changes( $user ) );
         $this->assertCount( 1, $this->bonus_rows( $user ) );
+    }
+
+    public function test_rolling_upgrade_starts_a_hold(): void {
+        $user = $this->customer();
+        $this->with_tiers_off(
+            function () use ( $user ): void {
+                $this->backdate( $this->ledger_service()->adjust( $user, 1220, 'old', 1 ), $this->months_ago( 8 ) );
+                $this->ledger_service()->adjust( $user, 780, 'recent', 1 );
+            }
+        );
+
+        $this->with_rolling(
+            6,
+            function () use ( $user ): void {
+                $this->earn( $user, 2001, 30 );
+            }
+        );
+
+        $this->assertSame( 'Silver', $this->tier_of( $user ) );
+        [ $from, $until ] = $this->hold_of( $user );
+        $this->assertNotNull( $from );
+        $this->assertSame( Dates::add_months( $from, 6 ), $until );
+        $this->assertSame( '810.0000', $this->customer_row( $user )['tier_progress_value'] );
+        $this->assertSame( [ 'earn' ], $this->last_change( $user, [ 'reason' ] ) );
+    }
+
+    public function test_rolling_refund_in_qualifying_window_drops(): void {
+        $user = $this->customer();
+
+        $this->with_rolling(
+            6,
+            function () use ( $user ): void {
+                $earn = $this->earn( $user, 2002, 3000 );
+
+                $this->assertSame( 'Gold', $this->tier_of( $user ) );
+
+                $this->ledger_service()->refund_earn( $earn, 1500, 'refund', 1 );
+            }
+        );
+
+        $this->assertSame( 'Silver', $this->tier_of( $user ) );
+        $this->assertSame( [ 'refund' ], $this->last_change( $user, [ 'reason' ] ) );
+        [ $from, $until ] = $this->hold_of( $user );
+        $this->assertSame( Dates::add_months( $from, 6 ), $until );
+    }
+
+    public function test_rolling_refund_after_hold_start_keeps(): void {
+        $user = $this->held_gold( 2800, 200 );
+        $hold = $this->hold_of( $user );
+
+        $this->with_rolling(
+            6,
+            function () use ( $user ): void {
+                $earn = $this->earn( $user, 2003, 100 );
+                $this->ledger_service()->refund_earn( $earn, 100, 'refund', 2 );
+            }
+        );
+
+        $this->assertSame( 'Gold', $this->tier_of( $user ) );
+        $this->assertSame( $hold, $this->hold_of( $user ) );
+    }
+
+    public function test_rolling_staff_deduction_counts_against_the_hold(): void {
+        $user = $this->held_gold( 2700, 500 );
+        $hold = $this->hold_of( $user );
+
+        $this->with_rolling(
+            6,
+            function () use ( $user, $hold ): void {
+                $this->ledger_service()->adjust( $user, -100, 'staff', 1 ); // Qualifying 3,100.
+
+                $this->assertSame( 'Gold', $this->tier_of( $user ) );
+
+                $this->ledger_service()->adjust( $user, -200, 'staff', 1 ); // Qualifying 2,900, window 200.
+
+                $this->assertSame( 'Silver', $this->tier_of( $user ) );
+                $this->assertSame( [ 'adjustment' ], $this->last_change( $user, [ 'reason' ] ) );
+                $this->assertSame( $hold, $this->hold_of( $user ) );
+
+                $this->ledger_service()->adjust( $user, 400, 'staff', 1 ); // Window 600: up only, reaches Bronze.
+            }
+        );
+
+        $this->assertSame( 'Silver', $this->tier_of( $user ) );
+    }
+
+    public function test_hold_end_moves_and_renews(): void {
+        $moved   = $this->ended_hold( 'Gold', 900 );
+        $renewed = $this->ended_hold( 'Silver', 1000 );
+        $bronze  = $this->ended_hold( 'Gold', 0 );
+        $rows    = count( $this->changes( $renewed ) );
+
+        $this->with_rolling(
+            6,
+            function () use ( $moved, $renewed, $bronze ): void {
+                $evaluator = TierEvaluator::build();
+                $evaluator->end_hold( $moved );
+                $evaluator->end_hold( $renewed );
+                $evaluator->end_hold( $bronze );
+            }
+        );
+
+        $this->assertSame( 'Silver', $this->tier_of( $moved ) );
+        $this->assertSame( [ 'Gold', 'Silver', 'hold_end' ], $this->last_change( $moved, [ 'from_name', 'to_name', 'reason' ] ) );
+        $this->assertFreshHold( $moved );
+
+        $this->assertSame( 'Silver', $this->tier_of( $renewed ) );
+        $this->assertCount( $rows, $this->changes( $renewed ) );
+        $this->assertFreshHold( $renewed );
+
+        $this->assertSame( 'Bronze', $this->tier_of( $bronze ) );
+        $this->assertFreshHold( $bronze );
+
+        $this->set_threshold( 'Bronze', 100 );
+        $none = $this->ended_hold( 'Gold', 0 );
+
+        $this->with_rolling(
+            6,
+            function () use ( $none ): void {
+                TierEvaluator::build()->end_hold( $none );
+            }
+        );
+
+        $this->assertNull( $this->tier_of( $none ) );
+        $this->assertSame( [ null, null ], $this->hold_of( $none ) );
+        $this->assertSame( [ 'hold_end' ], $this->last_change( $none, [ 'reason' ] ) );
+    }
+
+    public function test_end_hold_skips_a_hold_that_has_not_ended(): void {
+        $user = $this->held_gold( 2800, 200 );
+        $hold = $this->hold_of( $user );
+
+        $this->with_rolling(
+            6,
+            function () use ( $user ): void {
+                TierEvaluator::build()->end_hold( $user );
+            }
+        );
+
+        $this->assertSame( 'Gold', $this->tier_of( $user ) );
+        $this->assertSame( $hold, $this->hold_of( $user ) );
+    }
+
+    public function test_floor_replaces_hold_and_its_end_starts_one(): void {
+        $user = $this->customer();
+        $this->with_tiers_off(
+            function () use ( $user ): void {
+                $this->ledger_service()->adjust( $user, 900, 'seed', 1 );
+            }
+        );
+
+        $this->with_rolling(
+            6,
+            function () use ( $user ): void {
+                $evaluator = TierEvaluator::build();
+                $evaluator->sweep_one( $user, TierSweep::MODE_PLACEMENT );
+
+                $this->assertSame( 'Silver', $this->tier_of( $user ) );
+                $this->assertNotNull( $this->hold_of( $user )[1] );
+
+                $evaluator->assign_floor( $user, $this->tier_id( 'Gold' ), 30, 1 );
+
+                $this->assertSame( 'Gold', $this->tier_of( $user ) );
+                $this->assertSame( [ null, null ], $this->hold_of( $user ) );
+
+                $this->set_customer( $user, [ 'tier_manual_until' => $this->months_ago( 1 ) ] );
+                $evaluator->clear_floor( $user, null );
+
+                $this->assertSame( 'Silver', $this->tier_of( $user ) );
+                $this->assertSame( [ 'manual_end' ], $this->last_change( $user, [ 'reason' ] ) );
+                $this->assertFreshHold( $user );
+
+                $hold = $this->hold_of( $user );
+                $evaluator->assign_floor( $user, $this->tier_id( 'Bronze' ), null, 1 ); // A low floor.
+
+                $this->assertSame( 'Silver', $this->tier_of( $user ) );
+                $this->assertSame( $hold, $this->hold_of( $user ) );
+            }
+        );
+    }
+
+    public function test_months_change_keeps_the_hold_and_its_length(): void {
+        $user = $this->customer();
+        $from = $this->months_ago( 2 );
+        $this->with_tiers_off(
+            function () use ( $user, $from ): void {
+                $this->backdate( $this->earn( $user, 2004, 3100 ), Dates::add_months( $from, -10 ) );
+            }
+        );
+        $this->set_customer(
+            $user,
+            [
+                'tier_id'         => $this->tier_id( 'Gold' ),
+                'tier_held_from'  => $from,
+                'tier_held_until' => Dates::add_months( $from, 12 ),
+            ]
+        );
+        $hold = $this->hold_of( $user );
+
+        $this->with_rolling(
+            6,
+            function () use ( $user ): void {
+                $this->ledger_service()->adjust( $user, -10, 'staff', 1 ); // Window −10; qualifying over L = 12 is 3,090.
+            }
+        );
+
+        $this->assertSame( 'Gold', $this->tier_of( $user ) );
+        $this->assertSame( $hold, $this->hold_of( $user ) );
+    }
+
+    public function test_bad_hold_dates_use_the_setting(): void {
+        $user = $this->customer();
+        $this->with_tiers_off(
+            function () use ( $user ): void {
+                $this->backdate( $this->earn( $user, 2005, 3100 ), $this->months_ago( 8 ) );
+            }
+        );
+        $this->set_customer(
+            $user,
+            [
+                'tier_id'         => $this->tier_id( 'Gold' ),
+                'tier_held_from'  => null,
+                'tier_held_until' => Dates::add_months( Dates::now(), 3 ),
+            ]
+        );
+
+        $this->with_rolling(
+            6,
+            function () use ( $user ): void {
+                $this->ledger_service()->adjust( $user, -10, 'staff', 1 ); // Start read as until − 6: qualifying 3,090.
+            }
+        );
+
+        $this->assertSame( 'Gold', $this->tier_of( $user ) );
+        $this->assertNotNull( $this->customer_row( $user )['tier_evaluated_at'] );
+    }
+
+    /** @group tier-sweep */
+    public function test_mode_sweeps(): void {
+        $evaluator = TierEvaluator::build();
+        $silver    = $this->customer();
+        $floored   = $this->customer();
+        $this->with_tiers_off(
+            function () use ( $silver, $floored ): void {
+                $this->ledger_service()->adjust( $silver, 900, 'seed', 1 );
+                $this->ledger_service()->adjust( $floored, 100, 'seed', 1 );
+            }
+        );
+        $evaluator->sweep_one( $silver, TierSweep::MODE_PLACEMENT );
+        $evaluator->assign_floor( $floored, $this->tier_id( 'Gold' ), null, 1 );
+        $rows = [ count( $this->changes( $silver ) ), count( $this->changes( $floored ) ) ];
+
+        // Lifetime is still stored: the sweep runs its own path.
+        $evaluator->sweep_one( $silver, TierSweep::MODE_TO_ROLLING );
+        $evaluator->sweep_one( $floored, TierSweep::MODE_TO_ROLLING );
+
+        $this->assertSame( 'Silver', $this->tier_of( $silver ) );
+        $this->assertFreshHold( $silver );
+        $this->assertSame( 'Gold', $this->tier_of( $floored ) );
+        $this->assertSame( [ null, null ], $this->hold_of( $floored ) );
+        $this->assertSame( $rows, [ count( $this->changes( $silver ) ), count( $this->changes( $floored ) ) ] );
+
+        $lifetime = $this->customer();
+        $this->with_tiers_off(
+            function () use ( $lifetime ): void {
+                $this->ledger_service()->adjust( $lifetime, 3500, 'seed', 1 );
+            }
+        );
+        $this->set_customer(
+            $lifetime,
+            [
+                'tier_id'         => $this->tier_id( 'Silver' ),
+                'tier_held_from'  => Dates::now(),
+                'tier_held_until' => Dates::add_months( Dates::now(), 6 ),
+            ]
+        );
+
+        $this->with_rolling(
+            6,
+            function () use ( $evaluator, $lifetime ): void {
+                $evaluator->sweep_one( $lifetime, TierSweep::MODE_TO_LIFETIME );
+            }
+        );
+
+        $this->assertSame( 'Gold', $this->tier_of( $lifetime ) );
+        $this->assertSame( [ 'mode_change' ], $this->last_change( $lifetime, [ 'reason' ] ) );
+        $this->assertSame( [ null, null ], $this->hold_of( $lifetime ) );
+    }
+
+    public function test_lifetime_writes_no_hold(): void {
+        $user = $this->customer();
+        $this->ledger_service()->adjust( $user, 780, 'seed', 1 );
+        $this->earn( $user, 2006, 30 );
+
+        $this->assertSame( 'Silver', $this->tier_of( $user ) );
+        $this->assertSame( [ null, null ], $this->hold_of( $user ) );
+    }
+
+    /**
+     * A Gold customer mid-hold (started a month ago, six months long): $qualifying_only points before the
+     * current window, and $both points inside both the window and the qualifying window.
+     */
+    private function held_gold( int $qualifying_only, int $both ): int {
+        $user = $this->customer();
+        $from = $this->months_ago( 1 );
+        $this->with_tiers_off(
+            function () use ( $user, $qualifying_only, $both ): void {
+                $this->backdate( $this->earn( $user, 2101, $qualifying_only ), Dates::add_months( Dates::offset( -15 * DAY_IN_SECONDS ), -6 ) );
+                $this->backdate( $this->earn( $user, 2102, $both ), $this->months_ago( 2 ) );
+            }
+        );
+        $this->set_customer(
+            $user,
+            [
+                'tier_id'         => $this->tier_id( 'Gold' ),
+                'tier_held_from'  => $from,
+                'tier_held_until' => Dates::add_months( $from, 6 ),
+            ]
+        );
+
+        return $user;
+    }
+
+    /** A customer at $tier whose six-month hold ended a day ago, with $window points in the current window. */
+    private function ended_hold( string $tier, int $window ): int {
+        $user = $this->customer();
+
+        if ( $window > 0 ) {
+            $this->with_tiers_off(
+                function () use ( $user, $window ): void {
+                    $this->ledger_service()->adjust( $user, $window, 'seed', 1 );
+                }
+            );
+        } else {
+            ( new CustomerRepository() )->ensure_row( $user );
+        }
+
+        $until = Dates::offset( -DAY_IN_SECONDS );
+        $this->set_customer(
+            $user,
+            [
+                'tier_id'         => $this->tier_id( $tier ),
+                'tier_held_from'  => Dates::add_months( $until, -6 ),
+                'tier_held_until' => $until,
+            ]
+        );
+
+        return $user;
+    }
+
+    /** A hold that starts within the last minute and runs six months. */
+    private function assertFreshHold( int $user_id ): void {
+        [ $from, $until ] = $this->hold_of( $user_id );
+
+        $this->assertNotNull( $from );
+        $this->assertGreaterThanOrEqual( Dates::offset( -60 ), $from );
+        $this->assertSame( Dates::add_months( $from, 6 ), $until );
+    }
+
+    /** @return array{0: string|null, 1: string|null} tier_held_from and tier_held_until as stored. */
+    private function hold_of( int $user_id ): array {
+        $row = $this->customer_row( $user_id );
+
+        return [ $row['tier_held_from'] ?? null, $row['tier_held_until'] ?? null ];
+    }
+
+    private function months_ago( int $months ): string {
+        return Dates::add_months( Dates::now(), -$months );
+    }
+
+    private function backdate( LedgerEntry $entry, string $at ): void {
+        global $wpdb;
+
+        $wpdb->update( Table::name( 'ledger' ), [ 'created_at' => $at ], [ 'id' => (int) $entry->get_id() ], [ '%s' ], [ '%d' ] ); // phpcs:ignore WordPress.DB -- a test fixture moves a row in time.
+    }
+
+    /** @param array<string, int|string|null> $columns Customer columns a fixture writes past the evaluator. */
+    private function set_customer( int $user_id, array $columns ): void {
+        global $wpdb;
+
+        $wpdb->update( Table::name( 'customers' ), $columns, [ 'user_id' => $user_id ] ); // phpcs:ignore WordPress.DB -- a test fixture sets state directly.
+    }
+
+    private function with_rolling( int $months, callable $body ): void {
+        $this->tiers_mode     = 'rolling';
+        $this->rolling_months = $months;
+
+        try {
+            $body();
+        } finally {
+            $this->tiers_mode     = 'lifetime';
+            $this->rolling_months = 6;
+        }
     }
 
     /** A purchase EARN row, written through LedgerService so the recorded hook fires. */

@@ -8,6 +8,7 @@ use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Enums\TierChangeReason;
+use YayLoyalty\Enums\TierMode;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Customer;
 use YayLoyalty\Models\LedgerEntry;
@@ -24,10 +25,14 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The only writer of the customer tier columns (D20 in the tiers design), in Lifetime mode. It runs after
- * the ledger commit, never inside LedgerService's lock, and takes the customer row lock in its own
- * transaction. TierDecision decides the move; this class gathers the state and writes the columns, the
- * `tier_changed` activity row and the entry bonus, then fires `yayloyalty_tier_changed` after commit.
+ * The only writer of the customer tier columns (D20 in the tiers design), the rolling hold's two columns
+ * included, in Lifetime and Rolling mode. It runs after the ledger commit, never inside LedgerService's
+ * lock, and takes the customer row lock in its own transaction. TierDecision decides the move; this class
+ * gathers the state and writes the columns, the `tier_changed` activity row and the entry bonus, then fires
+ * `yayloyalty_tier_changed` after commit.
+ *
+ * Lifetime qualifies on points earned and writes no hold column. Rolling qualifies on the window total
+ * (LedgerRepository::window_total()) and, during an active hold, lets the qualifying total keep the tier.
  *
  * Every entry point does nothing while tiers are off or when the user no longer exists.
  */
@@ -42,14 +47,18 @@ final class TierEvaluator {
     /** @var LedgerService */
     private $ledger;
 
+    /** @var LedgerRepository */
+    private $ledger_rows;
+
     /** @var CustomerActivityService */
     private $activity;
 
-    public function __construct( CustomerRepository $customers, TierRepository $tiers, LedgerService $ledger, CustomerActivityService $activity ) {
-        $this->customers = $customers;
-        $this->tiers     = $tiers;
-        $this->ledger    = $ledger;
-        $this->activity  = $activity;
+    public function __construct( CustomerRepository $customers, TierRepository $tiers, LedgerService $ledger, CustomerActivityService $activity, LedgerRepository $ledger_rows ) {
+        $this->customers   = $customers;
+        $this->tiers       = $tiers;
+        $this->ledger      = $ledger;
+        $this->activity    = $activity;
+        $this->ledger_rows = $ledger_rows;
     }
 
     /** One of LedgerService's construction sites: the entry bonus is a ledger row. */
@@ -61,7 +70,8 @@ final class TierEvaluator {
             $customers,
             new TierRepository(),
             new LedgerService( $ledger, $customers, new CampaignRepository() ),
-            new CustomerActivityService( new CustomerMetaRepository(), $customers, $ledger )
+            new CustomerActivityService( new CustomerMetaRepository(), $customers, $ledger ),
+            $ledger
         );
     }
 
@@ -70,6 +80,21 @@ final class TierEvaluator {
         $settings = SettingsHelper::get_settings();
 
         return true === ( $settings['tiers_enabled'] ?? false );
+    }
+
+    /** TierMode::ROLLING only when the merchant picked it; TierMode::LIFETIME otherwise. */
+    public static function mode(): string {
+        $settings = SettingsHelper::get_settings();
+
+        return TierMode::ROLLING === ( $settings['tiers_mode'] ?? null ) ? TierMode::ROLLING : TierMode::LIFETIME;
+    }
+
+    /** The rolling window's length in months, the stored setting or its default. */
+    private static function rolling_months(): int {
+        $settings = SettingsHelper::get_settings();
+        $months   = $settings['tiers_rolling_months'] ?? null;
+
+        return TierMode::is_rolling_months( $months ) ? (int) $months : TierMode::DEFAULT_ROLLING_MONTHS;
     }
 
     /** A committed ledger row: moves its customer as TierDecision::ledger_policy() allows. */
@@ -83,7 +108,9 @@ final class TierEvaluator {
         $this->apply(
             $entry->get_user_id(),
             static function () use ( $policy ): array {
-                return self::plan( $policy['move'], $policy['reason'] );
+                $kind = TierDecision::MOVE_UP === $policy['move'] ? TierDecision::KIND_UP : TierDecision::KIND_DOWN;
+
+                return self::plan( $policy['move'], $policy['reason'], $kind );
             },
             null,
             true
@@ -92,16 +119,19 @@ final class TierEvaluator {
 
     /**
      * One customer of a sweep. Placement sets the exact tier and pays no bonus. Re-evaluation moves a
-     * customer whose tier or floor tier was deleted to their target, and only raises everyone else.
+     * customer whose tier or floor tier was deleted to their target, and only raises everyone else. The
+     * mode sweeps do re-evaluation's work too, since a request merges it away: to_rolling then starts or
+     * clears each hold without moving anyone, and to_lifetime clears every hold and only raises, on
+     * Lifetime rules. Both run their own path whatever tiers_mode holds.
      *
-     * @param string $mode TierSweep::MODE_PLACEMENT or TierSweep::MODE_REEVALUATE.
+     * @param string $mode A TierSweep::MODE_* constant.
      */
     public function sweep_one( int $user_id, string $mode ): void {
         if ( TierSweep::MODE_PLACEMENT === $mode ) {
             $this->apply(
                 $user_id,
                 static function (): array {
-                    return self::plan( TierDecision::MOVE_TO_TARGET, TierChangeReason::PLACEMENT );
+                    return self::plan( TierDecision::MOVE_TO_TARGET, TierChangeReason::PLACEMENT, TierDecision::KIND_TO_TARGET );
                 },
                 null,
                 false
@@ -112,23 +142,60 @@ final class TierEvaluator {
 
         $this->apply(
             $user_id,
-            static function ( Customer $customer, array $live ): array {
+            static function ( Customer $customer, array $live ) use ( $mode ): array {
                 $tier_id    = $customer->get_tier_id();
                 $floor_id   = $customer->get_tier_manual_id();
                 $tier_gone  = null !== $tier_id && ! isset( $live[ $tier_id ] );
                 $floor_gone = null !== $floor_id && ! isset( $live[ $floor_id ] );
 
-                if ( ! $tier_gone && ! $floor_gone ) {
-                    return self::plan( TierDecision::MOVE_UP, TierChangeReason::THRESHOLD_CHANGE );
+                if ( $tier_gone || $floor_gone ) {
+                    $plan = self::plan( TierDecision::MOVE_TO_TARGET, TierChangeReason::TIER_DELETED, TierDecision::KIND_TO_TARGET );
+
+                    if ( $floor_gone ) {
+                        $plan['floor'] = 'clear';
+                    }
+                } elseif ( TierSweep::MODE_TO_LIFETIME === $mode ) {
+                    $plan = self::plan( TierDecision::MOVE_UP, TierChangeReason::MODE_CHANGE, TierDecision::KIND_UP );
+                } elseif ( TierSweep::MODE_TO_ROLLING === $mode ) {
+                    $plan = self::plan( TierDecision::MOVE_UP, TierChangeReason::TIER_DELETED, TierDecision::KIND_HOLD_ONLY );
+                } else {
+                    $plan = self::plan( TierDecision::MOVE_UP, TierChangeReason::THRESHOLD_CHANGE, TierDecision::KIND_UP );
                 }
 
-                $plan = self::plan( TierDecision::MOVE_TO_TARGET, TierChangeReason::TIER_DELETED );
-
-                if ( $floor_gone ) {
-                    $plan['floor'] = 'clear';
+                if ( TierSweep::MODE_TO_LIFETIME === $mode ) {
+                    $plan['mode']       = TierMode::LIFETIME;
+                    $plan['clear_hold'] = true;
+                } elseif ( TierSweep::MODE_TO_ROLLING === $mode ) {
+                    $plan['mode'] = TierMode::ROLLING;
                 }
 
                 return $plan;
+            },
+            null,
+            true
+        );
+    }
+
+    /**
+     * A rolling hold ended: moves the customer to exactly the tier their window and floor give, which
+     * renews the hold when that is their tier. Does nothing in Lifetime, or when, under the lock, the hold
+     * no longer ends by now (an evaluation since the daily job read the id started a new one).
+     */
+    public function end_hold( int $user_id ): void {
+        if ( TierMode::ROLLING !== self::mode() ) {
+            return;
+        }
+
+        $this->apply(
+            $user_id,
+            static function ( Customer $customer ): ?array {
+                $held_until = $customer->get_tier_held_until();
+
+                if ( null === $customer->get_tier_id() || null === $held_until || $held_until > Dates::now() ) {
+                    return null;
+                }
+
+                return self::plan( TierDecision::MOVE_TO_TARGET, TierChangeReason::HOLD_END, TierDecision::KIND_TO_TARGET );
             },
             null,
             true
@@ -152,7 +219,7 @@ final class TierEvaluator {
         $this->apply(
             $user_id,
             static function () use ( $tier_id, $until ): array {
-                $plan = self::plan( TierDecision::MOVE_UP, TierChangeReason::MANUAL );
+                $plan = self::plan( TierDecision::MOVE_UP, TierChangeReason::MANUAL, TierDecision::KIND_UP );
 
                 $plan['floor']       = 'set';
                 $plan['floor_id']    = $tier_id;
@@ -175,7 +242,7 @@ final class TierEvaluator {
         $this->apply(
             $user_id,
             static function (): array {
-                $plan = self::plan( TierDecision::MOVE_TO_TARGET, TierChangeReason::MANUAL_END );
+                $plan = self::plan( TierDecision::MOVE_TO_TARGET, TierChangeReason::MANUAL_END, TierDecision::KIND_TO_TARGET );
 
                 $plan['floor'] = 'clear';
 
@@ -187,13 +254,19 @@ final class TierEvaluator {
     }
 
     /**
-     * @return array{move: string, reason: string, floor: string, floor_id: int|null, floor_until: string|null}
-     *         `floor` is keep, clear or set.
+     * @param string $move The Lifetime move, a TierDecision::MOVE_* constant.
+     * @param string $kind The Rolling move, a TierDecision::KIND_* constant.
+     * @return array{move: string, reason: string, kind: string, mode: string|null, clear_hold: bool, floor: string, floor_id: int|null, floor_until: string|null}
+     *         `floor` is keep, clear or set. `mode` null follows tiers_mode; a mode sweep names its own.
+     *         `clear_hold` clears both hold columns, for the switch to Lifetime.
      */
-    private static function plan( string $move, string $reason ): array {
+    private static function plan( string $move, string $reason, string $kind ): array {
         return [
             'move'        => $move,
             'reason'      => $reason,
+            'kind'        => $kind,
+            'mode'        => null,
+            'clear_hold'  => false,
             'floor'       => 'keep',
             'floor_id'    => null,
             'floor_until' => null,
@@ -203,7 +276,8 @@ final class TierEvaluator {
     /**
      * Evaluates one customer under their row lock and writes the result.
      *
-     * @param callable $plan_for ( Customer $customer, array<int, Tier> $live ): array, plan()'s shape.
+     * @param callable $plan_for ( Customer $customer, array<int, Tier> $live ): ?array, plan()'s shape, or null
+     *                           to leave the customer untouched.
      */
     private function apply( int $user_id, callable $plan_for, ?int $actor_id, bool $pays_bonus ): void {
         if ( ! self::is_enabled() || false === get_userdata( $user_id ) ) {
@@ -219,7 +293,12 @@ final class TierEvaluator {
                     $live[ (int) $tier->get_id() ] = $tier;
                 }
 
-                $plan    = $plan_for( $customer, $live );
+                $plan = $plan_for( $customer, $live );
+
+                if ( null === $plan ) {
+                    return;
+                }
+
                 $now     = Dates::now();
                 $columns = [];
 
@@ -243,10 +322,31 @@ final class TierEvaluator {
                     ? $live[ $floor_id ]
                     : null;
 
-                $total        = $customer->get_lifetime_earned();
                 $current_id   = $customer->get_tier_id();
                 $current_rank = null !== $current_id && isset( $live[ $current_id ] ) ? $live[ $current_id ]->get_tier_rank() : 0;
-                $decision     = TierDecision::move( $current_id, $current_rank, TierDecision::target( $live, $total, $floor ), $plan['move'] );
+                $mode         = $plan['mode'] ?? self::mode();
+
+                if ( TierMode::ROLLING === $mode ) {
+                    $months   = self::rolling_months();
+                    $total    = $this->ledger_rows->window_total( $user_id, Dates::add_months( $now, -$months ), $now );
+                    $decision = $this->rolling_decision( $customer, $live, $floor, $current_rank, $total, $months, $plan['kind'], $now );
+
+                    if ( TierDecision::HOLD_START === $decision['hold'] ) {
+                        $columns['tier_held_from']  = $now;
+                        $columns['tier_held_until'] = Dates::add_months( $now, $months );
+                    } elseif ( TierDecision::HOLD_CLEAR === $decision['hold'] ) {
+                        $columns['tier_held_from']  = null;
+                        $columns['tier_held_until'] = null;
+                    }
+                } else {
+                    $total    = $customer->get_lifetime_earned();
+                    $decision = TierDecision::move( $current_id, $current_rank, TierDecision::target( $live, $total, $floor ), $plan['move'] );
+
+                    if ( $plan['clear_hold'] ) {
+                        $columns['tier_held_from']  = null;
+                        $columns['tier_held_until'] = null;
+                    }
+                }
 
                 $columns['tier_evaluated_at'] = $now;
 
@@ -279,6 +379,51 @@ final class TierEvaluator {
 
                 $this->customers->set_tier_state( $user_id, $columns );
             }
+        );
+    }
+
+    /**
+     * The Rolling move for one customer under their lock. While the hold is active, the qualifying total is
+     * what was earned in the L months before the hold started plus staff adjustments since, where L is the
+     * stored hold's own length, so a months change never moves an existing hold's window. A hand-edited hold
+     * with no start, or one not before its end, counts as $months long; a missing start reads as the end
+     * less $months.
+     *
+     * @param array<int, Tier> $live
+     * @return array{changed: bool, to: Tier|null, is_upgrade: bool, hold: string} TierDecision::rolling_move().
+     */
+    private function rolling_decision( Customer $customer, array $live, ?Tier $floor, int $current_rank, int $window, int $months, string $kind, string $now ): array {
+        $user_id     = $customer->get_user_id();
+        $current_id  = $customer->get_tier_id();
+        $held_until  = $customer->get_tier_held_until();
+        $hold_active = null !== $current_id && null !== $held_until && $held_until > $now;
+        $qualifying  = null;
+
+        if ( $hold_active ) {
+            $held_from = $customer->get_tier_held_from();
+            $length    = null === $held_from ? 0 : Dates::whole_months_between( $held_from, $held_until );
+
+            if ( 0 === $length ) {
+                $length = $months;
+            }
+
+            if ( null === $held_from ) {
+                $held_from = Dates::add_months( $held_until, -$months );
+            }
+
+            $qualifying_total = $this->ledger_rows->window_total( $user_id, Dates::add_months( $held_from, -$length ), $held_from )
+                + $this->ledger_rows->staff_adjust_since( $user_id, $held_from );
+            $qualifying       = TierDecision::target( $live, $qualifying_total, null );
+        }
+
+        return TierDecision::rolling_move(
+            $current_id,
+            $current_rank,
+            TierDecision::target( $live, $window, null ),
+            $qualifying,
+            $floor,
+            $hold_active,
+            $kind
         );
     }
 

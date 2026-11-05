@@ -57,10 +57,10 @@ export const tierSettingsSchema = z.object({
   tiers_rolling_months: z.number().int(),
   /** Customer rows a placement would cover. */
   customer_count: z.number().int(),
-  /** The pending placement or re-evaluation, or null when none is running. */
+  /** The pending sweep (placement, re-evaluation or a mode switch), or null when none is running. */
   sweep: z
     .object({
-      mode: z.enum(['placement', 'reevaluate']),
+      mode: z.enum(['placement', 'reevaluate', 'to_rolling', 'to_lifetime']),
       done: z.number().int(),
       total: z.number().int(),
     })

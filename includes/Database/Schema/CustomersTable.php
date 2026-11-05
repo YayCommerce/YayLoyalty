@@ -14,7 +14,9 @@ defined( 'ABSPATH' ) || exit;
  * announced, so each date is reminded once whatever the reminder timing.
  * birthday_month and birthday_day are a site-calendar date with no year.
  * tier_manual_id is a staff-assigned floor; tier_manual_until NULL with a
- * tier_manual_id set means the floor has no end.
+ * tier_manual_id set means the floor has no end. The rolling hold runs
+ * from tier_held_from to tier_held_until; only the tier evaluator writes
+ * them.
  */
 final class CustomersTable extends AbstractTableSchema {
 
@@ -40,6 +42,7 @@ final class CustomersTable extends AbstractTableSchema {
             tier_evaluated_at datetime DEFAULT NULL,
             tier_progress_value decimal(19,4) DEFAULT NULL,
             tier_held_until datetime DEFAULT NULL,
+            tier_held_from datetime DEFAULT NULL,
             tier_achieved_at datetime DEFAULT NULL,
             tier_manual_id bigint unsigned DEFAULT NULL,
             tier_manual_until datetime DEFAULT NULL,
@@ -78,6 +81,7 @@ final class CustomersTable extends AbstractTableSchema {
             'tier_evaluated_at',
             'tier_progress_value',
             'tier_held_until',
+            'tier_held_from',
             'tier_achieved_at',
             'tier_manual_id',
             'tier_manual_until',

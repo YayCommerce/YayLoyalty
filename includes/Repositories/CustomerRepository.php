@@ -208,6 +208,8 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         'tier_achieved_at'    => '%s',
         'tier_manual_id'      => '%d',
         'tier_manual_until'   => '%s',
+        'tier_held_until'     => '%s',
+        'tier_held_from'      => '%s',
     ];
 
     /**
@@ -289,6 +291,27 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
                 'SELECT user_id FROM `' . esc_sql( $this->table() ) . '`
                  WHERE tier_manual_id IS NOT NULL AND tier_manual_until IS NOT NULL AND tier_manual_until <= %s
                  ORDER BY user_id LIMIT %d',
+                $now,
+                $limit
+            )
+        );
+
+        return array_map( 'intval', is_array( $ids ) ? $ids : [] );
+    }
+
+    /**
+     * Customers with a tier whose rolling hold ends at or before $now, earliest end first.
+     *
+     * @return int[]
+     */
+    public function hold_ended_user_ids( string $now, int $limit ): array {
+        global $wpdb;
+
+        $ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT user_id FROM `' . esc_sql( $this->table() ) . '`
+                 WHERE tier_id IS NOT NULL AND tier_held_until IS NOT NULL AND tier_held_until <= %s
+                 ORDER BY tier_held_until, user_id LIMIT %d',
                 $now,
                 $limit
             )

@@ -35,8 +35,11 @@ final class TierChangeReason {
     /** Tiers were turned on and every customer was placed. */
     public const PLACEMENT = 'placement';
 
-    /** A rolling-mode hold ended. Reserved for rolling mode. */
+    /** A rolling-mode hold ended, written by the daily hold-end step. */
     public const HOLD_END = 'hold_end';
+
+    /** Tier qualification switched from rolling to lifetime. */
+    public const MODE_CHANGE = 'mode_change';
 
     /** @return string[] */
     public static function all(): array {
@@ -50,6 +53,7 @@ final class TierChangeReason {
             self::TIER_DELETED,
             self::PLACEMENT,
             self::HOLD_END,
+            self::MODE_CHANGE,
         ];
     }
 

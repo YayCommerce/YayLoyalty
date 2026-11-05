@@ -98,6 +98,91 @@ final class TierDecisionTest extends TestCase {
     }
 
     /** @return Tier[] Bronze 0 rank 1, Silver 800 rank 2, Gold 3000 rank 3; ids 1, 2, 3. */
+    public function test_rolling_up_starts_a_hold_from_the_window(): void {
+        $r = TierDecision::rolling_move( 1, 1, $this->silver(), null, null, false, TierDecision::KIND_UP );
+
+        $this->assertSame( [ true, 2, true, TierDecision::HOLD_START ], [ $r['changed'], $r['to']->get_id(), $r['is_upgrade'], $r['hold'] ] );
+    }
+
+    public function test_rolling_up_to_the_floor_clears_the_hold(): void {
+        $r = TierDecision::rolling_move( 1, 1, $this->bronze(), null, $this->gold(), false, TierDecision::KIND_UP );
+
+        $this->assertSame( [ 3, TierDecision::HOLD_CLEAR ], [ $r['to']->get_id(), $r['hold'] ] );
+    }
+
+    public function test_rolling_up_without_upgrade_keeps(): void {
+        $r = TierDecision::rolling_move( 3, 3, $this->silver(), null, null, true, TierDecision::KIND_UP );
+
+        $this->assertSame( [ false, TierDecision::HOLD_KEEP ], [ $r['changed'], $r['hold'] ] );
+    }
+
+    public function test_rolling_down_in_hold_keeps_while_qualifying_reaches(): void {
+        $r = TierDecision::rolling_move( 3, 3, $this->bronze(), $this->gold(), null, true, TierDecision::KIND_DOWN );
+
+        $this->assertSame( [ false, TierDecision::HOLD_KEEP ], [ $r['changed'], $r['hold'] ] );
+    }
+
+    public function test_rolling_down_in_hold_drops_to_qualifying_and_keeps_dates(): void {
+        $r = TierDecision::rolling_move( 3, 3, $this->bronze(), $this->silver(), null, true, TierDecision::KIND_DOWN );
+
+        $this->assertSame( [ 2, TierDecision::HOLD_KEEP ], [ $r['to']->get_id(), $r['hold'] ] );
+    }
+
+    public function test_rolling_down_in_hold_window_tie_restarts(): void {
+        $r = TierDecision::rolling_move( 3, 3, $this->silver(), $this->silver(), null, true, TierDecision::KIND_DOWN );
+
+        $this->assertSame( [ 2, TierDecision::HOLD_START ], [ $r['to']->get_id(), $r['hold'] ] );
+    }
+
+    public function test_rolling_down_in_hold_floor_wins_and_clears(): void {
+        $r = TierDecision::rolling_move( 3, 3, $this->bronze(), $this->bronze(), $this->silver(), true, TierDecision::KIND_DOWN );
+
+        $this->assertSame( [ 2, TierDecision::HOLD_CLEAR ], [ $r['to']->get_id(), $r['hold'] ] );
+    }
+
+    public function test_rolling_down_without_hold_goes_to_window(): void {
+        $r = TierDecision::rolling_move( 3, 3, null, null, null, false, TierDecision::KIND_DOWN );
+
+        $this->assertSame( [ true, null, TierDecision::HOLD_CLEAR ], [ $r['changed'], $r['to'], $r['hold'] ] );
+    }
+
+    public function test_rolling_to_target_renews_unchanged(): void {
+        $r = TierDecision::rolling_move( 2, 2, $this->silver(), null, null, false, TierDecision::KIND_TO_TARGET );
+
+        $this->assertSame( [ false, TierDecision::HOLD_START ], [ $r['changed'], $r['hold'] ] );
+    }
+
+    public function test_rolling_to_target_skips_several_tiers(): void {
+        $r = TierDecision::rolling_move( 3, 3, $this->bronze(), null, null, false, TierDecision::KIND_TO_TARGET );
+
+        $this->assertSame( [ 1, false, TierDecision::HOLD_START ], [ $r['to']->get_id(), $r['is_upgrade'], $r['hold'] ] );
+    }
+
+    public function test_rolling_to_target_floor_tie_clears(): void {
+        $r = TierDecision::rolling_move( 2, 2, $this->silver(), null, $this->silver(), false, TierDecision::KIND_TO_TARGET );
+
+        $this->assertSame( [ false, TierDecision::HOLD_CLEAR ], [ $r['changed'], $r['hold'] ] );
+    }
+
+    public function test_rolling_hold_only(): void {
+        $this->assertSame( TierDecision::HOLD_START, TierDecision::rolling_move( 2, 2, $this->bronze(), null, null, false, TierDecision::KIND_HOLD_ONLY )['hold'] );
+        $this->assertSame( TierDecision::HOLD_CLEAR, TierDecision::rolling_move( 3, 3, $this->bronze(), null, $this->gold(), false, TierDecision::KIND_HOLD_ONLY )['hold'] );
+        $this->assertSame( TierDecision::HOLD_CLEAR, TierDecision::rolling_move( null, 0, null, null, null, false, TierDecision::KIND_HOLD_ONLY )['hold'] );
+        $this->assertFalse( TierDecision::rolling_move( 2, 2, $this->gold(), null, null, false, TierDecision::KIND_HOLD_ONLY )['changed'] );
+    }
+
+    private function bronze(): Tier {
+        return $this->tier( 1, 0, 1 );
+    }
+
+    private function silver(): Tier {
+        return $this->tier( 2, 800, 2 );
+    }
+
+    private function gold(): Tier {
+        return $this->tier( 3, 3000, 3 );
+    }
+
     private function live(): array {
         return [ $this->tier( 1, 0, 1 ), $this->tier( 2, 800, 2 ), $this->tier( 3, 3000, 3 ) ];
     }

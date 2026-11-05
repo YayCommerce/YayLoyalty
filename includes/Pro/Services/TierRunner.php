@@ -2,6 +2,7 @@
 namespace YayLoyalty\Pro\Services;
 
 use YayLoyalty\Engine\Expiry\ExpiryRunner;
+use YayLoyalty\Enums\TierMode;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Log;
@@ -10,9 +11,10 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The daily Action Scheduler job for tiers. Each run, while tiers are on: ends the manual floors that are
- * due, then evaluates the next batch of the pending sweep (TierSweep). It queues an async continuation
- * while either step filled its batch, as BirthdayRunner does. A floor that ended but has not been cleared
- * yet already counts for nothing, since TierEvaluator ignores an ended floor.
+ * due, then in Rolling mode ends the holds that are due, then evaluates the next batch of the pending
+ * sweep (TierSweep). It queues an async continuation while any step filled its batch, as BirthdayRunner
+ * does. A floor that ended but has not been cleared yet already counts for nothing, since TierEvaluator
+ * ignores an ended floor; an ended hold that has not been processed already counts as inactive.
  */
 final class TierRunner {
 
@@ -56,6 +58,23 @@ final class TierRunner {
                     $evaluator->clear_floor( $user_id, null );
                 }
             );
+        }
+
+        if ( TierMode::ROLLING === TierEvaluator::mode() ) {
+            $held = $customers->hold_ended_user_ids( Dates::now(), self::BATCH_SIZE );
+
+            if ( count( $held ) === self::BATCH_SIZE ) {
+                $has_more = true;
+            }
+
+            foreach ( $held as $user_id ) {
+                $this->guarded(
+                    $user_id,
+                    static function () use ( $evaluator, $user_id ): void {
+                        $evaluator->end_hold( $user_id );
+                    }
+                );
+            }
         }
 
         $sweep = TierSweep::current();

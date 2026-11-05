@@ -3,6 +3,7 @@ namespace YayLoyalty\Pro\Controllers;
 
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\AbstractRestController;
+use YayLoyalty\Enums\TierMode;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Tier;
 use YayLoyalty\Pro\Services\TierEvaluator;
@@ -64,10 +65,19 @@ final class TiersRestController extends AbstractRestController {
                     'callback'            => fn( $request ) => $this->exec_write( [ $this, 'update_settings' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::MANAGE_TIERS ),
                     'args'                => [
-                        'tiers_enabled' => [
+                        'tiers_enabled'        => [
                             'description' => __( 'Whether customers are placed into tiers.', 'yayloyalty' ),
                             'type'        => 'boolean',
-                            'required'    => true,
+                        ],
+                        'tiers_mode'           => [
+                            'description' => __( 'How customers qualify for a tier: lifetime or rolling.', 'yayloyalty' ),
+                            'type'        => 'string',
+                            'enum'        => TierMode::all(),
+                        ],
+                        'tiers_rolling_months' => [
+                            'description' => __( 'The rolling window, in months.', 'yayloyalty' ),
+                            'type'        => 'integer',
+                            'enum'        => TierMode::ROLLING_MONTHS,
                         ],
                     ],
                 ],
@@ -132,29 +142,60 @@ final class TiersRestController extends AbstractRestController {
     }
 
     /**
-     * Turns tiers on or off. On places every customer through a sweep; off freezes stored tiers and drops
-     * any pending sweep. Only `tiers_enabled` is writable until rolling mode exists.
+     * Writes any of `tiers_enabled`, `tiers_mode` and `tiers_rolling_months`, at least one. Turning tiers on
+     * places every customer through a sweep, in the mode this request leaves stored; turning them off freezes
+     * stored tiers and drops any pending sweep. While tiers stay on, a mode change requests its mode sweep, and
+     * is refused while any sweep is pending. A months change requests nothing: holds keep their dates, and the
+     * new window applies from each customer's next evaluation.
      *
-     * @return array<string, mixed>
+     * @return array<string, mixed>|\WP_Error
      */
-    public function update_settings( \WP_REST_Request $request ): array {
-        $was_enabled = TierEvaluator::is_enabled();
-        $enabled     = (bool) $request['tiers_enabled'];
+    public function update_settings( \WP_REST_Request $request ) {
+        $changes = [];
 
-        SettingsHelper::update_settings( [ 'tiers_enabled' => $enabled ] );
+        foreach ( [ 'tiers_enabled', 'tiers_mode', 'tiers_rolling_months' ] as $key ) {
+            if ( null !== $request[ $key ] ) {
+                $changes[ $key ] = $request[ $key ];
+            }
+        }
+
+        if ( [] === $changes ) {
+            return $this->error_invalid_arguments( __( 'Send at least one tier setting.', 'yayloyalty' ) );
+        }
+
+        $was_enabled  = TierEvaluator::is_enabled();
+        $stored_mode  = TierEvaluator::mode();
+        $enabled      = isset( $changes['tiers_enabled'] ) ? (bool) $changes['tiers_enabled'] : $was_enabled;
+        $mode         = isset( $changes['tiers_mode'] ) ? (string) $changes['tiers_mode'] : $stored_mode;
+        $mode_changed = $mode !== $stored_mode;
+
+        if ( $mode_changed && TierSweep::is_pending() ) {
+            return new \WP_Error( 'yayloyalty_tier_sweep_running', __( 'Wait for the current tier update to finish.', 'yayloyalty' ), [ 'status' => 409 ] );
+        }
+
+        // The route's args already cast each value to its schema type.
+        SettingsHelper::update_settings( $changes );
+
+        $requested = null;
 
         if ( $enabled && ! $was_enabled ) {
-            TierSweep::request( TierSweep::MODE_PLACEMENT );
+            $requested = TierSweep::MODE_PLACEMENT;
         } elseif ( ! $enabled && $was_enabled ) {
             TierSweep::cancel();
+        } elseif ( $enabled && $mode_changed ) {
+            $requested = TierMode::ROLLING === $mode ? TierSweep::MODE_TO_ROLLING : TierSweep::MODE_TO_LIFETIME;
+        }
+
+        if ( null !== $requested ) {
+            TierSweep::request( $requested );
         }
 
         $response = $this->get_settings( $request );
 
-        // The sweep option is written after commit, so report the placement that is about to start.
-        if ( $enabled && ! $was_enabled ) {
+        // The sweep option is written after commit, so report the sweep that is about to start.
+        if ( null !== $requested ) {
             $response['sweep'] = [
-                'mode'  => TierSweep::MODE_PLACEMENT,
+                'mode'  => $requested,
                 'done'  => 0,
                 'total' => $response['customer_count'],
             ];

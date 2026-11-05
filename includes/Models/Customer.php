@@ -68,6 +68,12 @@ class Customer extends AbstractModel {
     /** @var string|null NULL with a tier_manual_id means the floor has no end. */
     private $tier_manual_until;
 
+    /** @var string|null The rolling hold's end. */
+    private $tier_held_until;
+
+    /** @var string|null The rolling hold's start. */
+    private $tier_held_from;
+
     public function __construct(
         int $user_id,
         int $balance = 0,
@@ -86,7 +92,9 @@ class Customer extends AbstractModel {
         ?string $tier_progress_value = null,
         ?string $tier_achieved_at = null,
         ?int $tier_manual_id = null,
-        ?string $tier_manual_until = null
+        ?string $tier_manual_until = null,
+        ?string $tier_held_until = null,
+        ?string $tier_held_from = null
     ) {
         $this->user_id           = $user_id;
         $this->balance           = $balance;
@@ -107,6 +115,8 @@ class Customer extends AbstractModel {
         $this->tier_achieved_at    = $tier_achieved_at;
         $this->tier_manual_id      = $tier_manual_id;
         $this->tier_manual_until   = $tier_manual_until;
+        $this->tier_held_until     = $tier_held_until;
+        $this->tier_held_from      = $tier_held_from;
     }
 
     public static function from_row( array $row ): self {
@@ -128,7 +138,9 @@ class Customer extends AbstractModel {
             isset( $row['tier_progress_value'] ) ? (string) $row['tier_progress_value'] : null,
             self::cast_datetime( $row['tier_achieved_at'] ?? null ),
             self::cast_int( $row['tier_manual_id'] ?? null ),
-            self::cast_datetime( $row['tier_manual_until'] ?? null )
+            self::cast_datetime( $row['tier_manual_until'] ?? null ),
+            self::cast_datetime( $row['tier_held_until'] ?? null ),
+            self::cast_datetime( $row['tier_held_from'] ?? null )
         );
     }
 
@@ -231,5 +243,13 @@ class Customer extends AbstractModel {
 
     public function get_tier_manual_until(): ?string {
         return $this->tier_manual_until;
+    }
+
+    public function get_tier_held_until(): ?string {
+        return $this->tier_held_until;
+    }
+
+    public function get_tier_held_from(): ?string {
+        return $this->tier_held_from;
     }
 }
