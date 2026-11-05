@@ -13,11 +13,13 @@ Tiers work in Lifetime mode in Pro:
 - The tier catalogue: the `tiers` table seeded with Bronze, Silver and Gold, the `yayloyalty_manage_tiers` capability (`Capabilities` v3), Pro's tier CRUD routes (`TiersRestController`) and the Pro Tiers page with its on/off switch.
 - `Pro\Services\TierEvaluator` places customers, moves them on ledger writes, pays each tier's entry bonus once and emits `ActivityEvent::TIER_CHANGED`. Catalogue edits and the switch request sweeps that the daily `yayloyalty_tier_run` drains ([the decision record](../decisions/2026-11-04-tier-evaluator-sole-writer.md)).
 - The drawer's tier card assigns and removes a manual tier floor, the activity log has a Tier changes filter, and the Customers list shows, sorts and filters by tier, with the tier kept in saved segments.
+- Every campaign award is multiplied by the customer's tier multiplier (`Pro\Services\TierMultiplier`), and the ledger row records `tier_id` and `tier_multiplier`.
+- Coupon rewards can require a "Minimum tier", set in the reward editor: `RewardConditionType::TIER`, enforced by `Pro\Services\RewardTierCondition`. Customers below it don't see the reward on the redeem card, in the launcher or in My Account, and can't claim it.
 
 Still missing:
 
 - Rolling mode and holds: `tier_held_until` is never written, and `PUT /tiers/settings` accepts only `tiers_enabled`.
-- `CampaignConditionType::TIER` and `RewardConditionType::TIER`, kept out of `all()` by `UNAVAILABLE`. `ConditionsEvaluator` rejects them as `unsupported_condition_type`.
+- Nothing more for conditions: `CampaignConditionType::TIER` stays in `UNAVAILABLE` by design, so campaigns stay tier-independent ([the tiers master](../specs/2026-11-02-tiers-master-design.md), D9). `ConditionsEvaluator` rejects it as `unsupported_condition_type`.
 - `CustomerFacts::$tier_id`, always null: `CustomerFactsReader` never passes it.
 
 The branch `trace/chore/remove-tiers-referrals` removed these placeholders. Restore them from its squash commit only as a starting point:
@@ -44,4 +46,4 @@ Start from a spec. Tiers need a table with a rank, because the `TIER` conditions
 - [x] The drawer shows a customer's tier and lets staff assign one.
 - [ ] The storefront shows tier badges and progress to the next tier, configured in Design.
 - [ ] Tier emails send on a real trigger.
-- [ ] `TIER` leaves `UNAVAILABLE` in both condition types, and `ConditionsEvaluator` evaluates it.
+- [x] `RewardConditionType::TIER` leaves `UNAVAILABLE` and is enforced; `CampaignConditionType::TIER` stays unavailable (master D9).
