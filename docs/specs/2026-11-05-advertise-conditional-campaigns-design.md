@@ -113,7 +113,7 @@ Rates below are `points_per_unit`. B is a campaign with no conditions at 1, belo
 - `LauncherPayload::for_balance()` gains `?int $user_id = null`, passed by `build()`; a set id builds the member advert. `BirthdayEarnRow`, `Launcher::viewer_can_earn()` and `ProductEarnMessage::guest_line()` keep `for_advert()`.
 
 *Phase 3: offers*
-- `PointsEngine::advertised_offers( string $trigger, Context $ctx ): array`: `array<int, array{campaign: Campaign, value: float}>`. Walks candidates until the first `true`. Each conditional campaign paying above 0 and above the lowest value seen so far among conditional campaigns is kept.
+- `PointsEngine::advertised_offers( string $trigger, Context $ctx ): array`: `array<int, array{campaign: Campaign, value: float}>`. Walks candidates until the first `true`. A conditional campaign paying above 0 is kept unless a conditional campaign above it pays less, since that one may catch the order first.
 - `includes/Pro/Storefront/ConditionalOfferCopy.php`: `label( Campaign ): ?string`, null when the campaign can't be described. Label is the noun ("Orders", "Reviews") and the clauses, joined by a comma:
 
   | Condition (operator) | Clause | Purchase | Review |

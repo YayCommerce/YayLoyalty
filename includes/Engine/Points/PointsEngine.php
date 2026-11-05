@@ -113,6 +113,49 @@ final class PointsEngine {
         return null;
     }
 
+    /**
+     * The conditional campaigns this shopper could still be paid: walks the candidates down to the first sure
+     * to apply, since nothing below it ever pays. One under a conditional campaign paying less isn't kept, as
+     * that one may catch the order first. Lite has none: with no evaluator the first candidate is sure to apply.
+     *
+     * @param string  $trigger A CampaignTrigger constant.
+     * @param Context $ctx     Context::advert() or an estimate; liveness is evaluated at its occurred_at.
+     * @return array<int, array{campaign: Campaign, value: float}> Points per currency unit or flat points.
+     * @throws \InvalidArgumentException When $ctx is an event, or no handler owns the trigger.
+     */
+    public function advertised_offers( string $trigger, Context $ctx ): array {
+        if ( ! $ctx->is_advert() && ! $ctx->is_estimate() ) {
+            throw new \InvalidArgumentException( 'YayLoyalty: advertised_offers() takes a Context::advert() or an estimate.' );
+        }
+
+        $handler = $this->registry->get( $trigger );
+        $offers  = [];
+        $lowest  = null;
+
+        foreach ( $this->candidates( $trigger, $ctx ) as $campaign ) {
+            if ( true === $this->verdict( $campaign, $ctx ) ) {
+                break;
+            }
+
+            if ( [] === $campaign->get_conditions() ) {
+                continue;
+            }
+
+            $value = $handler->advertised_points( $campaign );
+
+            if ( $value > 0 && ( null === $lowest || $value <= $lowest ) ) {
+                $offers[] = [
+                    'campaign' => $campaign,
+                    'value'    => $value,
+                ];
+            }
+
+            $lowest = null === $lowest ? $value : min( $lowest, $value );
+        }
+
+        return $offers;
+    }
+
     /** @return iterable<Campaign> */
     private function candidates( string $trigger, Context $ctx ): iterable {
         /**

@@ -151,6 +151,53 @@ final class PointsEngineAdvertisedTest extends EngineTestCase {
         $this->assertNull( $engine->advertised( CampaignTrigger::PURCHASE, $this->member_advert() ) );
     }
 
+    public function test_conditional_campaign_above_the_one_for_everyone_is_an_offer(): void {
+        $this->attach_verdicts();
+        $conditional = $this->member_conditional( 'unknown', 2 );
+        $offers      = $this->engine( [ $conditional, $this->everyone( 1 ) ] )->advertised_offers( CampaignTrigger::PURCHASE, $this->advert() );
+
+        $this->assertCount( 1, $offers );
+        $this->assertSame( $conditional, $offers[0]['campaign'] );
+        $this->assertSame( 2.0, $offers[0]['value'] );
+    }
+
+    public function test_campaign_below_the_one_for_everyone_is_never_paid_so_never_an_offer(): void {
+        $this->attach_verdicts();
+        $first  = $this->purchase_campaign( [ 'points_per_unit' => 1 ], 20, 3, Status::ACTIVE, null, null, 'everyone' );
+        $offers = $this->engine( [ $first, $this->member_conditional( 'unknown', 2 ) ] )->advertised_offers( CampaignTrigger::PURCHASE, $this->advert() );
+
+        $this->assertSame( [], $offers );
+    }
+
+    public function test_campaign_under_a_conditional_paying_less_is_not_an_offer(): void {
+        $this->attach_verdicts();
+        $lower  = new Campaign( 4, 'Lower', 'lower', CampaignTrigger::PURCHASE, Status::ACTIVE, 20, [ 'points_per_unit' => 1.5 ], [ [ 'type' => 'unknown' ] ] );
+        $offers = $this->engine( [ $lower, $this->member_conditional( 'unknown', 2 ), $this->everyone( 1 ) ] )->advertised_offers( CampaignTrigger::PURCHASE, $this->advert() );
+
+        $this->assertCount( 1, $offers );
+        $this->assertSame( $lower, $offers[0]['campaign'] );
+    }
+
+    public function test_campaign_paying_nothing_is_not_an_offer(): void {
+        $this->attach_verdicts();
+        $offers = $this->engine( [ $this->member_conditional( 'unknown', 0 ), $this->everyone( 1 ) ] )->advertised_offers( CampaignTrigger::PURCHASE, $this->advert() );
+
+        $this->assertSame( [], $offers );
+    }
+
+    public function test_campaign_a_member_already_gets_ends_the_offers(): void {
+        $this->attach_verdicts();
+        $offers = $this->engine( [ $this->member_conditional( 'yes', 2 ), $this->everyone( 1 ) ] )->advertised_offers( CampaignTrigger::PURCHASE, $this->member_advert() );
+
+        $this->assertSame( [], $offers );
+    }
+
+    public function test_offers_refuse_an_event_context(): void {
+        $this->expectException( \InvalidArgumentException::class );
+
+        $this->engine( [] )->advertised_offers( CampaignTrigger::PURCHASE, $this->context( [] ) );
+    }
+
     public function test_event_context_is_refused(): void {
         $this->expectException( \InvalidArgumentException::class );
 
