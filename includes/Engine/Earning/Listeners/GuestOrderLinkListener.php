@@ -35,12 +35,17 @@ final class GuestOrderLinkListener {
 
     /**
      * Awards the order as if it had just completed. is_missing_points() is the duplicate guard: the earn key holds
-     * the user id, so an order that earned under another customer would compose a new key. An order not completed yet is skipped, and awards on completion.
+     * the user id, so an order that earned under another customer would compose a new key. An open order stages instead, and awards on completion.
      */
     public function on_order_linked( int $order_id ): void {
         $order = wc_get_order( $order_id );
 
-        if ( ! $order instanceof \WC_Order || ! EarningService::is_missing_points( $order, $this->ledger ) ) {
+        if ( ! $order instanceof \WC_Order ) {
+            return;
+        }
+
+        if ( ! EarningService::is_missing_points( $order, $this->ledger ) ) {
+            $this->orders->on_linked_open( $order );
             return;
         }
 

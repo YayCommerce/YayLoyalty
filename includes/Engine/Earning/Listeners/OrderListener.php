@@ -109,7 +109,7 @@ final class OrderListener {
         switch ( $to ) {
             case 'pending':
             case 'on-hold':
-                ListenerGuard::for_order( 'OrderListener', 'stage', $order_id, fn() => $this->on_stageable( $order ) );
+                $this->stage( $order_id, $order );
                 break;
             case 'cancelled':
             case 'trash':
@@ -126,6 +126,17 @@ final class OrderListener {
         }
     }
 
+    /** A guest order linked to an account while still open: stages it, as its status could not while it had no customer. */
+    public function on_linked_open( \WC_Order $order ): void {
+        if ( in_array( $order->get_status(), [ 'pending', 'on-hold' ], true ) ) {
+            $this->stage( (int) $order->get_id(), $order );
+        }
+    }
+
+    private function stage( int $order_id, \WC_Order $order ): void {
+        ListenerGuard::for_order( 'OrderListener', 'stage', $order_id, fn() => $this->on_stageable( $order ) );
+    }
+
     /**
      * Previews the purchase and stages its points. Scores the hook's own object, never a re-read:
      * `woocommerce_new_order` fires before WooCommerce saves the line items, so a fresh read has none.
@@ -139,8 +150,7 @@ final class OrderListener {
         PreviewLog::write( 'OrderListener', 'order #' . $order_id . ' stage', $result );
 
         if ( $result->is_awarded() ) {
-            $user_id = (int) $order->get_customer_id();
-            $this->pending->stage( $order_id, $user_id > 0 ? $user_id : null, $result->get_points() );
+            $this->pending->stage( $order_id, (int) $order->get_customer_id(), $result->get_points() );
         }
     }
 

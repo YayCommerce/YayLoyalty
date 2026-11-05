@@ -71,6 +71,25 @@ final class GuestOrderLinkTest extends IntegrationTestCase {
         $this->assertSame( [ 40 ], $this->ledger_points( $user_id ) );
     }
 
+    public function test_an_open_order_shows_as_pending_once_linked_and_releases_on_completion(): void {
+        $order = $this->transition( $this->guest_order( [ 40 ] ), 'on-hold' );
+
+        $user_id = $this->create_customer( self::EMAIL );
+        wc_update_new_customer_past_orders( $user_id );
+
+        $this->assertSame( 40, (int) $this->customer_row( $user_id )['pending_points'] );
+
+        // The hook re-firing must not stage twice.
+        do_action( 'woocommerce_update_new_customer_past_order', (int) $order->get_id(), get_user_by( 'id', $user_id ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- firing WooCommerce's own hook.
+
+        $this->assertSame( 40, (int) $this->customer_row( $user_id )['pending_points'] );
+
+        $this->transition( wc_get_order( $order->get_id() ), 'completed' );
+
+        $this->assertSame( 0, (int) $this->customer_row( $user_id )['pending_points'] );
+        $this->assertSame( [ 40 ], $this->ledger_points( $user_id ) );
+    }
+
     public function test_a_verified_customers_login_links_a_later_guest_order_and_earns_once(): void {
         if ( ! class_exists( EmailVerificationService::class ) ) {
             $this->markTestSkipped( 'WooCommerce has no email verification before 11.0.' );

@@ -32,9 +32,10 @@ final class PendingPoints {
 
     /**
      * Stages the preview figure once: while META_PENDING exists, another call is a no-op.
-     * Returns whether this call staged. A guest gets order meta only.
+     * Returns whether this call staged. Only a customer stages: ProgramGate stops a guest's preview,
+     * and a guest order stages when it is linked to an account.
      */
-    public function stage( int $order_id, ?int $user_id, int $points ): bool {
+    public function stage( int $order_id, int $user_id, int $points ): bool {
         $order = wc_get_order( $order_id );
 
         if ( $points < 1 || ! $order instanceof \WC_Order || '' !== (string) $order->get_meta( self::META_PENDING ) ) {
@@ -44,10 +45,8 @@ final class PendingPoints {
         $order->update_meta_data( self::META_PENDING, $points );
         $this->save_meta( $order );
 
-        if ( null !== $user_id ) {
-            $this->customers->ensure_row( $user_id );
-            $this->customers->apply_pending_delta( $user_id, $points );
-        }
+        $this->customers->ensure_row( $user_id );
+        $this->customers->apply_pending_delta( $user_id, $points );
 
         return true;
     }

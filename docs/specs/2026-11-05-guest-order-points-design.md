@@ -34,7 +34,7 @@ A shopper whose completed guest order is linked to their account gets that order
 1. Given a completed guest order worth 25 points, when WooCommerce links it to a customer, then the customer has one earn row of 25 points and a balance of 25.
 2. Given that order, when the link runs again, then no second row is written.
 3. Given a completed guest order partly refunded before the link, when it is linked, then a `refund_earn` row takes back the refunded share.
-4. Given an order not yet completed, when it is linked, then no earn row is written, and completing it awards as usual.
+4. Given a `pending` or `on-hold` order, when it is linked, then no earn row is written, its points show as pending on the customer, and completing it awards as usual and releases them.
 5. Given a customer verified on WooCommerce 11.0 or later with a later guest order on the same email, when they log in, then that order is linked and, if completed, awarded.
 6. Given a customer not verified, when they log in, then no order is linked.
 7. Given WooCommerce below 11.0, when a customer logs in, then nothing happens and login is unaffected.
