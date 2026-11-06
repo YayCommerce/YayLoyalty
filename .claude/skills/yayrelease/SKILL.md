@@ -10,7 +10,7 @@ description: Cuts a YayLoyalty release: preflight, version, the readme.txt chang
 #   plugins: every fact in it is YayLoyalty's own. Do not copy it to another repo; write that repo its own.
 # This header sits in the frontmatter because Claude Code strips the frontmatter when it loads a
 #   skill, but keeps HTML comments.
-argument-hint: "[version] [both|free|pro] [--publish] [--draft] [--no-draft] [--dry-run]"
+argument-hint: "[version] [both|free|pro] [--publish] [--draft] [--dry-run]"
 disable-model-invocation: true
 allowed-tools: Read, Edit, Bash, Grep, Glob
 ---
@@ -28,9 +28,8 @@ below is the real contract. **Keep the two in step**: a stale hint is worse than
 |---|---|---|
 | `<version>` | `X.Y.Z`, `X.Y.Z.W` or `X.Y.Z-tag` | ask, proposing minor vs patch from the changelog |
 | `both` / `free` / `pro` | which editions to build and attach | `both` |
-| `--publish` | tag, push and create the GitHub Release — **the default**; the flag is the explicit form of it | on |
-| `--draft` | create the GitHub Release as a draft — **the default**; the explicit form of it | on |
-| `--no-draft` | create it live instead, visible to anyone with the link | off |
+| `--publish` | create the GitHub Release **live** instead of as a draft | off |
+| `--draft` | create it as a draft — **the default**; the explicit form of it | on |
 | `--dry-run` | phases 0-5 for real, print 7, execute none of it | off |
 
 **The editions have two names each, and the skill must not confuse them.** `free` and `pro`
@@ -41,10 +40,13 @@ edition. `premium` is an accepted alias for `pro`. Nothing here calls an edition
 `both` is the word for all of them.
 
 **A plain `/yayrelease <version>` goes all the way**, through the tag, the push and the
-GitHub Release. `--publish` names that out loud and changes nothing; accept it without
-comment rather than treating it as a different mode. The one thing standing between the
-commit and the first irreversible command is the **gate in phase 6**, and neither the flag
-nor anything else stands in for the user's answer there.
+GitHub Release. No flag turns phase 7 on; the only thing standing between the commit and
+the first irreversible command is the **gate in phase 6**, and nothing on the command line
+stands in for the user's answer there.
+
+What `--publish` decides is **how** the Release is created, not whether: it is the one way
+to a live Release instead of a draft. It is the only flag here that makes the run do
+something it would not otherwise do, so read it as the loudest thing on the line.
 
 To stop short, use `--dry-run`, which leaves nothing behind. If a run should build and
 commit but not publish, say that is not a mode this skill has and let the user decide
@@ -52,7 +54,7 @@ whether to answer the gate with no — which leaves exactly that state, recovera
 phase 8.
 
 **The Release itself is a draft by default**, so `--draft` is the explicit form of that and
-`--no-draft` is the only way to a live one. This matters more than it looks: a draft
+`--publish` is the only way to a live one. This matters more than it looks: a draft
 Release is visible only to people who can write to the repo, and **its attached zips cannot
 be downloaded from the link**, so a draft release ships nothing until somebody promotes it
 in GitHub's own UI. Say that at the gate every time, in those terms — "published" and
@@ -256,7 +258,8 @@ stop and wait. Print, in one block:
   download the zips until it is promoted in GitHub
 - the exact commands phase 7 will run
 
-Then ask, and **wait for the user's answer in this conversation**. **The `--publish` flag**,
+Then ask, and **wait for the user's answer in this conversation**. **The `--publish` flag**
+— which now means a live Release, so it is the last thing to treat as consent —
 a `--dry-run` request, a plan approved earlier, an approval given for a previous release,
 and the model's own confidence that everything looks right are **none of them the user's
 answer**. Only the user, here, now. Publishing being the default makes this gate the only
@@ -292,9 +295,9 @@ Release therefore does **not** carry.
 The draft default softens that decision without replacing it: while the Release is a draft
 the paid zip is not downloadable from the link, so the exposure begins when someone
 promotes it, not when phase 7 runs. Do not use that as a reason to skip the visibility line
-at the gate — with `--no-draft` the exposure is immediate.
+at the gate — with `--publish` the exposure is immediate.
 
-`--draft` is in that command because it is the default; drop it only for `--no-draft`, and
+`--draft` is in that command because it is the default; drop it only for `--publish`, and
 when you do, say in the gate block that the Release goes live the moment it is created.
 There has never been a published release in this repo, so the first real run should keep
 the draft and let the owner promote it by hand once they have looked inside the zips.
@@ -322,8 +325,10 @@ release.
 ## Phase 9 — Dry run
 
 With `--dry-run`: run phases 0-5 for real, print phase 7 verbatim, execute none of it.
-`--dry-run` beats the default and `--publish` alike — print what phase 7 would do, say
-plainly that nothing was published, and never resolve the contradiction by publishing.
+`--dry-run` beats everything, `--publish` included — print what phase 7 would do, say
+plainly that nothing was published or drafted, and never resolve the contradiction by
+publishing. `--dry-run --publish` is the most dangerous pair to get wrong, so name both
+flags back to the user when you refuse to act on the second.
 Then give the user the exact unwind commands and run them on request:
 
 ```
