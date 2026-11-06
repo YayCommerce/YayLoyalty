@@ -64,7 +64,7 @@ The git rules are in [CLAUDE.md § Git](CLAUDE.md#git): branch names, Convention
 
 ## Agent tooling
 
-The team's skills cover a change from idea to PR, and `/release` takes it from there to a published release. Each one is called by name, and its `SKILL.md` holds the details:
+The team's skills cover a change from idea to PR, and `/yayrelease` takes it from there to a published release. Each one is called by name, and its `SKILL.md` holds the details:
 
 | Skill | Run it when | It writes |
 |---|---|---|
@@ -73,7 +73,7 @@ The team's skills cover a change from idea to PR, and `/release` takes it from t
 | [`/yaytidy`](.claude/skills/yaytidy/SKILL.md) | before you open a PR | a report of duplicated facts and code, and the fixes you pick |
 | [`/yayplancheck`](.claude/skills/yayplancheck/SKILL.md) | after each phase of a plan, and before merging | a PASS or FAIL review against the plan, from a fresh subagent |
 | [`/yaybacklog`](.claude/skills/yaybacklog/SKILL.md) | you want to see what reviews left open, check whether an item is done, or record a finding you won't fix in this PR | ticked boxes and new items in `docs/backlog/`, and removes the items that are done |
-| [`/release`](.claude/skills/release/SKILL.md) | you are cutting a release | the version bump, the `readme.txt` changelog entry, the Pro and Lite zips, the release commit, the tag and the GitHub Release |
+| [`/yayrelease`](.claude/skills/yayrelease/SKILL.md) | you are cutting a release | the version bump, the `readme.txt` changelog entry, the Pro and Lite zips, the release commit, the tag and the GitHub Release |
 
 A typical change runs `/yaybrainstorming`, then `/yayplan`, then you implement it, running `/yayplancheck` after each phase. Before the final review, `/yayplancheck` asks whether to run `/yaytidy` first. A change may also skip the design and go straight to `/yayplan`. A review finding you don't fix in the PR goes to the backlog with `/yaybacklog add`, and the PR that fixes it later ticks its boxes with `/yaybacklog check`.
 
@@ -98,7 +98,7 @@ A typical change runs `/yaybrainstorming`, then `/yayplan`, then you implement i
 | Reviewing work against its plan | the `yayplancheck` skill |
 | The backlog item format, and checking items against the code | the `yaybacklog` skill |
 | Duplicated facts before a PR, and the stacked-branch PR base | the `yaytidy` skill |
-| The release flow, the changelog entry format, and what a release attaches | the `release` skill |
+| The release flow, the changelog entry format, and what a release attaches | the `yayrelease` skill |
 | Onboarding, review, promotion and release cadence, agent tooling, harness upkeep | this README |
 
 **Update-when triggers.** Every harness file opens with a Purpose line and an Update when line: in an HTML comment in `CLAUDE.md`, this README and the rules, in the first lines of each doc and decision record, and in YAML comments in each skill's frontmatter. When your change matches a file's trigger, update that file in the same PR.
@@ -107,7 +107,7 @@ A typical change runs `/yaybrainstorming`, then `/yayplan`, then you implement i
 - `.claude/settings.local.json`: your own permissions and settings on top of `.claude/settings.json`;
 - `CLAUDE.local.md`: your own instructions on top of `CLAUDE.md`. It may drop the commit and PR trailers that `CLAUDE.md` asks for.
 
-**Shared skills.** The YayCommerce plugins share the five `yay*` skills, and this repo holds their canonical copy. `/release` is not shared: every fact in it is YayLoyalty's own, so another repo writes its own rather than copying this one. A change to a skill lands here first, and another repo copies the skill's directory whole, never editing its copy. See [the canonical-copy record](docs/decisions/2026-10-03-shared-skills-canonical-copy.md).
+**Shared skills.** The YayCommerce plugins share five of the six `yay*` skills, and this repo holds their canonical copy. `/yayrelease` is the exception, despite the matching name: every fact in it is YayLoyalty's own, so another repo writes its own rather than copying this one. A change to a skill lands here first, and another repo copies the skill's directory whole, never editing its copy. See [the canonical-copy record](docs/decisions/2026-10-03-shared-skills-canonical-copy.md).
 
 **Mechanical checks.** Run `./scripts/check-harness.sh` before merging a PR that changes a harness file. It checks paths, links, headers, rule globs, skill names and decision records, prints one line per finding, and exits 1 if there is any.
 

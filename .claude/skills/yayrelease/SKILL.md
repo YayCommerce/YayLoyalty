@@ -1,13 +1,13 @@
 ---
-name: release
+name: yayrelease
 description: Cuts a YayLoyalty release: preflight, version, the readme.txt changelog, the Pro and Lite zips, the release commit, one confirmation gate, then the annotated tag, the push and the GitHub Release. Use when the user says "release", "ship a release", "cut a release", "cut 1.2.3", "bump the version", "prepare release notes", "generate the changelog", or asks for the Pro and Lite zips for a version. Not for a plain build (that is the build command) and not for a version bump with no release.
 # Purpose: owns the git and GitHub side of a release, which scripts/run.sh does not do at all, and the
 #   changelog entry (references/changelog-style.md). This header covers the whole skill directory.
 # Update when: run.sh changes its release flags or what it bumps, the version gains or loses a location,
 #   the changelog style or its file changes, the tag or branch model changes, or what gets attached to a
 #   GitHub Release changes.
-#   Unlike the five yay* skills, this skill is NOT shared between the YayCommerce plugins: every fact in
-#   it is YayLoyalty's own. Do not copy it to another repo; write that repo its own.
+#   Named like the other yay* skills, but unlike them this one is NOT shared between the YayCommerce
+#   plugins: every fact in it is YayLoyalty's own. Do not copy it to another repo; write that repo its own.
 # This header sits in the frontmatter because Claude Code strips the frontmatter when it loads a
 #   skill, but keeps HTML comments.
 argument-hint: "[version] [pro|lite|both] [--draft] [--dry-run]"
@@ -15,7 +15,7 @@ disable-model-invocation: true
 allowed-tools: Read, Edit, Bash, Grep, Glob
 ---
 
-# /release: cut a YayLoyalty release
+# /yayrelease: cut a YayLoyalty release
 
 One skill, one linear flow, one irreversible step. The flow is not split into
 changelog/build/publish skills on purpose: half a release — a tag with no bump, a bump
@@ -27,11 +27,15 @@ below is the real contract. **Keep the two in step**: a stale hint is worse than
 | Argument | Meaning | Default |
 |---|---|---|
 | `<version>` | `X.Y.Z`, `X.Y.Z.W` or `X.Y.Z-tag` | ask, proposing minor vs patch from the changelog |
-| `pro` / `lite` / `both` | which editions to build | `both` |
+| `pro` / `lite` / `both` | which editions to build and attach | `both` |
 | `--draft` | create the GitHub Release as a draft | off |
 | `--dry-run` | phases 0-5 for real, print 7, execute none of it | off |
 
-`disable-model-invocation: true` makes this `/release`-only. The cost: it will not
+`run.sh` also answers to `free` and `premium` for the editions; normalise them to `lite`
+and `pro` before echoing an edition back to the user, and note that nothing here calls an
+edition "full".
+
+`disable-model-invocation: true` makes this `/yayrelease`-only. The cost: it will not
 volunteer itself when the user describes a release in prose ("let's ship 1.1.0") — they
 have to type the command. That is the right trade for a flow ending in pushed tags, but
 say so if the user wonders why it never offers.
@@ -163,9 +167,12 @@ Bump **before** build, not after: the version is baked into the zip, the plugin 
 inside it and the SHA256 manifest, and the validator fails the package if the three
 disagree. A build before the bump ships the old version.
 
+Build **only the editions the argument asked for** — `both` is the default, but `pro` or
+`lite` alone means one build and one attached zip in phase 7, not two.
+
 Each build takes minutes — warn the user, and give each command a generous timeout.
-Pro first; it is the one that would stamp a version, and `--no-prompt` keeps both from
-re-prompting after phase 3 already wrote it:
+Pro first when building both; it is the one that would stamp a version, and `--no-prompt`
+keeps them from re-prompting after phase 3 already wrote it:
 
 ```
 ./scripts/run.sh release pro --no-prompt
@@ -237,10 +244,12 @@ gh release create "v<version>" --title "v<version>" --notes-file <notes> \
   release/yayloyalty-pro-<version>.zip release/yayloyalty-lite-<version>.zip
 ```
 
-Attach **both zips** — the owner's standing decision (2026-11-06), taken knowing the repo
-is public and that the Pro zip is an installable paid build. Re-confirm it at the gate each
-release rather than treating this line as the approval, and if the repo has since gone
-private, say so there.
+Attach **the zip of every edition this run built** — for the default `both`, both zips.
+That is the owner's standing decision (2026-11-06), taken knowing the repo is public and
+that the Pro zip is an installable paid build. Re-confirm it at the gate each release
+rather than treating this line as the approval, and if the repo has since gone private,
+say so there. A single-edition run attaches one zip and must say which edition the
+Release therefore does **not** carry.
 
 Add `--draft` when asked. There has never been a published release in this repo, so the
 first real run is a good candidate for a draft.

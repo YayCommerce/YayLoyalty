@@ -1,7 +1,7 @@
 # Changelog style
 
 **Purpose:** the house rules for a YayLoyalty changelog entry — where it goes, what earns
-a bullet, and what to drop — so the `/release` skill writes an entry a site owner can read.
+a bullet, and what to drop — so the `/yayrelease` skill writes an entry a site owner can read.
 
 **Update when:** the changelog moves out of `readme.txt`, its heading or entry format
 changes, dates or edition suffixes start being used, or the rule for what earns a bullet
