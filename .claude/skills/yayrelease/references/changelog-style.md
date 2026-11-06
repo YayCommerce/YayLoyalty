@@ -15,17 +15,17 @@ the rule for what earns a bullet changes.
 
 ## The format
 
-The entire corpus at the time of writing is one entry, for a version that has not shipped:
+The entire corpus is one entry, for a version that has not shipped:
 
 ```
 = 1.0.0 =
 * Initial release.
-* Removing a loyalty discount from an order now asks whether to return the customer's points.
+* Updated: removing a loyalty discount from an order now asks whether to return the customer's points.
 ```
 
-That entry predates the labelled format below, and it is the only entry there is. **It is
-not the pattern to copy** — the rules here win, and the entry itself is a retrofit question for
-the owner, not something to rewrite in passing during a release.
+It was retrofitted when the labels were introduced, so it is the pattern to copy. A past
+entry is otherwise left alone: fix a wrong one deliberately, never in passing during a
+release.
 
 - Heading is `= X.Y.Z =`. **No date**, anywhere. Do not add one, even though the skill
   computes a release date — that date is for the tag message.
@@ -49,7 +49,9 @@ the owner, not something to rewrite in passing during a release.
   have to decide an order.
 - No issue numbers, no commit hashes, no contributor names.
 - **The one bullet with no label** is a first release's `* Initial release.` — none of the
-  three fits it, and it does not get one. See the first-release section below.
+  three fits it, and it does not get one. It sorts **first**, above the labelled bullets,
+  because it is the headline of that entry rather than one item in it. See the
+  first-release section below.
 - **No free/pro suffix, and the label never carries the edition.** The same `readme.txt`
   ships in both the Pro and the Lite zip, so an entry about a Pro-only feature reaches
   free users too. Name the feature plainly and let the plugin's own upsell surface say it
