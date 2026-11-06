@@ -1,6 +1,6 @@
 ---
 name: yayrelease
-description: Cuts a YayLoyalty release: preflight, version, the readme.txt changelog, the Pro and Lite zips, the release commit, then, behind one confirmation gate, the annotated tag, the push and the GitHub Release. Use when the user says "release", "ship a release", "cut a release", "cut 1.2.3", "bump the version", "prepare release notes", "generate the changelog", or asks for the Pro and Lite zips for a version. Not for a plain build, and not for a version bump with no release.
+description: Cuts a YayLoyalty release: preflight, version, the readme.txt changelog, the Pro and Lite zips, the release commit, then, behind one confirmation gate, the annotated tag, the push and a draft GitHub Release. Use when the user says "release", "ship a release", "cut a release", "cut 1.2.3", "bump the version", "prepare release notes", "generate the changelog", or asks for the Pro and Lite zips for a version. Not for a plain build, and not for a version bump with no release.
 # Purpose: owns the git and GitHub side of a release, which scripts/run.sh does not do at all, and the
 #   changelog entry (references/changelog-style.md). This header covers the whole skill directory.
 # Update when: run.sh changes its release flags or what it bumps, the version gains or loses a location,
@@ -10,7 +10,7 @@ description: Cuts a YayLoyalty release: preflight, version, the readme.txt chang
 #   plugins: every fact in it is YayLoyalty's own. Do not copy it to another repo; write that repo its own.
 # This header sits in the frontmatter because Claude Code strips the frontmatter when it loads a
 #   skill, but keeps HTML comments.
-argument-hint: "[version] [both|free|pro] [--publish] [--draft] [--dry-run]"
+argument-hint: "[version] [both|free|pro] [--publish] [--draft] [--no-draft] [--dry-run]"
 disable-model-invocation: true
 allowed-tools: Read, Edit, Bash, Grep, Glob
 ---
@@ -29,7 +29,8 @@ below is the real contract. **Keep the two in step**: a stale hint is worse than
 | `<version>` | `X.Y.Z`, `X.Y.Z.W` or `X.Y.Z-tag` | ask, proposing minor vs patch from the changelog |
 | `both` / `free` / `pro` | which editions to build and attach | `both` |
 | `--publish` | tag, push and create the GitHub Release — **the default**; the flag is the explicit form of it | on |
-| `--draft` | create that GitHub Release as a draft | off |
+| `--draft` | create the GitHub Release as a draft — **the default**; the explicit form of it | on |
+| `--no-draft` | create it live instead, visible to anyone with the link | off |
 | `--dry-run` | phases 0-5 for real, print 7, execute none of it | off |
 
 **The editions have two names each, and the skill must not confuse them.** `free` and `pro`
@@ -49,6 +50,14 @@ To stop short, use `--dry-run`, which leaves nothing behind. If a run should bui
 commit but not publish, say that is not a mode this skill has and let the user decide
 whether to answer the gate with no — which leaves exactly that state, recoverable per
 phase 8.
+
+**The Release itself is a draft by default**, so `--draft` is the explicit form of that and
+`--no-draft` is the only way to a live one. This matters more than it looks: a draft
+Release is visible only to people who can write to the repo, and **its attached zips cannot
+be downloaded from the link**, so a draft release ships nothing until somebody promotes it
+in GitHub's own UI. Say that at the gate every time, in those terms — "published" and
+"drafted" are not the same sentence to the person reading the Release. It is also the one
+part of phase 7 that stays reversible: see phase 8.
 
 `disable-model-invocation: true` makes this `/yayrelease`-only. The cost: it will not
 volunteer itself when the user describes a release in prose ("let's ship 1.1.0") — they
@@ -243,6 +252,8 @@ stop and wait. Print, in one block:
 - the changelog entry exactly as it will ship
 - `git show --stat HEAD`
 - every artifact path, its size in bytes, and whether it will be attached
+- **whether the Release will be a draft or live**, and for a draft, that nobody can
+  download the zips until it is promoted in GitHub
 - the exact commands phase 7 will run
 
 Then ask, and **wait for the user's answer in this conversation**. **The `--publish` flag**,
@@ -267,7 +278,7 @@ before creating the release**, or `gh` creates a tag of its own.
 git tag -a "v<version>" -m "YayLoyalty <version>"
 git push origin dev
 git push origin "v<version>"
-gh release create "v<version>" --title "v<version>" --notes-file <notes> \
+gh release create "v<version>" --draft --title "v<version>" --notes-file <notes> \
   release/yayloyalty-pro-<version>.zip release/yayloyalty-lite-<version>.zip
 ```
 
@@ -278,8 +289,15 @@ rather than treating this line as the approval, and if the repo has since gone p
 say so there. A single-edition run attaches one zip and must say which edition the
 Release therefore does **not** carry.
 
-Add `--draft` when asked. There has never been a published release in this repo, so the
-first real run is a good candidate for `--draft`.
+The draft default softens that decision without replacing it: while the Release is a draft
+the paid zip is not downloadable from the link, so the exposure begins when someone
+promotes it, not when phase 7 runs. Do not use that as a reason to skip the visibility line
+at the gate — with `--no-draft` the exposure is immediate.
+
+`--draft` is in that command because it is the default; drop it only for `--no-draft`, and
+when you do, say in the gate block that the Release goes live the moment it is created.
+There has never been a published release in this repo, so the first real run should keep
+the draft and let the owner promote it by hand once they have looked inside the zips.
 
 ## Phase 8 — Failure handling
 
@@ -299,6 +317,7 @@ release.
 | Tag created, not pushed | `git tag -d "v<version>"` |
 | **After `git push origin dev`** | irreversible. Roll forward: fix on a new branch, release a new patch version. Do not revert the tag |
 | `gh release create` fails after the pushes | the git side is **already correct**. Retry the release only. Never re-push, never re-tag |
+| A draft Release is wrong, or was created by mistake | the draft is the one reversible part of phase 7: `gh release delete "v<version>"` removes it and leaves the tag and the pushes, which stay as they are |
 
 ## Phase 9 — Dry run
 
