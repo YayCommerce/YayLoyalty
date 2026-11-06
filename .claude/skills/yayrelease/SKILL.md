@@ -82,13 +82,10 @@ Every check aborts with its own message. **Never make a check pass on the user's
    carries no date (see the changelog reference), so today it is used only in the tag
    message — computing it once still means two dated strings can never disagree.
 
-**Lite does not build today.** On `dev` as of 2026-11-06 the Lite validation fails on
-"Pro named only by the guarded seam", because `YayLoyaltyPluginAdapter.php` returns the
-literal plugin name with Pro in it and the string survives into the Lite package. Until
-that is fixed, a both-editions release is impossible. Say so in phase 0 rather than
-discovering it after the Pro zip is already built, and **never release Pro alone to stand
-in for a release of both** — ask the user which they want. Verified by building both
-editions on 2026-11-06; Pro passed all 16 checks.
+**Never release one edition to stand in for a release of both.** If a build fails, say which
+edition and ask the user what they want; do not quietly ship the half that worked. Both
+editions built and validated clean on 2026-11-06 — Pro 17 checks, Lite 21 — so a failure
+here is new, not a known state to work around.
 
 Optional but worth doing: set `YAYLOYALTY_WP_CLI` so the validator's headless boot check
 runs instead of being skipped. Unset, the validator silently skips it and says so in its
@@ -193,9 +190,10 @@ dependency tree needing it back (`CLAUDE.md`).
 - `unzip -l` and confirm the single internal root directory is the plugin slug — both
   editions use the same folder name so upgrading Lite to Pro replaces it in place.
 - Confirm the version inside, from the extracted header and define, matches the release.
-- Print the `Plugin Name:` line from each zip. **Known discrepancy:** nothing rewrites the
-  plugin name per edition, so the Lite zip currently ships the Pro name. Report it, do not
-  assert on it, and do not "fix" it mid-release — it is a packaging change of its own.
+- Print the `Plugin Name:` line from each zip and check it names the edition: the Pro
+  header carries the suffix, Lite's does not. `build_package` drops it from Lite's staged
+  copy and the validator asserts it both ways, so a mismatch here means that pair has
+  drifted — stop and fix the pair, do not patch the zip.
 - Cross-check the split: `includes/Pro/` present in Pro and absent in Lite; the Pro bundle
   sentinel present in the Pro admin bundle and absent in Lite's. The sentinel is a literal
   string the validator greps — refer to it by name, never paste the token into any file.
