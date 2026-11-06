@@ -334,6 +334,12 @@ build_package() {
         print_step "Stripping Pro code..."
         rm -rf "$temp_dir/includes/Pro"
 
+        # The header ships in both builds, so Lite would otherwise announce itself as Pro in the
+        # plugins list and on WordPress.org. The licence name is handled in code instead, by the
+        # yayloyalty_plugin_name filter Pro attaches. Staged copy only; validate-build.php checks both.
+        print_step "Dropping the Pro suffix from the plugin header..."
+        sed_inplace 's/^\( \* Plugin Name: *YayLoyalty\) Pro /\1 /' "$temp_dir/$(basename "$MAIN_FILE")"
+
         # The patch drops the shell's licensing and Recommended Plugins wiring, and registers this copy
         # at a low election version so a full shell from another YayCommerce plugin runs the shared menu.
         # It is made against vendor-prefixed/ and fails on a changed shell: regenerate it then.
