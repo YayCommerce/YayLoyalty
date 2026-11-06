@@ -70,8 +70,16 @@ class YayLoyaltyPluginAdapter implements \YayLoyaltyScoped\YayCommerce\AdminShel
     // --- License methods ---
 	public function get_plugin_slug(): string {
 		return 'yayloyalty'; }
-	public function get_plugin_name(): string {
-		return 'YayLoyalty Pro'; }
+    public function get_plugin_name(): string {
+        /**
+         * Filters the product name the licence screens show. This adapter ships in both
+         * builds, so the edition suffix cannot live here: the paid build appends its own
+         * when it boots.
+         *
+         * @param string $name Base product name.
+         */
+        return (string) apply_filters( 'yayloyalty_plugin_name', 'YayLoyalty' );
+    }
 	public function get_plugin_version(): string {
 		return defined( 'YAYLOYALTY_VERSION' ) ? YAYLOYALTY_VERSION : '0.0.0'; }
 	public function get_plugin_file(): string {

@@ -419,6 +419,19 @@ record(
     implode( ', ', array_slice( $dev_leftovers, 0, 5 ) )
 );
 
+// The header ships in both builds; build_package drops the Pro suffix for Lite. A Lite zip that
+// still says Pro reaches WordPress.org review and the plugins list naming the paid edition.
+$header_src  = (string) @file_get_contents( $root . '/' . PLUGIN_SLUG . '.php' );
+$header_name = preg_match( '/^ \* Plugin Name: *(.+)$/m', $header_src, $header_match )
+    ? trim( $header_match[1] )
+    : '';
+$header_pro  = 1 === preg_match( '/\bPro\b/', $header_name );
+record(
+    'Plugin header names the ' . $build_type . ' edition',
+    '' !== $header_name && ( $is_lite ? ! $header_pro : $header_pro ),
+    $header_name
+);
+
 // The zip has no RegisterDev.php, so a `true` default leaves the admin page blank.
 record(
     'YAYLOYALTY_IS_DEVELOPMENT defaults to false',
