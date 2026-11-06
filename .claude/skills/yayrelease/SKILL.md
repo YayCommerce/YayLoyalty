@@ -1,6 +1,6 @@
 ---
 name: yayrelease
-description: Cuts a YayLoyalty release: preflight, version, the readme.txt changelog, the Pro and Lite zips, the release commit, then, behind one confirmation gate, the annotated tag, the push and a draft GitHub Release. Use when the user says "release", "ship a release", "cut a release", "cut 1.2.3", "bump the version", "prepare release notes", "generate the changelog", or asks for the Pro and Lite zips for a version. Not for a plain build, and not for a version bump with no release.
+description: Cuts a YayLoyalty release: preflight, version, the readme.txt changelog, the Pro and Lite zips, the release commit, then, behind one confirmation gate, the annotated tag, the push and a draft GitHub Release. Use when the user says "release", "ship a release", "cut a release", "cut 1.2.3", "bump the version", "prepare release notes", "generate the changelog", or asks for the Pro, free or Lite zips for a version. Not for a plain build, and not for a version bump with no release.
 # Purpose: owns the git and GitHub side of a release, which scripts/run.sh does not do at all, and the
 #   changelog entry (references/changelog-style.md). This header covers the whole skill directory.
 # Update when: run.sh changes its release flags or what it bumps, the version gains or loses a location,
@@ -26,10 +26,10 @@ below is the real contract. **Keep the two in step**: a stale hint is worse than
 
 **The hint lists only arguments that change what the run does.** A flag in a hint reads as
 a choice, so advertising one that merely restates a default teaches the opposite of the
-truth — a reader who sees `[--draft]` concludes the default is not a draft. That is the
-mistake `--publish` used to make here, and it is why `--draft` is accepted but unlisted.
-When a default changes, the flag that named it leaves the hint; do not add it back for
-symmetry.
+truth — a reader who sees `[--draft]` concludes the default is not a draft. This hint has
+made that mistake twice, with the flag that named each new default, which is why `--draft`
+is accepted but unlisted. When a default changes, the flag that named it leaves the hint;
+do not add it back for symmetry.
 
 | Argument | Meaning | Default |
 |---|---|---|
@@ -37,7 +37,7 @@ symmetry.
 | `both` / `free` / `pro` | which editions to build and attach | `both` |
 | `--publish` | create the GitHub Release **live** instead of as a draft | off |
 | `--dry-run` | phases 0-5 for real, print 7, execute none of it | off |
-| `--draft` | accepted and does nothing: the default already drafts. Not in the hint, on purpose — see below | on |
+| `--draft` | accepted and does nothing: the default already drafts. Not in the hint, on purpose — see above | on |
 
 **The editions have two names each, and the skill must not confuse them.** `free` and `pro`
 are what the user says and what you say back. `run.sh` takes `free` as an alias and builds
@@ -131,7 +131,10 @@ Source of truth is the **`YAYLOYALTY_VERSION` define**, not the plugin header:
 `./scripts/run.sh info`.
 
 Assert the new version is **strictly greater** than the current one (compare numerically,
-field by field; `sort -V` is fine for the common case).
+field by field; `sort -V` is fine for the common case). If the user named no version,
+propose minor vs patch from the changelog draft in phase 2 — a new earning rule or a new
+admin screen is a minor; a fix to existing behaviour is a patch — and ask. Do not pick
+silently.
 
 **The exception is a resumed release.** A run that reached phase 5 and then stopped — the
 user answered the gate with no, or a push failed — leaves the version already bumped and
@@ -139,10 +142,7 @@ committed, so rerunning the same version would abort here on a version that is e
 greater. Before asserting, check whether `HEAD` is already this release's commit — subject
 `chore(release): <version>`, the three locations reading `<version>`, a clean tree and no
 tag yet. If it is, phases 1-5 are **already done**: say so, skip to the gate, and assert
-nothing. Never bump again on top of a release commit. If the user named no version,
-propose minor vs patch from the changelog draft in phase 2 — a new earning rule or a new
-admin screen is a minor; a fix to existing behaviour is a patch — and ask. Do not pick
-silently.
+nothing. Never bump again on top of a release commit.
 
 ## Phase 2 — Changelog
 
@@ -265,13 +265,15 @@ stop and wait. Print, in one block:
   download the zips until it is promoted in GitHub
 - the exact commands phase 7 will run
 
-Then ask, and **wait for the user's answer in this conversation**. **The `--publish` flag**
-— which now means a live Release, so it is the last thing to treat as consent —
-a `--dry-run` request, a plan approved earlier, an approval given for a previous release,
-and the model's own confidence that everything looks right are **none of them the user's
-answer**. Only the user, here, now. Publishing being the default makes this gate the only
-thing between a typed command and a pushed tag, so never infer the answer from the command
-that started the run.
+Then ask, and **wait for the user's answer in this conversation**. None of these is that
+answer: the `--publish` flag, a `--dry-run` request, a plan approved earlier, an approval
+given for a previous release, or the model's own confidence that everything looks right.
+Only the user, here, now.
+
+`--publish` deserves naming twice over, because it asks for a live Release and so looks
+most like permission — it is the last thing to read as consent, not the first. Publishing
+is the default, which makes this gate the only thing between a typed command and a pushed
+tag: never infer the answer from the command that started the run.
 
 Warn them that the GitHub Release step will raise a permission prompt. That prompt is a
 feature on the one irreversible command — do not try to smooth it away, and do not widen
@@ -312,7 +314,8 @@ the draft and let the owner promote it by hand once they have looked inside the 
 ## Phase 8 — Failure handling
 
 Reversibility ends at the **first push** in phase 7. Before it, everything is undoable;
-after it, roll forward. **Never force-push and never rewrite pushed history** to tidy a
+after it, roll forward. The one exception is the Release itself while it is a draft, which
+can be deleted — the tag and the pushes behind it cannot. **Never force-push and never rewrite pushed history** to tidy a
 release.
 
 | Fails at | Recovery |
@@ -322,8 +325,7 @@ release.
 | Phase 3 bump | `git checkout -- yayloyalty.php readme.txt` |
 | Phase 4 build | `git checkout -- yayloyalty.php readme.txt`, delete the zips and any `.invalid` one, run `composer install` |
 | Phase 5 commit | `git reset --soft HEAD~1`, then the phase 3 recovery |
-| Phase 6 gate, user says no | as phase 5 — nothing has left the machine |
-| Gate declined, commit left in place | a complete local release. Undo as phase 5, or rerun the same version to resume from the gate |
+| Phase 6 gate, user says no | nothing has left the machine, and the commit is a complete local release. Undo as phase 5, or rerun the same version to resume at the gate |
 | Tag created, not pushed | `git tag -d "v<version>"` |
 | **After `git push origin dev`** | irreversible. Roll forward: fix on a new branch, release a new patch version. Do not revert the tag |
 | `gh release create` fails after the pushes | the git side is **already correct**. Retry the release only. Never re-push, never re-tag |
@@ -336,6 +338,7 @@ With `--dry-run`: run phases 0-5 for real, print phase 7 verbatim, execute none 
 plainly that nothing was published or drafted, and never resolve the contradiction by
 publishing. `--dry-run --publish` is the most dangerous pair to get wrong, so name both
 flags back to the user when you refuse to act on the second.
+
 Then give the user the exact unwind commands and run them on request:
 
 ```
