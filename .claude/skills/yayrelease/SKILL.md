@@ -1,6 +1,6 @@
 ---
 name: yayrelease
-description: Cuts a YayLoyalty release: preflight, version, the readme.txt changelog, the Pro and Lite zips, the release commit, then, behind a gate and --publish, the annotated tag, the push and the GitHub Release. Use when the user says "release", "ship a release", "cut a release", "cut 1.2.3", "bump the version", "prepare release notes", "generate the changelog", or asks for the Pro and Lite zips for a version. Not for a plain build, and not for a version bump with no release.
+description: Cuts a YayLoyalty release: preflight, version, the readme.txt changelog, the Pro and Lite zips, the release commit, then, behind one confirmation gate, the annotated tag, the push and the GitHub Release. Use when the user says "release", "ship a release", "cut a release", "cut 1.2.3", "bump the version", "prepare release notes", "generate the changelog", or asks for the Pro and Lite zips for a version. Not for a plain build, and not for a version bump with no release.
 # Purpose: owns the git and GitHub side of a release, which scripts/run.sh does not do at all, and the
 #   changelog entry (references/changelog-style.md). This header covers the whole skill directory.
 # Update when: run.sh changes its release flags or what it bumps, the version gains or loses a location,
@@ -28,7 +28,7 @@ below is the real contract. **Keep the two in step**: a stale hint is worse than
 |---|---|---|
 | `<version>` | `X.Y.Z`, `X.Y.Z.W` or `X.Y.Z-tag` | ask, proposing minor vs patch from the changelog |
 | `both` / `free` / `pro` | which editions to build and attach | `both` |
-| `--publish` | go past the gate: tag, push and create the GitHub Release | off |
+| `--publish` | tag, push and create the GitHub Release — **the default**; the flag is the explicit form of it | on |
 | `--draft` | create that GitHub Release as a draft | off |
 | `--dry-run` | phases 0-5 for real, print 7, execute none of it | off |
 
@@ -39,11 +39,16 @@ zip with `free` in its name, and phase 7 attaches the `lite` path while calling 
 edition. `premium` is an accepted alias for `pro`. Nothing here calls an edition "full":
 `both` is the word for all of them.
 
-**Without `--publish` the run stops after the commit in phase 5** and nothing leaves the
-machine: no tag, no push, no Release. That is the default because every phase up to the
-commit is undoable and everything after the first push is not. `--publish` is what opts
-into phase 7, and it still has to pass the gate — the flag is not the user's answer there.
-`--draft` and `--dry-run` only mean anything alongside it and on their own respectively.
+**A plain `/yayrelease <version>` goes all the way**, through the tag, the push and the
+GitHub Release. `--publish` names that out loud and changes nothing; accept it without
+comment rather than treating it as a different mode. The one thing standing between the
+commit and the first irreversible command is the **gate in phase 6**, and neither the flag
+nor anything else stands in for the user's answer there.
+
+To stop short, use `--dry-run`, which leaves nothing behind. If a run should build and
+commit but not publish, say that is not a mode this skill has and let the user decide
+whether to answer the gate with no — which leaves exactly that state, recoverable per
+phase 8.
 
 `disable-model-invocation: true` makes this `/yayrelease`-only. The cost: it will not
 volunteer itself when the user describes a release in prose ("let's ship 1.1.0") — they
@@ -110,9 +115,9 @@ Source of truth is the **`YAYLOYALTY_VERSION` define**, not the plugin header:
 Assert the new version is **strictly greater** than the current one (compare numerically,
 field by field; `sort -V` is fine for the common case).
 
-**The exception is a resumed release**, which `--publish` makes routine: a run without the
-flag leaves the version already bumped and committed, so the natural second invocation
-(`/yayrelease <same version> --publish`) would abort here on a version that is equal, not
+**The exception is a resumed release.** A run that reached phase 5 and then stopped — the
+user answered the gate with no, or a push failed — leaves the version already bumped and
+committed, so rerunning the same version would abort here on a version that is equal, not
 greater. Before asserting, check whether `HEAD` is already this release's commit — subject
 `chore(release): <version>`, the three locations reading `<version>`, a clean tree and no
 tag yet. If it is, phases 1-5 are **already done**: say so, skip to the gate, and assert
@@ -231,12 +236,8 @@ naming the model you run as, unless a personal `CLAUDE.local.md` drops it.
 
 ## Phase 6 — Gate
 
-**Without `--publish`, this is where the run ends.** Print the block below, say that
-nothing has left the machine, and give the user both ways on: rerun with
-`/yayrelease <version> --publish` to resume from the commit, or the phase 8 recovery to
-undo it. Do not ask for an approval you have nothing to do with.
-
-**With `--publish`**, print the same block, then stop and wait. Print, in one block:
+**This is the one stop in the flow, and it is not optional.** Print the block below, then
+stop and wait. Print, in one block:
 
 - the version, and the repo's visibility from phase 0
 - the changelog entry exactly as it will ship
@@ -244,11 +245,12 @@ undo it. Do not ask for an approval you have nothing to do with.
 - every artifact path, its size in bytes, and whether it will be attached
 - the exact commands phase 7 will run
 
-Then ask, and **wait for the user's answer in this conversation**. A `--dry-run` request,
-**the `--publish` flag itself**, a plan approved earlier, an approval given for a previous
-release, and the model's own confidence that everything looks right are **none of them the
-user's answer**. Only the user, here, now. `--publish` says which phases are in scope; it
-does not say go.
+Then ask, and **wait for the user's answer in this conversation**. **The `--publish` flag**,
+a `--dry-run` request, a plan approved earlier, an approval given for a previous release,
+and the model's own confidence that everything looks right are **none of them the user's
+answer**. Only the user, here, now. Publishing being the default makes this gate the only
+thing between a typed command and a pushed tag, so never infer the answer from the command
+that started the run.
 
 Warn them that the GitHub Release step will raise a permission prompt. That prompt is a
 feature on the one irreversible command — do not try to smooth it away, and do not widen
@@ -258,9 +260,8 @@ you want here.
 
 ## Phase 7 — Publish
 
-**Only with `--publish`, and only after the user answered the gate.** Tag, then push, then
-release. **Push the tag before creating the release**, or `gh` creates
-a tag of its own.
+**Only after the user answered the gate.** Tag, then push, then release. **Push the tag
+before creating the release**, or `gh` creates a tag of its own.
 
 ```
 git tag -a "v<version>" -m "YayLoyalty <version>"
@@ -277,9 +278,8 @@ rather than treating this line as the approval, and if the repo has since gone p
 say so there. A single-edition run attaches one zip and must say which edition the
 Release therefore does **not** carry.
 
-Add `--draft` when asked; it is meaningless without `--publish`, so say so rather than
-silently ignoring it. There has never been a published release in this repo, so the first
-real run is a good candidate for `--publish --draft`.
+Add `--draft` when asked. There has never been a published release in this repo, so the
+first real run is a good candidate for `--draft`.
 
 ## Phase 8 — Failure handling
 
@@ -295,7 +295,7 @@ release.
 | Phase 4 build | `git checkout -- yayloyalty.php readme.txt`, delete the zips and any `.invalid` one, run `composer install` |
 | Phase 5 commit | `git reset --soft HEAD~1`, then the phase 3 recovery |
 | Phase 6 gate, user says no | as phase 5 — nothing has left the machine |
-| Run ended without `--publish` | not a failure: a complete local release. Resume with `--publish`, or undo as phase 5 |
+| Gate declined, commit left in place | a complete local release. Undo as phase 5, or rerun the same version to resume from the gate |
 | Tag created, not pushed | `git tag -d "v<version>"` |
 | **After `git push origin dev`** | irreversible. Roll forward: fix on a new branch, release a new patch version. Do not revert the tag |
 | `gh release create` fails after the pushes | the git side is **already correct**. Retry the release only. Never re-push, never re-tag |
@@ -303,9 +303,8 @@ release.
 ## Phase 9 — Dry run
 
 With `--dry-run`: run phases 0-5 for real, print phase 7 verbatim, execute none of it.
-`--dry-run` beats `--publish` when both are passed — print what phase 7 would do and say
-plainly that the flag did not publish, rather than picking one and leaving the user to
-guess which.
+`--dry-run` beats the default and `--publish` alike — print what phase 7 would do, say
+plainly that nothing was published, and never resolve the contradiction by publishing.
 Then give the user the exact unwind commands and run them on request:
 
 ```
