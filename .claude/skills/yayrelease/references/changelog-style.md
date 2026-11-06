@@ -1,11 +1,12 @@
 # Changelog style
 
-**Purpose:** the house rules for a YayLoyalty changelog entry — where it goes, what earns
-a bullet, and what to drop — so the `/yayrelease` skill writes an entry a site owner can read.
+**Purpose:** the house rules for a YayLoyalty changelog entry — where it goes, how each
+bullet is labelled, what earns one, and what to drop — so the `/yayrelease` skill writes an
+entry a site owner can read.
 
 **Update when:** the changelog moves out of `readme.txt`, its heading or entry format
-changes, dates or edition suffixes start being used, or the rule for what earns a bullet
-changes.
+changes, the set of bullet labels changes, dates or edition suffixes start being used, or
+the rule for what earns a bullet changes.
 
 ## Where entries live
 
@@ -22,20 +23,40 @@ The entire corpus at the time of writing is one entry, for a version that has no
 * Removing a loyalty discount from an order now asks whether to return the customer's points.
 ```
 
-So the observed style is thin but unambiguous:
+That entry predates the labelled format below, and it is the only entry there is. **It is
+not the pattern to copy** — the rules here win, and the entry itself is a retrofit question for
+the owner, not something to rewrite in passing during a release.
 
 - Heading is `= X.Y.Z =`. **No date**, anywhere. Do not add one, even though the skill
   computes a release date — that date is for the tag message.
 - Bullets are `*`, one line each.
-- Sentence case, ending in a full stop.
-- No prefix labels (no `Fix:`, no `New:`), no issue numbers, no commit hashes, no
-  contributor names.
-- **No free/pro suffix.** The same `readme.txt` ships in both the Pro and the Lite zip, so
-  an entry about a Pro-only feature reaches Lite users too. Write the entry so it reads
-  honestly in both: name the feature plainly and let the plugin's own upsell surface say
-  it is Pro. If a line would mislead a Lite user into thinking they have something they do
-  not, say "Pro:" at the front of that one bullet and flag the new convention to the owner
-  rather than inventing it silently across the whole entry.
+- **Every bullet opens with one of three labels**, followed by a space:
+
+  | Label | For |
+  |---|---|
+  | `Added:` | something that was not there before — a feature, a setting, a screen, an email, a block |
+  | `Updated:` | existing behaviour that changed, including a changed default, a reworked screen, and anything removed (name what went) |
+  | `Fixed:` | a bug a site owner could have hit |
+
+- Sentence case after the label, ending in a full stop:
+  `* Fixed: points are now returned when an order is refunded.`
+- **Pick the label from what the site owner experiences, not from the commit type.** A
+  refactor that happens to change a default is `Updated:`, not nothing; a fix that required
+  a new setting is two bullets, `Fixed:` and `Added:`. When a bullet seems to want two
+  labels, it is two bullets.
+- **Order the bullets by label**: every `Added:` first, then `Updated:`, then `Fixed:`.
+  Within a label, most significant first. This is mechanical on purpose — nobody should
+  have to decide an order.
+- No issue numbers, no commit hashes, no contributor names.
+- **The one bullet with no label** is a first release's `* Initial release.` — none of the
+  three fits it, and it does not get one. See the first-release section below.
+- **No free/pro suffix, and the label never carries the edition.** The same `readme.txt`
+  ships in both the Pro and the Lite zip, so an entry about a Pro-only feature reaches
+  free users too. Name the feature plainly and let the plugin's own upsell surface say it
+  is Pro. If a line would mislead a free user into thinking they have something they do
+  not, mark it **inside the sentence** and keep the label first —
+  `* Added: birthday campaigns (Pro).`, never `* Pro: Added: …`. Flag the new marker to
+  the owner rather than spreading it silently across the entry.
 - Voice is the site owner's, not the developer's. "Points are now returned when an order is
   refunded", not "fixed `LedgerService` refund path".
 
@@ -73,6 +94,9 @@ landed late enough that an early tester would not already have seen it.
 This matters because the grouping rules above, applied to the whole history, would produce
 dozens of bullets and would not match what shipped. Only releases **after** the first are
 a commit-range exercise.
+
+`* Initial release.` takes no label. Any bullet beside it does take one, and is almost
+always `Added:`.
 
 ## Zero entries is a valid answer
 

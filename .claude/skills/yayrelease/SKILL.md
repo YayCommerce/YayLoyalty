@@ -147,8 +147,9 @@ nothing. Never bump again on top of a release commit.
 ## Phase 2 — Changelog
 
 Read [references/changelog-style.md](references/changelog-style.md) before writing a word
-of it. In short: entries live in `readme.txt` under its Changelog heading, newest first,
-no dates.
+of it. In short: entries live in `readme.txt` under its Changelog heading, newest first, no
+dates, and every bullet opens with `Added:`, `Updated:` or `Fixed:`, grouped in that
+order.
 
 Collect the range with **subjects and bodies** — the body usually carries the user-visible
 symptom that belongs in the entry:
