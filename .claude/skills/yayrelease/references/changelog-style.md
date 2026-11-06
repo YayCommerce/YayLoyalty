@@ -15,20 +15,33 @@ the rule for what earns a bullet changes.
 
 ## The format
 
-The entire corpus is one entry, for a version that has not shipped:
+An entry looks like this:
 
 ```
-= 1.0.0 =
-* Initial release.
-* Updated: removing a loyalty discount from an order now asks whether to return the customer's points.
+= Oct 28, 2026 - Version 3.2.3 =
+* Added: birthday campaigns award points on a customer's birthday.
+* Updated: the launcher now hides itself for logged-out visitors by default.
+* Fixed: points are returned when an order is refunded.
 ```
 
-It was retrofitted when the labels were introduced, so it is the pattern to copy. A past
+The entire corpus is one entry, `1.0.0`, which has never been released. **Its heading is
+still undated** — `= 1.0.0 =` — because there is no release date to put in it yet. The
+release run fills that in; see "A heading written before its release" below. Its bullets
+were retrofitted when the labels were introduced, so they are the pattern to copy. A past
 entry is otherwise left alone: fix a wrong one deliberately, never in passing during a
 release.
 
-- Heading is `= X.Y.Z =`. **No date**, anywhere. Do not add one, even though the skill
-  computes a release date — that date is for the tag message.
+- Heading is **`= <Mon D, YYYY> - Version <X.Y.Z> =`**, as in `= Oct 28, 2026 - Version 3.2.3 =`.
+  Exactly that shape: three-letter month, day with **no leading zero**, comma, four-digit
+  year, then a spaced hyphen, then the word `Version` and the number. No `v` prefix, and the
+  number matches the three version locations exactly — suffix and all, so `1.1.0-beta.1`
+  appears as `Version 1.1.0-beta.1`.
+- **The date is the release date computed once in phase 0, in UTC** (`date -u +"%b %-d, %Y"`).
+  UTC because this repo stores and prints dates in UTC
+  ([docs/conventions.md](../../../../docs/conventions.md)), so a release cut late in the
+  evening does not get tomorrow's date for one maintainer and today's for another. Never
+  read the date off a commit, a file mtime or the system clock a second time: one release,
+  one date, and it is the same string in the tag message.
 - Bullets are `*`, one line each.
 - **Every bullet opens with one of three labels**, followed by a space:
 

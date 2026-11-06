@@ -111,9 +111,10 @@ Every check aborts with its own message. **Never make a check pass on the user's
    (`docs/known-issues.md`), and a default shell here may still be on Node 20. Run
    `nvm use` in the repo root first and assert `node -v` is 22 or later — `run.sh` only
    falls back to corepack, which does not save you from the wrong Node.
-8. Compute the release date **once** here (`date +%F`) and reuse it. This repo's changelog
-   carries no date (see the changelog reference), so today it is used only in the tag
-   message — computing it once still means two dated strings can never disagree.
+8. Compute the release date **once** here, in UTC: `date -u +"%b %-d, %Y"`. It goes in the
+   changelog heading and the tag message, so computing it twice is how those two disagree
+   by a day. UTC because this repo keeps dates in UTC (`docs/conventions.md`), which also
+   makes the date the same for whoever cuts the release. Carry the one string forward.
 
 **Never release one edition to stand in for a release of both.** If a build fails, say which
 edition and ask the user what they want; do not quietly ship the half that worked. Both
@@ -147,9 +148,11 @@ nothing. Never bump again on top of a release commit.
 ## Phase 2 — Changelog
 
 Read [references/changelog-style.md](references/changelog-style.md) before writing a word
-of it. In short: entries live in `readme.txt` under its Changelog heading, newest first, no
-dates, and every bullet opens with `Added:`, `Updated:` or `Fixed:`, grouped in that
-order.
+of it. In short: entries live in `readme.txt` under its Changelog heading, newest first,
+headed `= <Mon D, YYYY> - Version <X.Y.Z> =` with the date from phase 0, and every bullet
+opens with `Added:`, `Updated:` or `Fixed:`, grouped in that order. An entry started
+during development has an undated heading; the release rewrites it rather than adding a
+second one.
 
 Collect the range with **subjects and bodies** — the body usually carries the user-visible
 symptom that belongs in the entry:
@@ -287,8 +290,13 @@ you want here.
 **Only after the user answered the gate.** Tag, then push, then release. **Push the tag
 before creating the release**, or `gh` creates a tag of its own.
 
+The tag message carries the same release date string as the changelog heading, from phase
+0. The tag object also records a tagger timestamp of its own, in local time, which can fall
+on a different day from the UTC release date — the message is the release date, the
+timestamp is only when the tag was made.
+
 ```
-git tag -a "v<version>" -m "YayLoyalty <version>"
+git tag -a "v<version>" -m "YayLoyalty <version> — <Mon D, YYYY>"
 git push origin dev
 git push origin "v<version>"
 gh release create "v<version>" --draft --title "v<version>" --notes-file <notes> \
