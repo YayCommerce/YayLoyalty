@@ -73,7 +73,7 @@ The team's skills cover a change from idea to PR, and `/yayrelease` takes it fro
 | [`/yaytidy`](.claude/skills/yaytidy/SKILL.md) | before you open a PR | a report of duplicated facts and code, and the fixes you pick |
 | [`/yayplancheck`](.claude/skills/yayplancheck/SKILL.md) | after each phase of a plan, and before merging | a PASS or FAIL review against the plan, from a fresh subagent |
 | [`/yaybacklog`](.claude/skills/yaybacklog/SKILL.md) | you want to see what reviews left open, check whether an item is done, or record a finding you won't fix in this PR | ticked boxes and new items in `docs/backlog/`, and removes the items that are done |
-| [`/yayrelease`](.claude/skills/yayrelease/SKILL.md) | you are cutting a release | the version bump, the `readme.txt` changelog entry, the Pro and Lite zips, the release commit, the tag and the GitHub Release |
+| [`/yayrelease`](.claude/skills/yayrelease/SKILL.md) | you are cutting a release | the version bump, the `readme.txt` changelog entry, the zips, the release commit — and with `--publish`, the tag, the push and the GitHub Release |
 
 A typical change runs `/yaybrainstorming`, then `/yayplan`, then you implement it, running `/yayplancheck` after each phase. Before the final review, `/yayplancheck` asks whether to run `/yaytidy` first. A change may also skip the design and go straight to `/yayplan`. A review finding you don't fix in the PR goes to the backlog with `/yaybacklog add`, and the PR that fixes it later ticks its boxes with `/yaybacklog check`.
 
