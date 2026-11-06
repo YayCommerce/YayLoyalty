@@ -36,7 +36,9 @@ release.
   year, then a spaced hyphen, then the word `Version` and the number. No `v` prefix, and the
   number matches the three version locations exactly — suffix and all, so `1.1.0-beta.1`
   appears as `Version 1.1.0-beta.1`.
-- **The date is the release date computed once in phase 0, in UTC** (`date -u +"%b %-d, %Y"`).
+- **The date is the release date settled once in phase 0** — today in UTC
+  (`date -u +"%b %-d, %Y"`), or whatever `--date` was given, or the committed heading's own
+  date on a resumed release.
   UTC because this repo stores and prints dates in UTC
   ([docs/conventions.md](../../../../docs/conventions.md)), so a release cut late in the
   evening does not get tomorrow's date for one maintainer and today's for another. Never

@@ -10,7 +10,7 @@ description: Cuts a YayLoyalty release: preflight, version, the readme.txt chang
 #   plugins: every fact in it is YayLoyalty's own. Do not copy it to another repo; write that repo its own.
 # This header sits in the frontmatter because Claude Code strips the frontmatter when it loads a
 #   skill, but keeps HTML comments.
-argument-hint: "[version] [both|free|pro] [--publish] [--dry-run]"
+argument-hint: "[version] [both|free|pro] [--publish] [--date <Mon D, YYYY>] [--dry-run]"
 disable-model-invocation: true
 allowed-tools: Read, Edit, Bash, Grep, Glob
 ---
@@ -36,6 +36,7 @@ do not add it back for symmetry.
 | `<version>` | `X.Y.Z`, `X.Y.Z.W` or `X.Y.Z-tag` | ask, proposing minor vs patch from the changelog |
 | `both` / `free` / `pro` | which editions to build and attach | `both` |
 | `--publish` | create the GitHub Release **live** instead of as a draft | off |
+| `--date <Mon D, YYYY>` | the release date to write, in place of today's in UTC | today, UTC |
 | `--dry-run` | phases 0-5 for real, print 7, execute none of it | off |
 | `--draft` | accepted and does nothing: the default already drafts. Not in the hint, on purpose — see above | on |
 
@@ -114,13 +115,27 @@ Every check aborts with its own message. **Never make a check pass on the user's
 8. Settle the release date **once** here and carry the one string forward. It goes in the
    changelog heading and the tag message, so taking it twice is how those two disagree by
    a day.
-   - A fresh release: `date -u +"%b %-d, %Y"`. UTC because this repo keeps dates in UTC
-     (`docs/conventions.md`), which also makes the date the same for whoever cuts it.
+   - `--date <Mon D, YYYY>` when given: the user's date wins over the clock. It is for a
+     release whose changelog should say a different day from the machine — a build that
+     slipped past midnight, or an entry dated to when the code froze.
+     **Validate it, never reformat it:** accept only that exact shape (three-letter month,
+     day with no leading zero, comma, four-digit year) and abort naming the expected form
+     otherwise. Do not helpfully convert `2026-10-28` or `28 Oct 2026` — a `--date` that
+     accepts anything reopens the heading drift the pinned shape closed. Warn, without
+     aborting, if the date is in the future or earlier than the previous entry's date,
+     since the changelog reads newest first and a backdated heading makes that order lie.
+   - A fresh release with no `--date`: `date -u +"%b %-d, %Y"`. UTC because this repo keeps
+     dates in UTC (`docs/conventions.md`), which also makes the date the same for whoever
+     cuts it.
    - **A resumed release takes the date from the committed heading, not from the clock.**
      Phase 1 detects the resume; the heading was written on the earlier run and is the
      release date now. Recomputing here is a real bug, not a nicety: a release resumed
      after UTC midnight would tag a date the changelog does not carry. Read it with
      `grep -m1 '^= .* - Version <version> =' readme.txt` and use that string verbatim.
+     If `--date` is given on a resume **and differs from that heading**, do not pick one:
+     abort, say both dates, and give the two ways out — rerun without `--date` to keep the
+     committed one, or undo the commit per phase 8 and start the release fresh. Rewriting
+     a committed heading to match a flag is how a tag and a changelog quietly diverge.
 
 **Never release one edition to stand in for a release of both.** If a build fails, say which
 edition and ask the user what they want; do not quietly ship the half that worked. Both
@@ -270,6 +285,7 @@ naming the model you run as, unless a personal `CLAUDE.local.md` drops it.
 stop and wait. Print, in one block:
 
 - the version, and the repo's visibility from phase 0
+- the release date, and whether it came from `--date`, the clock, or a resumed heading
 - the changelog entry exactly as it will ship
 - `git show --stat HEAD`
 - every artifact path, its size in bytes, and whether it will be attached
