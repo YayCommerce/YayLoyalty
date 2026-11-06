@@ -10,7 +10,7 @@ description: Cuts a YayLoyalty release: preflight, version, the readme.txt chang
 #   plugins: every fact in it is YayLoyalty's own. Do not copy it to another repo; write that repo its own.
 # This header sits in the frontmatter because Claude Code strips the frontmatter when it loads a
 #   skill, but keeps HTML comments.
-argument-hint: "[version] [both|free|pro] [--publish] [--draft] [--dry-run]"
+argument-hint: "[version] [both|free|pro] [--publish] [--dry-run]"
 disable-model-invocation: true
 allowed-tools: Read, Edit, Bash, Grep, Glob
 ---
@@ -24,13 +24,20 @@ with no changelog — is worse than no release.
 `argument-hint` in the frontmatter is display text only; nothing parses it. The table
 below is the real contract. **Keep the two in step**: a stale hint is worse than none.
 
+**The hint lists only arguments that change what the run does.** A flag in a hint reads as
+a choice, so advertising one that merely restates a default teaches the opposite of the
+truth — a reader who sees `[--draft]` concludes the default is not a draft. That is the
+mistake `--publish` used to make here, and it is why `--draft` is accepted but unlisted.
+When a default changes, the flag that named it leaves the hint; do not add it back for
+symmetry.
+
 | Argument | Meaning | Default |
 |---|---|---|
 | `<version>` | `X.Y.Z`, `X.Y.Z.W` or `X.Y.Z-tag` | ask, proposing minor vs patch from the changelog |
 | `both` / `free` / `pro` | which editions to build and attach | `both` |
 | `--publish` | create the GitHub Release **live** instead of as a draft | off |
-| `--draft` | create it as a draft — **the default**; the explicit form of it | on |
 | `--dry-run` | phases 0-5 for real, print 7, execute none of it | off |
+| `--draft` | accepted and does nothing: the default already drafts. Not in the hint, on purpose — see below | on |
 
 **The editions have two names each, and the skill must not confuse them.** `free` and `pro`
 are what the user says and what you say back. `run.sh` takes `free` as an alias and builds
@@ -53,7 +60,7 @@ commit but not publish, say that is not a mode this skill has and let the user d
 whether to answer the gate with no — which leaves exactly that state, recoverable per
 phase 8.
 
-**The Release itself is a draft by default**, so `--draft` is the explicit form of that and
+**The Release itself is a draft by default**, so nothing needs passing for that and
 `--publish` is the only way to a live one. This matters more than it looks: a draft
 Release is visible only to people who can write to the repo, and **its attached zips cannot
 be downloaded from the link**, so a draft release ships nothing until somebody promotes it
