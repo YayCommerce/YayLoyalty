@@ -5,7 +5,7 @@ import { useTiersQuery } from '../tiers/tiers.queries';
 export function CustomersTierCell({ tierId }: { tierId: number | null }) {
   const tier = useTiersQuery().data?.find((item) => item.id === tierId);
 
-  if (tierId === null || !tier) {
+  if (!tier) {
     return <span className="text-muted-foreground">—</span>;
   }
 

@@ -130,12 +130,10 @@ final class TiersRestController extends AbstractRestController {
      * @return array{tiers_enabled: bool, tiers_mode: string, tiers_rolling_months: int, customer_count: int, sweep: array{mode: string, done: int, total: int}|null}
      */
     public function get_settings( \WP_REST_Request $request ): array {
-        $settings = SettingsHelper::get_settings();
-
         return [
-            'tiers_enabled'        => true === ( $settings['tiers_enabled'] ?? false ),
-            'tiers_mode'           => (string) $settings['tiers_mode'],
-            'tiers_rolling_months' => (int) $settings['tiers_rolling_months'],
+            'tiers_enabled'        => TierEvaluator::is_enabled(),
+            'tiers_mode'           => TierEvaluator::mode(),
+            'tiers_rolling_months' => TierEvaluator::rolling_months(),
             'customer_count'       => $this->customers->count_all(),
             'sweep'                => TierSweep::progress(),
         ];
@@ -153,7 +151,7 @@ final class TiersRestController extends AbstractRestController {
     public function update_settings( \WP_REST_Request $request ) {
         $changes = [];
 
-        foreach ( [ 'tiers_enabled', 'tiers_mode', 'tiers_rolling_months' ] as $key ) {
+        foreach ( SettingsHelper::TIER_KEYS as $key ) {
             if ( null !== $request[ $key ] ) {
                 $changes[ $key ] = $request[ $key ];
             }

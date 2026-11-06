@@ -1,11 +1,11 @@
 <?php
 namespace YayLoyalty\Pro\Services;
 
+use YayLoyalty\Engine\Earning\Listeners\ListenerGuard;
 use YayLoyalty\Engine\Expiry\ExpiryRunner;
 use YayLoyalty\Enums\TierMode;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Utils\Dates;
-use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -106,10 +106,6 @@ final class TierRunner {
 
     /** One customer's evaluation; a failure is logged and the batch goes on. */
     private function guarded( int $user_id, callable $evaluate ): void {
-        try {
-            $evaluate();
-        } catch ( \Throwable $e ) {
-            Log::error( self::SOURCE, sprintf( 'tier evaluation for user %d failed: %s', $user_id, $e->getMessage() ) );
-        }
+        ListenerGuard::run( self::SOURCE, sprintf( 'tier evaluation failed for user #%d', $user_id ), $evaluate );
     }
 }

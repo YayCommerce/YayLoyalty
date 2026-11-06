@@ -5,14 +5,14 @@ import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
-import { formatStoreNumber } from '@/lib/helpers/format.helper';
+import { formatCount } from '@/lib/helpers/points.helper';
 import { Alert, AlertTitle } from '@/components/ui/alert';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
-import { useTierSettingsQuery, useUpdateTierSettingsMutation } from './tiers.queries';
+import { TIER_KEY, useTierSettingsQuery, useUpdateTierSettingsMutation } from './tiers.queries';
 
 /**
  * The tiers on/off switch, laid out like the program's own status card, and the banner that follows a
@@ -30,7 +30,7 @@ export function TierSwitchCard() {
   // The poll stops once the sweep is gone: refresh the member counts and say so.
   useEffect(() => {
     if (hadSweep.current && !sweep) {
-      void queryClient.invalidateQueries({ queryKey: ['tier'] });
+      void queryClient.invalidateQueries({ queryKey: TIER_KEY });
       toast.success(__('Customer tiers updated.', 'yayloyalty'));
     }
 
@@ -84,8 +84,8 @@ export function TierSwitchCard() {
             {sprintf(
               /* translators: 1: customers evaluated so far, 2: customers to evaluate. */
               __('Updating customer tiers… %1$s of %2$s', 'yayloyalty'),
-              formatStoreNumber(sweep.done, 0),
-              formatStoreNumber(sweep.total, 0),
+              formatCount(sweep.done),
+              formatCount(sweep.total),
             )}
           </AlertTitle>
         </Alert>
@@ -103,7 +103,7 @@ export function TierSwitchCard() {
                 '%s customers will be placed into the tier their earned points qualify for. No entry bonus is paid for this placement.',
                 'yayloyalty',
               ),
-              formatStoreNumber(settings.customer_count, 0),
+              formatCount(settings.customer_count),
             )}
             confirmLabel={__('Turn on', 'yayloyalty')}
             cancelLabel={__('Cancel', 'yayloyalty')}

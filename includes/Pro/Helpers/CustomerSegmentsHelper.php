@@ -57,7 +57,7 @@ final class CustomerSegmentsHelper {
         $items = isset( $stored['items'] ) && is_array( $stored['items'] ) ? $stored['items'] : $stored;
 
         $segments = [];
-        $tiers    = self::tier_tokens();
+        $tiers    = [] === $items ? [] : self::tier_tokens();
 
         foreach ( $items as $item ) {
             $segment = self::sanitize_one( $item, $tiers );

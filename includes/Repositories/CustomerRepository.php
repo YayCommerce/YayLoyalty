@@ -240,13 +240,6 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         $this->update( $user_id, $columns, $format );
     }
 
-    /** Every customer row. */
-    public function count_all(): int {
-        global $wpdb;
-
-        return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM `' . esc_sql( $this->table() ) . '`' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- no values; the table name is escaped.
-    }
-
     /**
      * The next customers by ascending user id after $after_user_id, so a batched run can resume.
      *

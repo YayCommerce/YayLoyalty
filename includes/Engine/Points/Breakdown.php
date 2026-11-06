@@ -84,17 +84,16 @@ final class Breakdown {
     }
 
     /**
-     * A copy that records the multiplier step.
+     * A copy that records the multiplier step; the points awarded become $multiplier applied to $campaign_points.
      *
      * @param int        $campaign_points The campaign's points, after its cap.
      * @param Multiplier $multiplier      The factor applied to them.
-     * @param int        $points          The result, now the points awarded.
      */
-    public function with_multiplier( int $campaign_points, Multiplier $multiplier, int $points ): self {
+    public function with_multiplier( int $campaign_points, Multiplier $multiplier ): self {
         $copy                  = clone $this;
         $copy->campaign_points = $campaign_points;
         $copy->multiplier      = $multiplier->get_factor();
-        $copy->points          = $points;
+        $copy->points          = $multiplier->apply( $campaign_points );
 
         return $copy;
     }

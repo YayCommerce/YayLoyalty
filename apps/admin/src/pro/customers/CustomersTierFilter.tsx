@@ -8,12 +8,11 @@ const TIER_NONE = 'none';
 
 /** Live tiers, lowest rank first, then "No tier". */
 function useTierFilterOptions(): { value: string; label: string }[] {
-  const tiers = useTiersQuery().data ?? [];
+  // GET /tiers is already in rank order; skip the request while tiers are off.
+  const tiers = useTiersQuery(useTiersEnabled()).data ?? [];
 
   return [
-    ...[...tiers]
-      .sort((a, b) => a.tier_rank - b.tier_rank)
-      .map((tier) => ({ value: String(tier.id), label: tier.name })),
+    ...tiers.map((tier) => ({ value: String(tier.id), label: tier.name })),
     { value: TIER_NONE, label: __('No tier', 'yayloyalty') },
   ];
 }

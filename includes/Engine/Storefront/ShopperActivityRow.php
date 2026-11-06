@@ -107,13 +107,7 @@ final class ShopperActivityRow {
             }
         }
 
-        $names = [];
-
-        foreach ( ( new TierRepository() )->find_many( $ids ) as $id => $tier ) {
-            $names[ $id ] = $tier->get_name();
-        }
-
-        return $names;
+        return ( new TierRepository() )->names_by_id( $ids );
     }
 
     /**

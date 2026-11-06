@@ -237,7 +237,7 @@ export function rewardFormSchema(type: RewardType) {
  * Mirrors RewardConditionSet's `tier` entry, the source of truth: the id a
  * `{type: "tier", operator: "gte"}` entry requires, or null without one.
  */
-export function minTierOf(conditions: RewardCondition[]): number | null {
+function minTierOf(conditions: RewardCondition[]): number | null {
   const entry = conditions.find((condition) => condition.type === 'tier' && condition.operator === 'gte');
   const value = entry?.value;
   const id = typeof value === 'number' || typeof value === 'string' ? Number(value) : NaN;
@@ -246,7 +246,7 @@ export function minTierOf(conditions: RewardCondition[]): number | null {
 }
 
 /** The stored list with its tier entries replaced by one requiring `tierId`, or with none when it is null. */
-export function withMinTier(conditions: RewardCondition[], tierId: number | null): RewardCondition[] {
+function withMinTier(conditions: RewardCondition[], tierId: number | null): RewardCondition[] {
   const rest = conditions.filter((condition) => condition.type !== 'tier');
 
   return tierId === null ? rest : [...rest, { type: 'tier', operator: 'gte', value: tierId }];

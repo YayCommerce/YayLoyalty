@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { tiersRollingMonthsSchema } from './tier.schema';
+import { tierModeSchema, tiersRollingMonthsSchema } from './tier.schema';
 
 /** Most days ahead an expiry reminder may go out. Mirrors SettingsHelper::REMINDER_DAYS_MAX. */
 export const REMINDER_DAYS_MAX = 365;
@@ -18,7 +18,7 @@ export const settingsSchema = z.object({
   currency_include_fee: z.boolean(),
   /** Read-only here: only the Tiers route writes the three tier keys, and POST /settings drops them. */
   tiers_enabled: z.boolean(),
-  tiers_mode: z.enum(['lifetime', 'rolling']),
+  tiers_mode: tierModeSchema,
   tiers_rolling_months: tiersRollingMonthsSchema,
   emails: z.object({
     /** Weekly per-customer cap on loyalty emails; null = no cap. */

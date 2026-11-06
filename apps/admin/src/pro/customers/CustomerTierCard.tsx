@@ -7,7 +7,7 @@ import { __, sprintf } from '@wordpress/i18n';
 import { Can, CAP } from '@/lib/access';
 import { toastApiError } from '@/lib/api/api';
 import { formatStoredDate } from '@/lib/helpers/format.helper';
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatPoints, shortPoints } from '@/lib/helpers/points.helper';
 import type { Customer } from '@/lib/schema/customer.schema';
 import type { CustomerTier } from '@/lib/schema/tier.schema';
 import { Button, LoadingButton } from '@/components/ui/button';
@@ -26,8 +26,8 @@ import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CustomerDrawerStat } from '@/pages/customers/drawer/CustomerDrawerStat';
 import { DELETED_ACCOUNT_ACTION_REASON } from '@/pages/customers/drawer/customer-drawer.copy';
+import { CustomerDrawerStat } from '@/pages/customers/drawer/CustomerDrawerStat';
 import { TierBadge } from '../tiers/TierBadge';
 import {
   useAssignCustomerTierMutation,
@@ -39,10 +39,11 @@ import {
 import {
   CUSTOMER_TIER_ASSIGN_DEFAULTS,
   customerTierAssignSchema,
-  type CustomerTierAssignValues,
+  isValidManualTierDays,
   MANUAL_TIER_DAYS_MAX,
   manualTierEndsOn,
   toAssignCustomerTierInput,
+  type CustomerTierAssignValues,
 } from './customer-tier-assign.form';
 
 /**
@@ -95,9 +96,9 @@ export function CustomerTierCard({ customer }: { customer: Customer }) {
               value={
                 next
                   ? sprintf(
-                      /* translators: 1: points still to earn, 2: the next tier's name. */
-                      __('%1$s pts to %2$s', 'yayloyalty'),
-                      formatPoints(Math.max(0, next.threshold - progress)),
+                      /* translators: 1: points still to earn, such as "500 pts"; 2: the next tier's name. */
+                      __('%1$s to %2$s', 'yayloyalty'),
+                      shortPoints(Math.max(0, next.threshold - progress)),
                       next.name,
                     )
                   : __('Top tier', 'yayloyalty')
@@ -166,11 +167,7 @@ export function CustomerTierCard({ customer }: { customer: Customer }) {
       {dialog === 'assign' && (
         <CustomerTierAssignDialog customer={customer} current={query.data} onClose={() => setDialog(undefined)} />
       )}
-      <CustomerTierRemoveDialog
-        customer={customer}
-        open={dialog === 'remove'}
-        onClose={() => setDialog(undefined)}
-      />
+      <CustomerTierRemoveDialog customer={customer} open={dialog === 'remove'} onClose={() => setDialog(undefined)} />
     </div>
   );
 }
@@ -331,7 +328,7 @@ function CustomerTierAssignDialog({
                       </NumberInputRoot>
                     )}
                   />
-                  {Number.isInteger(days) && days >= 1 && days <= MANUAL_TIER_DAYS_MAX && (
+                  {isValidManualTierDays(days) && (
                     <span className="text-muted-foreground text-xs">
                       {sprintf(
                         /* translators: %s: the date the manual tier ends. */

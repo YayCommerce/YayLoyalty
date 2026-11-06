@@ -6,6 +6,7 @@ use YayLoyalty\Enums\RewardConditionType;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Reward;
+use YayLoyalty\Models\RewardConditionSet;
 use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Repositories\TierRepository;
@@ -32,10 +33,10 @@ final class RewardRestController extends AbstractRestController {
     /** @var TierRepository Read-only: checks that a TIER condition names a live tier. */
     private $tiers;
 
-    public function __construct( RewardRepository $rewards, RedemptionRepository $redemptions, ?TierRepository $tiers = null ) {
+    public function __construct( RewardRepository $rewards, RedemptionRepository $redemptions ) {
         $this->rewards     = $rewards;
         $this->redemptions = $redemptions;
-        $this->tiers       = null !== $tiers ? $tiers : new TierRepository();
+        $this->tiers       = new TierRepository();
     }
 
     public function get_rest_base(): string {
@@ -418,13 +419,9 @@ final class RewardRestController extends AbstractRestController {
      * @param array<int, mixed> $conditions
      */
     private static function required_tier_id( array $conditions ): ?int {
-        foreach ( $conditions as $entry ) {
-            if ( is_array( $entry ) && RewardConditionType::TIER === ( $entry['type'] ?? null ) ) {
-                return (int) $entry['value'];
-            }
-        }
+        $condition = RewardConditionSet::from_array( $conditions )->find( RewardConditionType::TIER );
 
-        return null;
+        return null === $condition ? null : (int) $condition->get_value();
     }
 
     private static function apply_update( Reward $reward, array $changes ): void {

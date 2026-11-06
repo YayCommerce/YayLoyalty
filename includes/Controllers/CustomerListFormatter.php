@@ -119,13 +119,9 @@ final class CustomerListFormatter {
         ];
     }
 
-    /** @return int[] Live tier ids, lowest rank first, for CustomerRowSort's `tier` key. */
+    /** @return int[] Live tier ids, lowest rank first, for CustomerRowSort's `tier` key: live() is in rank order. */
     private static function tier_ids_by_rank(): array {
-        $tiers = ( new TierRepository() )->live();
-
-        usort( $tiers, fn( $a, $b ) => $a->get_tier_rank() <=> $b->get_tier_rank() );
-
-        return array_map( fn( $tier ) => (int) $tier->get_id(), $tiers );
+        return array_map( fn( $tier ) => (int) $tier->get_id(), ( new TierRepository() )->live() );
     }
 
     /**

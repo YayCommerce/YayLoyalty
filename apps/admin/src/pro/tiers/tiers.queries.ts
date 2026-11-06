@@ -1,6 +1,6 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { customerKeyPrefix } from '@/lib/queries/customer.queries';
+import { invalidateCustomerViews } from '@/lib/queries/customer.queries';
 import { SETTINGS_QUERIES, useSettingsQuery } from '@/lib/queries/settings.queries';
 import type { AssignCustomerTierInput, TierInput, TierSettingsInput } from '@/lib/schema/tier.schema';
 import {
@@ -16,9 +16,9 @@ import {
 } from './tiers.api';
 
 /** Every tier read sits under this prefix, so each write invalidates the lot. */
-const TIER_KEY = ['tier'] as const;
+export const TIER_KEY = ['tier'] as const;
 
-export const TIER_QUERIES = {
+const TIER_QUERIES = {
   list: () =>
     queryOptions({
       queryKey: [...TIER_KEY, 'list'],
@@ -35,7 +35,6 @@ export const TIER_QUERIES = {
     queryOptions({
       queryKey: [...TIER_KEY, 'customer', userId],
       queryFn: ({ signal }) => getCustomerTier(userId, signal),
-      enabled: userId > 0,
     }),
 };
 
@@ -62,8 +61,9 @@ export function useUpdateTierSettingsMutation() {
   });
 }
 
-export function useTiersQuery() {
-  return useQuery(TIER_QUERIES.list());
+/** Pass `enabled: false` to skip the request, e.g. while tiers are off. */
+export function useTiersQuery(enabled = true) {
+  return useQuery({ ...TIER_QUERIES.list(), enabled });
 }
 
 export function useCreateTierMutation() {
@@ -103,11 +103,7 @@ function useInvalidateCustomerTier(userId: number) {
 
   return () => {
     void queryClient.invalidateQueries({ queryKey: TIER_KEY });
-    void queryClient.invalidateQueries({ queryKey: customerKeyPrefix('detail', userId) });
-    void queryClient.invalidateQueries({ queryKey: customerKeyPrefix('ledger', userId) });
-    void queryClient.invalidateQueries({ queryKey: customerKeyPrefix('activity', userId) });
-    void queryClient.invalidateQueries({ queryKey: ['customer', 'list'] });
-    void queryClient.invalidateQueries({ queryKey: ['customer', 'store-ledger'] });
+    invalidateCustomerViews(queryClient, userId);
   };
 }
 

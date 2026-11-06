@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { formatStoreNumber } from '@/lib/helpers/format.helper';
+import { formatCount, formatPoints } from '@/lib/helpers/points.helper';
 import { Tier, TIER_LIMITS, TierInput } from '@/lib/schema/tier.schema';
 
 /** The tier dialog's fields. The multiplier is a number while editing and a two-decimal string on the wire. */
@@ -26,7 +27,7 @@ export function tierFormSchema() {
       .max(
         TIER_LIMITS.nameMax,
         /* translators: %s: the longest tier name, in characters. */
-        sprintf(__('Use %s characters or fewer.', 'yayloyalty'), formatStoreNumber(TIER_LIMITS.nameMax, 0)),
+        sprintf(__('Use %s characters or fewer.', 'yayloyalty'), formatCount(TIER_LIMITS.nameMax)),
       ),
     threshold: z
       .number()
@@ -35,7 +36,7 @@ export function tierFormSchema() {
       .max(
         TIER_LIMITS.thresholdMax,
         /* translators: %s: the highest number of points a tier may start at. */
-        sprintf(__('Use %s points or fewer.', 'yayloyalty'), formatStoreNumber(TIER_LIMITS.thresholdMax, 0)),
+        sprintf(__('Use %s points or fewer.', 'yayloyalty'), formatPoints(TIER_LIMITS.thresholdMax)),
       ),
     multiplier: z.number().refine((value) => value >= TIER_LIMITS.multiplierMin && value <= TIER_LIMITS.multiplierMax, {
       message: sprintf(
@@ -52,7 +53,7 @@ export function tierFormSchema() {
       .max(
         TIER_LIMITS.entryBonusMax,
         /* translators: %s: the largest entry bonus, in points. */
-        sprintf(__('Use %s points or fewer.', 'yayloyalty'), formatStoreNumber(TIER_LIMITS.entryBonusMax, 0)),
+        sprintf(__('Use %s points or fewer.', 'yayloyalty'), formatPoints(TIER_LIMITS.entryBonusMax)),
       ),
     color: z.string(),
   });

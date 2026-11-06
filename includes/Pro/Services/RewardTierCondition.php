@@ -5,7 +5,7 @@ use YayLoyalty\Engine\Rewards\Context;
 use YayLoyalty\Engine\Rewards\RewardFacts;
 use YayLoyalty\Enums\RewardConditionType;
 use YayLoyalty\Models\Reward;
-use YayLoyalty\Models\RewardCondition;
+use YayLoyalty\Models\RewardConditionSet;
 use YayLoyalty\Models\Tier;
 use YayLoyalty\Repositories\TierRepository;
 
@@ -58,22 +58,16 @@ final class RewardTierCondition {
 
     /** The id the reward's TIER entry requires, or null without one. */
     private static function required_tier_id( Reward $reward ): ?int {
-        foreach ( $reward->get_conditions() as $entry ) {
-            if ( ! is_array( $entry ) ) {
-                continue;
-            }
+        $condition = RewardConditionSet::from_array( $reward->get_conditions() )->find( RewardConditionType::TIER );
 
-            $condition = RewardCondition::from_array( $entry );
-
-            if ( RewardConditionType::TIER === $condition->get_type() ) {
-                $value = $condition->get_value();
-
-                // A malformed stored value still names a requirement, so it refuses rather than passes.
-                return is_numeric( $value ) ? (int) $value : 0;
-            }
+        if ( null === $condition ) {
+            return null;
         }
 
-        return null;
+        $value = $condition->get_value();
+
+        // A malformed stored value still names a requirement, so it refuses rather than passes.
+        return is_numeric( $value ) ? (int) $value : 0;
     }
 
     private function live_tier( int $id ): ?Tier {

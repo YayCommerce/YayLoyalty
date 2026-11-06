@@ -36,9 +36,13 @@ final class TierProgress {
      * @return array{name: ?string, color: ?string, next: ?array{name: string, threshold: int}, progress: int, needed: int, window_months: ?int, held_until: ?string}|null
      */
     public function member_tier( $value, ?int $user_id, int $balance ): ?array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the filter passes $value and $balance.
+        if ( ! TierEvaluator::is_enabled() ) {
+            return null;
+        }
+
         $live = ( new TierRepository() )->live();
 
-        if ( ! TierEvaluator::is_enabled() || [] === $live ) {
+        if ( [] === $live ) {
             return null;
         }
 

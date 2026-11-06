@@ -66,7 +66,7 @@ final class CustomerTierRestController extends AbstractRestController {
                             'description' => __( 'Days until the manual tier ends, or null for no end.', 'yayloyalty' ),
                             'type'        => [ 'integer', 'null' ],
                             'minimum'     => 1,
-                            'maximum'     => 3650,
+                            'maximum'     => TierEvaluator::MANUAL_DAYS_MAX,
                             'default'     => null,
                         ],
                     ],

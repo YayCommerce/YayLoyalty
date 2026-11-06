@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Engine\Points;
 
+use YayLoyalty\Models\Tier;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
@@ -17,9 +18,6 @@ final class Multiplier {
 
     /** The factor must have one or two integer digits and exactly two decimals. */
     private const FORMAT = '/^\d{1,2}\.\d{2}$/';
-
-    private const MIN_HUNDREDTHS = 100;
-    private const MAX_HUNDREDTHS = 1000;
 
     /** @var string */
     private $factor;
@@ -83,7 +81,7 @@ final class Multiplier {
 
         $hundredths = $this->hundredths();
 
-        return $hundredths >= self::MIN_HUNDREDTHS && $hundredths <= self::MAX_HUNDREDTHS;
+        return $hundredths >= Tier::MULTIPLIER_MIN_CENTS && $hundredths <= Tier::MULTIPLIER_MAX_CENTS;
     }
 
     /** "1.25" → 125. Only meaningful once the factor matches FORMAT. */

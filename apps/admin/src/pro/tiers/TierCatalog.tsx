@@ -6,7 +6,7 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
 import { formatStoreNumber } from '@/lib/helpers/format.helper';
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatCount, formatPoints } from '@/lib/helpers/points.helper';
 import { Tier, TIER_LIMITS, TierInUse } from '@/lib/schema/tier.schema';
 import { Button, LoadingButton } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -53,7 +53,7 @@ const tierLimitMessage = () =>
   sprintf(
     /* translators: %s: the most tiers a store may have. */
     __('You can have at most %s tiers.', 'yayloyalty'),
-    formatStoreNumber(TIER_LIMITS.maxLive, 0),
+    formatCount(TIER_LIMITS.maxLive),
   );
 
 /**
@@ -165,9 +165,7 @@ function TierRow({
         )}
       </TableCell>
       <TableCell className="text-right tabular-nums">{formatPoints(tier.entry_bonus)}</TableCell>
-      <TableCell className="text-right tabular-nums">
-        {showMembers ? formatStoreNumber(tier.member_count, 0) : '—'}
-      </TableCell>
+      <TableCell className="text-right tabular-nums">{showMembers ? formatCount(tier.member_count) : '—'}</TableCell>
       <TableCell>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

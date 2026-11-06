@@ -25,9 +25,9 @@ final class ContextFactory {
 
     private TierRepository $tiers;
 
-    public function __construct( CustomerReader $customers, ?TierRepository $tiers = null ) {
+    public function __construct( CustomerReader $customers ) {
         $this->customers = $customers;
-        $this->tiers     = null !== $tiers ? $tiers : new TierRepository();
+        $this->tiers     = new TierRepository();
     }
 
     /**

@@ -78,6 +78,16 @@ final class TierRepository extends AbstractRepository {
     }
 
     /**
+     * find_many() reduced to names, for a label that names a tier, deleted or not.
+     *
+     * @param int[] $ids
+     * @return array<int, string> Keyed by id; an unknown id is absent.
+     */
+    public function names_by_id( array $ids ): array {
+        return array_map( static fn( Tier $tier ): string => $tier->get_name(), $this->find_many( $ids ) );
+    }
+
+    /**
      * Every live tier, lowest threshold first.
      *
      * @return Tier[]
@@ -101,13 +111,6 @@ final class TierRepository extends AbstractRepository {
         }
 
         return $tiers;
-    }
-
-    /** Every row, deleted ones included. */
-    public function count_all(): int {
-        global $wpdb;
-
-        return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM `' . esc_sql( $this->table() ) . '`' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- no values; the table name is escaped.
     }
 
     /**

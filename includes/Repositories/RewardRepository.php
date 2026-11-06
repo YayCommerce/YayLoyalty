@@ -6,7 +6,7 @@ use YayLoyalty\Enums\RewardConditionType;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\AbstractModel;
 use YayLoyalty\Models\Reward;
-use YayLoyalty\Models\RewardCondition;
+use YayLoyalty\Models\RewardConditionSet;
 use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Sql;
 
@@ -128,21 +128,15 @@ final class RewardRepository extends AbstractRepository {
 
     /** @param array<int, mixed> $conditions */
     private static function conditions_name_tier( array $conditions, int $tier_id ): bool {
-        foreach ( $conditions as $entry ) {
-            if ( ! is_array( $entry ) ) {
-                continue;
-            }
+        $condition = RewardConditionSet::from_array( $conditions )->find( RewardConditionType::TIER );
 
-            $condition = RewardCondition::from_array( $entry );
+        if ( null === $condition ) {
+            return false;
+        }
 
-            if ( RewardConditionType::TIER !== $condition->get_type() ) {
-                continue;
-            }
-
-            foreach ( $condition->value_as_list() as $value ) {
-                if ( is_numeric( $value ) && (int) $value === $tier_id ) {
-                    return true;
-                }
+        foreach ( $condition->value_as_list() as $value ) {
+            if ( is_numeric( $value ) && (int) $value === $tier_id ) {
+                return true;
             }
         }
 

@@ -29,13 +29,12 @@ final class LedgerItemTierNames {
             }
         }
 
-        $tiers = ( new TierRepository() )->find_many( $ids );
+        $names = ( new TierRepository() )->names_by_id( $ids );
 
         foreach ( $items as $index => $item ) {
             $tier_id = self::tier_id_of( $item );
-            $tier    = null !== $tier_id ? ( $tiers[ $tier_id ] ?? null ) : null;
 
-            $items[ $index ]['tier_name'] = null === $tier ? null : $tier->get_name();
+            $items[ $index ]['tier_name'] = null === $tier_id ? null : ( $names[ $tier_id ] ?? null );
         }
 
         return $items;

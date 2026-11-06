@@ -78,7 +78,7 @@ final class PointsEngine {
         $multiplier = Multiplier::from_filter( apply_filters( self::MULTIPLIER_FILTER, Multiplier::none(), $campaign, $ctx ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name.
 
         if ( ! $multiplier->is_neutral() ) {
-            $breakdown = $breakdown->with_multiplier( $points, $multiplier, $multiplier->apply( $points ) );
+            $breakdown = $breakdown->with_multiplier( $points, $multiplier );
             $points    = $breakdown->get_points();
         }
 

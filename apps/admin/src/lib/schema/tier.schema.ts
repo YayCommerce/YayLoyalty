@@ -53,25 +53,26 @@ export type TierInUse = { message: string; rewards: TierInUseReward[] };
 /** Mirrors TierMode::ROLLING_MONTHS, the source of truth. */
 export const TIERS_ROLLING_MONTHS = [3, 6, 9, 12, 18, 24] as const;
 
-export const tiersRollingMonthsSchema = z.union([
-  z.literal(3),
-  z.literal(6),
-  z.literal(9),
-  z.literal(12),
-  z.literal(18),
-  z.literal(24),
-]);
+export type TiersRollingMonths = (typeof TIERS_ROLLING_MONTHS)[number];
+
+export const tiersRollingMonthsSchema = z
+  .number()
+  .refine((value): value is TiersRollingMonths => (TIERS_ROLLING_MONTHS as readonly number[]).includes(value));
+
+/** Mirrors TierMode::all(), the source of truth. */
+export const tierModeSchema = z.enum(['lifetime', 'rolling']);
 
 /** Mirrors TiersRestController::get_settings(), the source of truth. */
 export const tierSettingsSchema = z.object({
   tiers_enabled: z.boolean(),
-  tiers_mode: z.enum(['lifetime', 'rolling']),
+  tiers_mode: tierModeSchema,
   tiers_rolling_months: tiersRollingMonthsSchema,
   /** Customer rows a placement would cover. */
   customer_count: z.number().int(),
   /** The pending sweep (placement, re-evaluation or a mode switch), or null when none is running. */
   sweep: z
     .object({
+      /** Mirrors the TierSweep::MODE_* constants, the source of truth. */
       mode: z.enum(['placement', 'reevaluate', 'to_rolling', 'to_lifetime']),
       done: z.number().int(),
       total: z.number().int(),
@@ -87,9 +88,7 @@ export type TierSettingsInput = Partial<Pick<TierSettings, 'tiers_enabled' | 'ti
 /** Mirrors CustomerTierRestController::respond(), the source of truth. */
 export const customerTierSchema = z.object({
   /** Null when the customer has no tier, or their stored tier was deleted. */
-  tier: z
-    .object({ id: z.number().int(), name: z.string(), color: z.string(), tier_rank: z.number().int() })
-    .nullable(),
+  tier: z.object({ id: z.number().int(), name: z.string(), color: z.string(), tier_rank: z.number().int() }).nullable(),
   /** The points the tier was last judged on; in Rolling, the window total read now. */
   progress_value: z.number().int(),
   /** The lowest live tier above `tier`, or null at the top tier. */
@@ -99,7 +98,7 @@ export const customerTierSchema = z.object({
   manual: z
     .object({ tier_id: z.number().int(), name: z.string(), color: z.string(), until: z.string().nullable() })
     .nullable(),
-  mode: z.enum(['lifetime', 'rolling']),
+  mode: tierModeSchema,
   /** The rolling window's length; null in Lifetime. */
   window_months: z.number().int().nullable(),
   /** The running hold; both null when there is none or it has ended. */

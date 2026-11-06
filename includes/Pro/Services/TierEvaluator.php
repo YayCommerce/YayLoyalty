@@ -38,6 +38,9 @@ defined( 'ABSPATH' ) || exit;
  */
 final class TierEvaluator {
 
+    /** The longest manual floor, in days. */
+    public const MANUAL_DAYS_MAX = 3650;
+
     /** @var CustomerRepository */
     private $customers;
 
@@ -206,7 +209,7 @@ final class TierEvaluator {
      * Sets a manual floor: the customer is at least this tier until it ends. Raises them now when it
      * outranks their tier; a floor at or below their tier is stored and changes nothing else.
      *
-     * @param int|null $days 1–3650, or null for no end.
+     * @param int|null $days 1 to MANUAL_DAYS_MAX, or null for no end.
      * @throws \InvalidArgumentException When the tier is not live.
      */
     public function assign_floor( int $user_id, int $tier_id, ?int $days, int $actor_id ): void {

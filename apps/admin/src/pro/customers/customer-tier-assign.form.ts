@@ -1,10 +1,11 @@
 import { z } from 'zod';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { formatStoreNumber, formatWPDate } from '@/lib/helpers/format.helper';
+import { formatDaysFromNow } from '@/lib/helpers/format.helper';
+import { formatCount } from '@/lib/helpers/points.helper';
 import type { AssignCustomerTierInput } from '@/lib/schema/tier.schema';
 
-/** Mirrors the `days` bounds of CustomerTierRestController's POST route, the source of truth. */
+/** Mirrors TierEvaluator::MANUAL_DAYS_MAX, the source of truth. */
 export const MANUAL_TIER_DAYS_MAX = 3650;
 
 /** The Assign tier dialog's fields. `tier_id` is a string because the Select works in strings; '' is none chosen. */
@@ -16,6 +17,11 @@ export interface CustomerTierAssignValues {
 
 export const CUSTOMER_TIER_ASSIGN_DEFAULTS: CustomerTierAssignValues = { tier_id: '', end: 'none', days: 30 };
 
+/** Whether `days` is a length a limited manual tier may have. */
+export function isValidManualTierDays(days: number): boolean {
+  return Number.isInteger(days) && days >= 1 && days <= MANUAL_TIER_DAYS_MAX;
+}
+
 /** `days` is checked only for a limited floor; the server re-checks both fields. */
 export function customerTierAssignSchema() {
   return z
@@ -25,17 +31,14 @@ export function customerTierAssignSchema() {
       days: z.number(),
     })
     .superRefine((values, ctx) => {
-      if (
-        values.end === 'limited' &&
-        (!Number.isInteger(values.days) || values.days < 1 || values.days > MANUAL_TIER_DAYS_MAX)
-      ) {
+      if (values.end === 'limited' && !isValidManualTierDays(values.days)) {
         ctx.addIssue({
           code: 'custom',
           path: ['days'],
           message: sprintf(
             /* translators: %s: the most days a manual tier may last. */
             __('Use a whole number of days from 1 to %s.', 'yayloyalty'),
-            formatStoreNumber(MANUAL_TIER_DAYS_MAX, 0),
+            formatCount(MANUAL_TIER_DAYS_MAX),
           ),
         });
       }
@@ -48,5 +51,5 @@ export function toAssignCustomerTierInput(values: CustomerTierAssignValues): Ass
 
 /** The date a floor of `days` days set now ends on, in the site's date format. */
 export function manualTierEndsOn(days: number): string {
-  return formatWPDate(new Date(Date.now() + days * 86_400_000));
+  return formatDaysFromNow(days);
 }
