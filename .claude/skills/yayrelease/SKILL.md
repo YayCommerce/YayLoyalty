@@ -111,10 +111,16 @@ Every check aborts with its own message. **Never make a check pass on the user's
    (`docs/known-issues.md`), and a default shell here may still be on Node 20. Run
    `nvm use` in the repo root first and assert `node -v` is 22 or later — `run.sh` only
    falls back to corepack, which does not save you from the wrong Node.
-8. Compute the release date **once** here, in UTC: `date -u +"%b %-d, %Y"`. It goes in the
-   changelog heading and the tag message, so computing it twice is how those two disagree
-   by a day. UTC because this repo keeps dates in UTC (`docs/conventions.md`), which also
-   makes the date the same for whoever cuts the release. Carry the one string forward.
+8. Settle the release date **once** here and carry the one string forward. It goes in the
+   changelog heading and the tag message, so taking it twice is how those two disagree by
+   a day.
+   - A fresh release: `date -u +"%b %-d, %Y"`. UTC because this repo keeps dates in UTC
+     (`docs/conventions.md`), which also makes the date the same for whoever cuts it.
+   - **A resumed release takes the date from the committed heading, not from the clock.**
+     Phase 1 detects the resume; the heading was written on the earlier run and is the
+     release date now. Recomputing here is a real bug, not a nicety: a release resumed
+     after UTC midnight would tag a date the changelog does not carry. Read it with
+     `grep -m1 '^= .* - Version <version> =' readme.txt` and use that string verbatim.
 
 **Never release one edition to stand in for a release of both.** If a build fails, say which
 edition and ask the user what they want; do not quietly ship the half that worked. Both
@@ -143,7 +149,9 @@ committed, so rerunning the same version would abort here on a version that is e
 greater. Before asserting, check whether `HEAD` is already this release's commit — subject
 `chore(release): <version>`, the three locations reading `<version>`, a clean tree and no
 tag yet. If it is, phases 1-5 are **already done**: say so, skip to the gate, and assert
-nothing. Never bump again on top of a release commit.
+nothing. Never bump again on top of a release commit. **Take the release date from that
+commit's changelog heading** and replace whatever phase 0 computed, per phase 0's own
+resume rule — the committed heading wins over the clock.
 
 ## Phase 2 — Changelog
 
@@ -290,8 +298,8 @@ you want here.
 **Only after the user answered the gate.** Tag, then push, then release. **Push the tag
 before creating the release**, or `gh` creates a tag of its own.
 
-The tag message carries the same release date string as the changelog heading, from phase
-0. The tag object also records a tagger timestamp of its own, in local time, which can fall
+The tag message carries the same release date string as the changelog heading — phase 0's
+for a fresh release, the committed heading's for a resumed one. The tag object also records a tagger timestamp of its own, in local time, which can fall
 on a different day from the UTC release date — the message is the release date, the
 timestamp is only when the tag was made.
 
