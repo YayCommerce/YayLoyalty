@@ -97,8 +97,10 @@ final class RewardCoupons {
     }
 
     /**
-     * The props with the cap applied: `fixed_cart` at `max_discount` when the probe gives more than the cap,
-     * unchanged otherwise.
+     * The props with the cap applied: when the probe gives more than `max_discount`, a lower percent that takes
+     * off the cap, unchanged otherwise. The coupon stays `percent`, because WooCommerce skips sale items line by
+     * line only for product coupon types; a `fixed_cart` coupon with `exclude_sale_items` is rejected whenever
+     * the cart holds any sale item.
      *
      * @param array $props RewardHandler::coupon_props().
      * @return array
@@ -113,11 +115,23 @@ final class RewardCoupons {
         $probe = self::probe( $code, $props, $cart );
 
         if ( $probe['value'] > (float) $cap ) {
-            $props['discount_type'] = 'fixed_cart';
-            $props['amount']        = (float) $cap;
+            $props['amount'] = self::percent_for_cap( (float) $props['amount'], $probe['value'], (float) $cap );
         }
 
         return $props;
+    }
+
+    /**
+     * The percent that takes $cap off where $percent takes $value off. WooCommerce's percent discount is linear in
+     * the percent (it rounds the eligible total × percent once), so scaling by $cap / $value lands on the cap.
+     * Floored to 6 decimals so float noise never lifts the discount past the cap. Pure, so the unit suite can call it.
+     */
+    public static function percent_for_cap( float $percent, float $value, float $cap ): float {
+        if ( $value <= 0 || $cap >= $value ) {
+            return $percent;
+        }
+
+        return floor( $percent * $cap / $value * 1000000 ) / 1000000;
     }
 
     /**
