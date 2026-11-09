@@ -37,12 +37,12 @@ final class DashboardStats {
         $redeemed     = $repo->sum_redeemed( $from, $to );
         $liability    = $repo->liability_points();
 
-        $orders_total           = $repo->count_orders( $window->from_ts(), $window->to_ts() );
-        $orders_with_redemption = $repo->orders_with_redemption( $from, $to );
+        $orders_total           = $repo->count_paid_orders( $window->from_ts(), $window->to_ts() );
+        $orders_with_redemption = $repo->paid_orders_with_redemption( $window->from_ts(), $window->to_ts() );
         $rate                   = PointsMath::pct_of( $orders_with_redemption, $orders_total );
         $rate_prev              = PointsMath::pct_of(
-            $repo->orders_with_redemption( $pf, $pt ),
-            $repo->count_orders( $window->prev_from_ts(), $window->from_ts() )
+            $repo->paid_orders_with_redemption( $window->prev_from_ts(), $window->from_ts() ),
+            $repo->count_paid_orders( $window->prev_from_ts(), $window->from_ts() )
         );
 
         return [
