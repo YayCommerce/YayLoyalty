@@ -36,7 +36,7 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
   3. rewrites `scoper.inc.php` from the package's template, keeping only the prefix and the adapter's name, and only when it differs;
   4. scopes the package into a temp folder that is swapped in whole, so a running site never loses `vendor-prefixed/`, then dumps the classmap.
   Commit the result.
-- Release leaves the plugin folder's `vendor/` and `vendor-prefixed/` alone: it runs `vendor/bin/yaycommerce-prerelease --stage release/yayloyalty`, which rescopes the installed admin-shell into the staged copy and warns when that differs from the committed `vendor-prefixed/`.
+- Release leaves the plugin folder's `vendor/` and `vendor-prefixed/` alone: it runs `vendor/bin/yaycommerce-prerelease --stage release/<folder>`, which rescopes the installed admin-shell into the staged copy and warns when that differs from the committed `vendor-prefixed/`.
 
 ## Server layers and write ownership
 
@@ -187,14 +187,14 @@ One tree builds both editions. Lite is Pro without `includes/Pro/` and without t
 - `./scripts/run.sh release` first stamps a new version, when one is given or entered, into the plugin header, `YAYLOYALTY_VERSION` and the `readme.txt` stable tag; `yayloyalty.php` is the version source. Then `build_package` in `scripts/run.sh`:
   1. runs `composer install` only if `vendor/` is missing, and never changes the plugin folder's `vendor/` or `vendor-prefixed/`;
   2. builds the SPA;
-  3. stages `release/yayloyalty/` from an explicit include list: the root plugin files, `includes/`, `assets/`, `languages/`, `vendor-prefixed/` and Composer's autoloader only, then rescopes admin-shell into the staged copy (`yaycommerce-prerelease --stage`);
+  3. stages `release/yayloyalty-pro/` (Pro) or `release/yayloyalty/` (Lite) from an explicit include list: the root plugin files, `includes/`, `assets/`, `languages/`, `vendor-prefixed/` and Composer's autoloader only, then rescopes admin-shell into the staged copy (`yaycommerce-prerelease --stage`);
   4. Lite only: deletes `includes/Pro/`, then strips admin-shell's licensing (with the EDD updater) and Recommended Plugins page: `scripts/lite-admin-shell.patch` removes their wiring and `LITE_SHELL_STRIP` lists the files deleted. The patch is YayCheckout's Free patch with this plugin's scoped namespace; it fails the release when the shell changes, and then has to be regenerated;
   5. both editions: dump the staged copy's classmap with `--no-dev`, from what the copy holds, so it lists no dev package and, for Lite, no stripped class;
   6. both editions: rewrite the scoped shell's gettext text domain from `yaycommerce` to `yayloyalty`, which is the only domain this plugin loads and translate.wordpress.org imports;
   7. both editions: delete `RegisterDev.php` and dev artifacts;
   8. writes `release-manifest.json`, with a SHA-256 for each file, and zips;
   9. runs `scripts/validate-build.php` and renames a failing zip to `.invalid`.
-- Both editions unpack to the same `yayloyalty/` folder, so Pro installs over Lite in place.
+- Pro unpacks to `yayloyalty-pro/` and Lite to `yayloyalty/`, both with `yayloyalty.php` as the main file. They are separate plugins to WordPress, so Pro does not install over Lite in place: with both active, the copy that loads second deactivates itself through the `plugin_init` guard in `yayloyalty.php`.
 - Pro runs first because that run stamps the version, which Lite's `--no-prompt` run then reads back, so both zips carry the same version. The two runs share `assets/dist/` and the staging folder, so they must run one after the other.
 - Besides the Pro/Lite checks above, the validator checks:
   - the manifest: build type, hashes, no unlisted files, and a version that matches the header and the constant;

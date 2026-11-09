@@ -126,11 +126,13 @@ if ( 0 !== $unzip_code ) {
     fail_out( "unzip failed with code $unzip_code" );
 }
 
-$root = $work . '/' . PLUGIN_SLUG;
+// Pro unpacks to yayloyalty-pro/, Lite to yayloyalty/; both keep yayloyalty.php as the main file.
+$folder_name = $is_lite ? PLUGIN_SLUG : PLUGIN_SLUG . '-pro';
+$root        = $work . '/' . $folder_name;
 record(
-    'Zip contains ' . PLUGIN_SLUG . '/ at its root',
+    'Zip contains ' . $folder_name . '/ at its root',
     is_dir( $root ),
-    is_dir( $root ) ? '' : 'both builds must unpack to the same plugin folder so Lite upgrades to Pro in place'
+    is_dir( $root ) ? '' : 'the ' . $build_type . ' zip must unpack to ' . $folder_name . '/'
 );
 if ( ! is_dir( $root ) ) {
     render_and_exit( $work, $require_boot );
