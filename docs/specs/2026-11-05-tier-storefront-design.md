@@ -1,6 +1,7 @@
 # Tier Storefront (Tiers slice 5) Design
 
 **Status:** accepted 2026-11-05
+**Amended:** 2026-11-10: My Account → My Points gains a "Your tier" section (accepted 2026-11-10), and the tier progress sentences move into `LauncherCopy`. [Amendment 2026-11-10](#amendment-2026-11-10-my-points-tier-section) at the end describes it; the Out line marked "amended 2026-11-10" points there.
 **Related:** [Tiers master design](2026-11-02-tiers-master-design.md) (Delivery slice 5, AC 20 and AC 22.3), [slice 2 design](2026-11-04-tier-lifetime-evaluation-design.md), [slice 4 design](2026-11-05-tier-rolling-mode-design.md), `docs/backlog/2026-10-06-tiers-not-built.md`
 
 This child spec refines the master for slice 5. Everything the master decides (D1–D22) and everything slices 1–4 fixed still holds. The master's Delivery table marks slice 5 "Plan only"; **Refinements of the master** says why it got a spec anyway.
@@ -29,7 +30,7 @@ A signed-in shopper on a Pro store with tiers on sees their tier badge and their
 - The backlog update for the storefront box.
 
 **Out:**
-- My Account → My Points / Rewards, `[yayloyalty_balance]`, the balance block, and every other shortcode and block (master Out list). They render exactly as today.
+- My Account → My Points / Rewards (amended 2026-11-10: My Points has a tier section, see [Amendment 2026-11-10](#amendment-2026-11-10-my-points-tier-section)), `[yayloyalty_balance]`, the balance block, and every other shortcode and block (master Out list). They render exactly as today.
 - Any Design tab key, toggle, editable copy or badge style. No `DesignSchema` change, no SPA change.
 - Any guest-facing tier content (Ways to earn, guest panel).
 - Tier emails, and anything on the dashboard (master Out list).
@@ -182,5 +183,156 @@ All in the launcher member panel on the wp-env Pro site, seed tiers unless state
 - Master spec: no status change. It stays `accepted`. This doc is linked as the slice 5 artifact.
 
 ## Open questions
+
+None.
+
+## Amendment 2026-11-10: My Points tier section
+
+This amendment adds what the scope above and the master left out: a tier section on My Account → My Points. Everything else above, and everything the master (D1–D22) and slices 1–4 decided, still holds. The user shared a screenshot as a layout example only. Within this amendment, "AC n" means the criteria under its own Acceptance criteria heading.
+
+### Goal
+
+A signed-in customer on a Pro store with tiers on opens My Account → My Points and, under the "Your Points" card, sees a "Your tier" section: their tier, its earn multiplier, their progress to the next tier, when they reached the tier, and every tier with its threshold and perks.
+
+### Context
+
+- **My Points tab** (`includes/Engine/Storefront/AccountMyPoints.php`): `render()` prints the unavailable card when the program is off or the viewer can't earn, else includes `templates/account-rewards.php` with `view()`: `card_view()` (`LauncherPayload::for_user()`), `earn`, `history`. The template requires `points-card.php`, then `ways-to-earn.php` / `ways-to-redeem.php` (or `no-ways-card.php`), then `points-history.php`. Sections use `yayloyalty-account__section` and an `h3.yayloyalty-account__title`.
+- **History swap:** `AccountHistoryAjax` replaces only the history partial, so anything above it stays.
+- **Storefront CSS:** `assets/storefront/account/rewards-tokens.css` is the one enqueued file; it `@import`s one file per template, rules nested under `.yayloyalty-account`, px sizes, colours from `../storefront-tokens.css`.
+- **Launcher tier line (this spec, above):** `LauncherPayload::MEMBER_TIER_FILTER` (`yayloyalty_launcher_member_tier`) answered by `Pro\Storefront\TierProgress::member_tier()`, which builds its answer in private `TierProgress::line()`. `templates/tier-progress.php` computes the progress text, bar percentage and Rolling caption inline. `LauncherPayload::member_tier()` validates the answer (`is_member_tier()`), drops a throwing or malformed one with `Log::warning`.
+- **Standing reader:** `Pro\Services\TierStanding::of( Customer, Tier[] $live, string $now )` returns `tier`, `next`, `progress`, `mode`, `window_months`, `held_from`, `held_until`. The drawer route and `TierProgress` both use it.
+- **Data:** `Customer::get_tier_achieved_at()` is set by `TierEvaluator` to the evaluation time whenever the tier changes (up or down). `Tier` has `get_name()`, `get_color()`, `get_threshold()`, `get_tier_rank()`, `get_multiplier()` (decimal string, minimum `'1.00'`), `get_entry_bonus()`. `TierRepository::live()` returns live tiers in rank order. `TierEvaluator::is_enabled()` is the tiers switch.
+- **Copy helpers:** `LauncherCopy` (static storefront copy), `SettingsHelper::points_text()` / `points_label_plural()`, `Dates::to_site_date()`.
+
+### Scope
+
+**In:**
+- A "Your tier" section on My Account → My Points, between the points card and Ways to earn: status card, details list, "All tiers" list.
+- A new internal filter in `AccountMyPoints` and its Pro subscriber `Pro\Storefront\AccountTier`.
+- Moving the tier progress text, bar percentage and Rolling caption out of `tier-progress.php` into `LauncherCopy`, used by both the launcher line and the new section. The launcher's output stays the same.
+- An amendment note on the master's Out list, and this amendment in place of the Out line above.
+
+**Out:**
+- Any change to what the launcher tier line shows, the Design tab or its preview, `DesignSchema`, or the SPA.
+- `[yayloyalty_balance]`, its block, and every other shortcode and block.
+- Guests (they get WooCommerce's sign-in form on My Account anyway).
+- The screenshot's "points used" and "points remaining" rows: the points card above already shows the balance.
+- A separate tier rules page or link: the "All tiers" list stands in for it.
+- Mentioning a staff-assigned (manual) tier or its end date to the customer.
+- Tier emails and the dashboard (master Out list).
+- New automated tests (CLAUDE.md Tests: not money or ledger logic, no reproduced bug).
+
+### Acceptance criteria
+
+All on the wp-env Pro site, signed in as a customer, at `/my-account/my-points/`, Lifetime mode and tiers on unless stated. Tiers set up as: Bronze threshold 500, multiplier 1.00, entry bonus 0, colour `#CD7F32`; Silver threshold 1,000, multiplier 1.50, entry bonus 0; Gold threshold 3,000, multiplier 2.00, entry bonus 200. Points text uses the store's label, shown here as the default "Points".
+
+1. A Silver customer with progress 1,000 and `tier_achieved_at` 2026-10-26 sees, right under the points card and above Ways to earn, an `h3` "Your tier" and a card with: the Silver badge (dot in Silver's colour, "Silver"), a chip "1.5× Points", "2,000 Points to Gold", a bar with `aria-valuenow` 1000 and `aria-valuemax` 3000 (33% wide), then details "Tier since" = 2026-10-26 in the site date format and "Tier Points" = "1,000". No "Kept until" row and no caption.
+2. The same page's "All tiers" list shows three rows in rank order: "Bronze · From 500 Points" with no perks; "Silver · From 1,000 Points · 1.5× Points" with a "You" chip and `aria-current="true"`; "Gold · From 3,000 Points · 2× Points · +200 Points bonus".
+3. A Gold customer sees the Gold badge, the chip "2× Points", "Top tier" and no bar; the Gold row is marked "You".
+4. A Bronze customer sees the Bronze badge and no multiplier chip (multiplier 1.00).
+5. A tierless customer with 0 points earned sees "No tier yet" with no dot and no chip, "500 Points to Bronze", a bar at 0%, "Tier Points" = "0", no "Tier since" row, and no row marked "You".
+6. A Silver customer whose progress is 3,050 sees "Gold unlocks with your next earn" and a bar at 100%.
+7. Rolling mode, 6 months: a Silver customer with `tier_held_until` 2027-07-10 sees progress from the live window total, the caption "Counts Points earned in the last 6 months." and a details row "Kept until" = 2027-07-10 in the site date format. Without a running hold there is no "Kept until" row.
+8. With tiers off, or with every tier deleted, the tab shows no tier section and is otherwise unchanged. The same holds on a Lite build.
+9. A filter subscriber that throws, or returns an array missing a key, leaves the tab without the section, writes a `Log::warning` from `AccountMyPoints`, and the rest of the tab renders.
+10. The launcher tier line for the customers in AC 1, 3, 5, 6 and 7 reads exactly as before this change.
+11. At 375px wide the section has no horizontal scroll: the card's top row and each "All tiers" row stack.
+12. Clicking a history filter tab or page link swaps the history and leaves the tier section in place; `/my-account/my-points/2/` also shows the section.
+13. End-to-end verification: on wp-env with the AC setup, open My Points as a Silver, a Gold and a tierless customer (AC 1, 2, 3, 5), switch to Rolling with a held Silver customer (AC 7), then turn tiers off (AC 8). Each page matches its criterion and Chrome's console shows no errors.
+
+### Constraints
+
+- Product PHP runs on PHP 7.4: no enums, `match`, `readonly`, promoted constructor properties, `?->`, named arguments or union types (CLAUDE.md hard rule 4).
+- Lite names Pro nowhere outside the guarded `YayLoyaltyPro::boot()` call; Pro attaches only through filters added in `boot()` (hard rule 2). The new filter, template and CSS are tier-generic Lite code.
+- Storefront CSS: one new file imported by `rewards-tokens.css`, every rule under `.yayloyalty-account`, px sizes, colours from `storefront-tokens.css` tokens; nothing under `apps/admin`, no Design tab values.
+- Dates are stored UTC and shown with `Dates::to_site_date()`.
+- Every string translatable in the `yayloyalty` text domain, with translators comments on placeholders; all output escaped.
+- Never hand-edit `assets/dist/`.
+
+### Approach
+
+**Chosen:** a new My Account data filter, answered by a Pro subscriber, rendered by a tier-generic Lite partial.
+
+**Architecture:** `AccountMyPoints::view()` adds a `tier` key from a new private `member_tier( int $user_id ): ?array`, which applies `MEMBER_TIER_FILTER` inside a `try`/`catch` and validates the answer as `LauncherPayload::member_tier()` does. `account-rewards.php` requires `account-tier.php` right after `points-card.php`; the partial returns early on `null`. In Pro, `AccountTier` reads the same `TierStanding` the launcher and drawer read, so the three never disagree. The progress copy moves into `LauncherCopy` so the launcher line and the section say the same thing in the same words.
+
+**Components:**
+- `includes/Engine/Storefront/AccountMyPoints.php` [edit]: `public const MEMBER_TIER_FILTER = 'yayloyalty_account_member_tier'`; `view()` gains `tier`; private `member_tier()` and `is_member_tier()` validation.
+- `includes/Engine/Storefront/templates/account-rewards.php` [edit]: `$yayloyalty_tier = $view['tier']`, require `account-tier.php` after `points-card.php`.
+- `includes/Engine/Storefront/templates/account-tier.php` [new]: the section markup.
+- `assets/storefront/account/account-tier.css` [new], `assets/storefront/account/rewards-tokens.css` [edit: `@import url("account-tier.css");` after `tier-progress.css`].
+- `includes/Engine/Storefront/LauncherCopy.php` [edit]: `tier_progress_text( ?array $next, int $needed ): string`, `tier_progress_percent( int $progress, int $threshold ): int`, `tier_window_caption( int $window_months ): string`, `tier_multiplier( string $multiplier ): string` ("1.50" → "1.5× Points", "2.00" → "2× Points").
+- `includes/Engine/Storefront/templates/tier-progress.php` [edit]: uses the first three `LauncherCopy` methods; same output.
+- `includes/Pro/Storefront/AccountTier.php` [new]: `register()` adds the filter; `member_tier( $value, int $user_id ): ?array`.
+- `includes/Pro/Storefront/TierProgress.php` [edit]: `line()` becomes `public static` so `AccountTier` builds on it.
+- `includes/Pro/YayLoyaltyPro.php` [edit]: `( new AccountTier() )->register();` beside `TierProgress`.
+- `docs/architecture.md` [edit]: one line under the My Points bullet naming the filter and `AccountTier`.
+
+**Filter contract** (`yayloyalty_account_member_tier`, `( null, int $user_id )`, internal seam for Pro, not a public API). Return null to print nothing, or an array with:
+- `name` ?string, `color` ?string (`#RRGGBB`), `multiplier` ?string (decimal ≥ `'1.00'`), `achieved_at` ?string (UTC, valid per `Dates::is_valid()`): the member's tier; all null when tierless.
+- `next` ?array{name: string (non-empty), threshold: int ≥ 0}; null at the top tier.
+- `progress` int ≥ 0; `needed` int ≥ 0 (0 when `next` is null).
+- `window_months` ?int ≥ 1, Rolling only; `held_until` ?string UTC, only while a hold runs.
+- `tiers` non-empty list of array{name: string, color: string, threshold: int ≥ 0, multiplier: string, entry_bonus: int ≥ 0, is_current: bool}, rank order; at most one `is_current`.
+
+`AccountTier::member_tier()` returns null when `! TierEvaluator::is_enabled()` or `TierRepository::live()` is empty; otherwise `TierProgress::line( $tier, $next, $progress, $window_months, $held_until )` (with `held_until` null when tierless, as `TierProgress` does) plus `multiplier`, `achieved_at` (`Customer::get_tier_achieved_at()`, null when tierless) and `tiers` (`is_current` when the id equals the standing's tier id). The customer is `CustomerRepository::find_by_user_id()` or `new Customer( $user_id )`.
+
+**Data and storage:** None. Read-only; no option, column, meta or migration.
+
+**Integration points:** new filter `yayloyalty_account_member_tier` (Lite applies, Pro answers). `LauncherCopy` gains four static methods consumed by `tier-progress.php` and `account-tier.php`. `TierProgress::line()` gains `public` visibility. No REST route, AJAX action or hook removed or renamed.
+
+**UI:** classic PHP template in the My Points tab, theme-native like the rest of it.
+- `<section class="yayloyalty-account__section yayloyalty-account__tiers">` with `h3.yayloyalty-account__title` "Your tier".
+- Status card (`yayloyalty-account__tiers-card`, the points card's border, radius and padding tokens):
+  - top row: badge (10px round dot in the tier colour, name semibold in the text colour), or "No tier yet" when tierless; right side, a chip with `LauncherCopy::tier_multiplier()` only when the multiplier is not `'1.00'`;
+  - progress text, then the bar (6px, muted track, primary fill, full radius, `role="progressbar"`, `aria-valuemin` 0, `aria-valuemax` = next threshold, `aria-valuenow` = min( progress, threshold ), `aria-label` = the progress text); no bar when `next` is null;
+  - Rolling caption (12px, muted) when `window_months` is set;
+  - divider, then `<dl>` rows, label left and value right: "Tier since" (`achieved_at`, hidden when null), "Tier %s" with the plural points label (`progress`, formatted like the balance), "Kept until" (`held_until`, only when set).
+- "All tiers": a subheading (`h4`), then a `<ul>`; each `<li>` holds the dot and name, "From %s" (`points_text( threshold )`), and the perks: `tier_multiplier()` when not `'1.00'`, "+%s bonus" (`points_text( entry_bonus )`) when above 0, joined by " · ", or nothing. The current row gets a "You" chip, a highlighted background token and `aria-current="true"`.
+- Only the dot carries the tier colour, so no contrast check is needed.
+- Below 480px, the card's top row and each tier row stack (flex-wrap / column).
+
+**Edge cases and failure modes:**
+- Tierless: "No tier yet", progress to the lowest live tier, no "Tier since", no "You" row.
+- Manual floor above the points: shows the floor tier and progress to the tier above it, as the drawer does; the assignment itself is not mentioned.
+- Stored tier soft-deleted before the sweep re-evaluates: `TierStanding` gives `tier` null, so the customer reads as tierless.
+- One live tier: one row; a tierless customer sees progress to it, a member "Top tier".
+- Next threshold 0: bar at 100%, "{next} unlocks with your next earn"; no division by zero.
+- Throwing subscriber or malformed answer: no section, `Log::warning( 'AccountMyPoints', … )`, rest of the tab renders.
+- Program off or viewer can't earn: the existing unavailable card renders before `view()` runs, so the filter never fires.
+- History pages and AJAX filter swap: the section prints on every page; the swap leaves it alone.
+- Lite: no subscriber, `tier` is null, nothing prints.
+
+**Decision record:** None. This follows the existing internal-seam pattern (`MEMBER_TIER_FILTER`, `REDEEM_OFFERS_FILTER`) and changes no architectural choice.
+
+### Refinements of the master and of the original scope above
+
+| Said | This amendment |
+|---|---|
+| Master Out: "My Account → Rewards tier section" | My Account → My Points gets a tier section. Shortcodes and blocks stay out. |
+| Out, above: "My Account → My Points / Rewards … render exactly as today" | My Points gains the section; `points-card.php` itself is unchanged, so the shortcode and block still render as before. |
+| Components, above: progress copy inline in `tier-progress.php` | The copy lives in `LauncherCopy`, shared with `account-tier.php`; the launcher's output is unchanged. |
+
+### Alternatives considered
+
+| Option | Why rejected |
+|---|---|
+| Add `achieved_at`, `multiplier` and `tiers` to `LauncherPayload::MEMBER_TIER_FILTER` | Every launcher render would compute and print the full tier list, which the launcher never shows. |
+| Pro prints its own HTML through an action in `account-rewards.php` | Needs a second stylesheet beside the one enqueued account file, and the data can't be validated or inspected; the original scope rejected the same shape for the launcher. |
+| Reuse only the launcher's `tier-progress.php` under a heading | Shows the least; the user chose the status card, details and all-tiers list. |
+| Status card without the "All tiers" list | The user chose the list; it explains how to reach the next tier without a separate rules page. |
+| Hide the section for tierless customers | The user chose progress to the lowest tier, matching the launcher. |
+| Show "Assigned by the store until …" for a manual floor | The user chose not to mention it; it stays a staff detail in the drawer. |
+| Show "1× Points" on tiers without perks | The user chose a blank perks spot. |
+| "Points used" / "Points remaining" rows from the screenshot | The points card directly above already shows the balance. |
+| Duplicate the progress copy in the new template | The launcher and My Points would drift; one set of `LauncherCopy` methods keeps them equal (AC 10). |
+| Unit or e2e tests | CLAUDE.md Tests: not money or ledger logic, no reproduced bug. Verified manually. |
+
+### Rollout
+
+- No setting, flag or migration. The section appears on the first load after the update for Pro stores with tiers on and at least one live tier; never on Lite or with tiers off.
+- `docs/specs/2026-11-02-tiers-master-design.md` gets an `**Amended:** 2026-11-10` line and an inline "(amended 2026-11-10: …)" marker on its Out line, pointing here; its Status does not change. This spec's Out line gets the same marker.
+- The reference screenshot the user shared (`docs/image-myaccount-tiers/Tier-section.png`) was a layout example only and is not committed.
+
+### Open questions
 
 None.

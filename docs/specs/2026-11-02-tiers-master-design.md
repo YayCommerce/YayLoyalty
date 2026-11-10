@@ -2,6 +2,7 @@
 
 **Status:** accepted 2026-11-03
 **Amended:** 2026-11-10: a coupon reward's TIER condition is either "Minimum tier" (`gte`) or "Only this tier" (`eq`), chosen in the reward editor with a "Tier rule" select (D10). The sections marked "amended 2026-11-10" describe the change.
+**Amended:** 2026-11-10: My Account → My Points gains a tier section; see [the tier storefront design's Amendment 2026-11-10](2026-11-05-tier-storefront-design.md#amendment-2026-11-10-my-points-tier-section). The Out line marked "amended 2026-11-10: My Points" describes the change.
 **Related:** `docs/backlog/2026-10-06-tiers-not-built.md`, `docs/plans/2026-10-06-remove-tiers-and-referrals.md` (removed the v1.0 placeholders)
 
 This master spec fixes the feature's direction. Each delivery slice (see Delivery) gets its own child spec or plan and is built from it.
@@ -63,7 +64,7 @@ Pro merchants group customers into ranked tiers by the points they earn. Each ti
 - Per-tier expiry or redemption rate.
 - A spend-based metric, a calendar-year mode, and an inactivity-based downgrade.
 - Anything about tiers on the dashboard: no tier-distribution card, and an entry bonus row in Recent activity reads "Bonus points", not the tier's name.
-- My Account → Rewards tier section, and the shortcodes and blocks. My Account's reward list still hides tier-gated rewards (D16).
+- My Account → Rewards tier section (amended 2026-11-10: My Points has a tier section, see the tier storefront design), and the shortcodes and blocks. My Account's reward list still hides tier-gated rewards (D16).
 - A TIER condition on `flexible_discount`.
 - Clawing back an entry bonus.
 
