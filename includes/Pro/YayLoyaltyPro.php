@@ -31,6 +31,7 @@ use YayLoyalty\Pro\Services\RewardTierCondition;
 use YayLoyalty\Pro\Services\TierLedgerListener;
 use YayLoyalty\Pro\Services\TierMultiplier;
 use YayLoyalty\Pro\Services\TierRunner;
+use YayLoyalty\Pro\Storefront\AccountTier;
 use YayLoyalty\Pro\Storefront\RewardsPanel;
 use YayLoyalty\Pro\Storefront\TierProgress;
 use YayLoyalty\Repositories\CampaignRepository;
@@ -113,6 +114,7 @@ final class YayLoyaltyPro {
 
         ( new RewardsPanel() )->register();
         ( new TierProgress() )->register();
+        ( new AccountTier() )->register();
         ( new BirthdayRunner() )->register();
         ( new BirthdayFields() )->register();
         ( new BirthdayEarnRow() )->register();

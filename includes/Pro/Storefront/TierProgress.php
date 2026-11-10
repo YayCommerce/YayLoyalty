@@ -73,8 +73,12 @@ final class TierProgress {
         return self::line( $tier, $next, $progress, $months, null === $months ? null : Dates::add_months( Dates::now(), $months ) );
     }
 
-    /** @return array{name: ?string, color: ?string, next: ?array{name: string, threshold: int}, progress: int, needed: int, window_months: ?int, held_until: ?string} */
-    private static function line( ?Tier $tier, ?Tier $next, int $progress, ?int $window_months, ?string $held_until ): array {
+    /**
+     * The line's fields from a standing. AccountTier builds My Points' tier section on it, so the two agree.
+     *
+     * @return array{name: ?string, color: ?string, next: ?array{name: string, threshold: int}, progress: int, needed: int, window_months: ?int, held_until: ?string}
+     */
+    public static function line( ?Tier $tier, ?Tier $next, int $progress, ?int $window_months, ?string $held_until ): array {
         return [
             'name'          => null === $tier ? null : $tier->get_name(),
             'color'         => null === $tier ? null : $tier->get_color(),
