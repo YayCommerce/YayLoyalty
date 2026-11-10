@@ -22,6 +22,7 @@ use YayLoyalty\Repositories\CustomerMetaRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\DashboardRepository;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Repositories\RedemptionRateRepository;
 use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Services\Dashboard\DashboardCache;
@@ -92,7 +93,7 @@ class RestAPI {
             // Same $rewards instance DashboardRepository holds; redemptions read-only, for is_deletable.
             new RewardRestController( $rewards, $redemptions ),
             new DashboardRestController(
-                new DashboardStats( $dashboard ),
+                new DashboardStats( $dashboard, new RedemptionRateRepository(), $rewards ),
                 new DashboardCache( $dashboard ),
                 new DashboardNotices( $dashboard, $campaigns ),
                 new NoticeDismissals()

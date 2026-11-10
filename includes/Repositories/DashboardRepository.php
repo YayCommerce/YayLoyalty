@@ -3,7 +3,6 @@ namespace YayLoyalty\Repositories;
 
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Models\LedgerEntry;
-use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Sql;
 use YayLoyalty\Utils\Table;
 
@@ -200,62 +199,26 @@ class DashboardRepository {
         return $this->count_wc_orders( [ 'wc-completed' ], $from_ts, $to_ts );
     }
 
-    /** Paid orders (wc_get_is_paid_statuses(): processing and completed) created in [$from_ts, $to_ts). */
-    public function count_paid_orders( int $from_ts, int $to_ts ): int {
-        return function_exists( 'wc_get_is_paid_statuses' ) ? $this->count_wc_orders( wc_get_is_paid_statuses(), $from_ts, $to_ts ) : 0;
-    }
-
     /**
-     * The orders count_paid_orders() counts that carry a redeem row, so the redemption rate's numerator
-     * is always part of its denominator. A redeem row is written at checkout, never before its order
-     * was created, so rows from $from_ts on cover every order created in the window.
-     */
-    public function paid_orders_with_redemption( int $from_ts, int $to_ts ): int {
-        global $wpdb;
-
-        if ( ! function_exists( 'wc_get_is_paid_statuses' ) ) {
-            return 0;
-        }
-
-        $order_ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
-            $wpdb->prepare(
-                'SELECT DISTINCT order_id FROM `' . esc_sql( Table::name( 'ledger' ) ) . '`
-                 WHERE type = %s AND created_at >= %s AND order_id IS NOT NULL',
-                LedgerType::REDEEM,
-                gmdate( Dates::MYSQL_FORMAT, $from_ts )
-            )
-        );
-
-        // An empty post__in would match every order.
-        if ( empty( $order_ids ) ) {
-            return 0;
-        }
-
-        return $this->count_wc_orders( wc_get_is_paid_statuses(), $from_ts, $to_ts, [ 'post__in' => array_map( 'intval', $order_ids ) ] );
-    }
-
-    /**
-     * WooCommerce orders in $statuses created in [$from_ts, $to_ts), on HPOS or posts storage.
+     * WooCommerce orders in $statuses created in [$from_ts, $to_ts), on HPOS or posts storage. Only shop_order:
+     * wc_get_orders()' default types include refunds, which are always 'completed'.
      *
-     * @param string[]             $statuses
-     * @param array<string, mixed> $extra    More wc_get_orders() arguments.
+     * @param string[] $statuses
      */
-    private function count_wc_orders( array $statuses, int $from_ts, int $to_ts, array $extra = [] ): int {
+    private function count_wc_orders( array $statuses, int $from_ts, int $to_ts ): int {
         if ( ! function_exists( 'wc_get_orders' ) ) {
             return 0;
         }
 
         $result = wc_get_orders(
-            array_merge(
-                [
-                    'date_created' => $from_ts . '...' . ( $to_ts - 1 ),
-                    'status'       => $statuses,
-                    'return'       => 'ids',
-                    'paginate'     => true,
-                    'limit'        => 1,
-                ],
-                $extra
-            )
+            [
+                'type'         => 'shop_order',
+                'date_created' => $from_ts . '...' . ( $to_ts - 1 ),
+                'status'       => $statuses,
+                'return'       => 'ids',
+                'paginate'     => true,
+                'limit'        => 1,
+            ]
         );
 
         return is_object( $result ) && isset( $result->total ) ? (int) $result->total : 0;

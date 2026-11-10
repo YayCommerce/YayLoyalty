@@ -55,11 +55,11 @@ export function deltaLine(
   };
 }
 
-/** "212 of 1,190 orders" */
+/** "212 of 1,190 eligible orders" */
 export function ordersSubline(withRedemption: number, total: number): string {
   return sprintf(
-    /* translators: 1: orders on which points were redeemed, formatted; 2: all orders in the range, formatted. */
-    __('%1$s of %2$s orders', 'yayloyalty'),
+    /* translators: 1: orders on which points were redeemed, formatted; 2: members' orders in the range placed with enough points to redeem, formatted. */
+    __('%1$s of %2$s eligible orders', 'yayloyalty'),
     formatCount(withRedemption),
     formatCount(total),
   );

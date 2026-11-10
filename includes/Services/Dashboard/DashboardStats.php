@@ -1,7 +1,12 @@
 <?php
 namespace YayLoyalty\Services\Dashboard;
 
+use YayLoyalty\Engine\Rewards\Clamp;
+use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Repositories\DashboardRepository;
+use YayLoyalty\Repositories\RedemptionRateRepository;
+use YayLoyalty\Repositories\RewardRepository;
+use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
@@ -19,8 +24,16 @@ final class DashboardStats {
     /** @var DashboardRepository */
     private $repository;
 
-    public function __construct( DashboardRepository $repository ) {
-        $this->repository = $repository;
+    /** @var RedemptionRateRepository */
+    private $redemption_rate;
+
+    /** @var RewardRepository */
+    private $rewards;
+
+    public function __construct( DashboardRepository $repository, RedemptionRateRepository $redemption_rate, RewardRepository $rewards ) {
+        $this->repository      = $repository;
+        $this->redemption_rate = $redemption_rate;
+        $this->rewards         = $rewards;
     }
 
     /** @return array{stats: array, series: array, top_balances: array, recent_activity: array} */
@@ -37,13 +50,13 @@ final class DashboardStats {
         $redeemed     = $repo->sum_redeemed( $from, $to );
         $liability    = $repo->liability_points();
 
-        $orders_total           = $repo->count_paid_orders( $window->from_ts(), $window->to_ts() );
-        $orders_with_redemption = $repo->paid_orders_with_redemption( $window->from_ts(), $window->to_ts() );
+        $threshold              = $this->redeemable_from();
+        $orders                 = $this->redemption_rate->counts( $window->from_ts(), $window->to_ts(), $threshold );
+        $orders_prev            = $this->redemption_rate->counts( $window->prev_from_ts(), $window->from_ts(), $threshold );
+        $orders_total           = $orders['eligible'];
+        $orders_with_redemption = $orders['redeemed'];
         $rate                   = PointsMath::pct_of( $orders_with_redemption, $orders_total );
-        $rate_prev              = PointsMath::pct_of(
-            $repo->paid_orders_with_redemption( $window->prev_from_ts(), $window->from_ts() ),
-            $repo->count_paid_orders( $window->prev_from_ts(), $window->from_ts() )
-        );
+        $rate_prev              = PointsMath::pct_of( $orders_prev['redeemed'], $orders_prev['eligible'] );
 
         return [
             'stats'           => [
@@ -81,5 +94,29 @@ final class DashboardStats {
                 'rows'        => $repo->latest_activity( self::ACTIVITY_ROWS ),
             ],
         ];
+    }
+
+    /**
+     * The fewest points a member needs to redeem any reward live now: the points discount's minimum on its
+     * step, or a fixed reward's cost. Null when no reward is live. Today's rewards judge both windows, as
+     * reward history is not kept; reward conditions are ignored.
+     */
+    private function redeemable_from(): ?int {
+        $lowest = null;
+
+        foreach ( $this->rewards->live_of_types( RewardType::all(), Dates::now() ) as $reward ) {
+            if ( RewardType::FLEXIBLE_DISCOUNT === $reward->get_type() ) {
+                $step = Clamp::step_of( $reward );
+                $cost = (int) ( ceil( max( 1, Clamp::min_of( $reward ) ) / $step ) * $step );
+            } else {
+                $cost = (int) $reward->get_cost_points();
+            }
+
+            if ( $cost > 0 && ( null === $lowest || $cost < $lowest ) ) {
+                $lowest = $cost;
+            }
+        }
+
+        return $lowest;
     }
 }

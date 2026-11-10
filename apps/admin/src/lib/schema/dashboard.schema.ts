@@ -36,7 +36,7 @@ export const dashboardRateSchema = z.object({
   /** `orders_with_redemption / orders_total` as a percentage, 1 dp; `null` when no orders. */
   rate: z.number().nullable(),
   orders_with_redemption: z.number().int(),
-  /** Completed orders only. */
+  /** Members' paid orders that could redeem: redeemed, or placed with enough points for the cheapest live reward. */
   orders_total: z.number().int(),
   prev_delta_pct: prevDeltaPct,
 });
