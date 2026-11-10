@@ -55,7 +55,7 @@ abstract class LoyaltyYayMailEmail extends BaseEmail {
         return self::$by_email_id[ $email_id ] ?? null;
     }
 
-    /** The merchant-editable starting layout: logo, the email's heading, its body and the footer. */
+    /** The merchant-editable starting layout: logo, the email's heading, its body, its button and the footer. */
     public function get_default_elements() {
         return ElementsLoader::load_elements(
             [
@@ -72,6 +72,13 @@ abstract class LoyaltyYayMailEmail extends BaseEmail {
                     'type'       => 'Text',
                     'attributes' => [
                         'rich_text' => $this->default_body(),
+                    ],
+                ],
+                [
+                    'type'       => 'Button',
+                    'attributes' => [
+                        'text' => LoyaltyEmailShortcodes::tag( 'cta_text' ),
+                        'url'  => LoyaltyEmailShortcodes::tag( 'cta_url' ),
                     ],
                 ],
                 [

@@ -23,8 +23,7 @@ class PointsEarnedYayMailEmail extends LoyaltyYayMailEmail {
     /**
      * Its sentences come from LoyaltyEmail, as the `yayloyalty-points-earned.php` templates' do, and from
      * PointsEarnedEmail's template values. Unlike the templates, it prints the greeting even when the
-     * customer's name is ''. It has no "View your points" button: the link is '' unless a site filters
-     * it in, and a static button cannot hide itself.
+     * customer's name is ''.
      */
     protected function default_body(): string {
         $greeting = LoyaltyEmail::greeting_text( LoyaltyEmailShortcodes::tag( 'customer_name' ) );

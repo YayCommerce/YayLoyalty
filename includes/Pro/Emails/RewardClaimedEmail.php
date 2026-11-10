@@ -101,6 +101,21 @@ class RewardClaimedEmail extends LedgerEntryEmail {
         ];
     }
 
+    /** To the order the points were spent on; to the My Points tab once the order is gone, as in the preview. */
+    protected function cta(): array {
+        $claim = $this->object instanceof LedgerEntry ? $this->claim( $this->object ) : [];
+        $order = $claim['order'] ?? null;
+
+        if ( ! $order instanceof \WC_Order ) {
+            return parent::cta();
+        }
+
+        return [
+            'cta_text' => __( 'View your order', 'yayloyalty' ),
+            'cta_url'  => $order->get_view_order_url(),
+        ];
+    }
+
     /**
      * Previews have no real order, so they show two made-up lines and order number, greeting whoever is looking.
      * The sample is seeded as the made-up row's claim, so the preview reads no database rows.

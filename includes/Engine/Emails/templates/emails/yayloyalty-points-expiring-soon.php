@@ -18,7 +18,8 @@
  * @var string    $points            The expiring points, formatted, e.g. "120".
  * @var string    $points_label      "Point" or "Points", from the merchant's labels.
  * @var string    $expiry_date       The (first) expiry date in the site's date format.
- * @var string    $cta_url           Where "Use your points" links; '' (the default) hides it.
+ * @var string    $cta_text  The button's text, e.g. "View your Points".
+ * @var string    $cta_url   Where the button links.
  */
 
 use Automattic\WooCommerce\Utilities\FeaturesUtil;
@@ -50,11 +51,10 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
     ?>
 </p>
 <?php endif; ?>
-<?php echo $is_email_improvements_enabled ? '</div>' : ''; ?>
-
 <?php if ( ! empty( $cta_url ) ) : ?>
-<p><a class="button" href="<?php echo esc_url( $cta_url ); ?>" style="display:inline-block;padding:12px 24px;text-decoration:none;font-weight:bold;"><?php echo esc_html( sprintf( /* translators: %s: the store's plural points label, e.g. "Points". */ __( 'Use your %s', 'yayloyalty' ), SettingsHelper::points_label_plural() ) ); ?></a></p>
+<p><a class="button" href="<?php echo esc_url( $cta_url ); ?>" style="display:inline-block;padding:12px 24px;text-decoration:none;font-weight:bold;"><?php echo esc_html( $cta_text ); ?></a></p>
 <?php endif; ?>
+<?php echo $is_email_improvements_enabled ? '</div>' : ''; ?>
 
 <?php
 if ( $additional_content ) {

@@ -25,6 +25,8 @@
  * @var string    $order_url    The order's My Account URL, e.g. "https://example.com/my-account/view-order/1234/"; '' without an order. Absent when there is no claim to show.
  * @var \WC_Order|null $order   The order, for overrides; null when it is gone. Absent when there is no claim to show.
  * @var \YayLoyalty\Models\LedgerEntry $entry The order's REDEEM row, for overrides. Absent when there is no claim to show.
+ * @var string    $cta_text  The button's text, e.g. "View your Points". Absent when there is no claim to show.
+ * @var string    $cta_url   Where the button links. Absent when there is no claim to show.
  */
 
 use YayLoyalty\Utils\Text;
@@ -54,6 +56,10 @@ if ( ! empty( $entry ) ) {
     echo "\n" . esc_html( Text::plain( $balance_sentence ) ) . "\n\n";
 } else {
     echo esc_html__( 'You used your loyalty points on an order. Enjoy!', 'yayloyalty' ) . "\n\n";
+}
+
+if ( ! empty( $cta_url ) ) {
+    echo esc_html( $cta_text ) . ': ' . esc_url_raw( $cta_url ) . "\n\n";
 }
 
 if ( $additional_content ) {

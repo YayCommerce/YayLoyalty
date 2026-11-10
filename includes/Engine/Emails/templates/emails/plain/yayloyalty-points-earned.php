@@ -19,8 +19,9 @@
  * @var string $points_label "Point" or "Points", from the merchant's labels. Absent when there is no award to show.
  * @var string $balance      The balance after this award, formatted, e.g. "120". Absent when there is no award to show.
  * @var string $order_number The order the points were earned for; '' unless earned from an order. Absent when there is no award to show.
- * @var string $cta_url      Where "View your points" links; '' (the default) hides it. Absent when there is no award to show.
  * @var \YayLoyalty\Models\LedgerEntry $entry The awarded row, for overrides. Absent when there is no award to show.
+ * @var string $cta_text  The button's text, e.g. "View your Points". Absent when there is no award to show.
+ * @var string $cta_url   Where the button links. Absent when there is no award to show.
  */
 
 use YayLoyalty\Helpers\SettingsHelper;
@@ -54,8 +55,7 @@ if ( ! empty( $entry ) ) {
 }
 
 if ( ! empty( $cta_url ) ) {
-    /* translators: %s: the store's plural points label, e.g. "Points". */
-    echo esc_html( sprintf( __( 'View your %s:', 'yayloyalty' ), SettingsHelper::points_label_plural() ) ) . ' ' . esc_url_raw( $cta_url ) . "\n\n";
+    echo esc_html( $cta_text ) . ': ' . esc_url_raw( $cta_url ) . "\n\n";
 }
 
 if ( $additional_content ) {

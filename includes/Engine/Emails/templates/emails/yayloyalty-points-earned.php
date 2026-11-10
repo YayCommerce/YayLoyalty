@@ -20,8 +20,9 @@
  * @var string    $points_label "Point" or "Points", from the merchant's labels. Absent when there is no award to show.
  * @var string    $balance      The balance after this award, formatted, e.g. "120". Absent when there is no award to show.
  * @var string    $order_number The order the points were earned for; '' unless earned from an order. Absent when there is no award to show.
- * @var string    $cta_url      Where "View your points" links; '' (the default) hides it. Absent when there is no award to show.
  * @var \YayLoyalty\Models\LedgerEntry $entry The awarded row, for overrides. Absent when there is no award to show.
+ * @var string    $cta_text  The button's text, e.g. "View your Points". Absent when there is no award to show.
+ * @var string    $cta_url   Where the button links. Absent when there is no award to show.
  */
 
 use Automattic\WooCommerce\Utilities\FeaturesUtil;
@@ -62,7 +63,7 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
 </p>
 <?php endif; ?>
 <?php if ( ! empty( $cta_url ) ) : ?>
-<p><a class="button" href="<?php echo esc_url( $cta_url ); ?>" style="display:inline-block;padding:12px 24px;text-decoration:none;font-weight:bold;"><?php echo esc_html( sprintf( /* translators: %s: the store's plural points label, e.g. "Points". */ __( 'View your %s', 'yayloyalty' ), SettingsHelper::points_label_plural() ) ); ?></a></p>
+<p><a class="button" href="<?php echo esc_url( $cta_url ); ?>" style="display:inline-block;padding:12px 24px;text-decoration:none;font-weight:bold;"><?php echo esc_html( $cta_text ); ?></a></p>
 <?php endif; ?>
 <?php echo $is_email_improvements_enabled ? '</div>' : ''; ?>
 
