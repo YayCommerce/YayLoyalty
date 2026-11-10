@@ -4,11 +4,12 @@
  * a bar and, over a qualifying window, the window and the date the tier is kept until. Prints nothing while the
  * member's `tier` is null (LauncherPayload::MEMBER_TIER_FILTER has no answer). Launcher only: points-card.php is
  * shared with My Account and the placements, which don't show it. Styled by assets/storefront/account/tier-progress.css.
+ * Its sentences come from LauncherCopy, which My Points' account-tier.php also reads.
  *
  * @var array $yayloyalty_member LauncherPayload's `member` ($view['member']); `tier` set by LauncherPayload::for_balance().
  */
 
-use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
@@ -20,16 +21,7 @@ if ( null === $yayloyalty_tier ) {
 }
 
 $yayloyalty_tier_next = $yayloyalty_tier['next'];
-
-if ( null === $yayloyalty_tier_next ) {
-    $yayloyalty_tier_text = __( 'Top tier', 'yayloyalty' );
-} elseif ( $yayloyalty_tier['needed'] > 0 ) {
-    /* translators: 1: points with the store's label, as "120 Points", 2: the next tier's name. */
-    $yayloyalty_tier_text = sprintf( __( '%1$s to %2$s', 'yayloyalty' ), SettingsHelper::points_text( $yayloyalty_tier['needed'] ), $yayloyalty_tier_next['name'] );
-} else {
-    /* translators: %s: the next tier's name. */
-    $yayloyalty_tier_text = sprintf( __( '%s unlocks with your next earn', 'yayloyalty' ), $yayloyalty_tier_next['name'] );
-}
+$yayloyalty_tier_text = LauncherCopy::tier_progress_text( $yayloyalty_tier_next, $yayloyalty_tier['needed'] );
 ?>
 <section class="yayloyalty-account__tier">
     <?php if ( null !== $yayloyalty_tier['name'] ) : ?>
@@ -42,8 +34,7 @@ if ( null === $yayloyalty_tier_next ) {
     <?php
     if ( null !== $yayloyalty_tier_next ) :
         $yayloyalty_tier_threshold = $yayloyalty_tier_next['threshold'];
-        // A threshold of 0 is already reached: a full bar, and no division by zero.
-        $yayloyalty_tier_pct = 0 === $yayloyalty_tier_threshold ? 100 : min( 100, intdiv( $yayloyalty_tier['progress'] * 100, $yayloyalty_tier_threshold ) );
+        $yayloyalty_tier_pct       = LauncherCopy::tier_progress_percent( $yayloyalty_tier['progress'], $yayloyalty_tier_threshold );
         ?>
         <div class="yayloyalty-account__tier-bar" role="progressbar" aria-valuemin="0" aria-valuemax="<?php echo esc_attr( (string) $yayloyalty_tier_threshold ); ?>" aria-valuenow="<?php echo esc_attr( (string) min( $yayloyalty_tier['progress'], $yayloyalty_tier_threshold ) ); ?>" aria-label="<?php echo esc_attr( $yayloyalty_tier_text ); ?>">
             <span class="yayloyalty-account__tier-fill" style="width: <?php echo esc_attr( (string) $yayloyalty_tier_pct ); ?>%"></span>
@@ -51,8 +42,7 @@ if ( null === $yayloyalty_tier_next ) {
     <?php endif; ?>
     <?php
     if ( null !== $yayloyalty_tier['window_months'] ) :
-        /* translators: 1: the store's points label, as "Points", 2: number of months. */
-        $yayloyalty_tier_caption = sprintf( __( 'Counts %1$s earned in the last %2$d months.', 'yayloyalty' ), SettingsHelper::points_label_plural(), $yayloyalty_tier['window_months'] );
+        $yayloyalty_tier_caption = LauncherCopy::tier_window_caption( $yayloyalty_tier['window_months'] );
 
         if ( null !== $yayloyalty_tier['held_until'] ) {
             /* translators: 1: the member's tier name, 2: date. */
