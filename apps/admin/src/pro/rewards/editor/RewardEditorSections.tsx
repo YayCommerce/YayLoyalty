@@ -23,7 +23,7 @@ import { FlexibleDiscountConfig, FlexibleDiscountFields } from '@/pages/rewards/
 import { rewardCouponCodeCopy } from '@/pages/rewards/reward-coupon-code.copy';
 import { TierBadge } from '../../tiers/TierBadge';
 import { useTiersEnabled, useTiersQuery } from '../../tiers/tiers.queries';
-import { RewardFormValues } from './reward-editor.form';
+import { RewardFormValues, TierRule } from './reward-editor.form';
 
 /**
  * The editor's sections for one reward type: the built-in's rate settings, or a catalog reward's cost and value.
@@ -375,25 +375,44 @@ function productStockLabel(status: string, quantity: number | null): { label: st
 
 // Tier
 
-/** The select's value for "Any tier"; Radix Select reserves the empty string. */
-const ANY_TIER = 'any';
+const TIER_RULE_LABELS: Record<TierRule, string> = {
+  any: __('Any tier', 'yayloyalty'),
+  gte: __('Minimum tier', 'yayloyalty'),
+  eq: __('Only this tier', 'yayloyalty'),
+};
+
+const TIER_RULE_DESCRIPTIONS: Partial<Record<TierRule, string>> = {
+  gte: __('Only customers in this tier or a higher one see and can claim this reward.', 'yayloyalty'),
+  eq: __('Only customers in this tier see and can claim this reward.', 'yayloyalty'),
+};
 
 function RewardEditorTier() {
   const { control, setValue, formState } = useFormContext<RewardFormValues>();
-  const minTierId = useWatch({ control, name: 'min_tier_id' });
+  const tierRule = useWatch({ control, name: 'tier_rule' });
+  const tierId = useWatch({ control, name: 'tier_id' });
   const tiersQuery = useTiersQuery();
   const tiersEnabled = useTiersEnabled();
   const tiers = tiersQuery.data;
-  const isRemoved = tiers !== undefined && minTierId !== null && !tiers.some((tier) => tier.id === minTierId);
-  const storedId = formState.defaultValues?.min_tier_id ?? null;
+  const isRemoved = tiers !== undefined && tierId !== null && !tiers.some((tier) => tier.id === tierId);
+  const storedId = formState.defaultValues?.tier_id ?? null;
   const wasRemoved = tiers !== undefined && storedId !== null && !tiers.some((tier) => tier.id === storedId);
+  const description = TIER_RULE_DESCRIPTIONS[tierRule];
 
   // The server refuses a save naming a deleted tier, so a removed one is cleared; dirtying it lets Save write that.
   useEffect(() => {
     if (isRemoved) {
-      setValue('min_tier_id', null, EDIT);
+      setValue('tier_rule', 'any', EDIT);
+      setValue('tier_id', null, EDIT);
     }
   }, [isRemoved, setValue]);
+
+  const changeRule = (next: TierRule) => {
+    setValue('tier_rule', next, EDIT);
+
+    if (next === 'any') {
+      setValue('tier_id', null, EDIT);
+    }
+  };
 
   return (
     <>
@@ -410,21 +429,20 @@ function RewardEditorTier() {
       )}
 
       <Field orientation="responsive">
-        <FieldLabel htmlFor="reward-tier-min">{__('Minimum tier', 'yayloyalty')}</FieldLabel>
+        <FieldLabel htmlFor="reward-tier-rule">{__('Tier rule', 'yayloyalty')}</FieldLabel>
         <FieldContent>
           <Select
-            value={minTierId === null || isRemoved ? ANY_TIER : String(minTierId)}
-            onValueChange={(next) => setValue('min_tier_id', next === ANY_TIER ? null : Number(next), EDIT)}
+            value={tierRule}
+            onValueChange={(next) => changeRule(next as TierRule)}
             disabled={tiersQuery.isPending || tiersQuery.isError}
           >
-            <SelectTrigger id="reward-tier-min" className="w-full" aria-invalid={!!formState.errors.min_tier_id}>
+            <SelectTrigger id="reward-tier-rule" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ANY_TIER}>{__('Any tier', 'yayloyalty')}</SelectItem>
-              {tiers?.map((tier) => (
-                <SelectItem key={tier.id} value={String(tier.id)}>
-                  <TierBadge name={tier.name} color={tier.color} />
+              {(Object.keys(TIER_RULE_LABELS) as TierRule[]).map((rule) => (
+                <SelectItem key={rule} value={rule}>
+                  {TIER_RULE_LABELS[rule]}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -435,18 +453,40 @@ function RewardEditorTier() {
               onRetry={() => void tiersQuery.refetch()}
             />
           )}
-          {wasRemoved && minTierId === null && (
+          {wasRemoved && tierRule === 'any' && (
             <Alert variant="warning">
               <TriangleAlert />
               <AlertDescription>{__('The tier this reward required was removed.', 'yayloyalty')}</AlertDescription>
             </Alert>
           )}
-          <FieldError errors={[formState.errors.min_tier_id]} />
-          <FieldDescription>
-            {__('Only customers in this tier or a higher one see and can claim this reward.', 'yayloyalty')}
-          </FieldDescription>
         </FieldContent>
       </Field>
+
+      {tierRule !== 'any' && (
+        <Field orientation="responsive">
+          <FieldLabel htmlFor="reward-tier-id">{__('Tier', 'yayloyalty')}</FieldLabel>
+          <FieldContent>
+            <Select
+              value={tierId === null ? '' : String(tierId)}
+              onValueChange={(next) => setValue('tier_id', Number(next), EDIT)}
+              disabled={tiersQuery.isPending || tiersQuery.isError}
+            >
+              <SelectTrigger id="reward-tier-id" className="w-full" aria-invalid={!!formState.errors.tier_id}>
+                <SelectValue placeholder={__('Select a tier', 'yayloyalty')} />
+              </SelectTrigger>
+              <SelectContent>
+                {tiers?.map((tier) => (
+                  <SelectItem key={tier.id} value={String(tier.id)}>
+                    <TierBadge name={tier.name} color={tier.color} />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FieldError errors={[formState.errors.tier_id]} />
+            {description && <FieldDescription>{description}</FieldDescription>}
+          </FieldContent>
+        </Field>
+      )}
     </>
   );
 }
