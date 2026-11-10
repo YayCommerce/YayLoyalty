@@ -1,6 +1,6 @@
 # Known issues
 
-**Purpose:** the checks that fail today and the gotchas that bite, each reproduced, with its cause, a workaround and the condition for deleting it. A check listed here was already failing on `dev/edd`, so judge your change by not adding to it ([CLAUDE.md](../CLAUDE.md)).
+**Purpose:** the checks that fail today and the gotchas that bite, each reproduced, with its cause, a workaround and the condition for deleting it. A check listed here was already failing on `dev`, so judge your change by not adding to it ([CLAUDE.md](../CLAUDE.md)).
 
 **Update when:** an issue is fixed (delete its entry), a new one is reproduced (add it with all four fields), or a symptom changes.
 
@@ -29,14 +29,14 @@
 
 - **Symptom:** phpcs reports warnings and no errors, yet `composer lint` exits 1. Every warning is `Universal.NamingConventions.NoReservedKeywordParameterNames`, for parameters named `$list` and `$default`.
 - **Cause:** phpcs exits non-zero on warnings too. The parameters are in `includes/Models/CampaignConditionSet.php`, `includes/Models/RewardConditionSet.php` and `includes/Controllers/CustomerRowFilters.php`.
-- **Workaround:** compare with `dev/edd`. Your change must add no error and no warning.
+- **Workaround:** compare with `dev`. Your change must add no error and no warning.
 - **Remove when:** those parameters are renamed.
 
 ## Admin lint fails on existing code
 
 - **Symptom:** `pnpm --filter @yayloyalty/admin-page lint` exits 1. ESLint reports one error, `no-empty`, for the empty `catch {}` in `apps/admin/src/lib/api/api.ts`, plus warnings, mostly from the Tailwind plugin's enforce-canonical-classes rule. Prettier never runs, because the script is `eslint . && prettier --check .`. Run on its own, Prettier also fails: it flags existing files and reports `Ignored unknown option` for the `importOrder*` options.
 - **Cause:** the empty catch and the class-name warnings are in existing code. Some files were never formatted. The `importOrder*` options in `apps/admin/package.json` aren't supported by the installed import-sort plugin.
-- **Workaround:** compare with `dev/edd`: add no ESLint error or warning, and run Prettier on the files you change.
+- **Workaround:** compare with `dev`: add no ESLint error or warning, and run Prettier on the files you change.
 - **Remove when:** the error is fixed, the files are formatted and the dead options are deleted.
 
 ## Integration tests can exit 0 without running

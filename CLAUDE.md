@@ -25,7 +25,7 @@ Run from the repo root on Node 22: `nvm use` reads `.nvmrc`, and pnpm 11 fails o
 - `./scripts/run.sh build [pro|lite]`: type-check, then build the SPA into `assets/dist/admin/`, the storefront launcher's CSS into `assets/dist/storefront/` and the blocks' editor script into `assets/dist/blocks/`.
 - `./scripts/run.sh release [pro|lite] [version] [--no-prompt]`: package and validate a zip in `release/`. Run Pro first (it stamps the version), then Lite with `--no-prompt`. Run `composer install` afterwards, even after a failed run.
 
-Any pnpm command may [run `pnpm install`, and with it `composer install`, first](docs/known-issues.md). `./scripts/run.sh help` lists the rest. Judge a failing check against `dev/edd`. If it fails there too, it was already failing: leave it unless asked, and don't add to it.
+Any pnpm command may [run `pnpm install`, and with it `composer install`, first](docs/known-issues.md). `./scripts/run.sh help` lists the rest. Judge a failing check against `dev`. If it fails there too, it was already failing: leave it unless asked, and don't add to it.
 
 ## Hard rules
 
@@ -41,8 +41,8 @@ The team keeps only tests that guard real risk, so a test is warranted in two ca
 
 ## Git
 
-- Branch from `dev/edd` as `<name>/<type>/<topic>`.
-- Every change, docs included, lands through a PR into `dev/edd` (squash merge). Never commit to `dev/edd` or `main` directly; `dev/edd` reaches `main` through its own PR.
+- Branch from `dev` as `<name>/<type>/<topic>`.
+- Every change, docs included, lands through a PR into `dev` (squash merge). `dev` is the default branch; never commit to it directly.
 - Commit messages follow Conventional Commits: `type(scope): summary`.
 - End each commit message with `Co-Authored-By: Claude <model> <noreply@anthropic.com>`, naming the model you run as, and each PR description you write with `🤖 Generated with [Claude Code](https://claude.com/claude-code)`. A personal `CLAUDE.local.md` may drop them.
 - Commit or push only when asked. Never force-push a shared branch, rewrite pushed history, skip hooks (`--no-verify`) or change git config.

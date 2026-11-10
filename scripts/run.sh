@@ -281,8 +281,12 @@ build_package() {
     local version=$2
     validate_build_type "$build_type"
 
+    # The zip's top folder becomes the installed plugin folder: yayloyalty-pro/ for Pro, yayloyalty/ for Lite.
+    # The main file is yayloyalty.php in both. validate-build.php checks the folder.
+    local folder_name="${PLUGIN_SLUG}-pro"
     local zip_name="${PLUGIN_SLUG}-pro-${version}.zip"
     if [ "$build_type" = "lite" ]; then
+        folder_name="$PLUGIN_SLUG"
         zip_name="${PLUGIN_SLUG}-lite-${version}.zip"
     fi
 
@@ -298,8 +302,7 @@ build_package() {
 
     cmd_build "$build_type"
 
-    # Both build types use the slug as the folder name, so upgrading Lite to Pro replaces the directory in place.
-    local temp_dir="$RELEASE_DIR/$PLUGIN_SLUG"
+    local temp_dir="$RELEASE_DIR/$folder_name"
     rm -rf "$temp_dir"
     mkdir -p "$temp_dir"
 
@@ -333,6 +336,12 @@ build_package() {
     if [ "$build_type" = "lite" ]; then
         print_step "Stripping Pro code..."
         rm -rf "$temp_dir/includes/Pro"
+
+        # The header ships in both builds, so Lite would otherwise announce itself as Pro in the
+        # plugins list and on WordPress.org. The licence name is handled in code instead, by the
+        # yayloyalty_plugin_name filter Pro attaches. Staged copy only; validate-build.php checks both.
+        print_step "Dropping the Pro suffix from the plugin header..."
+        sed_inplace 's/^\( \* Plugin Name: *YayLoyalty\) Pro /\1 /' "$temp_dir/$(basename "$MAIN_FILE")"
 
         # The patch drops the shell's licensing and Recommended Plugins wiring, and registers this copy
         # at a low election version so a full shell from another YayCommerce plugin runs the shared menu.
@@ -382,7 +391,7 @@ build_package() {
     print_step "Creating ZIP archive..."
     cd "$RELEASE_DIR"
     rm -f "$zip_name"
-    zip -r -q -9 "$zip_name" "$PLUGIN_SLUG"
+    zip -r -q -9 "$zip_name" "$folder_name"
     rm -rf "$temp_dir"
 
     # A failed validation ends the release: a strip that misses a file fails silently, so a warning would be ignored.

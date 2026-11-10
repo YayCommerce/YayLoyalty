@@ -3,7 +3,7 @@ name: PHP
 # Runs only when product PHP changes. Docs-only and JS-only changes skip it.
 on:
   pull_request:
-    branches: [dev/edd, main]
+    branches: [dev]
     paths:
       - 'includes/**'
       - 'yayloyalty.php'
@@ -11,7 +11,7 @@ on:
       - 'index.php'
       - '.github/workflows/php.yml'
   push:
-    branches: [dev/edd, main]
+    branches: [dev]
     paths:
       - 'includes/**'
       - 'yayloyalty.php'

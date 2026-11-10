@@ -17,7 +17,6 @@ class PointsExpiringSoonShortcodes extends LoyaltyEmailShortcodes {
 
     protected const VALUE_KEYS = [
         'expiring_message' => 'expiring_text',
-        'points_url'       => 'cta_url',
     ];
 
     protected const HTML_KEYS = [ 'expiring_message', 'points_value', 'points_value_text' ];
@@ -36,7 +35,6 @@ class PointsExpiringSoonShortcodes extends LoyaltyEmailShortcodes {
             'expiry_date'       => __( 'Expiry Date', 'yayloyalty' ),
             'points_value'      => __( 'Points Value', 'yayloyalty' ),
             'points_value_text' => __( 'Points Value Message', 'yayloyalty' ),
-            'points_url'        => __( 'Points Page URL', 'yayloyalty' ),
         ];
     }
 }

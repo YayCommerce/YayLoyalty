@@ -13,9 +13,11 @@ final class ProYayMail {
     /** @param \YayMail\Emails\YayMailEmails $yaymail_emails */
     public static function register_emails( $yaymail_emails ): void {
         $yaymail_emails->register( RewardClaimedYayMailEmail::get_instance() );
+        $yaymail_emails->register( BirthdayPointsYayMailEmail::get_instance() );
     }
 
     public static function register_shortcodes(): void {
         RewardClaimedShortcodes::get_instance();
+        BirthdayPointsShortcodes::get_instance();
     }
 }

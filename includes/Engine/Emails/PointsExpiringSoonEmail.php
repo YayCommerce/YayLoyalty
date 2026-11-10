@@ -96,18 +96,17 @@ class PointsExpiringSoonEmail extends LoyaltyEmail {
             'keep_text'         => ExpiryPolicy::current()->is_batch() ? '' : esc_html__( 'Earn or redeem before then to keep them.', 'yayloyalty' ),
             'points_value'      => $points_value,
             'points_value_text' => self::balance_value_text( $points_value ),
-            /**
-             * Filters where the email's "Use your points" link goes. '' hides the button.
-             *
-             * @param string $url     '' by default: the plugin has no customer points page yet.
-             * @param int    $user_id The customer being reminded.
-             */
-            'cta_url'           => (string) apply_filters( 'yayloyalty_points_expiring_soon_cta_url', '', $user_id ),
-        ];
+        ] + $this->cta();
 
         foreach ( [ 'points', 'points_label', 'expiry_date' ] as $key ) {
             $this->placeholders[ '{' . $key . '}' ] = $this->values[ $key ];
         }
+    }
+
+    /** To the shop: spending them on an order is what saves the points. */
+    protected function cta(): array {
+        /* translators: %s: the store's plural points label, e.g. "Points". */
+        return self::cta_values( __( 'Use your %s', 'yayloyalty' ), wc_get_page_permalink( 'shop' ) );
     }
 
     /** @return array<string, mixed> [] until a reminder is prepared, so the templates fall back. */

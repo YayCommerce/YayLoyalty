@@ -15,6 +15,8 @@
  * @var string    $points       The points that expired, formatted, e.g. "500". Absent when there is no expiry to show.
  * @var string    $points_label "Point" or "Points", from the merchant's labels. Absent when there is no expiry to show.
  * @var \YayLoyalty\Models\LedgerEntry $entry The expire row, for overrides. Absent when there is no expiry to show.
+ * @var string    $cta_text  The button's text, e.g. "View your Points". Absent when there is no expiry to show.
+ * @var string    $cta_url   Where the button links. Absent when there is no expiry to show.
  */
 
 use Automattic\WooCommerce\Utilities\FeaturesUtil;
@@ -43,6 +45,9 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
     echo esc_html( sprintf( __( 'Some of your loyalty %s have expired and are no longer in your balance.', 'yayloyalty' ), SettingsHelper::points_label_plural() ) );
     ?>
 </p>
+<?php endif; ?>
+<?php if ( ! empty( $cta_url ) ) : ?>
+<p><a class="button" href="<?php echo esc_url( $cta_url ); ?>" style="display:inline-block;padding:12px 24px;text-decoration:none;font-weight:bold;"><?php echo esc_html( $cta_text ); ?></a></p>
 <?php endif; ?>
 <?php echo $is_email_improvements_enabled ? '</div>' : ''; ?>
 

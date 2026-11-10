@@ -14,6 +14,8 @@
  * @var string $points       The points that expired, formatted, e.g. "500". Absent when there is no expiry to show.
  * @var string $points_label "Point" or "Points", from the merchant's labels. Absent when there is no expiry to show.
  * @var \YayLoyalty\Models\LedgerEntry $entry The expire row, for overrides. Absent when there is no expiry to show.
+ * @var string $cta_text  The button's text, e.g. "View your Points". Absent when there is no expiry to show.
+ * @var string $cta_url   Where the button links. Absent when there is no expiry to show.
  */
 
 use YayLoyalty\Helpers\SettingsHelper;
@@ -37,6 +39,10 @@ if ( ! empty( $entry ) ) {
 } else {
     /* translators: %s: the store's plural points label, e.g. "Points". */
     echo esc_html( sprintf( __( 'Some of your loyalty %s have expired and are no longer in your balance.', 'yayloyalty' ), SettingsHelper::points_label_plural() ) ) . "\n\n";
+}
+
+if ( ! empty( $cta_url ) ) {
+    echo esc_html( $cta_text ) . ': ' . esc_url_raw( $cta_url ) . "\n\n";
 }
 
 if ( $additional_content ) {

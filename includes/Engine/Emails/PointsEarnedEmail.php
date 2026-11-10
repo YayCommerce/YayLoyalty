@@ -61,13 +61,6 @@ class PointsEarnedEmail extends LedgerEntryEmail {
         return $this->shared_values( $entry ) + [
             'earned_text'  => $this->earned_text( $entry, $order_number ),
             'order_number' => $order_number,
-            /**
-             * Filters where the email's "View your points" link goes. '' hides the button.
-             *
-             * @param string      $url   '' by default: the plugin has no customer points page yet.
-             * @param LedgerEntry $entry The awarded row.
-             */
-            'cta_url'      => (string) apply_filters( 'yayloyalty_points_earned_cta_url', '', $entry ),
         ];
     }
 

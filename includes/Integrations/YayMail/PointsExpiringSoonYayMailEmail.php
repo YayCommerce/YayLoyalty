@@ -22,8 +22,8 @@ class PointsExpiringSoonYayMailEmail extends LoyaltyYayMailEmail {
 
     /**
      * The `yayloyalty-points-expiring-soon.php` templates' sentences, from PointsExpiringSoonEmail's template
-     * values. It leaves out the inactivity-only "Earn or redeem" sentence and the "Use your points" button:
-     * a static design cannot hide them when they do not apply.
+     * values. It leaves out the inactivity-only "Earn or redeem" sentence: a static design cannot hide it when
+     * it does not apply.
      */
     protected function default_body(): string {
         $greeting = LoyaltyEmail::greeting_text( LoyaltyEmailShortcodes::tag( 'customer_name' ) );
