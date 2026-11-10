@@ -1,0 +1,51 @@
+name: JS
+
+# Runs only when the admin SPA or the root pnpm/Node pins change. Docs-only and PHP-only changes skip it.
+on:
+  pull_request:
+    branches: [dev]
+    paths:
+      - 'apps/admin/**'
+      - 'package.json'
+      - 'pnpm-workspace.yaml'
+      - '.nvmrc'
+      - '.github/workflows/js.yml'
+  push:
+    branches: [dev]
+    paths:
+      - 'apps/admin/**'
+      - 'package.json'
+      - 'pnpm-workspace.yaml'
+      - '.nvmrc'
+      - '.github/workflows/js.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  spa:
+    name: SPA type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Version comes from packageManager in the root package.json.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # No lockfile is tracked (docs/known-issues.md), so no --frozen-lockfile or cache.
+      # --ignore-scripts skips the root postinstall, which runs composer install and needs the
+      # private admin-shell repo.
+      - name: Install dependencies
+        run: pnpm install --filter @yayloyalty/admin-page --ignore-scripts
+
+      - name: tsc --noEmit
+        run: pnpm --filter @yayloyalty/admin-page exec tsc --noEmit

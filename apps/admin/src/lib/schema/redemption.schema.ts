@@ -8,7 +8,7 @@ import { paginatedSchema } from '@/lib/api/paginated';
  */
 
 /** Matches `RedemptionsRestController`'s `status` enum, `Redemption::STORED_STATUSES`. */
-export const REDEMPTION_STATUSES = ['applied', 'refunded', 'cancelled'] as const;
+export const REDEMPTION_STATUSES = ['applied', 'refunded', 'cancelled', 'removed'] as const;
 export const redemptionStatusSchema = z.enum(REDEMPTION_STATUSES);
 export type RedemptionStatus = z.infer<typeof redemptionStatusSchema>;
 

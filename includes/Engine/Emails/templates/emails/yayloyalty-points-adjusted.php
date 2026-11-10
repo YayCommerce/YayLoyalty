@@ -21,6 +21,8 @@
  * @var string    $balance      The balance after this adjustment, formatted, e.g. "120". Absent when there is no adjustment to show.
  * @var string    $customer_note The admin's description for the customer, plain text; '' when the adjustment has none. Absent when there is no adjustment to show.
  * @var \YayLoyalty\Models\LedgerEntry $entry The adjustment row, for overrides. Absent when there is no adjustment to show.
+ * @var string    $cta_text  The button's text, e.g. "View your Points". Absent when there is no adjustment to show.
+ * @var string    $cta_url   Where the button links. Absent when there is no adjustment to show.
  */
 
 use Automattic\WooCommerce\Utilities\FeaturesUtil;
@@ -60,6 +62,9 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
     echo esc_html( sprintf( __( 'Your %s balance was updated.', 'yayloyalty' ), SettingsHelper::points_label_plural() ) );
     ?>
 </p>
+<?php endif; ?>
+<?php if ( ! empty( $cta_url ) ) : ?>
+<p><a class="button" href="<?php echo esc_url( $cta_url ); ?>" style="display:inline-block;padding:12px 24px;text-decoration:none;font-weight:bold;"><?php echo esc_html( $cta_text ); ?></a></p>
 <?php endif; ?>
 <?php echo $is_email_improvements_enabled ? '</div>' : ''; ?>
 

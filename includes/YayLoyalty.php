@@ -17,6 +17,8 @@ use YayLoyalty\Engine\Redemption\SessionIntent;
 use YayLoyalty\Engine\Storefront\RedeemCard;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Repositories\RedemptionRepository;
+use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Utils\SingletonTrait;
 
 defined( 'ABSPATH' ) || exit;
@@ -62,8 +64,8 @@ class YayLoyalty {
             \YayLoyalty\Engine\Storefront\Launcher::register();
         } else {
             \YayLoyalty\Engine\Admin\ReviewPointsNote::register();
-            \YayLoyalty\Engine\Admin\OrderPointsMetabox::register();
-            \YayLoyalty\Engine\Admin\OrderPointsColumn::register();
+            ( new \YayLoyalty\Engine\Admin\OrderCouponRemoval( $redemption->reversal(), new RedemptionRepository(), new RewardRepository() ) )->register();
+            ( new \YayLoyalty\Engine\Admin\OrderMissingPoints( new LedgerRepository() ) )->register();
         }
     }
 
@@ -99,7 +101,7 @@ class YayLoyalty {
      * Not behind is_admin(): a Store API request is not an admin request, and the coupon provider and the card answer nothing without a cart.
      */
     private function register_redemption( RedemptionService $service, SessionIntent $intent ): void {
-        ( new CouponProvider( $service, $intent ) )->register();
+        ( new CouponProvider( $service, $intent, new RedemptionRepository() ) )->register();
 
         $card = new RedeemCard( $service, $intent, new CustomerRepository() );
         $card->register();

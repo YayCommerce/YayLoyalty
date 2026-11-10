@@ -101,6 +101,7 @@ final class YayLoyaltyPro {
         add_filter( 'yayloyalty_rest_controllers', [ self::class, 'add_controllers' ] );
         add_filter( 'yayloyalty_rest_item_schema', [ self::class, 'describe_pro_config' ], 10, 2 );
         add_filter( 'yayloyalty_localize_admin_data', [ self::class, 'add_segments' ] );
+        add_filter( 'yayloyalty_plugin_name', [ self::class, 'plugin_name' ] );
         add_filter( 'woocommerce_email_classes', [ ProEmails::class, 'add_classes' ] );
         add_filter( 'woocommerce_email_groups', [ ProEmails::class, 'add_groups' ] );
         add_filter( 'woocommerce_email_actions', [ ProEmails::class, 'add_email_actions' ] );
@@ -125,6 +126,17 @@ final class YayLoyaltyPro {
 
         /** Fires once Pro has attached its hooks. Pro-internal; absent from Lite. */
         do_action( 'yayloyalty_pro_booted' );
+    }
+
+    /**
+     * Suffixes the product name for the licence screens. Appends to what Lite passes,
+     * so the base name stays in one place.
+     *
+     * @param string $name
+     * @return string
+     */
+    public static function plugin_name( string $name ): string {
+        return $name . ' Pro';
     }
 
     /** Whether boot() has run; YayLoyalty::is_pro() only asks whether the code is present. */

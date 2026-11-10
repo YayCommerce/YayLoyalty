@@ -10,7 +10,6 @@ use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\OrderStatus;
 use YayLoyalty\Repositories\LedgerRepository;
-use YayLoyalty\Services\LedgerService;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
@@ -197,8 +196,6 @@ final class OrderListener {
                 if ( EarningService::REASON_LIMIT_REACHED === $outcome->get_reason() ) {
                     /* translators: %d: points */
                     $order->add_order_note( sprintf( __( 'No points earned: an earning limit held back all %d points.', 'yayloyalty' ), $outcome->held_back() ) );
-                } elseif ( LedgerService::REASON_RECOVERED === $outcome->get_reason() ) {
-                    $order->add_order_note( __( 'No points earned: points were recovered manually.', 'yayloyalty' ) );
                 } elseif ( ProgramGate::REASON_NO_CUSTOMER !== $outcome->get_reason() ) {
                     /* translators: %s: reason code */
                     $order->add_order_note( sprintf( __( 'No points earned: %s.', 'yayloyalty' ), $outcome->get_reason() ) );

@@ -42,11 +42,11 @@ A loyalty plugin for WooCommerce: points, rewards, referrals and VIP tiers. One 
    pnpm install
    ```
 
-   On a fresh clone, `pnpm install` fails until the dev script has created `vendor-prefixed/` ([known issue](docs/known-issues.md#a-fresh-clones-first-install-fails-on-vendor-prefixedsrc)). The dev script ends by starting Vite on port 3030, which keeps running. Run `git status` once it has started: the dev script can rewrite `composer.json` and `scoper.inc.php`.
+   `vendor-prefixed/` (the scoped admin-shell) is committed, so the dev script only runs `composer install` when `vendor/` is missing, and never rebuilds `vendor-prefixed/`. The dev script ends by starting Vite on port 3030, which keeps running. To move to a newer admin-shell, run `./scripts/run.sh shell-update` and commit what it changes.
 
 4. Activate the plugin in wp-admin. Activation installs the tables. `YAYLOYALTY_IS_DEVELOPMENT` defaults to `true`, so wp-admin loads the SPA from the dev server: keep `./scripts/run.sh dev` running while you work in the admin. To load a built bundle instead, define the constant as `false` in `wp-config.php`, then run `./scripts/run.sh build`.
 
-5. Run the lint and test commands in [CLAUDE.md § Commands](CLAUDE.md#commands). Several fail today on `dev/edd`; [docs/known-issues.md](docs/known-issues.md) lists each failure with the output to expect. Your result should match it exactly.
+5. Run the lint and test commands in [CLAUDE.md § Commands](CLAUDE.md#commands). Several fail today on `dev`; [docs/known-issues.md](docs/known-issues.md) lists each failure with the output to expect. Your result should match it exactly.
 
 6. Start Claude Code in the repo with `claude`, and accept the trust dialog. Until you do, Claude ignores the command allowlist in `.claude/settings.json`. Then:
    - `CLAUDE.md` loads at the start of every session;
@@ -56,10 +56,10 @@ A loyalty plugin for WooCommerce: points, rewards, referrals and VIP tiers. One 
 
 ## Daily workflow
 
-The git rules are in [CLAUDE.md § Git](CLAUDE.md#git): branch names, Conventional Commits, PR-only into `dev/edd`, and what an agent may never do. The parts only people do:
+The git rules are in [CLAUDE.md § Git](CLAUDE.md#git): branch names, Conventional Commits, PR-only into `dev`, and what an agent may never do. The parts only people do:
 
-- **Review.** Every PR into `dev/edd` needs one approval from a teammate other than its author, then it is squash-merged.
-- **Promotion.** Trace promotes `dev/edd` to `main` before each release, by a PR with a merge commit.
+- **Review.** Every PR into `dev` needs one approval from a teammate other than its author, then it is squash-merged.
+- **Promotion.** `dev` is the default branch and the only long-lived one, so a release is cut from `dev` itself. There is no promotion step.
 - **Releases.** There is no release yet, and the cadence is set at the first one. The release commands are in [CLAUDE.md § Commands](CLAUDE.md#commands). What the release builds and checks is in [docs/architecture.md § Build and release](docs/architecture.md#build-and-release), and the rules for changing it are in [.claude/rules/release.md](.claude/rules/release.md).
 
 ## Agent tooling

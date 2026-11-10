@@ -1,6 +1,5 @@
 # Dependencies / generated
 /vendor/
-vendor-prefixed/
 node_modules/
 composer.lock
 pnpm-lock.yaml

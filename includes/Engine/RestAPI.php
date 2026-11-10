@@ -17,8 +17,6 @@ use YayLoyalty\Controllers\RewardRestController;
 use YayLoyalty\Controllers\SettingsRestController;
 use YayLoyalty\Controllers\SetupRestController;
 use YayLoyalty\Controllers\StorefrontActivityRestController;
-use YayLoyalty\Engine\Earning\OrderPointsRecovery;
-use YayLoyalty\Engine\Earning\PendingPoints;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerMetaRepository;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -70,8 +68,6 @@ class RestAPI {
         // Read-only everywhere below. Only Engine\Redemption\CommitWriter inserts.
         $redemptions = new RedemptionRepository();
 
-        $pending = new PendingPoints( $customers );
-
         $controllers = [
             new SettingsRestController(),
             new DesignRestController(),
@@ -80,11 +76,11 @@ class RestAPI {
             new EmailsRestController(),
             // $ledger and $redemptions are read-only here.
             new CustomerRestController( $customers, $ledger_service, $ledger, $customer_meta, $redemptions ),
-            // $ledger is read-only here; the recovery writes through $ledger_service.
-            new OrderPointsRestController( new OrderPointsRecovery( $ledger_service, $pending ), $ledger, $pending ),
             // $customers is read-only here too.
             new CustomerAdjustPreviewRestController( $customers, $dashboard ),
             new LedgerRestController( $ledger ),
+            // Grants an order's missed points through EarningService's own LedgerService, built per request. $ledger is read-only here.
+            new OrderPointsRestController( $ledger ),
             new ActivityRestController( $customer_meta ),
             // Shopper route (storefront launcher): session identity, no capability. $ledger is read-only here.
             new StorefrontActivityRestController( $ledger ),

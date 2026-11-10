@@ -126,11 +126,13 @@ if ( 0 !== $unzip_code ) {
     fail_out( "unzip failed with code $unzip_code" );
 }
 
-$root = $work . '/' . PLUGIN_SLUG;
+// Pro unpacks to yayloyalty-pro/, Lite to yayloyalty/; both keep yayloyalty.php as the main file.
+$folder_name = $is_lite ? PLUGIN_SLUG : PLUGIN_SLUG . '-pro';
+$root        = $work . '/' . $folder_name;
 record(
-    'Zip contains ' . PLUGIN_SLUG . '/ at its root',
+    'Zip contains ' . $folder_name . '/ at its root',
     is_dir( $root ),
-    is_dir( $root ) ? '' : 'both builds must unpack to the same plugin folder so Lite upgrades to Pro in place'
+    is_dir( $root ) ? '' : 'the ' . $build_type . ' zip must unpack to ' . $folder_name . '/'
 );
 if ( ! is_dir( $root ) ) {
     render_and_exit( $work, $require_boot );
@@ -381,7 +383,9 @@ foreach ( $php_files as $rel ) {
     if ( 0 !== strpos( $rel, 'vendor-prefixed/' ) ) {
         continue;
     }
-    if ( preg_match( "/'yaycommerce'\s*\)/", (string) file_get_contents( $root . '/' . $rel ) ) ) {
+    // remove_submenu_page( 'yaycommerce', 'yaycommerce' ) ends with a menu slug, not a text domain.
+    $shell_source = preg_replace( '/^.*remove_submenu_page.*$/m', '', (string) file_get_contents( $root . '/' . $rel ) );
+    if ( preg_match( "/'yaycommerce'\s*\)/", (string) $shell_source ) ) {
         $foreign_domains[] = $rel;
     }
 }
@@ -415,6 +419,19 @@ record(
     'No dev-only artifacts packaged',
     [] === $dev_leftovers,
     implode( ', ', array_slice( $dev_leftovers, 0, 5 ) )
+);
+
+// The header ships in both builds; build_package drops the Pro suffix for Lite. A Lite zip that
+// still says Pro reaches WordPress.org review and the plugins list naming the paid edition.
+$header_src  = (string) @file_get_contents( $root . '/' . PLUGIN_SLUG . '.php' );
+$header_name = preg_match( '/^ \* Plugin Name: *(.+)$/m', $header_src, $header_match )
+    ? trim( $header_match[1] )
+    : '';
+$header_pro  = 1 === preg_match( '/\bPro\b/', $header_name );
+record(
+    'Plugin header names the ' . $build_type . ' edition',
+    '' !== $header_name && ( $is_lite ? ! $header_pro : $header_pro ),
+    $header_name
 );
 
 // The zip has no RegisterDev.php, so a `true` default leaves the admin page blank.

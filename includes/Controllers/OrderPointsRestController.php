@@ -3,32 +3,24 @@ namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\Schemas\OrderPointsRouteArgs;
-use YayLoyalty\Engine\Earning\OrderPointsRecovery;
-use YayLoyalty\Engine\Earning\OrderPointsState;
+use YayLoyalty\Engine\Admin\OrderMissingPoints;
+use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\Outcome;
-use YayLoyalty\Engine\Earning\PendingPoints;
+use YayLoyalty\Engine\Earning\Reversal;
+use YayLoyalty\Engine\Emails\Emails;
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\LedgerRepository;
-use YayLoyalty\Services\LedgerService;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * GET and POST /orders/{id}/points: where an order's points stand, and giving its missing points
- * back once. Both read the order after dropping its cached copy, so stale meta left by a rolled-back
- * award cannot hide the missing points.
- */
+/** POST /orders/{id}/grant-points: grants the points a completed order missed, through EarningService::grant_for_order(). */
 final class OrderPointsRestController extends AbstractRestController {
 
-    private OrderPointsRecovery $recovery;
+    /** @var LedgerRepository Read-only here. */
+    private $ledger;
 
-    private LedgerRepository $ledger;
-
-    private PendingPoints $pending;
-
-    public function __construct( OrderPointsRecovery $recovery, LedgerRepository $ledger, PendingPoints $pending ) {
-        $this->recovery = $recovery;
-        $this->ledger   = $ledger;
-        $this->pending  = $pending;
+    public function __construct( LedgerRepository $ledger ) {
+        $this->ledger = $ledger;
     }
 
     public function get_rest_base(): string {
@@ -36,128 +28,70 @@ final class OrderPointsRestController extends AbstractRestController {
     }
 
     public function register_routes(): void {
-        $id_arg = [
-            'description'       => __( 'WooCommerce order id.', 'yayloyalty' ),
-            'type'              => 'integer',
-            'required'          => true,
-            'sanitize_callback' => 'absint',
-        ];
-
         register_rest_route(
             self::REST_NAMESPACE,
-            '/orders/(?P<id>[\d]+)/points',
+            '/orders/(?P<id>[\d]+)/grant-points',
             [
-                [
-                    'methods'             => \WP_REST_Server::READABLE,
-                    'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_state' ], $request ),
-                    'permission_callback' => $this->requires( Capabilities::MANAGE_POINTS ),
-                    'args'                => [ 'id' => $id_arg ],
-                ],
-                [
-                    'methods'             => \WP_REST_Server::CREATABLE,
-                    'callback'            => fn( $request ) => $this->exec_write( [ $this, 'recover' ], $request ),
-                    'permission_callback' => $this->requires( Capabilities::MANAGE_POINTS ),
-                    'args'                => [ 'id' => $id_arg ] + OrderPointsRouteArgs::recover(),
-                ],
+                'methods'             => \WP_REST_Server::CREATABLE,
+                'callback'            => fn( $request ) => $this->exec_write( [ $this, 'grant_points' ], $request ),
+                'permission_callback' => $this->requires( Capabilities::MANAGE_POINTS ),
+                'args'                => OrderPointsRouteArgs::grant(),
             ]
         );
     }
 
-    /** @return array<string, mixed>|\WP_Error */
-    public function get_state( \WP_REST_Request $request ) {
-        $order = $this->fresh_order( (int) $request['id'] );
+    /** Built here, not in RestAPI::controllers(), so other REST requests never build the earning root. */
+    public function grant_points( \WP_REST_Request $request ) {
+        $order = wc_get_order( (int) $request['id'] );
 
-        if ( null === $order ) {
-            return $this->order_not_found();
+        if ( ! $order instanceof \WC_Order ) {
+            return $this->error_not_found( __( 'Order not found.', 'yayloyalty' ) );
         }
 
-        return OrderPointsState::resolve( $order, $this->ledger )->to_array();
-    }
-
-    /** @return array<string, mixed>|\WP_Error */
-    public function recover( \WP_REST_Request $request ) {
-        $order = $this->fresh_order( (int) $request['id'] );
-
-        if ( null === $order ) {
-            return $this->order_not_found();
+        if ( ! EarningService::is_missing_points( $order, $this->ledger ) ) {
+            return $this->error_conflict( __( 'This order already has points, or is not a completed order of a registered customer.', 'yayloyalty' ) );
         }
 
-        $state = OrderPointsState::resolve( $order, $this->ledger );
-        $note  = trim( (string) $request['note'] );
-
-        switch ( $state->get_status() ) {
-            case OrderPointsState::NOT_PAID:
-            case OrderPointsState::GUEST:
-                return $this->conflict( 'yayloyalty_not_eligible', __( 'Points can be added only to a paid order with a customer.', 'yayloyalty' ) );
-            case OrderPointsState::RECOVERED:
-                return $this->already_recovered();
-            case OrderPointsState::EARNED:
-                return $this->order_has_points();
-            case OrderPointsState::MISSING_KNOWN:
-                // Confirm mode: the figure as is, never the request's points.
-                $points = $state->get_figure();
-                $note   = '' === $note ? self::default_note() : $note;
-                break;
-            default:
-                $points = null === $request['points'] ? 0 : (int) $request['points'];
-
-                if ( $points < 1 || $points > LedgerService::MAX_RECOVERY_POINTS ) {
-                    return new \WP_Error(
-                        'yayloyalty_invalid_points',
-                        /* translators: %s: the most points allowed, formatted */
-                        sprintf( __( 'Enter the points to add, a whole number from 1 to %s.', 'yayloyalty' ), number_format_i18n( LedgerService::MAX_RECOVERY_POINTS ) ),
-                        [ 'status' => 400 ]
-                    );
-                }
-
-                if ( '' === $note ) {
-                    return new \WP_Error( 'yayloyalty_invalid_note', __( 'Enter a reason for adding these points.', 'yayloyalty' ), [ 'status' => 400 ] );
-                }
-        }
+        $note = trim( (string) $request['note'] );
 
         // actor_id comes from the session, never the request body.
-        $outcome = $this->recovery->recover( $order, $points, $note, get_current_user_id() );
+        $outcome = EarningService::build()->grant_for_order(
+            $order,
+            (int) $request['points'],
+            get_current_user_id(),
+            '' === $note ? __( 'Missing order points', 'yayloyalty' ) : $note
+        );
 
-        if ( Outcome::DUPLICATE === $outcome->get_status() ) {
-            return $this->already_recovered();
+        if ( Outcome::SKIPPED === $outcome->get_status() ) {
+            return $this->error_conflict( OrderMissingPoints::reason_label( $outcome->get_reason() ) );
         }
 
-        if ( Outcome::SKIPPED === $outcome->get_status() && LedgerService::REASON_ORDER_HAS_POINTS === $outcome->get_reason() ) {
-            return $this->order_has_points();
+        if ( Outcome::AWARDED !== $outcome->get_status() ) {
+            return $this->error_conflict( __( 'Points for this order were already granted.', 'yayloyalty' ) );
         }
 
-        $fresh = $this->fresh_order( (int) $order->get_id() );
+        $entry = $outcome->get_entry();
 
-        return OrderPointsState::resolve( null === $fresh ? $order : $fresh, $this->ledger )->to_array();
-    }
+        // Refunds made before the grant wrote nothing, as there was no earn row: claw back their share now, as a refund does.
+        // Cumulative, so the latest refund settles every refund so far.
+        $latest_refund = Reversal::refunds( (int) $order->get_id(), 1 )[0] ?? null;
+        $clawed_back   = 0;
 
-    /** The reason a Confirm-mode recovery records when the admin gives none; the box shows it as the placeholder. */
-    public static function default_note(): string {
-        return __( 'Recovered missing order points', 'yayloyalty' );
-    }
+        if ( $latest_refund instanceof \WC_Order_Refund ) {
+            foreach ( Reversal::build()->refund( $order, (int) $latest_refund->get_id() ) as $reversal ) {
+                $clawed_back += $reversal->get_entry() && Outcome::AWARDED === $reversal->get_status() ? -$reversal->get_entry()->get_points() : 0;
+            }
+        }
 
-    /** The order as the database holds it, past any cached copy, or null. */
-    private function fresh_order( int $order_id ): ?\WC_Order {
-        $this->pending->forget_cached( $order_id );
+        if ( (bool) $request['notify'] ) {
+            Emails::relay_grant( $entry );
+        }
 
-        $order = wc_get_order( $order_id );
-
-        return $order instanceof \WC_Order ? $order : null;
-    }
-
-    private function order_not_found(): \WP_Error {
-        return new \WP_Error( 'yayloyalty_order_not_found', __( 'No such order.', 'yayloyalty' ), [ 'status' => 404 ] );
-    }
-
-    private function already_recovered(): \WP_Error {
-        return $this->conflict( 'yayloyalty_already_recovered', __( 'This order\'s points were already added manually. Use YayLoyalty › Customers › Adjust points instead.', 'yayloyalty' ) );
-    }
-
-    private function order_has_points(): \WP_Error {
-        return $this->conflict( 'yayloyalty_order_has_points', __( 'This order already earned its points.', 'yayloyalty' ) );
-    }
-
-    private function conflict( string $code, string $message ): \WP_Error {
-        return new \WP_Error( $code, $message, [ 'status' => 409 ] );
+        return [
+            'points'      => $entry->get_points(),
+            'points_text' => SettingsHelper::points_text( $entry->get_points() ),
+            'clawed_back' => $clawed_back,
+            'entry_id'    => $entry->get_id(),
+        ];
     }
 }

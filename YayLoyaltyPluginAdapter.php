@@ -57,8 +57,7 @@ class YayLoyaltyPluginAdapter implements \YayLoyaltyScoped\YayCommerce\AdminShel
     }
 
     public function get_pro_url(): string {
-        return 'https://yaycommerce.com/';
-    }
+		return ''; }
 
     /**
      * Shows AdminShell's "WooCommerce required" screen in place of the settings page.
@@ -67,4 +66,39 @@ class YayLoyaltyPluginAdapter implements \YayLoyaltyScoped\YayCommerce\AdminShel
     public function needs_woocommerce_screen(): bool {
         return ! class_exists( 'WooCommerce' );
     }
+
+    // --- License methods ---
+	public function get_plugin_slug(): string {
+		return 'yayloyalty'; }
+    public function get_plugin_name(): string {
+        /**
+         * Filters the product name the licence screens show. This adapter ships in both
+         * builds, so the edition suffix cannot live here: the paid build appends its own
+         * when it boots.
+         *
+         * @param string $name Base product name.
+         */
+        return (string) apply_filters( 'yayloyalty_plugin_name', 'YayLoyalty' );
+    }
+	public function get_plugin_version(): string {
+		return defined( 'YAYLOYALTY_VERSION' ) ? YAYLOYALTY_VERSION : '0.0.0'; }
+	public function get_plugin_file(): string {
+		return YAYLOYALTY_PLUGIN_DIR . 'yayloyalty.php'; }
+	public function get_item_id(): int {
+		return 0; }
+	public function get_store_url(): string {
+		return 'https://yaycommerce.com/'; }
+	public function get_store_link(): string {
+		return 'https://yaycommerce.com/yayloyalty/'; }
+
+	/**
+	 * Whether Pro features may run: a license key was activated on this site.
+	 * An expired license only stops updates and support (admin-shell 2.9+).
+	 */
+	public static function is_licensed(): bool {
+		if ( class_exists( '\YayLoyaltyScoped\YayCommerce\AdminShell\License\LicenseState' ) ) {
+			return \YayLoyaltyScoped\YayCommerce\AdminShell\License\LicenseState::allows_features( 'yayloyalty' );
+		}
+		return ! empty( get_option( 'yayloyalty_license_key', '' ) ) && ! empty( get_option( 'yayloyalty_license_info', [] ) );
+	}
 }

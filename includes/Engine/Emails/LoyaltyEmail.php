@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Engine\Emails;
 
+use YayLoyalty\Engine\Storefront\AccountMyPoints;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Utils\PointsMath;
@@ -223,6 +224,30 @@ abstract class LoyaltyEmail extends \WC_Email {
     protected static function balance_value_text( string $balance_value ): string {
         /* translators: %s: money amount, e.g. "$1.50". */
         return '' === $balance_value ? '' : sprintf( esc_html__( 'That\'s worth %s in rewards.', 'yayloyalty' ), '<strong>' . $balance_value . '</strong>' );
+    }
+
+    /**
+     * The button under the email's message: its text and where it links. By default, "View your Points" to the
+     * My Account My Points tab. An email whose purpose points elsewhere overrides it.
+     *
+     * @return array{cta_text: string, cta_url: string}
+     */
+    protected function cta(): array {
+        /* translators: %s: the store's plural points label, e.g. "Points". */
+        return self::cta_values( __( 'View your %s', 'yayloyalty' ), AccountMyPoints::url() );
+    }
+
+    /**
+     * A button whose text names the store's points label.
+     *
+     * @param string $format Translated text with one %s for the plural points label.
+     * @return array{cta_text: string, cta_url: string}
+     */
+    protected static function cta_values( string $format, string $url ): array {
+        return [
+            'cta_text' => sprintf( $format, SettingsHelper::points_label_plural() ),
+            'cta_url'  => $url,
+        ];
     }
 
     /** Fills this email with sample data for WooCommerce's settings preview. A no-op until the email has data of its own. */

@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Engine\Emails;
 
+use YayLoyalty\Engine\Storefront\AccountMyPoints;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Helpers\SettingsHelper;
@@ -56,6 +57,12 @@ class PointsExpiredEmail extends LedgerEntryEmail {
     /** Previews have no real expiry, so they show a made-up one, greeting whoever is looking. */
     public function prepare_preview(): void {
         $this->prepare( new LedgerEntry( null, get_current_user_id(), -120, 0, LedgerType::EXPIRE, LedgerSource::EXPIRY ) );
+    }
+
+    /** The history shows the change as its own row. */
+    protected function cta(): array {
+        /* translators: %s: the store's plural points label, e.g. "Points". */
+        return self::cta_values( __( 'View %s history', 'yayloyalty' ), AccountMyPoints::history_url() );
     }
 
     /** @return array<string, mixed> */

@@ -17,7 +17,8 @@
  * @var string $points            The expiring points, formatted, e.g. "120".
  * @var string $points_label      "Point" or "Points", from the merchant's labels.
  * @var string $expiry_date       The (first) expiry date in the site's date format.
- * @var string $cta_url           Where "Use your points" links; '' (the default) hides it.
+ * @var string $cta_text  The button's text, e.g. "View your Points".
+ * @var string $cta_url   Where the button links.
  */
 
 use YayLoyalty\Helpers\SettingsHelper;
@@ -41,14 +42,13 @@ if ( ! empty( $expiring_text ) ) {
     if ( ! empty( $points_value_text ) ) {
         echo esc_html( Text::plain( $points_value_text ) ) . "\n\n";
     }
-
-    if ( ! empty( $cta_url ) ) {
-        /* translators: %s: the store's plural points label, e.g. "Points". */
-        echo esc_html( sprintf( __( 'Use your %s:', 'yayloyalty' ), SettingsHelper::points_label_plural() ) ) . ' ' . esc_url_raw( $cta_url ) . "\n\n";
-    }
 } else {
     /* translators: %s: the store's plural points label, e.g. "Points". */
     echo esc_html( sprintf( __( 'Some of your loyalty %s will expire soon. Use them on your next order before they are gone.', 'yayloyalty' ), SettingsHelper::points_label_plural() ) ) . "\n\n";
+}
+
+if ( ! empty( $cta_url ) ) {
+    echo esc_html( $cta_text ) . ': ' . esc_url_raw( $cta_url ) . "\n\n";
 }
 
 if ( $additional_content ) {

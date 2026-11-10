@@ -1,6 +1,6 @@
 # Known issues
 
-**Purpose:** the checks that fail today and the gotchas that bite, each reproduced, with its cause, a workaround and the condition for deleting it. A check listed here was already failing on `dev/edd`, so judge your change by not adding to it ([CLAUDE.md](../CLAUDE.md)).
+**Purpose:** the checks that fail today and the gotchas that bite, each reproduced, with its cause, a workaround and the condition for deleting it. A check listed here was already failing on `dev`, so judge your change by not adding to it ([CLAUDE.md](../CLAUDE.md)).
 
 **Update when:** an issue is fixed (delete its entry), a new one is reproduced (add it with all four fields), or a symptom changes.
 
@@ -10,13 +10,6 @@
 - **Cause:** `package.json` pins pnpm 11 (`packageManager`), which needs Node 22 or later. An nvm shell can still default to an older Node.
 - **Workaround:** run `nvm use` in the repo root, which reads `.nvmrc`, before any pnpm command.
 - **Remove when:** every teammate's shell defaults to Node 22 or later.
-
-## A fresh clone's first install fails on `vendor-prefixed/src`
-
-- **Symptom:** on a fresh clone, `pnpm install` fails in the root `postinstall` with `Could not scan for classes inside "vendor-prefixed/src" which does not appear to be a file nor a folder`. Any other pnpm command fails the same way, because it installs first (next entry). Composer downloads the packages but never writes `vendor/autoload.php`, so the plugin can't load.
-- **Cause:** `composer.json` classmaps `vendor-prefixed/src`, a gitignored directory that only the [admin-shell sync](architecture.md#admin-shell-sync-and-scoping) creates. Composer stops on a classmap path that doesn't exist.
-- **Workaround:** on a fresh clone, run `./scripts/run.sh dev` first. It creates and fills `vendor-prefixed/`, and `pnpm install` succeeds after it.
-- **Remove when:** `composer install` succeeds on a fresh clone.
 
 ## pnpm installs on its own, and the install runs `composer install`
 
@@ -36,14 +29,14 @@
 
 - **Symptom:** phpcs reports warnings and no errors, yet `composer lint` exits 1. Every warning is `Universal.NamingConventions.NoReservedKeywordParameterNames`, for parameters named `$list` and `$default`.
 - **Cause:** phpcs exits non-zero on warnings too. The parameters are in `includes/Models/CampaignConditionSet.php`, `includes/Models/RewardConditionSet.php` and `includes/Controllers/CustomerRowFilters.php`.
-- **Workaround:** compare with `dev/edd`. Your change must add no error and no warning.
+- **Workaround:** compare with `dev`. Your change must add no error and no warning.
 - **Remove when:** those parameters are renamed.
 
 ## Admin lint fails on existing code
 
 - **Symptom:** `pnpm --filter @yayloyalty/admin-page lint` exits 1. ESLint reports one error, `no-empty`, for the empty `catch {}` in `apps/admin/src/lib/api/api.ts`, plus warnings, mostly from the Tailwind plugin's enforce-canonical-classes rule. Prettier never runs, because the script is `eslint . && prettier --check .`. Run on its own, Prettier also fails: it flags existing files and reports `Ignored unknown option` for the `importOrder*` options.
 - **Cause:** the empty catch and the class-name warnings are in existing code. Some files were never formatted. The `importOrder*` options in `apps/admin/package.json` aren't supported by the installed import-sort plugin.
-- **Workaround:** compare with `dev/edd`: add no ESLint error or warning, and run Prettier on the files you change.
+- **Workaround:** compare with `dev`: add no ESLint error or warning, and run Prettier on the files you change.
 - **Remove when:** the error is fixed, the files are formatted and the dead options are deleted.
 
 ## Integration tests can exit 0 without running
@@ -57,19 +50,12 @@
   4. Read the output: an exit code of 0 alone doesn't mean anything ran.
 - **Remove when:** the bootstrap checks the database connection itself and exits non-zero on failure.
 
-## `./scripts/run.sh dev` updates dependencies and may rewrite tracked files
+## `./scripts/run.sh shell-update` updates dependencies and may rewrite tracked files
 
-- **Symptom:** each run starts with a full `composer update`, then deletes and rebuilds `vendor-prefixed/`, rewrites `composer.json` and regenerates `scoper.inc.php`. Both files usually come out unchanged. They change when php-scoper, its Safe library or admin-shell's template moves on.
-- **Cause:** `update_shell` in `scripts/run.sh`, which runs admin-shell's `vendor/bin/yaycommerce-update` ([architecture.md](architecture.md#admin-shell-sync-and-scoping)).
-- **Workaround:** run `git status` after `dev`. Commit a change to `composer.json` or `scoper.inc.php` only on purpose, in its own commit.
-- **Remove when:** starting the dev server no longer runs the sync.
-
-## Release leaves only `--no-dev` Composer packages
-
-- **Symptom:** after `./scripts/run.sh release`, even one that failed, `vendor/bin/phpcs` and `vendor/bin/phpunit` are gone, so `composer lint` and `composer test` stop working.
-- **Cause:** admin-shell's `vendor/bin/yaycommerce-prerelease` ends with `composer install --no-dev`, and nothing in `scripts/run.sh` reinstalls the dev packages.
-- **Workaround:** run `composer install` after every release run.
-- **Remove when:** `release` restores the dev packages itself.
+- **Symptom:** each run updates admin-shell, rebuilds `vendor-prefixed/`, may rewrite `composer.json` and may regenerate `scoper.inc.php`. Both files usually come out unchanged. They change when php-scoper, its Safe library or admin-shell's template moves on.
+- **Cause:** `update_shell` in `scripts/run.sh`, which runs admin-shell's `vendor/bin/yaycommerce-update` ([architecture.md](architecture.md#admin-shell-sync-and-scoping)). `dev` and `release` no longer run it.
+- **Workaround:** run `git status` after `shell-update`. Commit `vendor-prefixed/`, and a change to `composer.json` or `scoper.inc.php` only on purpose.
+- **Remove when:** the sync no longer touches `composer.json` or `scoper.inc.php`.
 
 ## wp-env can't run the plugin on PHP 7.4
 
@@ -95,6 +81,6 @@
 ## Untracked lockfiles let installs drift
 
 - **Symptom:** two checkouts, or two release runs, can resolve different dependency versions, including the admin-shell that ships in the zip. A check can pass on one machine and fail on another.
-- **Cause:** `.gitignore` ignores `composer.lock` and `pnpm-lock.yaml`, and `./scripts/run.sh dev` and `release` run a full `composer update` every time.
+- **Cause:** `.gitignore` ignores `composer.lock` and `pnpm-lock.yaml`, so each checkout resolves its own versions on its first install. `vendor-prefixed/` is committed, so the shipped admin-shell is the same everywhere unless a `shell-update` changes it; a release warns when the installed admin-shell differs from the committed copy.
 - **Workaround:** when results differ between machines, compare versions first, with `composer show` and `pnpm list`.
 - **Remove when:** the lockfiles are committed.

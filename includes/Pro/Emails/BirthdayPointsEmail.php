@@ -63,6 +63,12 @@ class BirthdayPointsEmail extends LedgerEntryEmail {
         $this->prepare( new LedgerEntry( null, get_current_user_id(), 150, 300, LedgerType::EARN, LedgerSource::BIRTHDAY ) );
     }
 
+    /** To the shop, to spend the gift. */
+    protected function cta(): array {
+        /* translators: %s: the store's plural points label, e.g. "Points". */
+        return self::cta_values( __( 'Spend your %s', 'yayloyalty' ), wc_get_page_permalink( 'shop' ) );
+    }
+
     /** @return array<string, mixed> */
     protected function build_values( LedgerEntry $entry ): array {
         return $this->shared_values( $entry ) + [

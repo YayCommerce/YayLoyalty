@@ -20,6 +20,8 @@
  * @var string $balance      The balance after this adjustment, formatted, e.g. "120". Absent when there is no adjustment to show.
  * @var string $customer_note The admin's description for the customer, plain text; '' when the adjustment has none. Absent when there is no adjustment to show.
  * @var \YayLoyalty\Models\LedgerEntry $entry The adjustment row, for overrides. Absent when there is no adjustment to show.
+ * @var string $cta_text  The button's text, e.g. "View your Points". Absent when there is no adjustment to show.
+ * @var string $cta_url   Where the button links. Absent when there is no adjustment to show.
  */
 
 use YayLoyalty\Helpers\SettingsHelper;
@@ -52,6 +54,10 @@ if ( ! empty( $entry ) ) {
 } else {
     /* translators: %s: the store's plural points label, e.g. "Points". */
     echo esc_html( sprintf( __( 'Your %s balance was updated.', 'yayloyalty' ), SettingsHelper::points_label_plural() ) ) . "\n\n";
+}
+
+if ( ! empty( $cta_url ) ) {
+    echo esc_html( $cta_text ) . ': ' . esc_url_raw( $cta_url ) . "\n\n";
 }
 
 if ( $additional_content ) {

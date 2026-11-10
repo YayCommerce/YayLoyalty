@@ -19,6 +19,8 @@
  * @var string $points_label "Point" or "Points", from the merchant's labels. Absent when there is no award to show.
  * @var string $balance      The balance after this award, formatted, e.g. "300". Absent when there is no award to show.
  * @var \YayLoyalty\Models\LedgerEntry $entry The awarded row, for overrides. Absent when there is no award to show.
+ * @var string $cta_text  The button's text, e.g. "View your Points". Absent when there is no award to show.
+ * @var string $cta_url   Where the button links. Absent when there is no award to show.
  */
 
 use YayLoyalty\Utils\Text;
@@ -47,6 +49,10 @@ if ( ! empty( $entry ) ) {
     }
 } else {
     echo esc_html__( 'To celebrate your birthday, we added bonus points to your account.', 'yayloyalty' ) . "\n\n";
+}
+
+if ( ! empty( $cta_url ) ) {
+    echo esc_html( $cta_text ) . ': ' . esc_url_raw( $cta_url ) . "\n\n";
 }
 
 if ( $additional_content ) {
