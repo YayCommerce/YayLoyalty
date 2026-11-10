@@ -25,6 +25,8 @@
  * @var string    $order_url    The order's My Account URL, e.g. "https://example.com/my-account/view-order/1234/"; '' without an order. Absent when there is no claim to show.
  * @var \WC_Order|null $order   The order, for overrides; null when it is gone. Absent when there is no claim to show.
  * @var \YayLoyalty\Models\LedgerEntry $entry The order's REDEEM row, for overrides. Absent when there is no claim to show.
+ * @var string    $cta_text  The button's text, e.g. "View your Points". Absent when there is no claim to show.
+ * @var string    $cta_url   Where the button links. Absent when there is no claim to show.
  */
 
 use Automattic\WooCommerce\Utilities\FeaturesUtil;
@@ -50,6 +52,9 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
 <p><?php echo wp_kses_post( $balance_sentence ); ?></p>
 <?php else : ?>
 <p><?php esc_html_e( 'You used your loyalty points on an order. Enjoy!', 'yayloyalty' ); ?></p>
+<?php endif; ?>
+<?php if ( ! empty( $cta_url ) ) : ?>
+<p><a class="button" href="<?php echo esc_url( $cta_url ); ?>" style="display:inline-block;padding:12px 24px;text-decoration:none;font-weight:bold;"><?php echo esc_html( $cta_text ); ?></a></p>
 <?php endif; ?>
 <?php echo $is_email_improvements_enabled ? '</div>' : ''; ?>
 

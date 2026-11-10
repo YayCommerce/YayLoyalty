@@ -20,6 +20,8 @@
  * @var string    $points_label "Point" or "Points", from the merchant's labels. Absent when there is no award to show.
  * @var string    $balance      The balance after this award, formatted, e.g. "300". Absent when there is no award to show.
  * @var \YayLoyalty\Models\LedgerEntry $entry The awarded row, for overrides. Absent when there is no award to show.
+ * @var string    $cta_text  The button's text, e.g. "View your Points". Absent when there is no award to show.
+ * @var string    $cta_url   Where the button links. Absent when there is no award to show.
  */
 
 use Automattic\WooCommerce\Utilities\FeaturesUtil;
@@ -51,6 +53,9 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
     <?php endif; ?>
 <?php else : ?>
 <p><?php esc_html_e( 'To celebrate your birthday, we added bonus points to your account.', 'yayloyalty' ); ?></p>
+<?php endif; ?>
+<?php if ( ! empty( $cta_url ) ) : ?>
+<p><a class="button" href="<?php echo esc_url( $cta_url ); ?>" style="display:inline-block;padding:12px 24px;text-decoration:none;font-weight:bold;"><?php echo esc_html( $cta_text ); ?></a></p>
 <?php endif; ?>
 <?php echo $is_email_improvements_enabled ? '</div>' : ''; ?>
 

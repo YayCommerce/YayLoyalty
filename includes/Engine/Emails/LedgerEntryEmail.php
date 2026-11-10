@@ -71,7 +71,7 @@ abstract class LedgerEntryEmail extends LoyaltyEmail {
     abstract protected function build_values( LedgerEntry $entry ): array;
 
     /**
-     * placeholder_values() plus the template variables every ledger email shares: the row, greeting and balance.
+     * placeholder_values() plus the template variables every ledger email shares: the row, greeting, balance and button.
      *
      * @return array<string, mixed>
      */
@@ -88,7 +88,7 @@ abstract class LedgerEntryEmail extends LoyaltyEmail {
             'balance_sentence'   => self::balance_sentence( esc_html( $balance_text ) ),
             'balance_value'      => $balance_value,
             'balance_value_text' => self::balance_value_text( $balance_value ),
-        ];
+        ] + $this->cta();
     }
 
     /** Points the subject placeholders and template variables at $entry. */
