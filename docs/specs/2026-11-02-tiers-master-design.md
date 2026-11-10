@@ -1,6 +1,7 @@
 # Tiers (master) Design
 
 **Status:** accepted 2026-11-03
+**Amended:** 2026-11-10: a coupon reward's TIER condition is either "Minimum tier" (`gte`) or "Only this tier" (`eq`), chosen in the reward editor with a "Tier rule" select (D10). The sections marked "amended 2026-11-10" describe the change.
 **Related:** `docs/backlog/2026-10-06-tiers-not-built.md`, `docs/plans/2026-10-06-remove-tiers-and-referrals.md` (removed the v1.0 placeholders)
 
 This master spec fixes the feature's direction. Each delivery slice (see Delivery) gets its own child spec or plan and is built from it.
@@ -45,7 +46,7 @@ Pro merchants group customers into ranked tiers by the points they earn. Each ti
 - Perks:
   - a points multiplier per tier, applied to the points every campaign awards;
   - a one-time entry bonus per tier;
-  - a "Minimum tier" condition on coupon rewards.
+  - a "Minimum tier" or "Only this tier" condition on coupon rewards (amended 2026-11-10).
 - Enforcement of the reward TIER condition only, at listing and at claim, set in a dedicated "Tier" section of the reward editor.
 - Manual tier assignment (a floor) from the customer drawer, with "No end" or "Limited" (days).
 - A tier filter in the Customers list and saved segments.
@@ -79,7 +80,7 @@ Pro merchants group customers into ranked tiers by the points they earn. Each ti
 | D7 | **Multiplied points** count toward tier progress. |
 | D8 | **Multiplier:** one per tier, set on the Tiers tab, range 1.00–10.00, step 0.05. It acts only on the earning stage, after the campaign is done: campaign → the campaign's points (rate, rounding, `yayloyalty_points_for_order`, the campaign's `max_points_per_order`) → × tier multiplier → final points. The campaign's per-order cap bounds the campaign's points, not the multiplied result. See D22 for rounding and the daily cap. |
 | D9 | **Campaigns are tier-independent.** No campaign condition, setting or editor row knows tiers. The tier reaches earning only through D8. |
-| D10 | **Reward TIER condition:** "Minimum tier" (`gte`, one tier). A customer sees and can claim rewards of their tier and every lower tier. Offered on coupon rewards only, never on `flexible_discount`. |
+| D10 | **Reward TIER condition** (amended 2026-11-10): one tier id with one of two rules. "Minimum tier" (`gte`): a customer sees and can claim rewards of their tier and every lower tier, compared by rank. "Only this tier" (`eq`): only customers whose live tier is that tier, compared by id, so a rerank doesn't change who qualifies. Offered on coupon rewards only, never on `flexible_discount`. Picking several tiers (`in`) and a maximum tier (`lte`) were rejected: no one asked for them, and they need a multi-select. |
 | D11 | **Entry bonus:** paid only for the tier reached, never for skipped tiers. It counts toward points earned, but doesn't trigger a further upgrade in the same evaluation; the next ledger write can. Once per customer per tier, ever. The multiplier doesn't apply to it. |
 | D12 | **Bonus cases:** none during the retroactive placement batch. Paid once on a manual assignment (same once-per-tier key). |
 | D13 | **Manual assignment is a floor.** The customer is at least the assigned tier. Auto-evaluation can raise them above it, never lower them below it. Staff lower a customer by deducting lifetime points with Adjust (ADJUST row). |
@@ -107,7 +108,7 @@ Child specs and plans refine these with their own exact values.
 8. **Entry bonus, once per tier:** with Silver's bonus set to 100, reaching Silver writes one EARN row of 100 (not multiplied) with source `tier_bonus` and key `tier_bonus:{user_id}:{tier_id}`. Falling out of Silver and reaching it again writes no second row.
 9. **No bonus cascade:** Silver's bonus would carry a customer past Gold's threshold, yet that evaluation leaves them in Silver. The next ledger write moves them to Gold.
 10. **Refund downgrade:** a refund that claws back enough points to drop the customer below Silver's threshold leaves them in Bronze after commit (`TIER_CHANGED`, reason `refund`). Silver's bonus row stays.
-11. **Reward hiding:** reward R has condition "Minimum tier: Silver". A Silver or Gold customer sees R on the redeem card, in the launcher and in My Account, and can claim it. A Bronze or tierless customer doesn't see it, and a forced claim fails with `REASON_CONDITIONS_NOT_MET`.
+11. **Reward hiding:** reward R has condition "Minimum tier: Silver". A Silver or Gold customer sees R on the redeem card, in the launcher and in My Account, and can claim it. A Bronze or tierless customer doesn't see it, and a forced claim fails with `REASON_CONDITIONS_NOT_MET`. With "Only this tier: Silver" instead (amended 2026-11-10), only a Silver customer sees and can claim R; Gold, Bronze and tierless customers are treated as Bronze is above.
 12. **Other conditions untouched:** reward S has a REST-set `user_role` condition the customer doesn't meet, and no TIER condition. S is listed and claimable, as today.
 13. **Blocked delete:** deleting Silver while R references it returns 409 and lists R. Once R no longer references it, the delete soft-deletes Silver. Its customers are re-evaluated into the remaining tiers (reason `tier_deleted`), and the activity log still shows "Silver". Deleting the last live tier returns 409.
 14. **Rolling hold:** in Rolling mode with 6 months, a customer who reached Gold on 2027-01-10 has `tier_held_until` 2027-07-10 and stays Gold until then. On the first daily run on or after that date, they move to the tier their last-6-month total qualifies for, with a new hold.
@@ -169,7 +170,7 @@ Child specs and plans refine these with their own exact values.
   - the Tiers tab;
   - the Customers tier column, filter and segment key;
   - the drawer tier card and Assign dialog;
-  - the "Minimum tier" row in the reward condition editor.
+  - the "Tier rule" and "Tier" rows in the reward editor's Tier section (amended 2026-11-10).
 - `includes/Engine/Storefront/` [edit]: the badge and progress line through a launcher-payload filter that Pro fills.
 
 **Data and storage:**
@@ -222,7 +223,7 @@ Child specs and plans refine these with their own exact values.
   - a list sorted by threshold, with name, threshold, multiplier, bonus, colour and member count;
   - create and edit dialogs;
   - delete with the list of referencing rewards.
-- **Reward editor:** a dedicated "Tier" section on coupon rewards only, with one "Minimum tier" select ("Any tier" = no condition). It writes or removes the single `{type: tier, operator: gte, value: tier_id}` entry, and keeps every other stored condition untouched. There is no general Conditions section.
+- **Reward editor** (amended 2026-11-10): a dedicated "Tier" section on coupon rewards only. A "Tier rule" select ("Any tier" = no condition, "Minimum tier", "Only this tier") is followed, for the last two, by a required "Tier" select. It writes or removes the single `{type: tier, operator: gte|eq, value: tier_id}` entry, and keeps every other stored condition untouched. There is no general Conditions section.
 - **Campaign editor:** unchanged.
 - **Customers:** a tier column, a tier filter, and the segment key.
 - **Drawer:**

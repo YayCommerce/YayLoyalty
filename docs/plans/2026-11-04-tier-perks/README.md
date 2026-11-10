@@ -3,6 +3,7 @@
 > **For agentic workers:** execute phases in order. Read this file, then the current phase file. Do not start a phase until the previous phase's exit criterion has been verified and `/yayplancheck` has passed on it.
 
 **Status:** done 2026-11-05
+**Amended:** 2026-11-10: the reward TIER condition also takes `eq` ("Only this tier"), and the editor field `min_tier_id` became `tier_rule` + `tier_id` ([the tier perks spec](../../specs/2026-11-04-tier-perks-design.md), amended 2026-11-10). The contract lines marked "amended 2026-11-10" show the current names.
 **Goal:** Tiered customers earn their tier's multiplier on every campaign award, shown on the admin ledger row. Coupon rewards can require a minimum tier, set in the reward editor, and lower-tier customers neither see nor claim them.
 **Spec:** [docs/specs/2026-11-04-tier-perks-design.md](../../specs/2026-11-04-tier-perks-design.md) (accepted 2026-11-04), a child of [the tiers master](../../specs/2026-11-02-tiers-master-design.md).
 **Architecture:**
@@ -113,7 +114,7 @@
   - `for_context( $multiplier, Campaign $campaign, Context $ctx ): Multiplier` (filter callback, 3 args).
 
 **PHP, Lite: rewards**
-- `RewardConditionType::UNAVAILABLE = []`. `TIER` operators `[ OP_GTE ]`. Phase 2 Task 1.
+- `RewardConditionType::UNAVAILABLE = []`. `TIER` operators `[ OP_GTE ]`, now `[ OP_GTE, OP_EQ ]` (amended 2026-11-10). Phase 2 Task 1.
 - `RewardConditionSet::validate_value()` gains `case 'tier'`: a positive int. Phase 2 Task 1.
 - `RewardRestController` error messages: "Only coupon rewards can require a tier." and "That tier no longer exists." (both `error_invalid_arguments`, 400). Phase 2 Task 1.
 - `final class Engine\Rewards\RewardFacts` (`includes/Engine/Rewards/RewardFacts.php`). Phase 2 Task 2.
@@ -135,4 +136,4 @@
 
 **SPA**
 - `ledgerEntrySchema.tier_multiplier: z.string().nullable().default(null)`. Phase 1 Task 3.
-- `RewardFormValues.min_tier_id: number | null`. Two helpers exported from `reward-editor.form.ts`: `minTierOf( conditions: RewardCondition[] ): number | null` and `withMinTier( conditions: RewardCondition[], tierId: number | null ): RewardCondition[]`. Phase 3 Task 1.
+- `RewardFormValues.min_tier_id: number | null`. Two helpers exported from `reward-editor.form.ts`: `minTierOf( conditions: RewardCondition[] ): number | null` and `withMinTier( conditions: RewardCondition[], tierId: number | null ): RewardCondition[]`. Phase 3 Task 1. Amended 2026-11-10: `RewardFormValues.tier_rule: TierRule` and `tier_id: number | null`, with the module-private helpers `tierRuleOf( conditions )` and `withTierRule( conditions, rule, tierId )`.

@@ -15,7 +15,7 @@ Tiers work in Pro:
 - `Pro\Services\TierEvaluator` places customers, moves them on ledger writes, pays each tier's entry bonus once and emits `ActivityEvent::TIER_CHANGED`. Catalogue edits and the switch request sweeps that the daily `yayloyalty_tier_run` drains ([the decision record](../decisions/2026-11-04-tier-evaluator-sole-writer.md)).
 - The drawer's tier card assigns and removes a manual tier floor, the activity log has a Tier changes filter, and the Customers list shows, sorts and filters by tier, with the tier kept in saved segments.
 - Every campaign award is multiplied by the customer's tier multiplier (`Pro\Services\TierMultiplier`), and the ledger row records `tier_id` and `tier_multiplier`.
-- Coupon rewards can require a "Minimum tier", set in the reward editor: `RewardConditionType::TIER`, enforced by `Pro\Services\RewardTierCondition`. Customers below it don't see the reward on the redeem card, in the launcher or in My Account, and can't claim it.
+- Coupon rewards can require a "Minimum tier" or "Only this tier", set in the reward editor: `RewardConditionType::TIER`, enforced by `Pro\Services\RewardTierCondition`. Customers who don't meet it don't see the reward on the redeem card, in the launcher or in My Account, and can't claim it.
 - The launcher's member panel shows the tier badge and progress to the next tier, with the window and hold in Rolling.
 
 Still missing:

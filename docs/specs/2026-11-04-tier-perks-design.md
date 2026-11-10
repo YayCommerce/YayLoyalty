@@ -1,13 +1,14 @@
 # Tier Perks (Tiers slice 3) Design
 
 **Status:** accepted 2026-11-04
+**Amended:** 2026-11-10: TIER also accepts `eq` ("Only this tier"), and the editor's single "Minimum tier" select becomes a "Tier rule" select plus a required "Tier" select (master D10). The sections marked "amended 2026-11-10" describe the change.
 **Related:** [Tiers master design](2026-11-02-tiers-master-design.md) (Delivery slice 3), [slice 2 design](2026-11-04-tier-lifetime-evaluation-design.md), [slice 1 plan](../plans/2026-11-03-tier-catalogue.md), `docs/backlog/2026-10-06-tiers-not-built.md`
 
 This child spec refines the master for slice 3. Everything the master decides (D1–D22) still holds. Where this doc departs from the master's wording, the **Refinements of the master** section says so.
 
 ## Goal
 
-A tiered customer earns their tier's multiplier on every campaign award, and the admin ledger shows it on the row. A Pro merchant can set a "Minimum tier" on a coupon reward. Customers below that tier don't see the reward on the redeem card, in the launcher or in My Account, and can't claim it.
+A tiered customer earns their tier's multiplier on every campaign award, and the admin ledger shows it on the row. A Pro merchant can set a "Minimum tier" on a coupon reward, or "Only this tier" (amended 2026-11-10). Customers who don't meet it don't see the reward on the redeem card, in the launcher or in My Account, and can't claim it.
 
 ## Context
 
@@ -46,7 +47,7 @@ A tiered customer earns their tier's multiplier on every campaign award, and the
 **In:**
 - The multiplier seam in `PointsEngine::evaluate()`, the `Engine\Points\Multiplier` value, and Pro's `TierMultiplier` (D8, D22).
 - `ledger.tier_id` and `ledger.tier_multiplier`, written on multiplied EARN rows, and the admin ledger and drawer label suffix.
-- `TIER` leaving `RewardConditionType::UNAVAILABLE`, narrowed to `gte`, with value and save validation.
+- `TIER` leaving `RewardConditionType::UNAVAILABLE`, narrowed to `gte` and `eq` (amended 2026-11-10), with value and save validation.
 - `Engine\Rewards\RewardFacts` and `Rewards\ContextFactory::facts_for()`, passed to every reward Context.
 - `Pro\Services\RewardTierCondition` (TIER only, D16).
 - Hiding gated rewards on the redeem card, in the launcher and in My Account. Forced claims fail.
@@ -87,6 +88,7 @@ Setup unless stated: the wp-env Pro site, seed tiers Bronze 0 / Silver 800 / Gol
    - A Silver or Gold customer sees R on the redeem card, under "Ways to redeem" in the launcher and in My Account → Rewards, and can claim it.
    - A Bronze or tierless customer sees it in none of those places.
    - A forced claim of R by a Bronze customer (the redeem AJAX with R's id) is refused with `REASON_CONDITIONS_NOT_MET`, and the card shows "Your account cannot spend {points label} on this order."
+   - Amended 2026-11-10: with `operator: "eq"` instead, only a Silver customer sees and can claim R. Gold, Bronze, tierless customers and guests are refused as Bronze is above, and so is everyone with tiers off. Covered by `RewardTierConditionTest`'s `test_only_tier_*` methods.
 9. **Tiers off hides gated rewards** (master AC 2). With `tiers_enabled` false, a Gold customer doesn't see R anywhere, and a forced claim is refused as in AC 8.
 10. **Guests.** A guest's launcher doesn't list R.
 11. **Applied reward after a drop.** A Silver customer ticks R on the cart, then a −200 ADJUST drops them to Bronze.
@@ -100,9 +102,10 @@ Setup unless stated: the wp-env Pro site, seed tiers Bronze 0 / Silver 800 / Gol
     - a TIER entry with operator `in` → "The reward conditions are malformed.";
     - a TIER value of `"abc"` → "The reward conditions are malformed.".
 
-    A TIER entry `gte` with Silver's id on a `percent_coupon` reward returns 200.
+    A TIER entry `gte` or `eq` (amended 2026-11-10) with Silver's id on a `percent_coupon` reward returns 200.
 14. **Editor writes only the tier entry.** S has a REST-set `user_role` condition.
     - In the editor, setting Minimum tier to Silver and saving stores both the `user_role` entry and `{type: "tier", operator: "gte", value: <Silver id>}`.
+    - Amended 2026-11-10: "Only this tier" + Silver stores `operator: "eq"` instead. Switching between the two rules keeps the picked tier. Choosing either rule with no tier picked blocks Save with "Pick a tier." under the "Tier" select.
     - Setting it back to "Any tier" and saving stores only the `user_role` entry.
     - Reopening the editor shows the saved choice.
 15. **Editor visibility.**
@@ -164,7 +167,7 @@ Setup unless stated: the wp-env Pro site, seed tiers Bronze 0 / Silver 800 / Gol
   - `TierRepository::find_live( tier_id )` is null.
 
   Otherwise it returns `new Multiplier( $tier->get_multiplier(), $tier->get_id() )`. It reads the stored tier now, not as of the event, and memoizes per request per user id.
-- `includes/Enums/RewardConditionType.php` [edit, Lite]: `UNAVAILABLE` becomes `[]`, and `TIER`'s operators become `[ self::OP_GTE ]`.
+- `includes/Enums/RewardConditionType.php` [edit, Lite]: `UNAVAILABLE` becomes `[]`, and `TIER`'s operators become `[ self::OP_GTE ]`; `[ self::OP_GTE, self::OP_EQ ]` (amended 2026-11-10).
 - `includes/Models/RewardConditionSet.php` [edit, Lite]: `validate_value()` gains `case 'tier'`, a positive int (`ConditionValueRules::is_int_like()` and > 0).
 - `includes/Controllers/RewardRestController.php` [edit, Lite]: after the structural check, a TIER entry fails with `error_invalid_arguments` in two cases:
   - the reward's type isn't `fixed_coupon` or `percent_coupon` → "Only coupon rewards can require a tier.";
@@ -181,7 +184,8 @@ Setup unless stated: the wp-env Pro site, seed tiers Bronze 0 / Silver 800 / Gol
     - `$facts` is null;
     - `$facts->tier_rank` is 0;
     - the required tier isn't live;
-    - `$facts->tier_rank` is below the required tier's rank.
+    - `$facts->tier_rank` is below the required tier's rank;
+    - amended 2026-11-10: for `eq`, `$facts->tier_id` isn't the required tier's id; any other operator refuses. The entry is read by `tier_entry( Reward $reward ): ?array` (`operator`, `id`).
   - The filter callback returns `$matches && $this->allows( $reward, $ctx->get_facts() )`.
   - Tier rows are memoized per request.
 - `includes/Engine/Redemption/RedemptionService.php` [edit, Lite]: `reward_options()` skips a reward whose quote reason is `REASON_CONDITIONS_NOT_MET`, unless its coupon code is in `$cart->get_applied_coupons()`.
@@ -196,14 +200,14 @@ Setup unless stated: the wp-env Pro site, seed tiers Bronze 0 / Silver 800 / Gol
   - `apps/admin/src/lib/schema/ledger.schema.ts` (or the file declaring `LedgerEntry`) [edit]: `tier_multiplier: string | null`, defaulting to null like `tier_name`.
   - `apps/admin/src/lib/helpers/ledger.helper.ts` [edit]: `describeEarn()` appends `" · {tier_name} ×{tier_multiplier}"` when `tier_multiplier` is set, or `" · ×{tier_multiplier}"` when `tier_name` is null. Built with `sprintf` and a translators comment.
   - `apps/admin/src/lib/schema/reward.schema.ts` [edit]: the condition type accepts `tier`.
-  - `apps/admin/src/pro/rewards/editor/reward-editor.form.ts` [edit]: `min_tier_id: number | null`, seeded from the stored `tier`/`gte` entry. The save input rebuilds `conditions` (stored list minus `tier`, plus the new entry when set).
+  - `apps/admin/src/pro/rewards/editor/reward-editor.form.ts` [edit]: `min_tier_id: number | null`, seeded from the stored `tier`/`gte` entry. The save input rebuilds `conditions` (stored list minus `tier`, plus the new entry when set). Amended 2026-11-10: `min_tier_id` is replaced by `tier_rule: TierRule` (`'any' | 'gte' | 'eq'`) and `tier_id: number | null`, read by `tierRuleOf()` and written by `withTierRule()`; a refine puts "Pick a tier." on `tier_id` when the rule isn't `any` and no tier is picked.
   - `apps/admin/src/pro/rewards/editor/RewardEditorSections.tsx` [edit]: step 3 `EditorSection` "Tier", for `fixed_coupon` and `percent_coupon` only. If the file passes ~400 lines, the plan asks the user before splitting the section out (single-parent rule).
 
 **Data and storage:**
 - `{prefix}yayloyalty_ledger` gains `tier_id bigint unsigned DEFAULT NULL` and `tier_multiplier decimal(4,2) DEFAULT NULL`. Both are NULL on every row except an EARN row whose multiplier was above 1.00. There is no backfill, so existing rows stay NULL.
 - Applied by `Installer::install()` through dbDelta. Version unchanged.
 - No option or settings key changes.
-- Reward conditions keep their JSON shape. A TIER entry is `{"type":"tier","operator":"gte","value":<tier id>}`, at most one per reward (the existing duplicate-type rule).
+- Reward conditions keep their JSON shape. A TIER entry is `{"type":"tier","operator":"gte","value":<tier id>}`, or `"operator":"eq"` (amended 2026-11-10), at most one per reward (the existing duplicate-type rule).
 - Uninstall: none, as for every table today.
 
 **Integration points:**
@@ -218,7 +222,7 @@ Setup unless stated: the wp-env Pro site, seed tiers Bronze 0 / Silver 800 / Gol
 - **SPA queries reused:** `TIER_QUERIES` (`GET /tiers`) and slice 2's tier settings query (`GET /tiers/settings`) for the editor notice.
 
 **UI:**
-- **Reward editor** (Pro): a third section, "Tier", after "Cost and value", on `fixed_coupon` and `percent_coupon` only. It holds one "Minimum tier" select:
+- **Reward editor** (Pro): a third section, "Tier", after "Cost and value", on `fixed_coupon` and `percent_coupon` only. It holds one "Minimum tier" select. Amended 2026-11-10: a "Tier rule" select (`reward-tier-rule`: Any tier / Minimum tier / Only this tier) replaces it; for the last two, a "Tier" select (`reward-tier-id`, placeholder "Select a tier") follows with the rule's help text ("Only this tier": "Only customers in this tier see and can claim this reward."; Any tier has none). The notice, retry and removed-tier warning below keep working, and a removed tier resets the rule to Any tier:
   - "Any tier" (no condition) first, then the live tiers in threshold order, each with its colour dot;
   - help text: "Only customers in this tier or a higher one see and can claim this reward.";
   - with tiers off: an outline `Alert` with `InfoIcon` above the select, reading "Tiers are off. Rewards that require a tier are hidden from every customer until you turn tiers on."; the select stays editable;
