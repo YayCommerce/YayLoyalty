@@ -390,8 +390,8 @@ final class RewardRestController extends AbstractRestController {
     }
 
     /**
-     * Structure first, then the TIER entry's two rules: only coupon rewards may require a tier,
-     * and the tier must be live. On update, $type is the stored row's type.
+     * Structure first, then the TIER entry's two rules, whichever tier rule it holds: only coupon
+     * rewards may require a tier, and the tier must be live. On update, $type is the stored row's type.
      */
     private function conditions_error( string $type, array $conditions ): ?\WP_Error {
         if ( ! Reward::conditions_are_valid( $conditions ) ) {

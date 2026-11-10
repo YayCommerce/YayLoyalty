@@ -27,7 +27,8 @@ final class RewardConditionType {
     public const CUSTOMER_IDS = 'customer_ids';
 
     /**
-     * The minimum tier: `gte` with one tier id as the value, met when the customer's tier ranks at or above it.
+     * The required tier, with one tier id as the value: `gte` ("Minimum tier") is met when the customer's tier
+     * ranks at or above it, `eq` ("Only this tier") when the customer's live tier is that tier.
      * Only coupon rewards may carry it (RewardRestController), and only Pro's RewardTierCondition enforces it.
      */
     public const TIER = 'tier';
@@ -62,7 +63,7 @@ final class RewardConditionType {
                 'normalize' => [ 'array', 'int', 'dedupe' ],
             ],
             self::TIER            => [
-                'operators' => [ self::OP_GTE ],
+                'operators' => [ self::OP_GTE, self::OP_EQ ],
                 'value'     => 'tier',
                 'normalize' => [ 'dedupe' ],
             ],

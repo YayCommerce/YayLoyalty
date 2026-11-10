@@ -12,14 +12,15 @@ use YayLoyalty\Repositories\TierRepository;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Enforces a reward's TIER condition ("Minimum tier"): the customer's live tier must rank at or above
- * the required one. It answers the claim gate through `yayloyalty_reward_conditions_match`, and its
- * allows() serves the listings that have no quote (the launcher and My Account).
+ * Enforces a reward's TIER condition. "Minimum tier" (`gte`) needs the customer's live tier to rank at
+ * or above the required one; "Only this tier" (`eq`) needs it to be that tier. It answers the claim
+ * gate through `yayloyalty_reward_conditions_match`, and its allows() serves the listings that have no
+ * quote (the launcher and My Account).
  *
- * It fails closed: tiers off, a guest, a customer without a live tier and a required tier that is no
- * longer live all refuse the reward. A reward with no TIER entry is always allowed; other condition
- * types are not enforced here. Ranks are compared, not ids, so a threshold edit that reranks the
- * tiers keeps the comparison right.
+ * It fails closed: tiers off, a guest, a customer without a live tier, a required tier that is no
+ * longer live and an unknown operator all refuse the reward. A reward with no TIER entry is always
+ * allowed; other condition types are not enforced here. `gte` compares ranks, not ids, so a threshold
+ * edit that reranks the tiers keeps the comparison right; `eq` compares ids, which a rerank leaves alone.
  */
 final class RewardTierCondition {
 
@@ -41,9 +42,9 @@ final class RewardTierCondition {
 
     /** Whether $facts meet $reward's TIER entry; true when the reward has none. */
     public function allows( Reward $reward, ?RewardFacts $facts ): bool {
-        $required_id = self::required_tier_id( $reward );
+        $entry = self::tier_entry( $reward );
 
-        if ( null === $required_id ) {
+        if ( null === $entry ) {
             return true;
         }
 
@@ -51,13 +52,29 @@ final class RewardTierCondition {
             return false;
         }
 
-        $required = $this->live_tier( $required_id );
+        $required = $this->live_tier( $entry['id'] );
 
-        return null !== $required && $facts->get_tier_rank() >= $required->get_tier_rank();
+        if ( null === $required ) {
+            return false;
+        }
+
+        if ( RewardConditionType::OP_GTE === $entry['operator'] ) {
+            return $facts->get_tier_rank() >= $required->get_tier_rank();
+        }
+
+        if ( RewardConditionType::OP_EQ === $entry['operator'] ) {
+            return $facts->get_tier_id() === $required->get_id();
+        }
+
+        return false;
     }
 
-    /** The id the reward's TIER entry requires, or null without one. */
-    private static function required_tier_id( Reward $reward ): ?int {
+    /**
+     * The reward's TIER entry as its operator and required tier id, or null without one.
+     *
+     * @return array{operator: string, id: int}|null
+     */
+    private static function tier_entry( Reward $reward ): ?array {
         $condition = RewardConditionSet::from_array( $reward->get_conditions() )->find( RewardConditionType::TIER );
 
         if ( null === $condition ) {
@@ -67,7 +84,10 @@ final class RewardTierCondition {
         $value = $condition->get_value();
 
         // A malformed stored value still names a requirement, so it refuses rather than passes.
-        return is_numeric( $value ) ? (int) $value : 0;
+        return [
+            'operator' => $condition->get_operator(),
+            'id'       => is_numeric( $value ) ? (int) $value : 0,
+        ];
     }
 
     private function live_tier( int $id ): ?Tier {

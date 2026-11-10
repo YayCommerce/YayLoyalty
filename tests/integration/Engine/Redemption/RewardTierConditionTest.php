@@ -19,9 +19,10 @@ use YayLoyalty\Tests\Integration\IntegrationTestCase;
 use YayLoyalty\Utils\Dates;
 
 /**
- * A reward's "Minimum tier" condition: Silver and above may claim it; Bronze, tierless customers,
- * guests and everyone while tiers are off may not; a reward without the entry is unaffected, and a
- * deleted required tier refuses. The last two tests run the claim gate the Quoter calls.
+ * A reward's TIER condition. "Minimum tier" (`gte`): Silver and above may claim it; Bronze, tierless
+ * customers, guests and everyone while tiers are off may not; a reward without the entry is
+ * unaffected, and a deleted required tier refuses. "Only this tier" (`eq`): only Silver may claim it.
+ * The gate tests run the claim gate the Quoter calls.
  */
 final class RewardTierConditionTest extends IntegrationTestCase {
 
@@ -110,6 +111,27 @@ final class RewardTierConditionTest extends IntegrationTestCase {
         $this->assertFalse( $this->allows( $reward, $gold ) );
     }
 
+    public function test_only_tier_allows_exact_tier(): void {
+        $this->assertTrue( $this->allows( $this->only_silver_reward(), $this->customer_in( 'Silver' ) ) );
+    }
+
+    public function test_only_tier_refuses_higher_lower_and_tierless(): void {
+        $reward = $this->only_silver_reward();
+
+        $this->assertFalse( $this->allows( $reward, $this->customer_in( 'Gold' ) ) );
+        $this->assertFalse( $this->allows( $reward, $this->customer_in( 'Bronze' ) ) );
+        $this->assertFalse( $this->allows( $reward, $this->customer_in( null ) ) );
+        $this->assertFalse( $this->allows( $reward, null ) );
+    }
+
+    public function test_only_tier_refused_when_tiers_off(): void {
+        $reward              = $this->only_silver_reward();
+        $silver              = $this->customer_in( 'Silver' );
+        $this->tiers_enabled = false;
+
+        $this->assertFalse( $this->allows( $reward, $silver ) );
+    }
+
     /** With no points too: the conditions are checked before the cost, so the listings can drop the reward. */
     public function test_gate_refuses_bronze_with_conditions_not_met(): void {
         $quote = $this->quote( $this->silver_reward(), $this->customer_in( 'Bronze' ) );
@@ -144,6 +166,19 @@ final class RewardTierConditionTest extends IntegrationTestCase {
                 [
                     'type'     => 'tier',
                     'operator' => 'gte',
+                    'value'    => $this->tier_id( 'Silver' ),
+                ],
+            ]
+        );
+    }
+
+    /** A 100-point fixed_coupon worth 5 that only Silver may claim. */
+    private function only_silver_reward(): Reward {
+        return $this->reward_with(
+            [
+                [
+                    'type'     => 'tier',
+                    'operator' => 'eq',
                     'value'    => $this->tier_id( 'Silver' ),
                 ],
             ]
