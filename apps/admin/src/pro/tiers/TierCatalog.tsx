@@ -152,9 +152,9 @@ function TierRow({
   return (
     <TableRow>
       <TableCell>
-        <span className="font-medium">
+        <Button variant="link" size="sm" className="h-auto p-0 font-semibold" onClick={onEdit}>
           <TierBadge name={tier.name} color={tier.color} />
-        </span>
+        </Button>
       </TableCell>
       <TableCell className="text-right tabular-nums">{formatPoints(tier.threshold)}</TableCell>
       <TableCell className="text-right tabular-nums">
@@ -182,7 +182,6 @@ function TierRow({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={onEdit}>{__('Edit', 'yayloyalty')}</DropdownMenuItem>
             <DropdownMenuItem variant="destructive" onSelect={onDelete}>
               {__('Delete', 'yayloyalty')}
             </DropdownMenuItem>

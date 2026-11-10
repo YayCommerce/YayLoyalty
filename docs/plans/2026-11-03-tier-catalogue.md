@@ -3,6 +3,7 @@
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. Read the spec linked below before starting; the plan argues from it.
 
 **Status:** active
+**Amended:** 2026-11-10: the row menu no longer has Edit; clicking a tier's name opens the edit dialog. The line marked "amended 2026-11-10" describes the change.
 **Goal:** Ship the tier catalogue: the tiers table seeded with Bronze/Silver/Gold, the new customer tier columns and settings keys, the `yayloyalty_manage_tiers` capability (v3), Pro's tier CRUD REST with its delete rules, and a Pro "Tiers" page with a list and create, edit and delete dialogs.
 **Spec:** [docs/specs/2026-11-02-tiers-master-design.md](../specs/2026-11-02-tiers-master-design.md), Delivery slice 1. There is no child spec: the user chose to plan from the master, and the slice-1 values the master leaves open are in `## Requirements` below.
 **Architecture:** The table, model, repository and seed are Lite, so Lite installs and keeps the data (conventions § Pro data survives Lite). The REST controller is Pro and is registered through the `yayloyalty_rest_controllers` filter in `YayLoyaltyPro::add_controllers()`. Like `RewardRestController`, there is no service: the invariants are validation in the controller, inside `exec_write()`'s transaction, and every write first locks the live tier rows so the count and uniqueness checks can't race. The SPA page lives under `apps/admin/src/pro/tiers/`. In Lite the nav item is not rendered and the route 404s, as `LedgerPage` does.
@@ -288,7 +289,7 @@ Message: `feat(tiers): add the tier CRUD routes with their delete rules`
 - [ ] **Step 3: Add `TierCatalog.tsx`**
 
 One file holding:
-- the list: a table sorted by threshold with columns Name (colour swatch + name), Points to reach, Multiplier (`×1.25`, via `formatStoreDecimal`), Entry bonus (`formatPoints`), Members (`formatStoreNumber`), and a row menu with Edit and Delete; loading skeleton and error state from `components/ui/custom/`; an "Add tier" button disabled with a tooltip "You can have at most 10 tiers." at 10.
+- the list: a table sorted by threshold with columns Name (colour swatch + name), Points to reach, Multiplier (`×1.25`, via `formatStoreDecimal`), Entry bonus (`formatPoints`), Members (`formatStoreNumber`), and a row menu with Delete; clicking a tier's name opens the edit dialog (amended 2026-11-10: Edit left the row menu); loading skeleton and error state from `components/ui/custom/`; an "Add tier" button disabled with a tooltip "You can have at most 10 tiers." at 10.
 - the create/edit dialog (`Dialog` from `components/ui/custom/dialog`): Name, Points to reach (`PointsInput`), Multiplier (number input, step 0.05, 1–10), Entry bonus (`PointsInput`), Colour (`ColorPicker`).
 - the delete dialog (`ConfirmDialog`): "Delete {name}?". On `yayloyalty_tier_in_use` it switches to "These rewards require this tier. Remove the tier from them before deleting it." with each reward's name; on `yayloyalty_last_tier` it shows the server message.
 
