@@ -23,13 +23,17 @@ export const conditionsPreviewSchema = z.object({
   user_id: z.number().int(),
   matches: z.boolean(),
   conditions: z.array(conditionResultSchema),
+  /** The storefront teaser the conditions word to in Auto mode; null when they can't all be worded. */
+  phrase: z.string().nullable(),
 });
 
 export type ConditionResult = z.infer<typeof conditionResultSchema>;
 export type ConditionsPreview = z.infer<typeof conditionsPreviewSchema>;
 
-export async function previewConditions(campaignId: number, userId: number): Promise<ConditionsPreview> {
-  const payload = await api.post(`campaigns/${campaignId}/preview-conditions`, { json: { user_id: userId } }).json();
+/** Without `userId` the conditions are explained for no one, which is enough for `phrase`. */
+export async function previewConditions(campaignId: number, userId?: number): Promise<ConditionsPreview> {
+  const json = userId === undefined ? {} : { user_id: userId };
+  const payload = await api.post(`campaigns/${campaignId}/preview-conditions`, { json }).json();
 
   return conditionsPreviewSchema.parse(payload);
 }

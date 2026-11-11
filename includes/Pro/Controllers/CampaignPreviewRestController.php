@@ -4,6 +4,7 @@ namespace YayLoyalty\Pro\Controllers;
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\AbstractRestController;
 use YayLoyalty\Engine\Points\ContextFactory;
+use YayLoyalty\Engine\Storefront\OfferLines;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Utils\Dates;
@@ -15,7 +16,9 @@ defined( 'ABSPATH' ) || exit;
  * through the same evaluator the award path uses. There is no order here,
  * so order-scoped conditions report `needs_order`. POST despite being
  * read-only: a question about a specific customer should not sit in a URL
- * or a server log.
+ * or a server log. It also answers `phrase`, the storefront teaser the
+ * conditions word to in Auto mode, which needs no customer: without a
+ * `user_id` the conditions are explained for no one.
  */
 final class CampaignPreviewRestController extends AbstractRestController {
 
@@ -45,7 +48,7 @@ final class CampaignPreviewRestController extends AbstractRestController {
                     'callback'            => fn( $request ) => $this->exec_read( [ $this, 'preview' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::MANAGE_CAMPAIGNS ),
                     'args'                => [
-                        'user_id' => $this->user_id_param(),
+                        'user_id' => [ 'required' => false ] + $this->user_id_param(),
                     ],
                 ],
             ]
@@ -72,6 +75,7 @@ final class CampaignPreviewRestController extends AbstractRestController {
                 'user_id'     => $user_id,
                 'matches'     => true,
                 'conditions'  => [],
+                'phrase'      => null,
             ];
         }
 
@@ -84,6 +88,8 @@ final class CampaignPreviewRestController extends AbstractRestController {
             // Folded from the same results, so verdict and explanation cannot disagree.
             'matches'     => ! in_array( false, array_column( $results, 'matched' ), true ),
             'conditions'  => $results,
+            // What Auto mode would tease: the teaser of a config that leaves advert_mode unset.
+            'phrase'      => OfferLines::teaser( [], $conditions ),
         ];
     }
 

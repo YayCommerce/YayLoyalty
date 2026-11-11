@@ -1,7 +1,14 @@
 import { z } from 'zod';
 import { __ } from '@wordpress/i18n';
 
-import { deleteResponseSchema, resolveDisplayStatus, Status, statusSchema } from '@/lib/schema/campaign.schema';
+import {
+  ADVERT_MODES,
+  ADVERT_TEXT_MAX,
+  deleteResponseSchema,
+  resolveDisplayStatus,
+  Status,
+  statusSchema,
+} from '@/lib/schema/campaign.schema';
 
 /** Mirrors RewardRestController::define_item_schema(), the source of truth. */
 
@@ -148,6 +155,15 @@ export const MIN_BELOW_INCREMENT_MESSAGE = () =>
   __('Minimum points must be at least the redemption increment.', 'yayloyalty');
 
 /**
+ * Mirrors OfferLines::CONFIG_SPECS, the source of truth. Spread into every type's schema: they are
+ * plain objects, which strip unknown keys, so a save would otherwise drop the teaser.
+ */
+const advertConfigShape = {
+  advert_mode: z.enum(ADVERT_MODES).optional(),
+  advert_text: z.string().max(ADVERT_TEXT_MAX).optional(),
+};
+
+/**
  * Mirrors Reward::config_schema() (flexible_discount) and
  * YayLoyaltyPro::add_reward_config_schema() (the four Pro types), the source of truth.
  * Its bounds give form feedback before the request; the PHP specs decide what is stored.
@@ -166,6 +182,7 @@ export const REWARD_CONFIG_SCHEMAS = {
       // A row without the key reads as auto max, as Clamp::is_auto_max() does.
       redemption_mode: z.enum(REDEMPTION_MODES).default('auto_max'),
       max_total: moneyCapSchema,
+      ...advertConfigShape,
     })
     // Mirrors Reward::config_conflict().
     .refine((config) => config.min_points >= config.increment, {
@@ -177,6 +194,7 @@ export const REWARD_CONFIG_SCHEMAS = {
     amount: z.number().min(0.01, __('The discount must be more than zero.', 'yayloyalty')),
     min_order: moneySchema,
     exclude_sale_items: z.boolean(),
+    ...advertConfigShape,
   }),
   percent_coupon: z.object({
     percent: z
@@ -187,10 +205,12 @@ export const REWARD_CONFIG_SCHEMAS = {
     currency: z.string(),
     min_order: moneySchema,
     exclude_sale_items: z.boolean(),
+    ...advertConfigShape,
   }),
   free_shipping: z.object({
     min_order: moneySchema,
     currency: z.string(),
+    ...advertConfigShape,
   }),
   free_product: z.object({
     product_id: z
@@ -199,6 +219,7 @@ export const REWARD_CONFIG_SCHEMAS = {
       .min(1, __('Choose a product.', 'yayloyalty')),
     variation_id: z.number().int().min(1).nullable(),
     qty: z.number().int().min(1),
+    ...advertConfigShape,
   }),
 } satisfies Record<RewardType, z.ZodType>;
 

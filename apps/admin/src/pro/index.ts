@@ -30,6 +30,7 @@ export { StoreLedger } from './ledger/StoreLedger';
 export { RewardTemplatePicker } from './rewards/add/RewardTemplatePicker';
 export { RewardCreator, RewardEditor } from './rewards/editor/RewardEditor';
 export { RewardTable } from './rewards/RewardTable';
+export { StorefrontTeaserField } from './shared/StorefrontTeaserField';
 
 /** Keeps the sentinel reachable code rather than a literal a minifier may discard. */
 export function proBundleMarker(): string {

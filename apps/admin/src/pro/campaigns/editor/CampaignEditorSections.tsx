@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { CampaignFormValues } from './campaign-editor.form';
 import { CampaignEditorConditions } from './CampaignEditorConditions';
 import { CampaignEditorEarn } from './CampaignEditorEarn';
+import { CampaignEditorTeaser } from './CampaignEditorTeaser';
 
 /** The editor's three sections in order. Status and schedule sit in the rail; see CampaignEditorSummaryRail. */
 export function CampaignEditorSections() {
@@ -22,6 +23,7 @@ export function CampaignEditorSections() {
 
       <EditorSection step={3} title={__('Conditions', 'yayloyalty')}>
         <CampaignEditorConditions />
+        <CampaignEditorTeaser />
       </EditorSection>
     </div>
   );

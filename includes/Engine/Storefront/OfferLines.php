@@ -33,6 +33,21 @@ final class OfferLines {
     /** Longest `advert_text`. */
     public const TEXT_MAX = 120;
 
+    /**
+     * The config specs of `advert_mode` and `advert_text`, which every campaign trigger and reward type lists.
+     * A missing `advert_mode` reads as MODE_AUTO.
+     */
+    public const CONFIG_SPECS = [
+        'advert_mode' => [
+            'type'   => 'enum',
+            'values' => [ self::MODE_AUTO, self::MODE_CUSTOM, self::MODE_OFF ],
+        ],
+        'advert_text' => [
+            'type'       => 'string',
+            'max_length' => self::TEXT_MAX,
+        ],
+    ];
+
     /** @var array<string, array> for_trigger() per trigger, viewer and time, for this request. */
     private static $memo = [];
 

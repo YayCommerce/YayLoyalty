@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Models;
 
+use YayLoyalty\Engine\Storefront\OfferLines;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Utils\ConfigSpec;
@@ -220,7 +221,8 @@ class Reward extends AbstractModel {
 
     /**
      * Per-type config schema, key => spec: what `config` may hold and what config_is_valid() checks.
-     * Lite declares flexible_discount. Pro types add theirs through the filter.
+     * Lite declares flexible_discount. Pro types add theirs through the filter. Every type lists the storefront
+     * teaser keys (OfferLines::CONFIG_SPECS), whose text is capped there.
      * Spec types: bool, string, int|number|nullable_int|nullable_number [min, max], enum|enum_list [values],
      * currency, product, and limit (null, or a whole number from 1). `required => true` makes a key mandatory. `exclusive_min` is a strict lower
      * bound: a nullable cap uses it at 0, so null is no cap and a set cap is above 0.
@@ -269,7 +271,7 @@ class Reward extends AbstractModel {
                     'type'          => 'nullable_number',
                     'exclusive_min' => 0,
                 ],
-            ],
+            ] + OfferLines::CONFIG_SPECS,
         ];
 
         /**
