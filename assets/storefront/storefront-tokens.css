@@ -1,7 +1,8 @@
 /*
  * Every colour, radius and shadow token of the storefront's hand-written cards, defined only here. Each card's
  * stylesheet imports this file first: the My Points tab (account/rewards-tokens.css), the order-received card
- * (thankyou-points.css), the points card (redeem.css) and the product-page line (product-earn.css).
+ * (thankyou-points.css), the points card (redeem.css), the product-page line (product-earn.css) and the cart and
+ * checkout earn card (cart-earn.css).
  *
  * - The shared values are set once, as --yayloyalty-*, on every card's root. Each card then names the ones it
  *   uses with its own prefix, so a theme or custom CSS can re-point one card, or every card at once.
@@ -9,7 +10,7 @@
  * - Overrides for a context or a state stay with the rule they serve: the launcher panel's brand colour
  *   (account/launcher.css) and the order-received card's earned state (thankyou-points.css).
  */
-:is(.yayloyalty-account, .yayloyalty-thankyou-points, .yayloyalty-redeem, .yayloyalty-product-earn) {
+:is(.yayloyalty-account, .yayloyalty-thankyou-points, .yayloyalty-redeem, .yayloyalty-product-earn, .yayloyalty-cart-earn) {
   --yayloyalty-text: #171719;
   --yayloyalty-muted: #7b7c80;
   --yayloyalty-border: #e4e4e7;
@@ -102,4 +103,18 @@
   --yayloyalty-product-earn-link: var(--yayloyalty-accent);
   --yayloyalty-product-earn-link-hover: var(--yayloyalty-accent-hover);
   --yayloyalty-product-earn-radius: var(--yayloyalty-radius);
+}
+
+/* The cart and checkout earn card: the product-page line's tints, for the same reason. */
+.yayloyalty-cart-earn {
+  --yayloyalty-cart-earn-surface: rgba(0, 0, 0, 0.015);
+  --yayloyalty-cart-earn-surface: color-mix(in srgb, currentColor 1.5%, transparent);
+  --yayloyalty-cart-earn-border: rgba(0, 0, 0, 0.1);
+  --yayloyalty-cart-earn-border: color-mix(in srgb, currentColor 12%, transparent);
+  --yayloyalty-cart-earn-icon: currentColor;
+  --yayloyalty-cart-earn-muted: rgba(0, 0, 0, 0.6);
+  --yayloyalty-cart-earn-muted: color-mix(in srgb, currentColor 65%, transparent);
+  --yayloyalty-cart-earn-link: var(--yayloyalty-accent);
+  --yayloyalty-cart-earn-link-hover: var(--yayloyalty-accent-hover);
+  --yayloyalty-cart-earn-radius: var(--yayloyalty-radius);
 }

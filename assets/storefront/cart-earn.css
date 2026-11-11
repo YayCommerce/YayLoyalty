@@ -1,0 +1,86 @@
+/*
+ * The cart and checkout earn card (CartEarnPreview in includes/Engine/Storefront/CartEarnPreview.php), in the
+ * classic totals table and in the Cart and Checkout blocks' order summary. Hand-written and shipped as-is, like
+ * product-earn.css, whose card it follows: the theme's font and colour, with tints of that colour for the surface.
+ * Its colours are storefront-tokens.css's, so a theme or custom CSS can re-point them in one place.
+ */
+@import url("storefront-tokens.css");
+
+.yayloyalty-cart-earn {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 100%;
+  margin: 8px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--yayloyalty-cart-earn-border);
+  border-radius: var(--yayloyalty-cart-earn-radius);
+  background: var(--yayloyalty-cart-earn-surface);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+}
+
+/* The classic totals table's cell around it: no theme padding or border doubling the card's own. */
+.yayloyalty-cart-earn-row > td {
+  padding-left: 0;
+  padding-right: 0;
+  border: 0;
+}
+
+.yayloyalty-cart-earn .yayloyalty-cart-earn__line,
+.yayloyalty-cart-earn .yayloyalty-cart-earn__bonus,
+.yayloyalty-cart-earn .yayloyalty-cart-earn__guest {
+  margin: 0;
+  padding: 0;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.yayloyalty-cart-earn .yayloyalty-cart-earn__line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.yayloyalty-cart-earn .yayloyalty-cart-earn__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  /* One line's height, so the icon centres on the first line when the sentence wraps. */
+  height: 1.45em;
+  align-items: center;
+  color: var(--yayloyalty-cart-earn-icon);
+  opacity: 0.7;
+}
+
+.yayloyalty-cart-earn .yayloyalty-cart-earn__icon svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+.yayloyalty-cart-earn strong {
+  font-weight: 600;
+}
+
+/* Lines up with the sentence, past the icon and its gap. */
+.yayloyalty-cart-earn .yayloyalty-cart-earn__bonus,
+.yayloyalty-cart-earn .yayloyalty-cart-earn__guest {
+  padding-left: 26px;
+  color: var(--yayloyalty-cart-earn-muted);
+}
+
+.yayloyalty-cart-earn .yayloyalty-cart-earn__guest a {
+  color: var(--yayloyalty-cart-earn-link);
+  font-weight: inherit;
+  text-decoration: none;
+}
+
+.yayloyalty-cart-earn .yayloyalty-cart-earn__guest a:hover,
+.yayloyalty-cart-earn .yayloyalty-cart-earn__guest a:focus-visible {
+  color: var(--yayloyalty-cart-earn-link-hover);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

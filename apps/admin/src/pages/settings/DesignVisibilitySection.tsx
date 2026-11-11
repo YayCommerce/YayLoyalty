@@ -16,6 +16,7 @@ import { Switch } from '@/components/ui/switch';
 import { ProGate } from '@/components/pro/ProGate';
 import {
   VISIBILITY_BONUS_OFFERS_LABEL,
+  VISIBILITY_CART_EARN_PREVIEW_LABEL,
   VISIBILITY_HIDE_FOR_ROLES_DESCRIPTION,
   VISIBILITY_HIDE_FOR_ROLES_LABEL,
   VISIBILITY_HIDE_FOR_ROLES_PLACEHOLDER,
@@ -60,7 +61,7 @@ function VisibilitySwitchField({ name, label }: { name: VisibilityToggle; label:
   );
 }
 
-/** Scope, the chosen pages, hide on mobile, hide for roles, the product-page line, the thank-you points — the custom_pages scope and its page picker are Pro. */
+/** Scope, the chosen pages, hide on mobile, hide for roles, the product-page line, the cart earn row, the thank-you points — the custom_pages scope and its page picker are Pro. */
 export function DesignVisibilitySection() {
   const { control } = useFormContext<Design>();
   const scope = useWatch({ control, name: 'visibility.scope' });
@@ -168,6 +169,8 @@ export function DesignVisibilitySection() {
         </Field>
 
         <VisibilitySwitchField name="show_product_message" label={VISIBILITY_PRODUCT_MESSAGE_LABEL()} />
+
+        <VisibilitySwitchField name="show_cart_earn_preview" label={VISIBILITY_CART_EARN_PREVIEW_LABEL()} />
 
         <VisibilitySwitchField name="show_thankyou_message" label={VISIBILITY_THANKYOU_MESSAGE_LABEL()} />
 
