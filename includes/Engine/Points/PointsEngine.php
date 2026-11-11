@@ -17,6 +17,14 @@ final class PointsEngine {
     /** Filter that attaches a campaign-conditions evaluator (Pro); nothing subscribes in Lite. Internal seam. */
     public const CONDITIONS_EVALUATOR_FILTER = 'yayloyalty_campaign_conditions_evaluator';
 
+    // A bonus's status for one viewer (offers()): every condition holds; one fails; only the order is left to decide.
+    public const OFFER_MATCHED     = 'matched';
+    public const OFFER_LOCKED      = 'locked';
+    public const OFFER_AT_CHECKOUT = 'at_checkout';
+
+    /** The evaluator's reason for a condition only the order can answer. */
+    private const REASON_NEEDS_ORDER = 'needs_order';
+
     /** @var Registry */
     private $registry;
 
@@ -116,6 +124,81 @@ final class PointsEngine {
         return null;
     }
 
+    /**
+     * What advertised() promises, plus the bonuses a viewer could earn instead: the conditional campaigns that come
+     * before the first campaign for everyone and pay more than the promise (anything, with no promise). Below
+     * that campaign nothing pays, so nothing there is a bonus. Each bonus carries the viewer's status, folded
+     * from the evaluator's explain(): OFFER_MATCHED, OFFER_LOCKED when a condition fails, OFFER_AT_CHECKOUT when
+     * only conditions the order answers are left. No bonuses without an evaluator that explains (Lite).
+     *
+     * @param string       $trigger A CampaignTrigger constant.
+     * @param Context      $advert  Context::advert(); liveness is evaluated at its occurred_at.
+     * @param Context|null $viewer  The member the statuses are for; null for a guest, explained on $advert.
+     * @return array{base: array{campaign: Campaign, value: float}|null, bonuses: array<int, array{campaign: Campaign, value: float, status: string}>}
+     * @throws \InvalidArgumentException When $advert is an event, or no handler owns the trigger.
+     */
+    public function offers( string $trigger, Context $advert, ?Context $viewer ): array {
+        $base      = $this->advertised( $trigger, $advert );
+        $evaluator = self::conditions_evaluator();
+        $offers    = [
+            'base'    => $base,
+            'bonuses' => [],
+        ];
+
+        if ( null === $evaluator || ! method_exists( $evaluator, 'explain' ) ) {
+            return $offers;
+        }
+
+        $handler = $this->registry->get( $trigger );
+        $ctx     = $viewer ?? $advert;
+
+        foreach ( $this->candidates( $trigger, $advert ) as $campaign ) {
+            if ( self::applies_to_everyone( $campaign ) ) {
+                break;
+            }
+
+            $value = $handler->advertised_points( $campaign );
+
+            if ( $value <= ( null === $base ? 0.0 : $base['value'] ) ) {
+                continue;
+            }
+
+            $offers['bonuses'][] = [
+                'campaign' => $campaign,
+                'value'    => $value,
+                'status'   => $this->offer_status( $evaluator->explain( $campaign->get_conditions(), $ctx ), $campaign, $ctx ),
+            ];
+        }
+
+        return $offers;
+    }
+
+    /**
+     * @param array<int, array{matched: bool, reason: string}> $results The evaluator's explain().
+     */
+    private function offer_status( array $results, Campaign $campaign, Context $ctx ): string {
+        $status = self::OFFER_MATCHED;
+
+        foreach ( $results as $result ) {
+            if ( ! empty( $result['matched'] ) ) {
+                continue;
+            }
+
+            if ( self::REASON_NEEDS_ORDER !== ( $result['reason'] ?? '' ) ) {
+                return self::OFFER_LOCKED;
+            }
+
+            $status = self::OFFER_AT_CHECKOUT;
+        }
+
+        // A matched campaign still goes through the same filter evaluate() asks.
+        if ( self::OFFER_MATCHED === $status && ! $this->matches( $campaign, $ctx ) ) {
+            return self::OFFER_LOCKED;
+        }
+
+        return $status;
+    }
+
     /** @return iterable<Campaign> */
     private function candidates( string $trigger, Context $ctx ): iterable {
         /**
@@ -148,7 +231,7 @@ final class PointsEngine {
         /**
          * Whether a campaign's conditions match this event. Also fires on storefront pages with an
          * advertising Context (Context::is_advert()), which stands for any shopper and no event; there it
-         * fires only for a campaign for everyone, with true.
+         * fires for a campaign for everyone, with true, and for a bonus whose conditions offers() found met.
          *
          * @param bool     $matches
          * @param Campaign $campaign
@@ -180,7 +263,9 @@ final class PointsEngine {
         /**
          * Evaluator for campaign `conditions`; null in Lite. Internal Pro seam, not a public API.
          *
-         * @param object|null $evaluator Exposes evaluate( array $conditions, Context $ctx ): bool.
+         * @param object|null $evaluator Exposes evaluate( array $conditions, Context $ctx ): bool, and for
+         *                              offers() explain( array $conditions, Context $ctx ): array, one
+         *                              {matched: bool, reason: string} per condition.
          */
         $evaluator = apply_filters( self::CONDITIONS_EVALUATOR_FILTER, null ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name.
 
