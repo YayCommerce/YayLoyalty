@@ -16,7 +16,10 @@ defined( 'ABSPATH' ) || exit;
  *
  * Unknown conditions fail here, while Lite, with no evaluator, lets them match: Pro can evaluate,
  * so an unrecognised type is a real error. Do not harmonise them. A condition whose input is missing
- * fails too: `no_customer` for a guest, `needs_order` when the Context has no order (the admin preview).
+ * fails too: `no_customer` for a guest, `needs_order` for an order condition the Context cannot answer yet.
+ * Without an order (a product page, a cart, the admin preview) an order condition is still compared when
+ * its input is on the Context: lines for products and categories, the currency, a chosen payment method,
+ * the address a country condition reads.
  */
 final class ConditionsEvaluator {
 
@@ -88,7 +91,7 @@ final class ConditionsEvaluator {
             'reason'   => '',
         ];
 
-        $missing = $this->missing_input( $type, $ctx );
+        $missing = $this->missing_input( $type, $value, $ctx );
 
         // Not reject(): a guest order or a customer-only preview is normal, not a misconfiguration worth a log line.
         if ( null !== $missing ) {
@@ -136,18 +139,56 @@ final class ConditionsEvaluator {
         );
     }
 
-    /** The reason a condition of $type cannot be evaluated on this Context, or null when it can. */
-    private function missing_input( string $type, Context $ctx ): ?string {
+    /**
+     * The reason a condition of $type cannot be evaluated on this Context, or null when it can.
+     *
+     * @param mixed $value The condition's value.
+     */
+    private function missing_input( string $type, $value, Context $ctx ): ?string {
         switch ( CampaignConditionType::input_for( $type ) ) {
             case CampaignConditionType::INPUT_CUSTOMER:
                 return null === $ctx->get_user_id() ? self::REASON_NO_CUSTOMER : null;
             case CampaignConditionType::INPUT_FACTS:
                 return null === $ctx->get_customer_facts() ? self::REASON_NO_CUSTOMER : null;
             case CampaignConditionType::INPUT_ORDER:
-                return null === $ctx->get_order_id() ? self::REASON_NEEDS_ORDER : null;
+                return null !== $ctx->get_order_id() || $this->has_order_input( $type, $value, $ctx ) ? null : self::REASON_NEEDS_ORDER;
         }
 
         return null;
+    }
+
+    /**
+     * Whether a Context with no order already carries what an order condition of $type compares.
+     *
+     * @param mixed $value The condition's value; a country condition's `source` names the address it reads.
+     */
+    private function has_order_input( string $type, $value, Context $ctx ): bool {
+        switch ( $type ) {
+            case CampaignConditionType::CURRENCY:
+                return true;
+
+            case CampaignConditionType::PRODUCT_IN_CART:
+            case CampaignConditionType::CATEGORY_IN_CART:
+                return [] !== $ctx->get_line_items();
+
+            case CampaignConditionType::PAYMENT_METHOD:
+                return '' !== (string) $ctx->get_extra( Context::EXTRA_PAYMENT_METHOD, '' );
+
+            case CampaignConditionType::COUNTRY:
+                $billing  = '' !== (string) $ctx->get_extra( Context::EXTRA_BILLING_COUNTRY, '' );
+                $shipping = '' !== (string) $ctx->get_extra( Context::EXTRA_SHIPPING_COUNTRY, '' );
+
+                switch ( is_array( $value ) ? ( $value['source'] ?? '' ) : '' ) {
+                    case CampaignConditionType::SOURCE_BILLING:
+                        return $billing;
+                    case CampaignConditionType::SOURCE_SHIPPING:
+                        return $shipping;
+                    default:
+                        return $billing || $shipping;
+                }
+        }
+
+        return false;
     }
 
     /**
