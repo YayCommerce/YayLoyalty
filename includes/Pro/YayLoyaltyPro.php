@@ -26,6 +26,7 @@ use YayLoyalty\Pro\Repositories\StoreLedgerRepository;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Pro\Services\DailyEarningLimit;
 use YayLoyalty\Pro\Services\DiscountRewardHandler;
+use YayLoyalty\Pro\Services\RewardConditionsMatch;
 use YayLoyalty\Pro\Storefront\ConditionPhrases;
 use YayLoyalty\Pro\Storefront\RewardsPanel;
 use YayLoyalty\Repositories\CampaignRepository;
@@ -104,6 +105,7 @@ final class YayLoyaltyPro {
         add_filter( EarningService::AWARD_POINTS_FILTER, [ $daily_limit, 'clamp' ], 10, 3 );
         add_filter( EarningService::POINTS_LEFT_TODAY_FILTER, [ $daily_limit, 'left_today' ], 10, 2 );
 
+        ( new RewardConditionsMatch( self::evaluator() ) )->register();
         ( new RewardsPanel() )->register();
         ( new ConditionPhrases() )->register();
         ( new BirthdayRunner() )->register();

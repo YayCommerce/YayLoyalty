@@ -97,3 +97,18 @@
 .yayloyalty-account .yayloyalty-account__list .yayloyalty-account__item .yayloyalty-account__item-value--positive {
   color: var(--yayloyalty-account-positive);
 }
+
+/* A reward the shopper can't claim yet: icon, name and cost muted, and its teaser in the accent like a bonus line. */
+.yayloyalty-account .yayloyalty-rule--locked .yayloyalty-account__item-icon {
+  opacity: 0.5;
+}
+
+.yayloyalty-account .yayloyalty-rule--locked .yayloyalty-account__item-name,
+.yayloyalty-account .yayloyalty-account__list .yayloyalty-rule--locked .yayloyalty-account__item-value {
+  color: var(--yayloyalty-account-muted);
+}
+
+.yayloyalty-account .yayloyalty-rule--locked .yayloyalty-account__item-text {
+  font-weight: 500;
+  color: var(--yayloyalty-account-accent);
+}

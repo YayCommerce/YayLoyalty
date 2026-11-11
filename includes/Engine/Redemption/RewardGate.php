@@ -18,6 +18,9 @@ defined( 'ABSPATH' ) || exit;
  */
 final class RewardGate implements Gate {
 
+    /** Whether a reward's conditions hold for a claim. Internal seam for Pro, not a public API. */
+    public const CONDITIONS_FILTER = 'yayloyalty_reward_conditions_match';
+
     public function check( Reward $reward, Context $ctx ): ?string {
         if ( ! $reward->is_live_at( $ctx->get_at() ) ) {
             return Result::REASON_NOT_LIVE;
@@ -36,7 +39,7 @@ final class RewardGate implements Gate {
          * @param Reward  $reward
          * @param Context $ctx
          */
-        if ( ! apply_filters( 'yayloyalty_reward_conditions_match', true, $reward, $ctx ) ) {
+        if ( ! apply_filters( self::CONDITIONS_FILTER, true, $reward, $ctx ) ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name.
             return Result::REASON_CONDITIONS_NOT_MET;
         }
 

@@ -5,7 +5,7 @@
  * No stylesheet of its own: the list and its rows are rule-list-item.php and rule-list-item.css.
  *
  * @var array $yayloyalty_payload LauncherPayload::for_user(), or Launcher::view() in the panel: its `redeem` (null
- *                                 while the discount reward is not live) and `offers`.
+ *                                 while the discount reward is not live) and `offers`, some maybe `locked`.
  */
 
 use YayLoyalty\Engine\Storefront\AccountMyPointsIcon;
@@ -33,12 +33,15 @@ if ( null !== $yayloyalty_redeem ) {
     ];
 }
 
+// A locked offer is one the viewer's conditions rule out: its teaser says what it takes, in place of the description.
 foreach ( $yayloyalty_offers as $yayloyalty_offer ) {
+    $yayloyalty_locked  = ! empty( $yayloyalty_offer['locked'] );
     $yayloyalty_items[] = [
         'icon'  => AccountMyPointsIcon::design( 'offer' ),
         'name'  => $yayloyalty_offer['name'],
-        'text'  => $yayloyalty_offer['text'],
+        'text'  => $yayloyalty_locked ? $yayloyalty_offer['teaser'] : $yayloyalty_offer['text'],
         'value' => SettingsHelper::points_text( $yayloyalty_offer['cost'] ),
+        'tone'  => $yayloyalty_locked ? 'locked' : '',
     ];
 }
 ?>

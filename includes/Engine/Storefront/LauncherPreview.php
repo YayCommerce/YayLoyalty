@@ -20,8 +20,8 @@ defined( 'ABSPATH' ) || exit;
  * The admin shows it in a sandboxed iframe, so the storefront CSS applies at the iframe's width. No script runs
  * there: the templates print the expanded state and the activity rows, so the preview never takes focus from
  * the field being edited. The panel body scrolls as on the storefront, but no control takes a click, so a link
- * never loads a page into the frame. Rates, the discount reward and copy are the store's own. The shopper, their
- * history and the reward catalog are samples.
+ * never loads a page into the frame. Rates, the discount reward, the reward catalog and copy are the store's own;
+ * the catalog is sampled while the store has none. The shopper and their history are samples.
  */
 final class LauncherPreview {
 
@@ -42,9 +42,13 @@ final class LauncherPreview {
         $payload = ( new LauncherPayload( new CampaignRepository(), new RewardRepository(), new CustomerRepository() ) )
             ->for_balance( $design, $is_member ? self::SAMPLE_BALANCE : null );
 
-        // Sample rewards, so the reward catalog previews before any exists; the panel switch still hides them.
-        $payload['offers'] = array_map( [ LauncherPayload::class, 'offer' ], self::sample_rewards() );
-        $view              = Launcher::view( $design, $payload, false );
+        // The store's own rewards, as a guest sees them (conditional ones locked); samples until any exists, so the
+        // reward catalog always previews. The panel switch still hides them.
+        if ( [] === $payload['offers'] ) {
+            $payload['offers'] = array_map( [ LauncherPayload::class, 'offer' ], self::sample_rewards() );
+        }
+
+        $view = Launcher::view( $design, $payload, false );
 
         if ( $is_member ) {
             $view['activity'] = ShopperActivityRow::items( self::sample_entries() );
