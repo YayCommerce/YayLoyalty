@@ -3,6 +3,7 @@ namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Engine\Earning\Listeners\ListenerGuard;
 use YayLoyalty\Engine\Earning\Listeners\OrderListener;
+use YayLoyalty\Engine\Earning\PendingPoints;
 use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Earning\Reversal;
 use YayLoyalty\Enums\OrderStatus;
@@ -104,6 +105,15 @@ final class AccountClaimOrder {
         if ( OrderStatus::AWARD !== $order->get_status() ) {
             if ( in_array( $order->get_status(), self::STAGEABLE, true ) ) {
                 ListenerGuard::for_order( 'AccountClaimOrder', 'stage', $order_id, fn() => $this->orders->on_stageable( $order ) );
+            }
+
+            // A fresh read: staging wrote the figure through its own instance.
+            $staged = wc_get_order( $order_id );
+            $staged = $staged instanceof \WC_Order ? PendingPoints::unreleased( $staged ) : 0;
+
+            if ( $staged > 0 ) {
+                /* translators: 1: order number, 2: points in the store's format, as "180 Points" */
+                return self::success( sprintf( __( 'Order #%1$s is now in your account. %2$s will be added when it is completed.', 'yayloyalty' ), $number, SettingsHelper::points_text( $staged ) ) );
             }
 
             /* translators: %s: order number */

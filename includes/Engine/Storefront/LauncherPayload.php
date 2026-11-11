@@ -76,6 +76,10 @@ final class LauncherPayload {
             $payload['member']['expires_at'] = self::expiring_soon( $customer->get_expires_at() );
         }
 
+        if ( null !== $customer ) {
+            $payload['member']['pending'] = max( 0, $customer->get_pending_points() );
+        }
+
         // A shopper checkout refuses (excluded role, opted out, program paused, coupons off) is promised no discount.
         if ( null !== RedemptionProgramGate::shopper_denial( $user_id ) ) {
             $payload['redeem']          = null;
@@ -137,14 +141,16 @@ final class LauncherPayload {
 
     /**
      * @param Reward|null $reward The cart-discount reward when it is live; null hides the worth.
-     * @return array{balance: int, worth: ?float, expires_at: ?string} `expires_at` stays null here; build() sets it
-     *         for a live member whose points expire within EXPIRING_SOON_DAYS.
+     * @return array{balance: int, worth: ?float, expires_at: ?string, pending: int} `expires_at` and `pending` stay empty
+     *         here; build() sets them for a live member: `expires_at` when points expire within EXPIRING_SOON_DAYS, `pending`
+     *         to the points open orders hold until they complete.
      */
     private static function member( int $balance, ?Reward $reward ): array {
         return [
             'balance'    => $balance,
             'worth'      => null === $reward || $balance <= 0 ? null : self::worth( $reward, $balance ),
             'expires_at' => null,
+            'pending'    => 0,
         ];
     }
 

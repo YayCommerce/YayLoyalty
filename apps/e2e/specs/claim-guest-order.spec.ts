@@ -72,8 +72,11 @@ test('an on-hold guest order shows as pending once claimed, and earns when compl
   await claim(shopperPage, String(orderId));
 
   await expect(
-    shopperPage.getByText(`Order #${orderId} is now in your account. Its points arrive when it is completed.`),
+    shopperPage.getByText(`Order #${orderId} is now in your account. 20 Points will be added when it is completed.`),
   ).toBeVisible();
+  await expect(
+    shopperPage.locator('.woocommerce-MyAccount-content .yayloyalty-account__pending'),
+  ).toHaveText('+20 Points pending, added when your orders are completed.');
   await api.expectPoints(customer.id, { balance: 0, pending_points: 20 });
 
   await api.setOrderStatus(orderId, 'completed');

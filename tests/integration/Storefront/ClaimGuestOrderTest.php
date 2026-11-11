@@ -102,6 +102,7 @@ final class ClaimGuestOrderTest extends IntegrationTestCase {
         $result = $this->claimer()->claim( $user_id, (string) $order->get_id() );
 
         $this->assertSame( 'success', $result['type'] );
+        $this->assertStringContainsString( '25', $result['message'] );
         $this->assertSame( [], $this->ledger_points( $user_id ) );
         $this->assertSame( 25, (int) $this->customer_row( $user_id )['pending_points'] );
 
