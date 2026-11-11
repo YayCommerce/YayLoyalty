@@ -64,6 +64,29 @@
   font-weight: 600;
 }
 
+/* The bonuses this product could earn more from (ProductEarnMessage::bonus_lines()), one line each. */
+.yayloyalty-product-earn .yayloyalty-product-earn__bonuses {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.yayloyalty-product-earn .yayloyalty-product-earn__bonuses[hidden] {
+  display: none;
+}
+
+.yayloyalty-product-earn .yayloyalty-product-earn__bonus {
+  margin: 0;
+  padding: 0 0 0 26px;
+  font-size: inherit;
+  line-height: inherit;
+  color: var(--yayloyalty-product-earn-muted);
+}
+
+.yayloyalty-product-earn .yayloyalty-product-earn__bonus strong {
+  font-weight: 600;
+}
+
 /* Lines up with the sentence, past the icon and its gap. */
 .yayloyalty-product-earn .yayloyalty-product-earn__guest {
   padding-left: 26px;

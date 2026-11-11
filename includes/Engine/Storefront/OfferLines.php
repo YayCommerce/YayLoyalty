@@ -44,16 +44,44 @@ final class OfferLines {
      * @param string       $trigger A CampaignTrigger constant.
      * @param Context      $advert  Context::advert() at the time the lines are for.
      * @param Context|null $viewer  The member; null for a guest.
-     * @return array{base: array{campaign: Campaign, value: float}|null, row: array{campaign: Campaign, value: float}|null, bonuses: array<int, array{campaign: Campaign, value: float, status: string, teaser: string}>}
+     * @return array{base: array{campaign: Campaign, value: float}|null, row: array{campaign: Campaign, value: float}|null, bonuses: array<int, array{campaign: Campaign, value: float, status: string, results: array, teaser: string}>}
      */
     public static function for_trigger( PointsEngine $engine, string $trigger, Context $advert, ?Context $viewer ): array {
-        $key = $trigger . '|' . ( null === $viewer ? 0 : (int) $viewer->get_user_id() ) . '|' . $advert->get_occurred_at() . '|' . spl_object_id( $engine );
+        $key = $trigger . '|' . self::viewer_key( $viewer ) . '|' . $advert->get_occurred_at() . '|' . spl_object_id( $engine );
 
         if ( ! isset( self::$memo[ $key ] ) ) {
             self::$memo[ $key ] = self::resolve( $engine, $trigger, $advert, $viewer );
         }
 
         return self::$memo[ $key ];
+    }
+
+    /**
+     * The memo's key for a viewer: who it is, and what its lines and checkout inputs are, so two products or carts
+     * in one request never share an answer. A Context without lines (from_user()) keeps one key per member.
+     */
+    private static function viewer_key( ?Context $viewer ): string {
+        if ( null === $viewer ) {
+            return 'guest';
+        }
+
+        $lines = [];
+
+        foreach ( $viewer->get_line_items() as $line ) {
+            $lines[] = [ $line->get_product_id(), $line->get_variation_id(), $line->get_quantity(), $line->get_subtotal() ];
+        }
+
+        return (int) $viewer->get_user_id() . ':' . md5(
+            (string) wp_json_encode(
+                [
+                    $lines,
+                    $viewer->get_order_subtotal(),
+                    $viewer->get_extra( Context::EXTRA_PAYMENT_METHOD, '' ),
+                    $viewer->get_extra( Context::EXTRA_BILLING_COUNTRY, '' ),
+                    $viewer->get_extra( Context::EXTRA_SHIPPING_COUNTRY, '' ),
+                ]
+            )
+        );
     }
 
     /**

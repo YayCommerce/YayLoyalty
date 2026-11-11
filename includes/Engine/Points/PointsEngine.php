@@ -130,12 +130,13 @@ final class PointsEngine {
      * before the first campaign for everyone and pay more than the promise (anything, with no promise). Below
      * that campaign nothing pays, so nothing there is a bonus. Each bonus carries the viewer's status, folded
      * from the evaluator's explain(): OFFER_MATCHED, OFFER_LOCKED when a condition fails, OFFER_AT_CHECKOUT when
-     * only conditions the order answers are left. No bonuses without an evaluator that explains (Lite).
+     * only conditions the order answers are left. `results` are the explain() rows the status was folded from, for
+     * a surface that needs to know which condition failed. No bonuses without an evaluator that explains (Lite).
      *
      * @param string       $trigger A CampaignTrigger constant.
      * @param Context      $advert  Context::advert(); liveness is evaluated at its occurred_at.
      * @param Context|null $viewer  The member the statuses are for; null for a guest, explained on $advert.
-     * @return array{base: array{campaign: Campaign, value: float}|null, bonuses: array<int, array{campaign: Campaign, value: float, status: string}>}
+     * @return array{base: array{campaign: Campaign, value: float}|null, bonuses: array<int, array{campaign: Campaign, value: float, status: string, results: array}>}
      * @throws \InvalidArgumentException When $advert is an event, or no handler owns the trigger.
      */
     public function offers( string $trigger, Context $advert, ?Context $viewer ): array {
@@ -164,10 +165,13 @@ final class PointsEngine {
                 continue;
             }
 
+            $results = (array) $evaluator->explain( $campaign->get_conditions(), $ctx );
+
             $offers['bonuses'][] = [
                 'campaign' => $campaign,
                 'value'    => $value,
-                'status'   => $this->offer_status( $evaluator->explain( $campaign->get_conditions(), $ctx ), $campaign, $ctx ),
+                'status'   => $this->offer_status( $results, $campaign, $ctx ),
+                'results'  => $results,
             ];
         }
 

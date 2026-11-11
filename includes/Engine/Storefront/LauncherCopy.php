@@ -150,6 +150,19 @@ final class LauncherCopy {
         );
     }
 
+    /**
+     * A bonus line under the product-page line and the cart row, as escaped HTML: "Earn <strong>200 Points</strong>
+     * for VIP members". $teaser is OfferLines' plain-text teaser.
+     */
+    public static function product_bonus( int $points, string $teaser ): string {
+        return str_replace(
+            '{teaser}',
+            esc_html( $teaser ),
+            /* translators: keep every {…} placeholder as it is; {teaser} becomes a clause such as "for VIP members". */
+            self::points_sentence_html( __( 'Earn {points} {points_label} {teaser}', 'yayloyalty' ), $points )
+        );
+    }
+
     /** The launcher button's accessible name and the panel's title. */
     public static function launcher_label(): string {
         return __( 'Rewards', 'yayloyalty' );
