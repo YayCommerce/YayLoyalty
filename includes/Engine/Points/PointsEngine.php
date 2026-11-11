@@ -11,6 +11,7 @@ defined( 'ABSPATH' ) || exit;
  * How many points an event earns and which campaign paid. One trigger per call: triggers stack
  * across calls, and the highest priority wins within one. Writes nothing. Reads only campaigns and
  * the Context, and scores at its occurred_at, never now(). No capability checks: it runs from cron.
+ * The storefront reads advertised() and offers() with no event, and quote_campaign() for one bonus on a product or cart.
  */
 final class PointsEngine {
 
@@ -171,6 +172,28 @@ final class PointsEngine {
         }
 
         return $offers;
+    }
+
+    /**
+     * What one campaign would pay for this event: its handler's gates (min_subtotal and the like), points and caps,
+     * 0 when a gate fails. Conditions and liveness are not checked: a surface quotes a bonus offers() already chose,
+     * to say what it would pay on this cart or product.
+     *
+     * @param Context $ctx An event Context (a product or a cart).
+     * @throws \InvalidArgumentException When $ctx is an advert, or no handler owns the campaign's trigger.
+     */
+    public function quote_campaign( Campaign $campaign, Context $ctx ): int {
+        if ( $ctx->is_advert() ) {
+            throw new \InvalidArgumentException( 'YayLoyalty: quote_campaign() takes an event Context, not Context::advert().' );
+        }
+
+        $handler = $this->registry->get( $campaign->get_trigger() );
+
+        if ( ! $handler->is_eligible( $campaign, $ctx ) ) {
+            return 0;
+        }
+
+        return $this->caps->apply( $handler->compute_points( $campaign, $ctx )->get_points(), $campaign );
     }
 
     /**
