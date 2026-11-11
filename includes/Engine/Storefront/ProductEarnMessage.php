@@ -186,7 +186,10 @@ final class ProductEarnMessage {
             return $none;
         }
 
-        $points = get_current_user_id() > 0 ? self::member_points( $product ) : self::guest_points( $product );
+        $user_id = get_current_user_id();
+        // One Context for the figure and the bonuses, so a member's facts are read once.
+        $viewer = ContextFactory::from_product( $product, 1, $user_id > 0 ? $user_id : null );
+        $points = $user_id > 0 ? self::member_points( $viewer ) : self::guest_points( $product );
 
         if ( $points <= 0 ) {
             return $none;
@@ -195,19 +198,18 @@ final class ProductEarnMessage {
         return [
             /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
             'sentence' => LauncherCopy::points_sentence_html( __( 'Earn {points} {points_label} with this purchase', 'yayloyalty' ), $points ),
-            'bonuses'  => self::bonuses( $product, $points ),
+            'bonuses'  => self::bonuses( $viewer, $points ),
         ];
     }
 
     /**
-     * Each bonus that pays more than $figure on one of this product, as a paragraph. The viewer is the product's own
+     * Each bonus that pays more than $figure on one of this product, as a paragraph. $viewer is the product's own
      * Context, for a guest too: a bonus whose product or category condition this line fails is dropped, since
      * buying it can't earn that. A guest's Context carries no customer, so it depends on nothing personal.
      */
-    private static function bonuses( \WC_Product $product, int $figure ): string {
+    private static function bonuses( Context $viewer, int $figure ): string {
         try {
-            $user_id = get_current_user_id();
-            $viewer  = ContextFactory::from_product( $product, 1, $user_id > 0 ? $user_id : null );
+            $user_id = (int) $viewer->get_user_id();
             $lines   = '';
 
             foreach ( OfferLines::for_trigger( self::engine(), CampaignTrigger::PURCHASE, self::advert(), $viewer )['bonuses'] as $bonus ) {
@@ -269,8 +271,12 @@ final class ProductEarnMessage {
         }
     }
 
-    /** What one of this product earns the member, no more than the daily limit leaves today. 0 on failure. */
-    private static function member_points( \WC_Product $product ): int {
+    /**
+     * What one of this product earns the member, no more than the daily limit leaves today. 0 on failure.
+     *
+     * @param Context $ctx ContextFactory::from_product() for the member.
+     */
+    private static function member_points( Context $ctx ): int {
         try {
             if ( false === self::$left_today ) {
                 self::$left_today = EarningService::points_left_today( get_current_user_id() );
@@ -280,7 +286,7 @@ final class ProductEarnMessage {
                 return 0;
             }
 
-            $points = self::service()->preview( CampaignTrigger::PURCHASE, ContextFactory::from_product( $product, 1, get_current_user_id() ) )->get_points();
+            $points = self::service()->preview( CampaignTrigger::PURCHASE, $ctx )->get_points();
 
             return null === self::$left_today ? $points : min( $points, self::$left_today );
         } catch ( \Throwable $e ) {
