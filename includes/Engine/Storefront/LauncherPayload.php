@@ -70,7 +70,7 @@ final class LauncherPayload {
         }
 
         $customer = $this->customers->find_by_user_id( $user_id );
-        $payload  = $this->for_balance( $design, null === $customer ? 0 : $customer->get_balance(), EarningService::points_left_today( $user_id ) );
+        $payload  = $this->for_balance( $design, null === $customer ? 0 : $customer->get_balance(), EarningService::points_left_today( $user_id ), $user_id );
 
         if ( null !== $customer && $customer->get_balance() > 0 ) {
             $payload['member']['expires_at'] = self::expiring_soon( $customer->get_expires_at() );
@@ -92,14 +92,15 @@ final class LauncherPayload {
      * @param array    $design  DesignHelper::get_design() or DesignHelper::with_unsaved().
      * @param int|null $balance    The member's balance; null for a guest.
      * @param int|null $left_today Points the member may still earn today (EarningService::points_left_today()); null for no limit.
+     * @param int      $viewer_id  The member whose own earn values and bonuses are shown; 0 for what anyone is promised.
      */
-    public function for_balance( array $design, ?int $balance, ?int $left_today = null ): array {
+    public function for_balance( array $design, ?int $balance, ?int $left_today = null, int $viewer_id = 0 ): array {
         $now      = Dates::now();
         $reward   = $this->rewards->find_live_flexible_discount( $now );
         $redeem   = self::redeem_rule( $reward );
         $register = self::register_route();
         $engine   = $this->engine();
-        $rules    = null === $engine ? LauncherEarnRules::none() : LauncherEarnRules::advertise( $engine, ContextFactory::for_advert( $now ), null !== $register );
+        $rules    = null === $engine ? LauncherEarnRules::none() : LauncherEarnRules::advertise( $engine, ContextFactory::for_advert( $now ), null !== $register, $viewer_id );
         $estimate = null !== $engine && null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate() : null;
 
         return [
@@ -107,6 +108,7 @@ final class LauncherPayload {
             'earn'              => $rules['earn'],
             'purchase_min'      => $rules['purchase_min'],
             'purchase_rounding' => $rules['purchase_rounding'],
+            'earn_bonuses'      => $rules['bonuses'],
             'redeem'            => $redeem,
             'offers'            => self::redeem_offers( $now ),
             'member'            => null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward ),

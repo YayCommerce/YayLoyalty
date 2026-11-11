@@ -23,6 +23,8 @@ export const designSchema = z.object({
     hide_for_roles: z.array(z.string()),
     show_product_message: z.boolean(),
     show_thankyou_message: z.boolean(),
+    /** Pro: conditional campaigns and rewards teased on the storefront. */
+    show_bonus_offers: z.boolean(),
   }),
   /** Pro. */
   panel: z.object({

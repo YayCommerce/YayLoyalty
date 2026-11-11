@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { ProGate } from '@/components/pro/ProGate';
 import {
+  VISIBILITY_BONUS_OFFERS_LABEL,
   VISIBILITY_HIDE_FOR_ROLES_DESCRIPTION,
   VISIBILITY_HIDE_FOR_ROLES_LABEL,
   VISIBILITY_HIDE_FOR_ROLES_PLACEHOLDER,
@@ -169,6 +170,8 @@ export function DesignVisibilitySection() {
         <VisibilitySwitchField name="show_product_message" label={VISIBILITY_PRODUCT_MESSAGE_LABEL()} />
 
         <VisibilitySwitchField name="show_thankyou_message" label={VISIBILITY_THANKYOU_MESSAGE_LABEL()} />
+
+        {IS_PRO_BUILD ? <VisibilitySwitchField name="show_bonus_offers" label={VISIBILITY_BONUS_OFFERS_LABEL()} /> : null}
       </CardContent>
     </Card>
   );

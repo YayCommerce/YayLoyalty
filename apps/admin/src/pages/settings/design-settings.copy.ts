@@ -52,6 +52,7 @@ export const VISIBILITY_INCLUDE_PAGES_LIMIT_NOTE = () =>
 export const VISIBILITY_HIDE_ON_MOBILE_LABEL = () => __('Hide on mobile', 'yayloyalty');
 export const VISIBILITY_PRODUCT_MESSAGE_LABEL = () => __('Show earning line on product pages', 'yayloyalty');
 export const VISIBILITY_THANKYOU_MESSAGE_LABEL = () => __('Show points on the thank-you page', 'yayloyalty');
+export const VISIBILITY_BONUS_OFFERS_LABEL = () => __('Show bonus offers from conditional campaigns', 'yayloyalty');
 export const VISIBILITY_HIDE_FOR_ROLES_LABEL = () => __('Hide for roles', 'yayloyalty');
 export const VISIBILITY_HIDE_FOR_ROLES_PLACEHOLDER = () => __('Select roles…', 'yayloyalty');
 export const VISIBILITY_HIDE_FOR_ROLES_DESCRIPTION = () =>

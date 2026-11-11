@@ -26,6 +26,7 @@ class DesignSchema {
                 'hide_for_roles'        => [],
                 'show_product_message'  => true,
                 'show_thankyou_message' => true,
+                'show_bonus_offers'     => true, // Pro: conditional campaigns teased under Ways to earn.
             ],
             'panel'      => [ // Pro
                 'layout'              => 'compact',
@@ -67,6 +68,7 @@ class DesignSchema {
                 'hide_for_roles'        => [ 'type' => 'slug_list' ],
                 'show_product_message'  => [ 'type' => 'bool' ],
                 'show_thankyou_message' => [ 'type' => 'bool' ],
+                'show_bonus_offers'     => [ 'type' => 'bool' ],
             ],
             'panel'      => [ // Pro
                 'layout'              => [
