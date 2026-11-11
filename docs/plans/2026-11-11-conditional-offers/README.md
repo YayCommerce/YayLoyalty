@@ -41,7 +41,7 @@
 
 | Phase | Delivers (user-visible) | Exit criterion (exact check) | Status |
 |---|---|---|---|
-| 1 | Ways to earn (launcher, My Points, `[yayloyalty_ways_to_earn]`) shows personal values and bonus teasers | `composer test` passes, including the two new tests; spec criteria 1, 2 and 7 hold by hand on the Local site | pending |
+| 1 | Ways to earn (launcher, My Points, `[yayloyalty_ways_to_earn]`) shows personal values and bonus teasers | `composer test` passes, including the two new tests; spec criteria 1, 2 and 7 hold by hand on the Local site | done |
 | 2 | The product line shows the personal figure and bonus lines; a new cart and checkout earn row in classic and block | Spec criteria 3, 4 and 8 hold by hand on the Local site (Twenty Twenty-Five block cart plus a classic `[woocommerce_cart]` page) | pending |
 | 3 | Locked rewards with teasers; a per-item teaser override in the admin; e2e coverage | `pnpm --filter @yayloyalty/e2e test specs/conditional-offers.spec.ts` passes; `./scripts/run.sh release lite --no-prompt` passes the validator; manual walk of criteria 1–6 | pending |
 

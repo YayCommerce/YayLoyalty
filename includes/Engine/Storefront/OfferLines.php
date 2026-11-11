@@ -140,7 +140,8 @@ final class OfferLines {
         return [
             'base'    => $offers['base'],
             'row'     => $row,
-            'bonuses' => null === $row || ! self::enabled() ? [] : self::teased( $offers['bonuses'], $row['value'] ),
+            // A guest with no row has nothing to put bonuses under; a member with none may still earn one.
+            'bonuses' => ( null === $viewer && null === $row ) || ! self::enabled() ? [] : self::teased( $offers['bonuses'], null === $row ? null : $row['value'] ),
         ];
     }
 
@@ -148,11 +149,11 @@ final class OfferLines {
      * @param array<int, array{campaign: Campaign, value: float, status: string}> $bonuses
      * @return array<int, array{campaign: Campaign, value: float, status: string, teaser: string}>
      */
-    private static function teased( array $bonuses, float $row_value ): array {
+    private static function teased( array $bonuses, ?float $row_value ): array {
         $teased = [];
 
         foreach ( $bonuses as $bonus ) {
-            if ( PointsEngine::OFFER_MATCHED === $bonus['status'] || $bonus['value'] <= $row_value ) {
+            if ( PointsEngine::OFFER_MATCHED === $bonus['status'] || ( null !== $row_value && $bonus['value'] <= $row_value ) ) {
                 continue;
             }
 
