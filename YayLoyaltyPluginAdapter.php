@@ -7,7 +7,7 @@ defined( 'ABSPATH' ) || exit;
  * Un-namespaced and excluded from PHP-Scoper (see scoper.inc.php), so runtime
  * checks like class_exists() run against the real WordPress and WooCommerce symbols.
  */
-class YayLoyaltyPluginAdapter implements \YayLoyaltyScoped\YayCommerce\AdminShell\Contracts\PluginMenuAdapter {
+class YayLoyaltyPluginAdapter implements \YayLoyaltyScoped\YayCommerce\AdminShell\License\Contracts\LicenseConfigAdapter {
 
     public function get_menu_title(): string {
         return 'YayLoyalty';
@@ -85,7 +85,7 @@ class YayLoyaltyPluginAdapter implements \YayLoyaltyScoped\YayCommerce\AdminShel
 	public function get_plugin_file(): string {
 		return YAYLOYALTY_PLUGIN_DIR . 'yayloyalty.php'; }
 	public function get_item_id(): int {
-		return 0; }
+		return 70033; }
 	public function get_store_url(): string {
 		return 'https://yaycommerce.com/'; }
 	public function get_store_link(): string {
