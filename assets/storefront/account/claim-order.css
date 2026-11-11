@@ -1,0 +1,39 @@
+/*
+ * templates/claim-order.php: the hint, and the order number field beside its button (points-card.css's).
+ * Imported by rewards-tokens.css, which holds the tokens.
+ */
+.yayloyalty-account .yayloyalty-account__claim .yayloyalty-account__hint {
+  font-size: 13px;
+  color: var(--yayloyalty-account-muted);
+}
+
+.yayloyalty-account .yayloyalty-account__claim-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.yayloyalty-account .yayloyalty-account__claim-input {
+  box-sizing: border-box;
+  flex: 1 1 180px;
+  max-width: 280px;
+  margin: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--yayloyalty-account-border);
+  border-radius: var(--yayloyalty-account-radius-sm);
+  background: var(--yayloyalty-account-surface);
+  color: var(--yayloyalty-account-text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.yayloyalty-account .yayloyalty-account__claim-input:focus-visible {
+  border-color: var(--yayloyalty-account-accent);
+  outline: none;
+}
+
+.yayloyalty-account .yayloyalty-account__claim .yayloyalty-account__button {
+  margin-top: 0;
+  cursor: pointer;
+}
