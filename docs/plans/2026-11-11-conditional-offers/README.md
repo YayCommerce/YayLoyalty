@@ -49,11 +49,11 @@
 
 **Phase 1 produces:**
 - `PointsEngine::OFFER_MATCHED = 'matched'`, `OFFER_LOCKED = 'locked'`, `OFFER_AT_CHECKOUT = 'at_checkout'`.
-- `PointsEngine::offers( string $trigger, Context $advert, ?Context $viewer ): array` returns `array{base: ?array{campaign: Campaign, value: float}, bonuses: list<array{campaign: Campaign, value: float, status: string}>}`. Consumed by `OfferLines` (P1 T3).
+- `PointsEngine::offers( string $trigger, Context $advert, ?Context $viewer ): array` returns `array{base: ?array{campaign: Campaign, value: float}, row: ?array{campaign: Campaign, value: float}, bonuses: list<array{campaign: Campaign, value: float, status: string, results: array}>}`. The walk stops at the first campaign for everyone or the first conditional one the viewer meets. `row` is the most a member is sure to be paid: what stopped the walk, or a lower-paying at-checkout campaign before it; null when nothing on the walk is sure to pay; `base` for a guest. `results` are each bonus's `explain()` rows. Each campaign is explained once and never also evaluated. Consumed by `OfferLines` (P1 T3) and the product page (P2 T2).
 - Evaluator seam: the object from `PointsEngine::CONDITIONS_EVALUATOR_FILTER` must also expose `explain( array $conditions, Context $ctx ): array` for bonuses to be returned.
 - `OfferLines` (`includes/Engine/Storefront/OfferLines.php`, Lite):
   - `PHRASE_FILTER = 'yayloyalty_offer_condition_phrase'`, `MAX_BONUSES = 3`, `MODE_AUTO = 'auto'`, `MODE_CUSTOM = 'custom'`, `MODE_OFF = 'off'`, `TEXT_MAX = 120`.
-  - `for_trigger( PointsEngine $engine, string $trigger, Context $advert, ?Context $viewer ): array` returns `array{base: ?array{campaign: Campaign, value: float}, row: ?array{campaign: Campaign, value: float}, bonuses: list<array{campaign: Campaign, value: float, status: string, teaser: string}>}`. Consumed by P1 T4, P2 T2 and P2 T3.
+  - `for_trigger( PointsEngine $engine, string $trigger, Context $advert, ?Context $viewer ): array`, memoised per request by trigger, the viewer's contents (user id, lines, subtotal, checkout inputs) and time, whatever engine instance asks returns `array{base: ?array{campaign: Campaign, value: float}, row: ?array{campaign: Campaign, value: float}, bonuses: list<array{campaign: Campaign, value: float, status: string, teaser: string}>}`. Consumed by P1 T4, P2 T2 and P2 T3.
   - `teaser( array $config, array $conditions ): ?string`. Consumed by P3 T2 for rewards.
   - `enabled(): bool`: `DesignHelper::get_design()['visibility']['show_bonus_offers']`. Consumed by every surface.
 - Filter `yayloyalty_offer_condition_phrase` `( ?string $phrase, array $conditions ): ?string`, which `ConditionPhrases` attaches in Pro.

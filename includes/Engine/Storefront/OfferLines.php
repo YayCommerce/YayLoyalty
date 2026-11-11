@@ -37,7 +37,7 @@ final class OfferLines {
     private static $memo = [];
 
     /**
-     * `row` is the viewer's first matched bonus, else the base; a guest always gets the base. `bonuses` are the
+     * `row` is PointsEngine::offers()' row: what the viewer is sure to be paid, the base for a guest. `bonuses` are the
      * locked and at-checkout ones that pay more than the row and have a teaser, at most MAX_BONUSES. A guest
      * with no base gets none: there is no row to put them under.
      *
@@ -47,7 +47,7 @@ final class OfferLines {
      * @return array{base: array{campaign: Campaign, value: float}|null, row: array{campaign: Campaign, value: float}|null, bonuses: array<int, array{campaign: Campaign, value: float, status: string, results: array, teaser: string}>}
      */
     public static function for_trigger( PointsEngine $engine, string $trigger, Context $advert, ?Context $viewer ): array {
-        $key = $trigger . '|' . self::viewer_key( $viewer ) . '|' . $advert->get_occurred_at() . '|' . spl_object_id( $engine );
+        $key = $trigger . '|' . self::viewer_key( $viewer ) . '|' . $advert->get_occurred_at();
 
         if ( ! isset( self::$memo[ $key ] ) ) {
             self::$memo[ $key ] = self::resolve( $engine, $trigger, $advert, $viewer );
@@ -135,17 +135,7 @@ final class OfferLines {
             ];
         }
 
-        $row = $offers['base'];
-
-        foreach ( null === $viewer ? [] : $offers['bonuses'] as $bonus ) {
-            if ( PointsEngine::OFFER_MATCHED === $bonus['status'] ) {
-                $row = [
-                    'campaign' => $bonus['campaign'],
-                    'value'    => $bonus['value'],
-                ];
-                break;
-            }
-        }
+        $row = $offers['row'];
 
         return [
             'base'    => $offers['base'],

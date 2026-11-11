@@ -6,6 +6,7 @@ use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Campaign;
+use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Tests\Unit\EngineTestCase;
 
 /**
@@ -126,13 +127,131 @@ final class PointsEngineOffersTest extends EngineTestCase {
         $this->assertSame( PointsEngine::OFFER_MATCHED, $offers['bonuses'][0]['status'] );
     }
 
+    public function test_member_row_is_a_lower_paying_campaign_they_meet(): void {
+        // evaluate() would pay `lower` first, so the row must not promise VIP's 2.
+        $this->attach_explainer(
+            [
+                'lower' => [ true, 'matched' ],
+                'vip'   => [ true, 'matched' ],
+            ]
+        );
+        $lower = $this->conditional( 4, 0.5, 30, 'lower' );
+
+        $offers = $this->engine( [ $lower, $this->conditional( 2, 2.0, 10, 'vip' ), $this->base() ] )
+            ->offers( CampaignTrigger::PURCHASE, $this->advert(), $this->context( [] ) );
+
+        $this->assertSame( $lower, $offers['row']['campaign'] );
+        $this->assertSame( 0.5, $offers['row']['value'] );
+    }
+
+    public function test_member_row_is_capped_by_a_lower_paying_at_checkout_campaign(): void {
+        // Checkout may pick `maybe` before VIP, so the most the member is sure of is 0.5.
+        $this->attach_explainer(
+            [
+                'maybe' => [ false, 'needs_order' ],
+                'vip'   => [ true, 'matched' ],
+            ]
+        );
+        $maybe = $this->conditional( 4, 0.5, 30, 'maybe' );
+
+        $offers = $this->engine( [ $maybe, $this->conditional( 2, 2.0, 10, 'vip' ), $this->base() ] )
+            ->offers( CampaignTrigger::PURCHASE, $this->advert(), $this->context( [] ) );
+
+        $this->assertSame( $maybe, $offers['row']['campaign'] );
+        $this->assertSame( 0.5, $offers['row']['value'] );
+    }
+
+    public function test_a_met_campaign_ends_the_walk(): void {
+        // A bonus below the one the member meets would never pay them, so it is not offered.
+        $this->attach_explainer(
+            [
+                'vip'   => [ true, 'matched' ],
+                'shoes' => [ false, 'needs_order' ],
+            ]
+        );
+        $vip = $this->conditional( 2, 2.0, 20, 'vip' );
+
+        $offers = $this->engine( [ $vip, $this->conditional( 3, 3.0, 10, 'shoes' ), $this->base() ] )
+            ->offers( CampaignTrigger::PURCHASE, $this->advert(), $this->context( [] ) );
+
+        $this->assertSame( [ $vip ], array_column( $offers['bonuses'], 'campaign' ) );
+        $this->assertSame( 2.0, $offers['row']['value'] );
+    }
+
+    public function test_guest_row_is_the_base(): void {
+        $this->attach_explainer( [ 'maybe' => [ false, 'needs_order' ] ] );
+
+        $offers = $this->engine( [ $this->conditional( 4, 3.0, 30, 'maybe' ), $this->base() ] )
+            ->offers( CampaignTrigger::PURCHASE, $this->advert(), null );
+
+        $this->assertSame( $offers['base'], $offers['row'] );
+        $this->assertSame( 1.0, $offers['row']['value'] );
+    }
+
+    public function test_member_with_nothing_sure_to_pay_has_no_row(): void {
+        $this->attach_explainer( [ 'maybe' => [ false, 'needs_order' ] ] );
+
+        $offers = $this->engine( [ $this->conditional( 4, 3.0, 30, 'maybe' ) ] )
+            ->offers( CampaignTrigger::PURCHASE, $this->advert(), $this->context( [] ) );
+
+        $this->assertNull( $offers['row'] );
+        $this->assertSame( PointsEngine::OFFER_AT_CHECKOUT, $offers['bonuses'][0]['status'] );
+    }
+
+    public function test_each_campaign_is_explained_once_and_never_evaluated(): void {
+        $evaluator = $this->attach_explainer(
+            [
+                'vip'   => [ true, 'matched' ],
+                'shoes' => [ false, 'needs_order' ],
+            ]
+        );
+
+        $this->engine( [ $this->conditional( 3, 3.0, 20, 'shoes' ), $this->conditional( 2, 2.0, 10, 'vip' ), $this->base() ] )
+            ->offers( CampaignTrigger::PURCHASE, $this->advert(), $this->context( [] ) );
+
+        $this->assertSame( 2, $evaluator->explains );
+        $this->assertSame( 0, $evaluator->evaluates );
+    }
+
+    public function test_guest_currency_campaign_in_another_currency_is_locked(): void {
+        // The advert Context carries the store's currency, so `currency in [EUR]` fails now rather than waiting for the order.
+        $evaluator = new ConditionsEvaluator();
+        add_filter( PointsEngine::CONDITIONS_EVALUATOR_FILTER, static fn() => $evaluator );
+        $eur = new Campaign(
+            2,
+            'Euro',
+            'euro',
+            CampaignTrigger::PURCHASE,
+            Status::ACTIVE,
+            10,
+            [ 'points_per_unit' => 2 ],
+            [
+                [
+                    'type'     => 'currency',
+                    'operator' => 'in',
+                    'value'    => [ 'EUR' ],
+                ],
+            ]
+        );
+
+        $offers = $this->engine( [ $eur, $this->base() ] )->offers( CampaignTrigger::PURCHASE, $this->advert(), null );
+
+        $this->assertSame( PointsEngine::OFFER_LOCKED, $offers['bonuses'][0]['status'] );
+    }
+
     /**
      * An evaluator whose explain() answers each condition from $by_type: [matched, reason].
      *
      * @param array<string, array{0: bool, 1: string}> $by_type
      */
-    private function attach_explainer( array $by_type ): void {
+    private function attach_explainer( array $by_type ): object {
         $evaluator = new class( $by_type ) {
+            /** @var int */
+            public $explains = 0;
+
+            /** @var int */
+            public $evaluates = 0;
+
             /** @var array<string, array{0: bool, 1: string}> */
             private $by_type;
 
@@ -141,6 +260,18 @@ final class PointsEngineOffersTest extends EngineTestCase {
             }
 
             public function explain( array $conditions, Context $ctx ): array {
+                ++$this->explains;
+
+                return $this->rows( $conditions );
+            }
+
+            public function evaluate( array $conditions, Context $ctx ): bool {
+                ++$this->evaluates;
+
+                return ! in_array( false, array_column( $this->rows( $conditions ), 'matched' ), true );
+            }
+
+            private function rows( array $conditions ): array {
                 return array_map(
                     function ( array $condition ): array {
                         list( $matched, $reason ) = $this->by_type[ $condition['type'] ];
@@ -154,13 +285,11 @@ final class PointsEngineOffersTest extends EngineTestCase {
                     $conditions
                 );
             }
-
-            public function evaluate( array $conditions, Context $ctx ): bool {
-                return ! in_array( false, array_column( $this->explain( $conditions, $ctx ), 'matched' ), true );
-            }
         };
 
         add_filter( PointsEngine::CONDITIONS_EVALUATOR_FILTER, static fn() => $evaluator );
+
+        return $evaluator;
     }
 
     private function engine( array $campaigns ): PointsEngine {
