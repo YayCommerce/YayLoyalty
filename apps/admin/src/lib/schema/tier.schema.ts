@@ -60,20 +60,29 @@ export const tiersRollingMonthsSchema = z
   .refine((value): value is TiersRollingMonths => (TIERS_ROLLING_MONTHS as readonly number[]).includes(value));
 
 /** Mirrors TierMode::all(), the source of truth. */
-export const tierModeSchema = z.enum(['lifetime', 'rolling']);
+export const tierModeSchema = z.enum(['lifetime', 'rolling', 'calendar']);
+
+/** Mirrors TierMode::CALENDAR_PERIODS, the source of truth. */
+export const TIERS_CALENDAR_PERIODS = ['month', 'quarter', 'year'] as const;
+
+/** Mirrors TierMode::CALENDAR_PERIODS, the source of truth. */
+export const tiersCalendarPeriodSchema = z.enum(TIERS_CALENDAR_PERIODS);
+
+export type TiersCalendarPeriod = z.infer<typeof tiersCalendarPeriodSchema>;
 
 /** Mirrors TiersRestController::get_settings(), the source of truth. */
 export const tierSettingsSchema = z.object({
   tiers_enabled: z.boolean(),
   tiers_mode: tierModeSchema,
   tiers_rolling_months: tiersRollingMonthsSchema,
+  tiers_calendar_period: tiersCalendarPeriodSchema,
   /** Customer rows a placement would cover. */
   customer_count: z.number().int(),
   /** The pending sweep (placement, re-evaluation or a mode switch), or null when none is running. */
   sweep: z
     .object({
       /** Mirrors the TierSweep::MODE_* constants, the source of truth. */
-      mode: z.enum(['placement', 'reevaluate', 'to_rolling', 'to_lifetime']),
+      mode: z.enum(['placement', 'reevaluate', 'to_rolling', 'to_lifetime', 'to_calendar']),
       done: z.number().int(),
       total: z.number().int(),
     })
@@ -83,13 +92,15 @@ export const tierSettingsSchema = z.object({
 export type TierSettings = z.infer<typeof tierSettingsSchema>;
 
 /** PUT /tiers/settings: at least one key. */
-export type TierSettingsInput = Partial<Pick<TierSettings, 'tiers_enabled' | 'tiers_mode' | 'tiers_rolling_months'>>;
+export type TierSettingsInput = Partial<
+  Pick<TierSettings, 'tiers_enabled' | 'tiers_mode' | 'tiers_rolling_months' | 'tiers_calendar_period'>
+>;
 
 /** Mirrors CustomerTierRestController::respond(), the source of truth. */
 export const customerTierSchema = z.object({
   /** Null when the customer has no tier, or their stored tier was deleted. */
   tier: z.object({ id: z.number().int(), name: z.string(), color: z.string(), tier_rank: z.number().int() }).nullable(),
-  /** The points the tier was last judged on; in Rolling, the window total read now. */
+  /** The points the tier was last judged on; in Rolling, the window total read now; in Calendar, this period's. */
   progress_value: z.number().int(),
   /** The lowest live tier above `tier`, or null at the top tier. */
   next: z.object({ id: z.number().int(), name: z.string(), threshold: z.number().int() }).nullable(),
@@ -101,6 +112,8 @@ export const customerTierSchema = z.object({
   mode: tierModeSchema,
   /** The rolling window's length; null in Lifetime. */
   window_months: z.number().int().nullable(),
+  /** The calendar period whose points count; null outside Calendar. */
+  period: tiersCalendarPeriodSchema.nullable(),
   /** The running hold; both null when there is none or it has ended. */
   held_from: z.string().nullable(),
   held_until: z.string().nullable(),

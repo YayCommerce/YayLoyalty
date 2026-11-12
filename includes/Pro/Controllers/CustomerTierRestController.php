@@ -140,10 +140,11 @@ final class CustomerTierRestController extends AbstractRestController {
     /**
      * The drawer card's shape. `tier` is null when the stored tier is deleted; `next` is the lowest live
      * tier ranked above it, or the lowest tier when the customer has none. In Rolling, progress_value is
-     * the window total read now, so a row that aged out shows before the next evaluation. The hold dates
-     * are null unless the hold is still running.
+     * the window total read now, so a row that aged out shows before the next evaluation; in Calendar it is
+     * the current period's total read now, and `period` is null outside Calendar. The hold dates are null
+     * unless the hold is still running.
      *
-     * @return array{tier: array<string, mixed>|null, progress_value: int, next: array<string, mixed>|null, achieved_at: string|null, manual: array<string, mixed>|null, mode: string, window_months: int|null, held_from: string|null, held_until: string|null}
+     * @return array{tier: array<string, mixed>|null, progress_value: int, next: array<string, mixed>|null, achieved_at: string|null, manual: array<string, mixed>|null, mode: string, window_months: int|null, period: string|null, held_from: string|null, held_until: string|null}
      */
     private function respond( int $user_id ): array {
         $customer = $this->customers->find_by_user_id( $user_id ) ?? new Customer( $user_id );
@@ -168,6 +169,7 @@ final class CustomerTierRestController extends AbstractRestController {
             'manual'         => $this->manual( $customer ),
             'mode'           => $standing['mode'],
             'window_months'  => $standing['window_months'],
+            'period'         => $standing['period'],
             'held_from'      => $standing['held_from'],
             'held_until'     => $standing['held_until'],
         ];

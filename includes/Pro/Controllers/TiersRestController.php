@@ -65,19 +65,24 @@ final class TiersRestController extends AbstractRestController {
                     'callback'            => fn( $request ) => $this->exec_write( [ $this, 'update_settings' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::MANAGE_TIERS ),
                     'args'                => [
-                        'tiers_enabled'        => [
+                        'tiers_enabled'         => [
                             'description' => __( 'Whether customers are placed into tiers.', 'yayloyalty' ),
                             'type'        => 'boolean',
                         ],
-                        'tiers_mode'           => [
-                            'description' => __( 'How customers qualify for a tier: lifetime or rolling.', 'yayloyalty' ),
+                        'tiers_mode'            => [
+                            'description' => __( 'How customers qualify for a tier: lifetime, rolling or calendar.', 'yayloyalty' ),
                             'type'        => 'string',
                             'enum'        => TierMode::all(),
                         ],
-                        'tiers_rolling_months' => [
+                        'tiers_rolling_months'  => [
                             'description' => __( 'The rolling window, in months.', 'yayloyalty' ),
                             'type'        => 'integer',
                             'enum'        => TierMode::ROLLING_MONTHS,
+                        ],
+                        'tiers_calendar_period' => [
+                            'description' => __( 'The calendar period whose points count: month, quarter or year.', 'yayloyalty' ),
+                            'type'        => 'string',
+                            'enum'        => TierMode::CALENDAR_PERIODS,
                         ],
                     ],
                 ],
@@ -127,24 +132,27 @@ final class TiersRestController extends AbstractRestController {
     /**
      * The tier settings, the customer count a placement would cover, and the pending sweep's progress.
      *
-     * @return array{tiers_enabled: bool, tiers_mode: string, tiers_rolling_months: int, customer_count: int, sweep: array{mode: string, done: int, total: int}|null}
+     * @return array{tiers_enabled: bool, tiers_mode: string, tiers_rolling_months: int, tiers_calendar_period: string, customer_count: int, sweep: array{mode: string, done: int, total: int}|null}
      */
     public function get_settings( \WP_REST_Request $request ): array {
         return [
-            'tiers_enabled'        => TierEvaluator::is_enabled(),
-            'tiers_mode'           => TierEvaluator::mode(),
-            'tiers_rolling_months' => TierEvaluator::rolling_months(),
-            'customer_count'       => $this->customers->count_all(),
-            'sweep'                => TierSweep::progress(),
+            'tiers_enabled'         => TierEvaluator::is_enabled(),
+            'tiers_mode'            => TierEvaluator::mode(),
+            'tiers_rolling_months'  => TierEvaluator::rolling_months(),
+            'tiers_calendar_period' => TierEvaluator::calendar_period(),
+            'customer_count'        => $this->customers->count_all(),
+            'sweep'                 => TierSweep::progress(),
         ];
     }
 
     /**
-     * Writes any of `tiers_enabled`, `tiers_mode` and `tiers_rolling_months`, at least one. Turning tiers on
-     * places every customer through a sweep, in the mode this request leaves stored; turning them off freezes
-     * stored tiers and drops any pending sweep. While tiers stay on, a mode change requests its mode sweep, and
-     * is refused while any sweep is pending. A months change requests nothing: holds keep their dates, and the
-     * new window applies from each customer's next evaluation.
+     * Writes any of `tiers_enabled`, `tiers_mode`, `tiers_rolling_months` and `tiers_calendar_period`, at least
+     * one. Turning tiers on places every customer through a sweep, in the mode this request leaves stored;
+     * turning them off freezes stored tiers and drops any pending sweep. While tiers stay on, a mode change
+     * requests its mode sweep, and a period change while Calendar is (or becomes) the mode requests to_calendar,
+     * which resets every hold to the current period's end. A mode or period change is refused while any sweep
+     * is pending. A months change requests nothing: holds keep their dates, and the new window applies from
+     * each customer's next evaluation.
      *
      * @return array<string, mixed>|\WP_Error
      */
@@ -167,7 +175,9 @@ final class TiersRestController extends AbstractRestController {
         $mode         = isset( $changes['tiers_mode'] ) ? (string) $changes['tiers_mode'] : $stored_mode;
         $mode_changed = $mode !== $stored_mode;
 
-        if ( $mode_changed && TierSweep::is_pending() ) {
+        $period_changed = isset( $changes['tiers_calendar_period'] ) && TierEvaluator::calendar_period() !== (string) $changes['tiers_calendar_period'];
+
+        if ( ( $mode_changed || $period_changed ) && TierSweep::is_pending() ) {
             return new \WP_Error( 'yayloyalty_tier_sweep_running', __( 'Wait for the current tier update to finish.', 'yayloyalty' ), [ 'status' => 409 ] );
         }
 
@@ -180,8 +190,8 @@ final class TiersRestController extends AbstractRestController {
             $requested = TierSweep::MODE_PLACEMENT;
         } elseif ( ! $enabled && $was_enabled ) {
             TierSweep::cancel();
-        } elseif ( $enabled && $mode_changed ) {
-            $requested = TierMode::ROLLING === $mode ? TierSweep::MODE_TO_ROLLING : TierSweep::MODE_TO_LIFETIME;
+        } elseif ( $enabled && ( $mode_changed || ( $period_changed && TierMode::CALENDAR === $mode ) ) ) {
+            $requested = self::mode_sweep( $mode );
         }
 
         if ( null !== $requested ) {
@@ -200,6 +210,15 @@ final class TiersRestController extends AbstractRestController {
         }
 
         return $response;
+    }
+
+    /** The TierSweep::MODE_* that moves customers onto $mode, a TierMode constant. */
+    private static function mode_sweep( string $mode ): string {
+        if ( TierMode::CALENDAR === $mode ) {
+            return TierSweep::MODE_TO_CALENDAR;
+        }
+
+        return TierMode::ROLLING === $mode ? TierSweep::MODE_TO_ROLLING : TierSweep::MODE_TO_LIFETIME;
     }
 
     /** @return array<int, array<string, mixed>> Live tiers, lowest threshold first. */

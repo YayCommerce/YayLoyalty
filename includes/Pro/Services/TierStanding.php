@@ -26,11 +26,12 @@ final class TierStanding {
     /**
      * `tier` is null when the stored tier is deleted; `next` is the lowest live tier ranked above it, or the
      * lowest tier when the customer has none. In Rolling, `progress` is the window total read now, so a row
-     * that aged out shows before the next evaluation. The hold dates are null unless the hold is still running.
+     * that aged out shows before the next evaluation; in Calendar it is the current period's total read now.
+     * `period` is null outside Calendar. The hold dates are null unless the hold is still running.
      *
      * @param Tier[] $live TierRepository::live(), in rank order.
      * @param string $now  UTC MySQL datetime.
-     * @return array{tier: ?Tier, next: ?Tier, progress: int, mode: string, window_months: ?int, held_from: ?string, held_until: ?string}
+     * @return array{tier: ?Tier, next: ?Tier, progress: int, mode: string, window_months: ?int, period: ?string, held_from: ?string, held_until: ?string}
      */
     public function of( Customer $customer, array $live, string $now ): array {
         $tier = null;
@@ -54,11 +55,15 @@ final class TierStanding {
 
         $mode       = TierEvaluator::mode();
         $months     = TierMode::ROLLING === $mode ? TierEvaluator::rolling_months() : null;
+        $period     = TierMode::CALENDAR === $mode ? TierEvaluator::calendar_period() : null;
         $held_until = $customer->get_tier_held_until();
         $is_held    = null !== $held_until && $held_until > $now;
 
         if ( null !== $months ) {
             $progress = $this->ledger->window_total( $customer->get_user_id(), Dates::add_months( $now, -$months ), $now );
+        } elseif ( null !== $period ) {
+            $bounds   = TierCalendar::bounds( $now, $period, wp_timezone() );
+            $progress = $this->ledger->window_total( $customer->get_user_id(), $bounds['current_start'], $now );
         } else {
             $progress = $customer->get_tier_progress_value();
             // The evaluator's last value; a customer never evaluated reads their points earned.
@@ -71,6 +76,7 @@ final class TierStanding {
             'progress'      => $progress,
             'mode'          => $mode,
             'window_months' => $months,
+            'period'        => $period,
             'held_from'     => $is_held ? $customer->get_tier_held_from() : null,
             'held_until'    => $is_held ? $held_until : null,
         ];
