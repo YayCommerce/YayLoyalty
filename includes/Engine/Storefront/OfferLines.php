@@ -113,6 +113,10 @@ final class OfferLines {
     public static function quoted_bonuses( PointsEngine $engine, Context $advert, ?Context $viewer, Context $event, int $figure, ?int $cap, ?callable $skip = null ): array {
         $quoted = [];
 
+        if ( ! self::enabled() ) {
+            return $quoted;
+        }
+
         foreach ( self::for_trigger( $engine, CampaignTrigger::PURCHASE, $advert, $viewer )['bonuses'] as $bonus ) {
             if ( null !== $skip && $skip( $bonus ) ) {
                 continue;
@@ -162,9 +166,14 @@ final class OfferLines {
         return is_string( $phrase ) && '' !== trim( $phrase ) ? trim( $phrase ) : null;
     }
 
-    /** Whether bonuses are teased: Design → Visibility → "Show bonus offers". */
-    public static function enabled(): bool {
-        return DesignHelper::surface_enabled( DesignHelper::get_design(), 'show_bonus_offers' );
+    /**
+     * Whether bonuses are teased: Design → Visibility → "Show bonus offers". for_trigger() returns them either way,
+     * so each surface asks this with the design it renders: the saved one, or the Design tab's unsaved one in its preview.
+     *
+     * @param array|null $design DesignHelper::get_design() or DesignHelper::with_unsaved(); null for the saved design.
+     */
+    public static function enabled( ?array $design = null ): bool {
+        return DesignHelper::surface_enabled( $design ?? DesignHelper::get_design(), 'show_bonus_offers' );
     }
 
     private static function resolve( PointsEngine $engine, string $trigger, Context $advert, ?Context $viewer ): array {
@@ -188,7 +197,7 @@ final class OfferLines {
             'base'    => $offers['base'],
             'row'     => $row,
             // A guest with no row has nothing to put bonuses under; a member with none may still earn one.
-            'bonuses' => ( null === $viewer && null === $row ) || ! self::enabled() ? [] : self::teased( $offers['bonuses'], null === $row ? null : $row['value'] ),
+            'bonuses' => null === $viewer && null === $row ? [] : self::teased( $offers['bonuses'], null === $row ? null : $row['value'] ),
         ];
     }
 

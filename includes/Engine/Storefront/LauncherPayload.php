@@ -112,7 +112,7 @@ final class LauncherPayload {
             'earn'              => $rules['earn'],
             'purchase_min'      => $rules['purchase_min'],
             'purchase_rounding' => $rules['purchase_rounding'],
-            'earn_bonuses'      => $rules['bonuses'],
+            'earn_bonuses'      => OfferLines::enabled( $design ) ? $rules['bonuses'] : [],
             'redeem'            => $redeem,
             'offers'            => self::redeem_offers( $now, $viewer_id ),
             'member'            => null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward ),

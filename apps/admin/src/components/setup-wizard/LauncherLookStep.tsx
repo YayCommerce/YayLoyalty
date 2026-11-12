@@ -23,7 +23,10 @@ export function LauncherLookStep({ form }: WizardStepProps) {
   const previewInput = useMemo<DesignPreviewInput>(
     () => ({
       launcher: { ...design.launcher, brand_color: brandColor },
-      visibility: { hide_on_mobile: design.visibility.hide_on_mobile },
+      visibility: {
+        hide_on_mobile: design.visibility.hide_on_mobile,
+        show_bonus_offers: design.visibility.show_bonus_offers,
+      },
       panel: { show_reward_catalog: design.panel.show_reward_catalog },
     }),
     [design, brandColor],
