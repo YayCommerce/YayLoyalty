@@ -52,4 +52,4 @@ Superseded by [Lite owns every redemption write, and every redemption row is an 
 - Points are held from the moment the order exists, including while it waits for payment. An abandoned pending order keeps them until it is cancelled.
 - No row ever stores `expired`, so a report that counts expired coupons has to derive it from `expires_at`, as the read side does.
 - Lite carries the lifecycle code for coupons that only Pro can issue.
-- Recalculating an order in wp-admin can drop the virtual coupon while the points stay debited. [The backlog item](../backlog/2026-10-07-recalculate-drops-the-points-discount.md) tracks it.
+- Recalculating an order in wp-admin can drop the virtual coupon while the points stay debited. The backlog item `2026-10-07-recalculate-drops-the-points-discount` tracked it (removed 2026-11-12).

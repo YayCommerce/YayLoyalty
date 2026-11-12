@@ -6,6 +6,8 @@
 
 ## Status
 
+Superseded by [Lite owns every redemption write, and redeemed and earned points follow the order's payment and its lines](2026-11-12-redemption-follows-payment-and-order-lines.md), 2026-11-12.
+
 Accepted, 2026-11-02, by PhungTruong1997. It supersedes [Lite owns every redemption write, and every redemption row is an applied discount](2026-10-30-lite-writes-every-redemption-as-an-applied-discount.md) whole, and restates every rule of it that still holds.
 
 ## Context
@@ -66,7 +68,7 @@ Accepted, 2026-11-02, by PhungTruong1997. It supersedes [Lite owns every redempt
 - Installs created before the superseded record keep `coupon_id`, `expires_at` and `uk_coupon` on the redemptions table as nullable leftovers that nothing writes or reads. A fresh install doesn't have them, so nothing may rely on them either way.
 - A reward claimed for a stored coupon would need a new record that supersedes this one, with its own statuses, its rules for cancel and expiry, and the columns it needs.
 - Deleting a reward is refused once a row names it, but nothing locks between that check and the delete. A checkout that commits a never-claimed reward in that gap leaves a row naming a deleted reward, which `Reversal` still settles under its key, as `proportional`.
-- Recalculating an order in wp-admin can drop a virtual coupon while the points stay debited. [The backlog item](../backlog/2026-10-07-recalculate-drops-the-points-discount.md) tracks it.
+- Recalculating an order in wp-admin can drop a virtual coupon while the points stay debited. The backlog item `2026-10-07-recalculate-drops-the-points-discount` tracked it (removed 2026-11-12).
 - Restore rides WooCommerce's own request, so it depends on the script filter and the item-delete action keeping their names and order. A WooCommerce change there turns Restore into a plain removal, not a double restore.
 - A row an admin removed is final: re-adding its line is refused, and a later cancel or refund returns nothing more, since everything already came back.
 - A removal outside the order screen's dialog (REST v3, code) leaves the points debited until a cancel or refund. Merchants who remove lines that way adjust points by hand.

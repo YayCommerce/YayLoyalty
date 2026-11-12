@@ -1,7 +1,7 @@
 # Redemption Order Lifecycle Fixes Design
 
 **Status:** accepted 2026-11-12
-**Related:** a customer report, 2026-11-12 (three findings below); [Admin removes a loyalty coupon design](2026-11-02-admin-remove-loyalty-coupon-design.md), whose criteria 3 and 9 this design reverses; [Admin removes a loyalty coupon decision](../decisions/2026-11-02-admin-removes-loyalty-coupon.md), which the implementing PR supersedes; backlog item [recalculate drops the points discount](../backlog/2026-10-07-recalculate-drops-the-points-discount.md), which the implementing PR removes.
+**Related:** a customer report, 2026-11-12 (three findings below); [Admin removes a loyalty coupon design](2026-11-02-admin-remove-loyalty-coupon-design.md), whose criteria 3 and 9 this design reverses; [Admin removes a loyalty coupon decision](../decisions/2026-11-02-admin-removes-loyalty-coupon.md), which the implementing PR supersedes; backlog item `2026-10-07-recalculate-drops-the-points-discount` (recalculate drops the points discount), which the implementing PR removes.
 
 ## Goal
 

@@ -64,7 +64,7 @@ Yes. The redeem card works in the classic shortcode Cart and Checkout and in the
 
 = What happens to points when an order is refunded? =
 
-The points earned from that order are taken back, and points the customer spent on it are returned. A partial refund takes back the matching share.
+The points earned from that order are taken back, and points the customer spent on it are returned. A partial refund takes back the matching share. This includes refunds made from your payment provider's dashboard.
 
 = Where do customers see their points? =
 
@@ -96,4 +96,6 @@ To build them: install Node 22 and pnpm 11, run `pnpm install` in the repository
 
 = 1.0.0 =
 * Initial release.
-* Removing a loyalty discount from an order now asks whether to return the customer's points.
+* Fix: a declined payment now returns the points the order spent, and they are taken again when the order is paid.
+* Fix: removing a points discount or reward from an order in any way returns its points, unless you choose Don't restore.
+* Fix: amount-only refunds, such as Stripe and PayPal dashboard refunds, now take back earned points in proportion.
