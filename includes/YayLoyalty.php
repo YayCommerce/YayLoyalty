@@ -13,6 +13,7 @@ use YayLoyalty\Engine\Redemption\Adapters\StoreApiAdapter;
 use YayLoyalty\Engine\Redemption\CouponProvider;
 use YayLoyalty\Engine\Redemption\PayForOrderRedebit;
 use YayLoyalty\Engine\Redemption\RedemptionService;
+use YayLoyalty\Engine\Redemption\RemovedLineReconciler;
 use YayLoyalty\Engine\Redemption\Reversal as RedemptionReversal;
 use YayLoyalty\Engine\Redemption\SessionIntent;
 use YayLoyalty\Engine\Storefront\AccountClaimOrder;
@@ -53,7 +54,7 @@ class YayLoyalty {
         // Also after Pro's boot: build() applies yayloyalty_earning_gates once, so any gate Pro adds must already be attached.
         $this->register_earning_listeners( $redemption->reversal() );
 
-        $this->register_redemption( $redemption, $intent );
+        $reconciler = $this->register_redemption( $redemption, $intent );
 
         ( new \YayLoyalty\Engine\Expiry\ExpiryRunner() )->register();
 
@@ -101,10 +102,12 @@ class YayLoyalty {
     }
 
     /**
-     * Attaches the virtual coupon, the points card, both checkout adapters (classic, Store API) and the pay-for-order re-debit to the redemption composition root, with the $intent it was built with.
-     * Not behind is_admin(): a Store API request is not an admin request, and the coupon provider and the card answer nothing without a cart.
+     * Attaches the virtual coupon, the points card, both checkout adapters (classic, Store API), the pay-for-order re-debit and the removed-line reconciler to the redemption composition root, with the $intent it was built with.
+     * Not behind is_admin(): a Store API or REST v3 request is not an admin request, and the coupon provider and the card answer nothing without a cart.
+     *
+     * @return RemovedLineReconciler For the order screen's removal dialog, which waives through it.
      */
-    private function register_redemption( RedemptionService $service, SessionIntent $intent ): void {
+    private function register_redemption( RedemptionService $service, SessionIntent $intent ): RemovedLineReconciler {
         ( new CouponProvider( $service, $intent, new RedemptionRepository() ) )->register();
 
         $card = new RedeemCard( $service, $intent, new CustomerRepository() );
@@ -115,5 +118,10 @@ class YayLoyalty {
 
         ( new ClassicCheckoutAdapter( $service, $card ) )->register();
         ( new StoreApiAdapter( $service, $intent, $card, $redebit ) )->register();
+
+        $reconciler = new RemovedLineReconciler( $service->reversal(), new RedemptionRepository(), new RewardRepository() );
+        $reconciler->register();
+
+        return $reconciler;
     }
 }
