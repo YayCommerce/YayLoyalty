@@ -32,3 +32,8 @@ CLAUDE.local.md
 apps/e2e/.auth/
 apps/e2e/test-results/
 apps/e2e/playwright-report/
+# yay harness
+.yay/local.json
+.yay/runs/
+.yay/designs/
+.yay-release/

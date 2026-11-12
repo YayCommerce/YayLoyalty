@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "plugin": {
+    "name": "YayLoyalty — Points, Rewards, Referral & VIP for WooCommerce",
+    "slug": "yayloyalty",
+    "mainFile": "yayloyalty.php",
+    "textDomain": "yayloyalty",
+    "wporgSlug": "yayloyalty"
+  },
+  "editions": [
+    "pro",
+    "lite"
+  ],
+  "requires": {
+    "php": "7.4",
+    "wp": "6.5",
+    "wc": "10.0"
+  },
+  "tested": {
+    "wp": "7.1",
+    "wc": "11.2"
+  },
+  "git": {
+    "baseBranch": "dev",
+    "tagFormat": "v{version}",
+    "branchTypes": [
+      "feat",
+      "fix",
+      "chore",
+      "hotfix",
+      "docs",
+      "refactor",
+      "test"
+    ],
+    "scopes": [
+      "campaigns",
+      "harness",
+      "storefront",
+      "emails",
+      "admin",
+      "plans",
+      "rewards",
+      "settings",
+      "redemption",
+      "design",
+      "currency",
+      "yaymail",
+      "backlog",
+      "dashboard",
+      "customers"
+    ]
+  },
+  "commands": {
+    "install": "pnpm install && composer install",
+    "dev": "pnpm run dev",
+    "build": "./scripts/run.sh build",
+    "lint": "composer lint",
+    "test": "composer test",
+    "package": "./scripts/run.sh release {edition} {version} --no-prompt"
+  },
+  "package": {
+    "output": "release/*.zip",
+    "forbidden": {
+      "lite": [
+        "includes/Pro/"
+      ]
+    }
+  },
+  "versionFiles": [
+    {
+      "file": "yayloyalty.php",
+      "pattern": "^[[:space:]*]*Version:[[:space:]]*([0-9][^[:space:]]*)"
+    },
+    {
+      "file": "yayloyalty.php",
+      "pattern": "define\\([[:space:]]*'YAYLOYALTY_VERSION',[[:space:]]*'([^']+)'"
+    },
+    {
+      "file": "readme.txt",
+      "pattern": "^Stable tag:[[:space:]]*([0-9][^[:space:]]*)"
+    }
+  ],
+  "generatedPaths": [
+    "vendor/",
+    "vendor-prefixed/",
+    "node_modules/",
+    "assets/dist/",
+    "dist/",
+    "release/"
+  ],
+  "changelog": {
+    "readme": "readme.txt",
+    "notesDir": "docs/releases"
+  },
+  "checks": [],
+  "keep": []
+}
