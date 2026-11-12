@@ -127,10 +127,9 @@ test.describe('conditional offers', () => {
       { type: 'category_in_cart', operator: 'in', value: [categoryId] },
     ]);
 
-    const { id: rewardId } = await api.post<{ id: number }>('yayloyalty/v1/rewards', {
+    const rewardId = await api.createReward({
       name: 'VIP $10',
       type: 'fixed_coupon',
-      status: 'active',
       cost_points: 500,
       config: REWARD_CONFIG,
       conditions: [{ type: 'user_role', operator: 'in', value: ['vip'] }],

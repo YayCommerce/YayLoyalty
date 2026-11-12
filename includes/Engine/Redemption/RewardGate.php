@@ -8,9 +8,10 @@ use YayLoyalty\Models\Reward;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The reward-level gate: is the reward live at the claim's time, can the
- * customer afford a fixed cost, do the reward's conditions (role, tier,
- * lifetime points) hold. First failing rule wins, in that order.
+ * The reward-level gate: is the reward live at the claim's time, do the
+ * reward's conditions (role, tier, lifetime points) hold, can the customer
+ * afford a fixed cost. First failing rule wins, in that order: a reward the
+ * customer can't claim at all says so before it says the balance is short.
  * Balance for `flexible_discount` is not a gate — Clamp reports it as a
  * ceiling so the UI can explain — only fixed-cost types fail here.
  * Conditions go through the `yayloyalty_reward_conditions_match` filter
@@ -26,12 +27,6 @@ final class RewardGate implements Gate {
             return Result::REASON_NOT_LIVE;
         }
 
-        $cost = $reward->get_cost_points();
-
-        if ( null !== $cost && $cost > $ctx->get_balance() ) {
-            return Result::REASON_INSUFFICIENT_BALANCE;
-        }
-
         /**
          * Whether the reward's conditions hold for this claim. Internal seam for Pro, not a public API.
          *
@@ -41,6 +36,12 @@ final class RewardGate implements Gate {
          */
         if ( ! apply_filters( self::CONDITIONS_FILTER, true, $reward, $ctx ) ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name.
             return Result::REASON_CONDITIONS_NOT_MET;
+        }
+
+        $cost = $reward->get_cost_points();
+
+        if ( null !== $cost && $cost > $ctx->get_balance() ) {
+            return Result::REASON_INSUFFICIENT_BALANCE;
         }
 
         return null;

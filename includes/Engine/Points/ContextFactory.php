@@ -14,6 +14,9 @@ defined( 'ABSPATH' ) || exit;
  */
 final class ContextFactory {
 
+    /** @var array<int, CustomerFacts|null> facts_loader()'s reads this request, by user: every variation and the cart share one. */
+    private static $preview_facts = [];
+
     /**
      * occurred_at is the order's creation date, so the order scores the same at creation and at award,
      * whatever campaigns changed in between. A caller scoring an old order against today's rules passes $occurred_at.
@@ -290,13 +293,23 @@ final class ContextFactory {
         ];
     }
 
-    /** The lazy customer_facts() loader for a member; none for a guest, whose history conditions answer no_customer. */
+    /**
+     * The lazy customer_facts() loader for a member; none for a guest, whose history conditions answer no_customer.
+     * Only the storefront's previews (a product, a cart) use it, so one read per member serves the whole request:
+     * their as-of times differ by the seconds a page takes to render, and no award reads it.
+     */
     private static function facts_loader( ?int $user_id, string $as_of ): ?\Closure {
         if ( null === $user_id || $user_id < 1 ) {
             return null;
         }
 
-        return static fn() => self::customer_facts( $user_id, $as_of );
+        return static function () use ( $user_id, $as_of ): ?CustomerFacts {
+            if ( ! array_key_exists( $user_id, self::$preview_facts ) ) {
+                self::$preview_facts[ $user_id ] = self::customer_facts( $user_id, $as_of );
+            }
+
+            return self::$preview_facts[ $user_id ];
+        };
     }
 
     /**

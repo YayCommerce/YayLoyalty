@@ -13,7 +13,6 @@ use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Utils\CurrencyRate;
-use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -61,8 +60,8 @@ final class RewardsPanel {
      * @param string $now UTC MySQL datetime.
      * @return array{name: string, cost: int, text: string, locked?: bool, teaser?: string}|null
      */
-    public static function offer_for( Reward $reward, int $user_id, string $now ): ?array {
-        if ( [] === $reward->get_conditions() || self::conditions_hold( $reward, $user_id, $now ) ) {
+    private static function offer_for( Reward $reward, int $user_id, string $now ): ?array {
+        if ( self::conditions_hold( $reward, $user_id, $now ) ) {
             return LauncherPayload::offer( $reward );
         }
 
@@ -79,12 +78,17 @@ final class RewardsPanel {
     }
 
     /**
-     * Whether the reward's conditions hold for the member, through the gate's own seam. The balance is unbounded so
-     * it never decides, and liveness is the caller's: the conditions alone say whether the reward is for them.
+     * Whether the reward's conditions hold for the viewer, through the gate's own seam: always with none, never for a
+     * guest otherwise. The balance is unbounded so it never decides, and liveness is the caller's: the conditions
+     * alone say whether the reward is for them.
      *
      * @param string $now UTC MySQL datetime.
      */
     private static function conditions_hold( Reward $reward, int $user_id, string $now ): bool {
+        if ( [] === $reward->get_conditions() ) {
+            return true;
+        }
+
         if ( $user_id < 1 ) {
             return false;
         }
@@ -120,7 +124,7 @@ final class RewardsPanel {
             return $rows;
         }
 
-        $options = self::claimable( $options, $user_id );
+        $options = self::claimable( $options );
 
         if ( [] === $options ) {
             return $rows;
@@ -134,24 +138,18 @@ final class RewardsPanel {
     }
 
     /**
-     * The options whose conditions hold for the shopper. The gate reports a short balance before conditions, so
-     * a reward quoted `insufficient_balance` is checked again here: a disabled row for a reward the shopper's
-     * conditions rule out would only invite them to earn towards something they can't claim.
+     * The options whose conditions hold for the shopper: the gate reports failed conditions before a short balance,
+     * so its reason alone says. A disabled row for a reward the conditions rule out would only invite the shopper
+     * to earn towards something they can't claim.
      *
      * @param array<int, array{reward: Reward, quote: Result}> $options
      * @return array<int, array{reward: Reward, quote: Result}>
      */
-    private static function claimable( array $options, int $user_id ): array {
-        $now = Dates::now();
-
+    private static function claimable( array $options ): array {
         return array_filter(
             $options,
-            static function ( array $option ) use ( $user_id, $now ): bool {
-                if ( Result::REASON_CONDITIONS_NOT_MET === $option['quote']->get_reason() ) {
-                    return false;
-                }
-
-                return [] === $option['reward']->get_conditions() || self::conditions_hold( $option['reward'], $user_id, $now );
+            static function ( array $option ): bool {
+                return Result::REASON_CONDITIONS_NOT_MET !== $option['quote']->get_reason();
             }
         );
     }

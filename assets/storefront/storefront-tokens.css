@@ -89,10 +89,12 @@
 }
 
 /*
- * The product-page line. Its surface, border and muted text are tints of the theme's text colour, so it reads on
- * light and dark themes alike; the rgba() lines are for browsers without color-mix().
+ * The product-page line and the cart and checkout earn card, which share it. Their surface, border and muted text
+ * are tints of the theme's text colour, so they read on light and dark themes alike; the rgba() lines are for
+ * browsers without color-mix().
  */
-.yayloyalty-product-earn {
+.yayloyalty-product-earn,
+.yayloyalty-cart-earn {
   --yayloyalty-product-earn-surface: rgba(0, 0, 0, 0.015);
   --yayloyalty-product-earn-surface: color-mix(in srgb, currentColor 1.5%, transparent);
   --yayloyalty-product-earn-border: rgba(0, 0, 0, 0.1);
@@ -103,18 +105,4 @@
   --yayloyalty-product-earn-link: var(--yayloyalty-accent);
   --yayloyalty-product-earn-link-hover: var(--yayloyalty-accent-hover);
   --yayloyalty-product-earn-radius: var(--yayloyalty-radius);
-}
-
-/* The cart and checkout earn card: the product-page line's tints, for the same reason. */
-.yayloyalty-cart-earn {
-  --yayloyalty-cart-earn-surface: rgba(0, 0, 0, 0.015);
-  --yayloyalty-cart-earn-surface: color-mix(in srgb, currentColor 1.5%, transparent);
-  --yayloyalty-cart-earn-border: rgba(0, 0, 0, 0.1);
-  --yayloyalty-cart-earn-border: color-mix(in srgb, currentColor 12%, transparent);
-  --yayloyalty-cart-earn-icon: currentColor;
-  --yayloyalty-cart-earn-muted: rgba(0, 0, 0, 0.6);
-  --yayloyalty-cart-earn-muted: color-mix(in srgb, currentColor 65%, transparent);
-  --yayloyalty-cart-earn-link: var(--yayloyalty-accent);
-  --yayloyalty-cart-earn-link-hover: var(--yayloyalty-accent-hover);
-  --yayloyalty-cart-earn-radius: var(--yayloyalty-radius);
 }

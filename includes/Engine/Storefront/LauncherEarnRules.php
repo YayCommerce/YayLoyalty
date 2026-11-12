@@ -142,7 +142,8 @@ final class LauncherEarnRules {
      * @return array[] Each row as the yayloyalty_launcher_earn_rows filter documents it.
      */
     public static function member_rows( array $earn, float $purchase_min, string $purchase_rounding = PointsMath::ROUND_DOWN, ?int $viewer_id = null, array $bonuses = [] ): array {
-        $rows = [];
+        $bonuses += self::none()['bonuses'];
+        $rows     = [];
 
         if ( null !== $earn[ CampaignTrigger::PURCHASE ] ) {
             $rows[] = [
@@ -151,7 +152,7 @@ final class LauncherEarnRules {
                 'value'       => LauncherCopy::earn_rate( $earn[ CampaignTrigger::PURCHASE ], $purchase_min, $purchase_rounding ),
                 /* translators: %s: the store's points label, as "Points". */
                 'description' => sprintf( __( 'Earn %s on every order.', 'yayloyalty' ), SettingsHelper::points_label_plural() ),
-                'bonuses'     => $bonuses[ CampaignTrigger::PURCHASE ] ?? [],
+                'bonuses'     => $bonuses[ CampaignTrigger::PURCHASE ],
             ];
         }
 
@@ -161,7 +162,7 @@ final class LauncherEarnRules {
                 'label'       => __( 'Write a review', 'yayloyalty' ),
                 'value'       => LauncherCopy::points_gain( $earn[ CampaignTrigger::REVIEW ] ),
                 'description' => __( 'Share your experience after a purchase.', 'yayloyalty' ),
-                'bonuses'     => $bonuses[ CampaignTrigger::REVIEW ] ?? [],
+                'bonuses'     => $bonuses[ CampaignTrigger::REVIEW ],
             ];
         }
 
@@ -220,7 +221,7 @@ final class LauncherEarnRules {
                     'label'       => LauncherCopy::create_account( $payload['register'] ),
                     'value'       => LauncherCopy::points_gain( $earn[ CampaignTrigger::SIGNUP ] ),
                     'description' => __( 'Join free and get a welcome bonus.', 'yayloyalty' ),
-                    'bonuses'     => $payload['earn_bonuses'][ CampaignTrigger::SIGNUP ] ?? [],
+                    'bonuses'     => $payload['earn_bonuses'][ CampaignTrigger::SIGNUP ],
                 ]
             );
         }

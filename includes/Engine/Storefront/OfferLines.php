@@ -1,8 +1,10 @@
 <?php
 namespace YayLoyalty\Engine\Storefront;
 
+use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Points\Context;
 use YayLoyalty\Engine\Points\PointsEngine;
+use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Helpers\DesignHelper;
 use YayLoyalty\Models\Campaign;
 use YayLoyalty\Utils\Log;
@@ -97,6 +99,36 @@ final class OfferLines {
                 ]
             )
         );
+    }
+
+    /**
+     * The bonuses for_trigger() teases that would pay more than $figure on an event (one of a product, a cart), each
+     * quoted by the engine on $event and capped at what the member may still earn today. The surface words them.
+     *
+     * @param Context       $event  The product's or cart's Context the bonuses are quoted on.
+     * @param int|null      $cap    EarningService::points_left_today() for a member; null for no cap.
+     * @param callable|null $skip   Given a bonus, true to leave it out (the product page drops one its own line fails).
+     * @return array<int, array{points: int, teaser: string}>
+     */
+    public static function quoted_bonuses( PointsEngine $engine, Context $advert, ?Context $viewer, Context $event, int $figure, ?int $cap, ?callable $skip = null ): array {
+        $quoted = [];
+
+        foreach ( self::for_trigger( $engine, CampaignTrigger::PURCHASE, $advert, $viewer )['bonuses'] as $bonus ) {
+            if ( null !== $skip && $skip( $bonus ) ) {
+                continue;
+            }
+
+            $points = EarningService::cap_today( $engine->quote_campaign( $bonus['campaign'], $event ), $cap );
+
+            if ( $points > $figure ) {
+                $quoted[] = [
+                    'points' => $points,
+                    'teaser' => $bonus['teaser'],
+                ];
+            }
+        }
+
+        return $quoted;
     }
 
     /**

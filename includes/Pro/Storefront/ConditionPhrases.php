@@ -6,6 +6,7 @@ use YayLoyalty\Engine\Storefront\OfferLines;
 use YayLoyalty\Enums\CampaignConditionType;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\CampaignCondition;
+use YayLoyalty\Utils\Text;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -65,20 +66,20 @@ final class ConditionPhrases {
 
             case CampaignConditionType::LIFETIME_POINTS:
                 return CampaignConditionType::OP_GTE === $operator && is_numeric( $value )
-                    /* translators: 1: number of points, 2: the store's points label, as "Points". */
-                    ? sprintf( __( "once you've earned %1\$s %2\$s", 'yayloyalty' ), LauncherCopy::points( (int) $value ), SettingsHelper::points_label( (int) $value ) )
+                    /* translators: %s: points with the store's label, as "500 Points". */
+                    ? sprintf( __( "once you've earned %s", 'yayloyalty' ), SettingsHelper::points_text( (int) $value ) )
                     : null;
 
             case CampaignConditionType::ORDER_COUNT:
                 return CampaignConditionType::OP_GTE === $operator && is_numeric( $value )
                     /* translators: %s: number of orders. */
-                    ? sprintf( _n( 'after %s order', 'after %s orders', (int) $value, 'yayloyalty' ), LauncherCopy::points( (int) $value ) )
+                    ? sprintf( _n( 'after %s order', 'after %s orders', (int) $value, 'yayloyalty' ), SettingsHelper::format_number( (int) $value ) )
                     : null;
 
             case CampaignConditionType::LIFETIME_SPEND:
                 return CampaignConditionType::OP_GTE === $operator && is_array( $value ) && isset( $value['amount'], $value['currency'] ) && is_numeric( $value['amount'] )
                     /* translators: %s: an amount of money, as "$500". */
-                    ? sprintf( __( "once you've spent %s", 'yayloyalty' ), $this->money( (float) $value['amount'], (string) $value['currency'] ) )
+                    ? sprintf( __( "once you've spent %s", 'yayloyalty' ), LauncherCopy::money( (float) $value['amount'], (string) $value['currency'] ) )
                     : null;
 
             case CampaignConditionType::CURRENCY:
@@ -184,7 +185,7 @@ final class ConditionPhrases {
 
         if ( $more > 0 ) {
             /* translators: %s: how many more names are left out of the list. */
-            $names[] = sprintf( _n( '%s more', '%s more', $more, 'yayloyalty' ), LauncherCopy::points( $more ) );
+            $names[] = sprintf( _n( '%s more', '%s more', $more, 'yayloyalty' ), SettingsHelper::format_number( $more ) );
         }
 
         return wp_sprintf_l( '%l', $names );
@@ -199,35 +200,25 @@ final class ConditionPhrases {
     private function gateway_name( string $id ): string {
         $gateways = function_exists( 'WC' ) && WC()->payment_gateways() ? WC()->payment_gateways()->payment_gateways() : [];
 
-        return isset( $gateways[ $id ] ) ? wp_strip_all_tags( $gateways[ $id ]->get_title() ) : $id;
+        return isset( $gateways[ $id ] ) ? Text::plain( $gateways[ $id ]->get_title() ) : $id;
     }
 
     private function country_name( string $code ): string {
         $countries = function_exists( 'WC' ) && WC()->countries ? WC()->countries->get_countries() : [];
         $code      = strtoupper( $code );
 
-        return isset( $countries[ $code ] ) ? html_entity_decode( $countries[ $code ], ENT_QUOTES, 'UTF-8' ) : $code;
+        return isset( $countries[ $code ] ) ? Text::plain( $countries[ $code ] ) : $code;
     }
 
     private function product_name( string $id ): string {
         $product = function_exists( 'wc_get_product' ) ? wc_get_product( (int) $id ) : null;
 
-        return $product ? wp_strip_all_tags( $product->get_name() ) : $id;
+        return $product ? Text::plain( $product->get_name() ) : $id;
     }
 
     private function term_name( string $id ): string {
         $term = get_term( (int) $id, 'product_cat' );
 
-        return $term instanceof \WP_Term ? html_entity_decode( $term->name, ENT_QUOTES, 'UTF-8' ) : $id;
-    }
-
-    private function money( float $amount, string $currency ): string {
-        $args = [ 'currency' => strtoupper( $currency ) ];
-
-        if ( floor( $amount ) === $amount ) {
-            $args['decimals'] = 0;
-        }
-
-        return wp_strip_all_tags( html_entity_decode( wc_price( $amount, $args ), ENT_QUOTES, 'UTF-8' ) );
+        return $term instanceof \WP_Term ? Text::plain( $term->name ) : $id;
     }
 }

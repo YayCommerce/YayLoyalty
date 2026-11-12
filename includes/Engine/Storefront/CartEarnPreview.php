@@ -38,6 +38,9 @@ final class CartEarnPreview {
     /** @var PointsEngine|null */
     private static $engine;
 
+    /** @var EarningService|null */
+    private static $service;
+
     public static function register(): void {
         add_action( 'woocommerce_cart_totals_after_order_total', [ self::class, 'render_row' ] );
         add_action( 'woocommerce_review_order_after_order_total', [ self::class, 'render_row' ] );
@@ -110,7 +113,9 @@ final class CartEarnPreview {
      * the order earns nothing and no bonus would pay more.
      */
     public static function markup( \WC_Cart $cart, int $user_id ): string {
-        if ( ! DesignHelper::surface_enabled( DesignHelper::get_design(), 'show_cart_earn_preview' ) || $cart->is_empty() ) {
+        $design = DesignHelper::get_design();
+
+        if ( ! DesignHelper::surface_enabled( $design, 'show_cart_earn_preview' ) || $cart->is_empty() ) {
             return '';
         }
 
@@ -132,7 +137,7 @@ final class CartEarnPreview {
         }
 
         $yayloyalty_cart_earn = [
-            'line'    => $figure > 0 ? LauncherCopy::points_sentence_html( (string) DesignHelper::get_design()['storefront_text']['cart_earn_line'], $figure ) : '',
+            'line'    => $figure > 0 ? LauncherCopy::points_sentence_html( (string) $design['storefront_text']['cart_earn_line'], $figure ) : '',
             'bonuses' => $bonuses,
             'guest'   => $user_id > 0 ? '' : ProductEarnMessage::guest_line( self::CSS_CLASS ),
         ];
@@ -151,9 +156,9 @@ final class CartEarnPreview {
             return self::engine()->evaluate( CampaignTrigger::PURCHASE, $ctx )->get_points();
         }
 
-        $points = EarningService::build()->preview( CampaignTrigger::PURCHASE, $ctx )->get_points();
+        self::$service = self::$service ?? EarningService::build();
 
-        return null === $left_today ? $points : min( $points, $left_today );
+        return EarningService::cap_today( self::$service->preview( CampaignTrigger::PURCHASE, $ctx )->get_points(), $left_today );
     }
 
     /**
@@ -164,16 +169,10 @@ final class CartEarnPreview {
      */
     private static function bonuses( Context $ctx, int $user_id, int $figure, ?int $left_today ): array {
         try {
-            $offers = OfferLines::for_trigger( self::engine(), CampaignTrigger::PURCHASE, ContextFactory::for_advert( Dates::now() ), $user_id > 0 ? $ctx : null );
-            $lines  = [];
+            $lines = [];
 
-            foreach ( $offers['bonuses'] as $bonus ) {
-                $points = self::engine()->quote_campaign( $bonus['campaign'], $ctx );
-                $points = null === $left_today ? $points : min( $points, $left_today );
-
-                if ( $points > $figure ) {
-                    $lines[] = LauncherCopy::product_bonus( $points, $bonus['teaser'] );
-                }
+            foreach ( OfferLines::quoted_bonuses( self::engine(), ContextFactory::for_advert( Dates::now() ), $user_id > 0 ? $ctx : null, $ctx, $figure, $left_today ) as $bonus ) {
+                $lines[] = LauncherCopy::product_bonus( $bonus['points'], $bonus['teaser'] );
             }
 
             return $lines;

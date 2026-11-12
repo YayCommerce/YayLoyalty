@@ -97,8 +97,15 @@ final class LauncherCopy {
     }
 
     /** "$98.50", or "$1" for a whole amount. Formats an amount already in the current currency; never converts. */
-    public static function money( float $amount ): string {
+    /**
+     * @param string $currency An ISO code to format in; '' for the shopper's currency.
+     */
+    public static function money( float $amount, string $currency = '' ): string {
         $args = floor( $amount ) === $amount ? [ 'decimals' => 0 ] : [];
+
+        if ( '' !== $currency ) {
+            $args['currency'] = strtoupper( $currency );
+        }
 
         return Text::plain( wc_price( $amount, $args ) );
     }

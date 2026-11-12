@@ -138,6 +138,7 @@ export class Api {
     type: 'fixed_coupon' | 'percent_coupon';
     cost_points: number;
     config: object;
+    conditions?: object[];
   }): Promise<number> {
     const { id } = await this.post<{ id: number }>('yayloyalty/v1/rewards', {
       ...reward,

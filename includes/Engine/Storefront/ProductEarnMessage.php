@@ -29,6 +29,12 @@ final class ProductEarnMessage {
 
     private const STYLE_PATH = 'assets/storefront/product-earn.css';
 
+    /** lines() for a product that shows nothing. */
+    private const NONE = [
+        'sentence' => '',
+        'bonuses'  => '',
+    ];
+
     /** @var EarningService|null */
     private static $service;
 
@@ -139,10 +145,7 @@ final class ProductEarnMessage {
     /** @return array{sentence: string, bonuses: string} */
     private static function lines( \WC_Product $product ): array {
         if ( ! DesignHelper::surface_enabled( self::design(), 'show_product_message' ) ) {
-            return [
-                'sentence' => '',
-                'bonuses'  => '',
-            ];
+            return self::NONE;
         }
 
         $id = $product->get_id();
@@ -169,36 +172,29 @@ final class ProductEarnMessage {
             }
         }
 
-        return [
-            'sentence' => '',
-            'bonuses'  => '',
-        ];
+        return self::NONE;
     }
 
     /** @return array{sentence: string, bonuses: string} */
     private static function compute( \WC_Product $product ): array {
-        $none = [
-            'sentence' => '',
-            'bonuses'  => '',
-        ];
-
         if ( $product->is_type( [ 'grouped', 'external' ] ) || '' === $product->get_price() ) {
-            return $none;
+            return self::NONE;
         }
 
-        $user_id = get_current_user_id();
+        $user_id    = get_current_user_id();
+        $left_today = $user_id > 0 ? self::left_today( $user_id ) : null;
         // One Context for the figure and the bonuses, so a member's facts are read once.
         $viewer = ContextFactory::from_product( $product, 1, $user_id > 0 ? $user_id : null );
-        $points = $user_id > 0 ? self::member_points( $viewer ) : self::guest_points( $product );
+        $points = $user_id > 0 ? self::member_points( $viewer, $left_today ) : self::guest_points( $product );
 
         if ( $points <= 0 ) {
-            return $none;
+            return self::NONE;
         }
 
         return [
             /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
             'sentence' => LauncherCopy::points_sentence_html( __( 'Earn {points} {points_label} with this purchase', 'yayloyalty' ), $points ),
-            'bonuses'  => self::bonuses( $viewer, $points ),
+            'bonuses'  => self::bonuses( $viewer, $points, $left_today ),
         ];
     }
 
@@ -207,23 +203,23 @@ final class ProductEarnMessage {
      * Context, for a guest too: a bonus whose product or category condition this line fails is dropped, since
      * buying it can't earn that. A guest's Context carries no customer, so it depends on nothing personal.
      */
-    private static function bonuses( Context $viewer, int $figure ): string {
+    private static function bonuses( Context $viewer, int $figure, ?int $left_today ): string {
         try {
-            $user_id = (int) $viewer->get_user_id();
-            $lines   = '';
-
-            foreach ( OfferLines::for_trigger( self::engine(), CampaignTrigger::PURCHASE, self::advert(), $viewer )['bonuses'] as $bonus ) {
-                if ( self::fails_on_this_product( $bonus['results'] ?? [] ) ) {
-                    continue;
+            $lines  = '';
+            $quoted = OfferLines::quoted_bonuses(
+                self::engine(),
+                self::advert(),
+                $viewer,
+                $viewer,
+                $figure,
+                $left_today,
+                static function ( array $bonus ): bool {
+                    return self::fails_on_this_product( $bonus['results'] ?? [] );
                 }
+            );
 
-                $points = self::engine()->quote_campaign( $bonus['campaign'], $viewer );
-                // The member's daily limit caps a bonus as it caps the figure (member_points() has read it by now).
-                $points = $user_id > 0 && is_int( self::$left_today ) ? min( $points, self::$left_today ) : $points;
-
-                if ( $points > $figure ) {
-                    $lines .= sprintf( '<p class="%s__bonus">%s</p>', esc_attr( self::CSS_CLASS ), LauncherCopy::product_bonus( $points, $bonus['teaser'] ) );
-                }
+            foreach ( $quoted as $bonus ) {
+                $lines .= sprintf( '<p class="%s__bonus">%s</p>', esc_attr( self::CSS_CLASS ), LauncherCopy::product_bonus( $bonus['points'], $bonus['teaser'] ) );
             }
 
             return $lines;
@@ -271,24 +267,28 @@ final class ProductEarnMessage {
         }
     }
 
+    /** EarningService::points_left_today() for the member, read once per request. */
+    private static function left_today( int $user_id ): ?int {
+        if ( false === self::$left_today ) {
+            self::$left_today = EarningService::points_left_today( $user_id );
+        }
+
+        return self::$left_today;
+    }
+
     /**
      * What one of this product earns the member, no more than the daily limit leaves today. 0 on failure.
      *
-     * @param Context $ctx ContextFactory::from_product() for the member.
+     * @param Context  $ctx        ContextFactory::from_product() for the member.
+     * @param int|null $left_today left_today(); null for no limit.
      */
-    private static function member_points( Context $ctx ): int {
+    private static function member_points( Context $ctx, ?int $left_today ): int {
         try {
-            if ( false === self::$left_today ) {
-                self::$left_today = EarningService::points_left_today( get_current_user_id() );
-            }
-
-            if ( 0 === self::$left_today ) {
+            if ( 0 === $left_today ) {
                 return 0;
             }
 
-            $points = self::service()->preview( CampaignTrigger::PURCHASE, $ctx )->get_points();
-
-            return null === self::$left_today ? $points : min( $points, self::$left_today );
+            return EarningService::cap_today( self::service()->preview( CampaignTrigger::PURCHASE, $ctx )->get_points(), $left_today );
         } catch ( \Throwable $e ) {
             Log::warning( 'ProductEarnMessage', 'member estimate failed: ' . $e->getMessage() );
 
@@ -350,7 +350,8 @@ final class ProductEarnMessage {
         $sign_in = sprintf( '<a href="%s">%s</a>', esc_url( (string) wc_get_page_permalink( 'myaccount' ) ), esc_html__( 'Sign in', 'yayloyalty' ) );
         $label   = esc_html( SettingsHelper::points_label_plural() );
         $route   = LauncherPayload::register_route();
-        $signup  = null === $route ? null : LauncherEarnRules::advertise( self::engine(), ContextFactory::for_advert( Dates::now() ), true )['earn'][ CampaignTrigger::SIGNUP ];
+        $advert  = null === $route ? null : LauncherEarnRules::advertised( self::engine(), CampaignTrigger::SIGNUP, self::advert() );
+        $signup  = null === $advert ? null : (int) $advert['value'];
 
         if ( null === $signup ) {
             /* translators: 1: "Sign in" link, 2: the store's points label, as "Points". */
