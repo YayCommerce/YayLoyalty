@@ -9,6 +9,9 @@ final class OrderStatus {
     /** The one status that awards points. It also marks a paid order for customer facts. */
     public const AWARD = 'completed';
 
+    /** An order in the trash, which its own restore and reversal rules handle. */
+    public const TRASH = 'trash';
+
     /**
      * Statuses that count as paid, in the shape wc_get_orders() takes.
      *

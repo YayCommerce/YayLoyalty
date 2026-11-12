@@ -117,12 +117,13 @@ final class RedemptionService {
         $registry    = Registry::with_lite_handlers();
         $quoter      = new Quoter( new RewardEngine( $registry ), $gates );
         $contexts    = new ContextFactory( $customers );
-        $ledger      = new LedgerService( new LedgerRepository(), $customers, new CampaignRepository() );
+        $ledger_rows = new LedgerRepository();
+        $ledger      = new LedgerService( $ledger_rows, $customers, new CampaignRepository() );
         $redemptions = new RedemptionRepository();
         $rewards     = new RewardRepository();
         $writer      = new CommitWriter( $ledger, $redemptions, $customers, $contexts, $quoter );
 
-        return new self( $quoter, $contexts, $rewards, $intent, $writer, new Reversal( $ledger, $redemptions, $customers, $rewards, new LedgerRepository() ), $registry );
+        return new self( $quoter, $contexts, $rewards, $intent, $writer, new Reversal( $ledger, $redemptions, $customers, $rewards, $ledger_rows ), $registry );
     }
 
     /** Handed to Earning\Listeners\OrderReversalListener, so reversals write through this root's LedgerService and no construction site is added. */

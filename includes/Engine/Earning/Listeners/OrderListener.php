@@ -18,7 +18,7 @@ defined( 'ABSPATH' ) || exit;
  * Routes order statuses to staging, award and reversal. The only class that routes on WooCommerce
  * order status strings; OrderStatus holds the ones read elsewhere. Every handler is safe to re-fire: staging and release are idempotent,
  * and the ledger's UNIQUE idempotency_key guards the award.
- * A `failed` order returns the points it redeemed; leaving `failed` for a paid status takes them again.
+ * A `failed` order returns the points it redeemed; leaving `failed` or `pending` for a paid status takes back those of its `unpaid` rows.
  * Only `completed` awards, by product decision: a store that leaves orders at `processing`
  * must complete them for them to earn. Virtual orders get there from payment_complete().
  */
@@ -29,7 +29,7 @@ final class OrderListener {
 
     private const DEAD_STATUSES = [ 'cancelled', 'trash' ];
 
-    /** Where an order that left `failed` must land for its payment to count as received. Not `pending`: pay-for-order debits that one itself. */
+    /** The statuses that count as a payment received, after a failed or unfinished one: an order that reaches one from any other status has its `unpaid` rows debited. */
     private const PAID_STATUSES = [ 'on-hold', 'processing', 'completed' ];
 
     private EarningService $service;

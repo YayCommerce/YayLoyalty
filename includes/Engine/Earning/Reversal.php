@@ -76,11 +76,11 @@ final class Reversal {
 
         $lines            = self::product_lines( $order );
         $refunded_by_line = self::refunded_by_line( $refunds );
-        $amount_only      = self::amount_only_total( $refunds, $lines );
+        $amount_share     = self::amount_only_total( $refunds, $lines ) / $order_total;
         $outcomes         = [];
 
         foreach ( $this->ledger->earn_rows_for_order( (int) $order->get_id() ) as $earn ) {
-            list( $original, $refunded ) = $this->bases( $lines, $refunded_by_line, $amount_only, $order_total, $earn );
+            list( $original, $refunded ) = $this->bases( $lines, $refunded_by_line, $amount_share, $earn );
 
             $owed       = ClawbackMath::owed( $earn->get_points(), $refunded, $original, $is_fully_refunded );
             $outcomes[] = $this->writer->refund_earn( $earn, $owed, ReferenceType::REFUND, $refund_id );
@@ -229,16 +229,15 @@ final class Reversal {
      * The base an earn row was scored on and how much of it the order's
      * refunds removed, cumulatively. Only lines the earn's campaign counted
      * (BaseCalculator::includes_line()), so refunding an excluded product
-     * claws back nothing. Amount-only refunds remove $amount_only × base ÷
-     * order total on top, and the refunded base never exceeds the base.
+     * claws back nothing. Amount-only refunds remove $amount_share × base on
+     * top, and the refunded base never exceeds the base.
      *
      * @param array<int, array{0: \WC_Order_Item_Product, 1: ContextLineItem}> $lines            product_lines()
      * @param array<int, float>                                         $refunded_by_line refunded_by_line()
-     * @param float                                                     $amount_only      amount_only_total()
-     * @param float                                                     $order_total      Above 0.
+     * @param float                                                     $amount_share     amount_only_total() ÷ the order total.
      * @return float[] [ original, refunded ]
      */
-    private function bases( array $lines, array $refunded_by_line, float $amount_only, float $order_total, LedgerEntry $earn ): array {
+    private function bases( array $lines, array $refunded_by_line, float $amount_share, LedgerEntry $earn ): array {
         $campaign = null === $earn->get_campaign_id() ? null : $this->campaigns->find_campaign( (int) $earn->get_campaign_id() );
 
         if ( null === $campaign ) {
@@ -255,7 +254,7 @@ final class Reversal {
             }
         }
 
-        $refunded += $amount_only * $original / $order_total;
+        $refunded += $amount_share * $original;
 
         return [ $original, min( $refunded, $original ) ];
     }

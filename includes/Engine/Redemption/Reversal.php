@@ -80,12 +80,10 @@ final class Reversal {
 
         return $this->settle_each(
             $order_id,
-            [ Redemption::STATUS_APPLIED, Redemption::STATUS_UNPAID ],
+            Redemption::ON_ORDER_STATUSES,
             function ( Redemption $row ) use ( $order_id ): Outcome {
                 if ( Redemption::STATUS_UNPAID === $row->get_status() ) {
-                    $this->redemptions->record_restore( (int) $row->get_id(), $row->get_restored_points(), Redemption::STATUS_CANCELLED );
-
-                    return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
+                    return $this->relabel( $row, $row->get_restored_points(), Redemption::STATUS_CANCELLED );
                 }
 
                 return $this->restore( $row, $row->get_points(), Redemption::STATUS_CANCELLED, self::order_then_redemption( $row, $order_id ) );
@@ -113,9 +111,7 @@ final class Reversal {
                 }
 
                 if ( $row->get_restored_points() >= $row->get_points() ) {
-                    $this->redemptions->record_restore( (int) $row->get_id(), $row->get_points(), Redemption::STATUS_UNPAID );
-
-                    return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
+                    return $this->relabel( $row, $row->get_points(), Redemption::STATUS_UNPAID );
                 }
 
                 return $this->restore( $row, $row->get_points(), Redemption::STATUS_UNPAID, [ [ ReferenceType::LEDGER, (int) $debit->get_id() ] ], 'Payment failed' );
@@ -289,20 +285,16 @@ final class Reversal {
 
                 $row = $this->redemptions->lock( (int) $stale->get_id() );
 
-                if ( null === $row || ! in_array( $row->get_status(), [ Redemption::STATUS_APPLIED, Redemption::STATUS_UNPAID ], true ) ) {
+                if ( null === $row || ! in_array( $row->get_status(), Redemption::ON_ORDER_STATUSES, true ) ) {
                     return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
                 }
 
                 if ( $waive || Redemption::STATUS_UNPAID === $row->get_status() ) {
-                    $this->redemptions->record_restore( (int) $row->get_id(), $row->get_restored_points(), Redemption::STATUS_REMOVED );
-
-                    return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
+                    return $this->relabel( $row, $row->get_restored_points(), Redemption::STATUS_REMOVED );
                 }
 
                 if ( $row->get_restored_points() >= $row->get_points() ) {
-                    $this->redemptions->record_restore( (int) $row->get_id(), $row->get_points(), Redemption::STATUS_REMOVED );
-
-                    return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
+                    return $this->relabel( $row, $row->get_points(), Redemption::STATUS_REMOVED );
                 }
 
                 return $this->restore( $row, $row->get_points(), Redemption::STATUS_REMOVED, [ [ ReferenceType::REDEMPTION, (int) $row->get_id() ] ], 'Coupon removed from order' );
@@ -366,6 +358,13 @@ final class Reversal {
         }
 
         return Outcome::skipped( self::REASON_KEY_SPENT );
+    }
+
+    /** Moves the row to $status with $restored points and no ledger row, for an event that finds nothing left to move. */
+    private function relabel( Redemption $row, int $restored, string $status ): Outcome {
+        $this->redemptions->record_restore( (int) $row->get_id(), $restored, $status );
+
+        return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
     }
 
     /** Lowers the row's restored points to $target with one negative REDEEM row; the row is `applied` again. */

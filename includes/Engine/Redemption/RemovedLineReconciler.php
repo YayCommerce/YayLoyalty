@@ -3,6 +3,7 @@ namespace YayLoyalty\Engine\Redemption;
 
 use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Points\Context as EarnContext;
+use YayLoyalty\Enums\OrderStatus;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Redemption;
 use YayLoyalty\Repositories\RedemptionRepository;
@@ -47,9 +48,15 @@ final class RemovedLineReconciler {
         add_action( 'shutdown', [ $this, 'settle' ], 0 );
     }
 
-    /** Queues a loyalty coupon line WooCommerce is about to delete. */
+    /** Queues a loyalty coupon line WooCommerce is about to delete. Reads the item's type first, so other lines load nothing. */
     public function on_item_deleted( $item_id ): void {
-        $item = \WC_Order_Factory::get_order_item( absint( $item_id ) );
+        $item_id = absint( $item_id );
+
+        if ( 'coupon' !== \WC_Data_Store::load( 'order-item' )->get_order_item_type( $item_id ) ) {
+            return;
+        }
+
+        $item = \WC_Order_Factory::get_order_item( $item_id );
 
         if ( ! $item instanceof \WC_Order_Item_Coupon || ! EarnContext::is_loyalty_code( (string) $item->get_code() ) ) {
             return;
@@ -82,7 +89,7 @@ final class RemovedLineReconciler {
         foreach ( $queue as $order_id => $codes ) {
             $order = wc_get_order( $order_id );
 
-            if ( ! $order instanceof \WC_Order || 'trash' === $order->get_status() ) {
+            if ( ! $order instanceof \WC_Order || OrderStatus::TRASH === $order->get_status() ) {
                 continue;
             }
 
@@ -103,13 +110,11 @@ final class RemovedLineReconciler {
             return;
         }
 
-        $name = $this->name_of( $row );
-
         try {
             $outcome = $this->reversal->coupon_removed( $order, $code, $waive );
         } catch ( \Throwable $e ) {
             Log::error( self::class, sprintf( 'Restoring order #%d coupon %s failed: %s', (int) $order->get_id(), $code, $e->getMessage() ) );
-            self::note_failure( $order, $name );
+            self::note_failure( $order, $this->rewards->name_for( $row->get_reward_id() ) );
 
             return;
         }
@@ -121,14 +126,14 @@ final class RemovedLineReconciler {
         if ( Outcome::AWARDED === $outcome->get_status() ) {
             $points = null === $outcome->get_entry() ? 0 : abs( $outcome->get_entry()->get_points() );
             /* translators: 1: the reward's name, as "$5 off", 2: points, as "500 points". */
-            $order->add_order_note( sprintf( __( '%1$s removed — %2$s restored.', 'yayloyalty' ), $name, SettingsHelper::points_text( $points ) ), 0, true );
+            $order->add_order_note( sprintf( __( '%1$s removed — %2$s restored.', 'yayloyalty' ), $this->rewards->name_for( $row->get_reward_id() ), SettingsHelper::points_text( $points ) ), 0, true );
 
             return;
         }
 
         if ( Reversal::REASON_KEY_SPENT === $outcome->get_reason() ) {
             Log::error( self::class, sprintf( 'Restoring order #%d coupon %s found its ledger key spent.', (int) $order->get_id(), $code ) );
-            self::note_failure( $order, $name );
+            self::note_failure( $order, $this->rewards->name_for( $row->get_reward_id() ) );
 
             return;
         }
@@ -136,19 +141,12 @@ final class RemovedLineReconciler {
         // Only a row that still had points out: an `unpaid` row's points are back already, and a repeat moves nothing.
         if ( $waive && Redemption::STATUS_APPLIED === $row->get_status() ) {
             /* translators: 1: the reward's name, as "$5 off", 2: the admin's display name. */
-            $order->add_order_note( sprintf( __( '%1$s removed — points not restored, as chosen by %2$s.', 'yayloyalty' ), $name, wp_get_current_user()->display_name ), 0, true );
+            $order->add_order_note( sprintf( __( '%1$s removed — points not restored, as chosen by %2$s.', 'yayloyalty' ), $this->rewards->name_for( $row->get_reward_id() ), wp_get_current_user()->display_name ), 0, true );
         }
     }
 
     private static function note_failure( \WC_Order $order, string $name ): void {
         /* translators: %s: the reward's name, as "$5 off". */
         $order->add_order_note( sprintf( __( '%s removed, but its points could not be restored. Adjust the customer\'s points by hand.', 'yayloyalty' ), $name ), 0, true );
-    }
-
-    /** The reward's name; "Reward" once the reward is deleted. */
-    private function name_of( Redemption $row ): string {
-        $reward = $this->rewards->find_reward( $row->get_reward_id() );
-
-        return null === $reward ? __( 'Reward', 'yayloyalty' ) : $reward->get_name();
     }
 }

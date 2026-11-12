@@ -64,7 +64,7 @@ final class OrderCouponRemoval {
 
             if ( Redemption::STATUS_APPLIED === $row->get_status() && null !== $row->get_coupon_code() && $remaining > 0 ) {
                 $coupons[ wc_format_coupon_code( $row->get_coupon_code() ) ] = [
-                    'name'      => $this->name_of( $row ),
+                    'name'      => $this->rewards->name_for( $row->get_reward_id() ),
                     'points'    => SettingsHelper::points_text( $row->get_points() ),
                     'remaining' => SettingsHelper::points_text( $remaining ),
                 ];
@@ -135,12 +135,5 @@ final class OrderCouponRemoval {
         }
 
         $this->reconciler->waive( $order_id, $code );
-    }
-
-    /** The reward's name; "Reward" once the reward is deleted. */
-    private function name_of( Redemption $row ): string {
-        $reward = $this->rewards->find_reward( $row->get_reward_id() );
-
-        return null === $reward ? __( 'Reward', 'yayloyalty' ) : $reward->get_name();
     }
 }

@@ -24,6 +24,9 @@ final class Redemption extends AbstractModel {
 
     public const STORED_STATUSES = [ self::STATUS_APPLIED, self::STATUS_UNPAID, self::STATUS_REFUNDED, self::STATUS_CANCELLED, self::STATUS_REMOVED ];
 
+    /** The statuses of a row whose line is still on its order: debited, or returned until the order is paid. */
+    public const ON_ORDER_STATUSES = [ self::STATUS_APPLIED, self::STATUS_UNPAID ];
+
     private ?int $id;
 
     private int $user_id;

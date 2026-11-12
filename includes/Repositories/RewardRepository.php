@@ -37,6 +37,13 @@ final class RewardRepository extends AbstractRepository {
         return $model instanceof Reward ? $model : null;
     }
 
+    /** The reward's name; "Reward" once the reward is deleted. */
+    public function name_for( int $id ): string {
+        $reward = $this->find_reward( $id );
+
+        return null === $reward ? __( 'Reward', 'yayloyalty' ) : $reward->get_name();
+    }
+
     public function find_by_slug( string $slug ): ?Reward {
         $model = $this->find_one_by( 'slug', $slug );
 
