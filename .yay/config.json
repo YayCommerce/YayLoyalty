@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "plugin": {
+    "name": "YayLoyalty — Points, Rewards, Referral & VIP for WooCommerce",
+    "slug": "yayloyalty",
+    "mainFile": "yayloyalty.php",
+    "textDomain": "yayloyalty",
+    "wporgSlug": "yayloyalty"
+  },
+  "editions": [
+    "pro",
+    "lite"
+  ],
+  "requires": {
+    "php": "7.4",
+    "wp": "6.5",
+    "wc": "10.0"
+  },
+  "tested": {
+    "wp": "7.1",
+    "wc": "11.2"
+  },
+  "git": {
+    "baseBranch": "dev",
+    "tagFormat": "v{version}",
+    "branchTypes": [
+      "feat",
+      "fix",
+      "chore",
+      "hotfix",
+      "docs",
+      "refactor",
+      "test"
+    ],
+    "scopes": [
+      "campaigns",
+      "harness",
+      "storefront",
+      "emails",
+      "admin",
+      "plans",
+      "rewards",
+      "settings",
+      "redemption",
+      "design",
+      "currency",
+      "yaymail",
+      "backlog",
+      "dashboard",
+      "customers"
+    ]
+  },
+  "commands": {
+    "install": "pnpm install && composer install",
+    "dev": "pnpm run dev",
+    "build": "./scripts/run.sh build",
+    "lint": "composer lint",
+    "test": "composer test",
+    "package": "./scripts/run.sh release {edition} {version} --no-prompt",
+    "e2e": "cd tests/e2e && ./node_modules/.bin/playwright test",
+    "e2e-install": "cd tests/e2e && pnpm install --ignore-workspace && ./node_modules/.bin/playwright install chromium",
+    "e2e-start": "cd tests/e2e && ./node_modules/.bin/wp-env start",
+    "e2e-stop": "cd tests/e2e && ./node_modules/.bin/wp-env stop",
+    "e2e-reset": "cd tests/e2e && ./node_modules/.bin/wp-env clean all",
+    "test-unit": "vendor/bin/phpunit -c tests/php/unit.xml.dist",
+    "test-integration": "cd tests/e2e && ./node_modules/.bin/wp-env run tests-cli --env-cwd=wp-content/plugins/yayloyalty vendor/bin/phpunit -c tests/php/integration.xml.dist",
+    "test-js": "./node_modules/.bin/vitest run --config tests/js/vitest.config.mjs"
+  },
+  "package": {
+    "output": "release/*.zip",
+    "forbidden": {
+      "lite": [
+        "includes/Pro/"
+      ]
+    }
+  },
+  "versionFiles": [
+    {
+      "file": "yayloyalty.php",
+      "pattern": "^[[:space:]*]*Version:[[:space:]]*([0-9][^[:space:]]*)"
+    },
+    {
+      "file": "yayloyalty.php",
+      "pattern": "define\\([[:space:]]*'YAYLOYALTY_VERSION',[[:space:]]*'([^']+)'"
+    },
+    {
+      "file": "readme.txt",
+      "pattern": "^Stable tag:[[:space:]]*([0-9][^[:space:]]*)"
+    }
+  ],
+  "generatedPaths": [
+    "vendor/",
+    "vendor-prefixed/",
+    "node_modules/",
+    "assets/dist/",
+    "dist/",
+    "release/"
+  ],
+  "changelog": {
+    "readme": "readme.txt",
+    "notesDir": "docs/releases"
+  },
+  "checks": [],
+  "keep": [],
+  "e2e": {
+    "dir": "tests/e2e"
+  },
+  "tests": {
+    "php": "tests/php",
+    "js": "tests/js",
+    "jsRunner": "vitest"
+  }
+}

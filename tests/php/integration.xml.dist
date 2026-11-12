@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<!-- Integration tests: real WordPress (and WooCommerce when the plugin needs it) in wp-env's tests site. Run: yayh test run integration -->
+<phpunit
+	bootstrap="integration/bootstrap.php"
+	colors="true"
+	beStrictAboutTestsThatDoNotTestAnything="true"
+	failOnRisky="true">
+	<testsuites>
+		<testsuite name="integration">
+			<directory suffix="Test.php">integration</directory>
+		</testsuite>
+	</testsuites>
+</phpunit>
