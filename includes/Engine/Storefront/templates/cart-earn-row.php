@@ -1,6 +1,6 @@
 <?php
 /**
- * The cart and checkout earn card. Styled by assets/storefront/cart-earn.css.
+ * The cart and checkout earn card. Styled by assets/storefront/product-earn.css.
  *
  * @var array{line: string, bonuses: string[], guest: string} $yayloyalty_cart_earn CartEarnPreview::markup(), every
  *      value already escaped HTML: `line` is LauncherCopy::points_sentence_html() ('' when the order earns nothing),

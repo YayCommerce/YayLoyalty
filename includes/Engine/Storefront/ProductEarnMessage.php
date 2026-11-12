@@ -105,6 +105,11 @@ final class ProductEarnMessage {
         return $data;
     }
 
+    /** The card's stylesheet, which the cart and checkout earn card (CartEarnPreview) shares. */
+    public static function enqueue_card_style(): void {
+        wp_enqueue_style( ScriptName::PRODUCT_EARN_STYLE, YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH, [], Launcher::asset_version( self::STYLE_PATH ) );
+    }
+
     /** The stylesheet on a product page whose line shows; the script only when that product is variable. */
     public static function enqueue(): void {
         if ( ! is_product() ) {
@@ -117,7 +122,7 @@ final class ProductEarnMessage {
             return;
         }
 
-        wp_enqueue_style( ScriptName::PRODUCT_EARN_STYLE, YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH, [], Launcher::asset_version( self::STYLE_PATH ) );
+        self::enqueue_card_style();
 
         if ( ! $product->is_type( 'variable' ) ) {
             return;

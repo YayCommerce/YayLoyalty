@@ -33,8 +33,6 @@ final class CartEarnPreview {
 
     private const SCRIPT_PATH = 'assets/storefront/cart-earn-blocks.js';
 
-    private const STYLE_PATH = 'assets/storefront/cart-earn.css';
-
     /** @var PointsEngine|null */
     private static $engine;
 
@@ -210,7 +208,7 @@ final class CartEarnPreview {
     }
 
     private static function enqueue_style_file(): void {
-        wp_enqueue_style( ScriptName::CART_EARN_STYLE, YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH, [], Launcher::asset_version( self::STYLE_PATH ) );
+        ProductEarnMessage::enqueue_card_style();
     }
 
     private static function engine(): PointsEngine {

@@ -1,7 +1,7 @@
 /*
  * The product-page earning line (ProductEarnMessage::markup() in includes/Engine/Storefront/ProductEarnMessage.php),
- * and the card the cart and checkout earn row shares with it (cart-earn.css imports this file and overrides only
- * its spacing). Hand-written and shipped as-is: no build step, and nothing from the launcher's stylesheet or the
+ * and the cart and checkout earn card (CartEarnPreview), which shares it and only changes its spacing at the end of
+ * this file. Hand-written and shipped as-is: no build step, and nothing from the launcher's stylesheet or the
  * Design tab.
  *
  * - The text keeps the theme's font and colour; the surface and border are tints of that colour,
@@ -112,4 +112,18 @@
   color: var(--yayloyalty-product-earn-link-hover);
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+/* The cart and checkout earn card: tighter, to fit the order summary. */
+.yayloyalty-cart-earn {
+  margin: 8px 0;
+  padding: 12px 14px;
+  font-weight: 400;
+}
+
+/* The classic totals table's cell around it: no theme padding or border doubling the card's own. */
+.yayloyalty-cart-earn-row > td {
+  padding-left: 0;
+  padding-right: 0;
+  border: 0;
 }
