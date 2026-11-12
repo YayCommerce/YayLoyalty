@@ -122,7 +122,7 @@ final class RedemptionService {
         $rewards     = new RewardRepository();
         $writer      = new CommitWriter( $ledger, $redemptions, $customers, $contexts, $quoter );
 
-        return new self( $quoter, $contexts, $rewards, $intent, $writer, new Reversal( $ledger, $redemptions, $customers, $rewards ), $registry );
+        return new self( $quoter, $contexts, $rewards, $intent, $writer, new Reversal( $ledger, $redemptions, $customers, $rewards, new LedgerRepository() ), $registry );
     }
 
     /** Handed to Earning\Listeners\OrderReversalListener, so reversals write through this root's LedgerService and no construction site is added. */

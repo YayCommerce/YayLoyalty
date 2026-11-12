@@ -10,6 +10,7 @@ use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Models\Redemption;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CustomerRepository;
+use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
@@ -18,7 +19,7 @@ use YayLoyalty\Tests\Integration\IntegrationTestCase;
 final class ReversalTest extends IntegrationTestCase {
 
     private function reversal(): Reversal {
-        return new Reversal( $this->ledger_service(), new RedemptionRepository(), new CustomerRepository(), new RewardRepository() );
+        return new Reversal( $this->ledger_service(), new RedemptionRepository(), new CustomerRepository(), new RewardRepository(), new LedgerRepository() );
     }
 
     /** User 7 has 1000 points and spends 500 on an order of 20.00 that totals 15.00. */

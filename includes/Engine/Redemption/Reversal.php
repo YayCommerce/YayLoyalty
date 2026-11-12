@@ -5,15 +5,18 @@ use YayLoyalty\Database\Transaction;
 use YayLoyalty\Engine\Earning\ClawbackMath;
 use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Earning\Reversal as EarnReversal;
+use YayLoyalty\Engine\Rewards\Result as RedeemResult;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Models\Redemption;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CustomerRepository;
+use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Services\LedgerService;
+use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -29,6 +32,9 @@ defined( 'ABSPATH' ) || exit;
  * An admin removing a line with Restore on the order screen returns what is
  * left of that one row under `[ redemption, id ]` and makes it `removed`,
  * a status no other event lists, so nothing moves it again.
+ * A failed payment returns what is left of each `applied` row and makes it `unpaid`; paying again debits
+ * it back and makes it `applied`. That cycle repeats without limit: each move is keyed on the ledger row
+ * it undoes (`[ ledger, id ]`), so every cycle has fresh keys while a re-fired event composes the same one.
  * Never writes an ADJUST row: LedgerRepository::sum_refunded_for() reads
  * one that references a refund as an earn give-back.
  */
@@ -49,18 +55,23 @@ final class Reversal {
     /** Read-only use: the reward's `refund_policy` as it is when the event runs, and its type for the key. */
     private RewardRepository $rewards;
 
+    /** Read-only: the ledger row a failed-payment restore or a pay-again debit undoes, for its key. */
+    private LedgerRepository $ledger_rows;
+
     /** @var array<int, Reward|null> Rewards read by id this event; null for an id with no row. */
     private array $reward_cache = [];
 
-    public function __construct( LedgerService $ledger, RedemptionRepository $redemptions, CustomerRepository $customers, RewardRepository $rewards ) {
+    public function __construct( LedgerService $ledger, RedemptionRepository $redemptions, CustomerRepository $customers, RewardRepository $rewards, LedgerRepository $ledger_rows ) {
         $this->ledger      = $ledger;
         $this->redemptions = $redemptions;
         $this->customers   = $customers;
         $this->rewards     = $rewards;
+        $this->ledger_rows = $ledger_rows;
     }
 
     /**
-     * Cancel or trash: restores whatever is not restored yet; the row becomes `cancelled`.
+     * Cancel or trash: restores whatever is not restored yet; the row becomes `cancelled`. An `unpaid` row has
+     * nothing left to restore, so it only becomes `cancelled`.
      *
      * @return Outcome[] One per redemption row of the order.
      */
@@ -69,11 +80,112 @@ final class Reversal {
 
         return $this->settle_each(
             $order_id,
-            [ Redemption::STATUS_APPLIED ],
+            [ Redemption::STATUS_APPLIED, Redemption::STATUS_UNPAID ],
             function ( Redemption $row ) use ( $order_id ): Outcome {
+                if ( Redemption::STATUS_UNPAID === $row->get_status() ) {
+                    $this->redemptions->record_restore( (int) $row->get_id(), $row->get_restored_points(), Redemption::STATUS_CANCELLED );
+
+                    return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
+                }
+
                 return $this->restore( $row, $row->get_points(), Redemption::STATUS_CANCELLED, self::order_then_redemption( $row, $order_id ) );
             }
         );
+    }
+
+    /**
+     * The order's payment failed: restores whatever is not restored yet, keyed on the row's latest `redeem` ledger row;
+     * the row becomes `unpaid`. A row with nothing left to restore becomes `unpaid` with no ledger row.
+     *
+     * @return Outcome[] One per redemption row of the order.
+     */
+    public function payment_failed( \WC_Order $order ): array {
+        return $this->settle_each(
+            (int) $order->get_id(),
+            [ Redemption::STATUS_APPLIED ],
+            function ( Redemption $row ): Outcome {
+                $debit = $this->ledger_rows->latest_for_redemption( (int) $row->get_id(), LedgerType::REDEEM );
+
+                if ( null === $debit ) {
+                    Log::warning( 'Reversal', sprintf( 'redemption #%d has no redeem ledger row; its failed payment restores nothing', (int) $row->get_id() ) );
+
+                    return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
+                }
+
+                if ( $row->get_restored_points() >= $row->get_points() ) {
+                    $this->redemptions->record_restore( (int) $row->get_id(), $row->get_points(), Redemption::STATUS_UNPAID );
+
+                    return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
+                }
+
+                return $this->restore( $row, $row->get_points(), Redemption::STATUS_UNPAID, [ [ ReferenceType::LEDGER, (int) $debit->get_id() ] ], 'Payment failed' );
+            }
+        );
+    }
+
+    /**
+     * The order is being paid again: debits each `unpaid` row's restored points beyond what its refunds justify, keyed on the
+     * row's latest `refund_redeem` ledger row; the row becomes `applied`. With $allow_negative false it is all or nothing:
+     * when the balance cannot cover every row, nothing is written and every outcome is skipped
+     * Rewards\Result::REASON_INSUFFICIENT_BALANCE.
+     *
+     * @param bool $allow_negative True when the payment already arrived (a late gateway webhook), so the debit must stand.
+     * @return Outcome[] One per redemption row of the order.
+     */
+    public function payment_retried( \WC_Order $order, bool $allow_negative ): array {
+        $order_id = (int) $order->get_id();
+        $settle   = function () use ( $order, $order_id, $allow_negative ): array {
+            return $this->settle_each(
+                $order_id,
+                [ Redemption::STATUS_UNPAID ],
+                function ( Redemption $row ) use ( $order, $allow_negative ): Outcome {
+                    $restore = $this->ledger_rows->latest_for_redemption( (int) $row->get_id(), LedgerType::REFUND_REDEEM );
+
+                    if ( null === $restore ) {
+                        return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
+                    }
+
+                    return $this->debit( $row, $this->refund_target( $order, $row ), ReferenceType::LEDGER, (int) $restore->get_id(), $allow_negative, 'Paid again' );
+                }
+            );
+        };
+
+        if ( $allow_negative ) {
+            return $settle();
+        }
+
+        try {
+            return Transaction::run(
+                static function () use ( $settle ): array {
+                    $outcomes = $settle();
+
+                    foreach ( $outcomes as $outcome ) {
+                        if ( RedeemResult::REASON_INSUFFICIENT_BALANCE === $outcome->get_reason() ) {
+                            // Rolls back the rows that were covered, so the order is debited whole or not at all.
+                            throw new \DomainException( 'insufficient_balance' );
+                        }
+                    }
+
+                    return $outcomes;
+                }
+            );
+        } catch ( \DomainException $e ) {
+            return array_map(
+                static fn(): Outcome => Outcome::skipped( RedeemResult::REASON_INSUFFICIENT_BALANCE ),
+                $this->redemptions->for_order( $order_id )
+            );
+        }
+    }
+
+    /** Whether any of the order's rows is `unpaid`: points the order spent are back with the customer until it is paid. */
+    public function has_unpaid( \WC_Order $order ): bool {
+        foreach ( $this->redemptions->for_order( (int) $order->get_id() ) as $row ) {
+            if ( Redemption::STATUS_UNPAID === $row->get_status() ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

@@ -55,7 +55,7 @@ final class OrderReversalListenerTest extends IntegrationTestCase {
         $listener  = new OrderReversalListener(
             new PendingPoints( $customers ),
             new EarnReversal( $this->ledger_service(), $failing, new CampaignRepository() ),
-            new RedemptionReversal( $this->ledger_service(), new RedemptionRepository(), $customers, new RewardRepository() )
+            new RedemptionReversal( $this->ledger_service(), new RedemptionRepository(), $customers, new RewardRepository(), new LedgerRepository() )
         );
 
         try {

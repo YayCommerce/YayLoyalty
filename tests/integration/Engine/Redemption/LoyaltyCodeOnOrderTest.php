@@ -5,6 +5,7 @@ use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Redemption\Reversal;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Repositories\CustomerRepository;
+use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
@@ -15,7 +16,7 @@ final class LoyaltyCodeOnOrderTest extends IntegrationTestCase {
     private const REFUSED = 'This loyalty discount can only be applied by the customer at checkout.';
 
     private function reversal(): Reversal {
-        return new Reversal( $this->ledger_service(), new RedemptionRepository(), new CustomerRepository(), new RewardRepository() );
+        return new Reversal( $this->ledger_service(), new RedemptionRepository(), new CustomerRepository(), new RewardRepository(), new LedgerRepository() );
     }
 
     /**
