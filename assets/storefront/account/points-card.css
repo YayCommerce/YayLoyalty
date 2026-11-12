@@ -1,12 +1,12 @@
 /*
- * templates/points-card.php: the points card and the expiry notice under it.
+ * templates/points-card.php: the points card, its pending line, and the expiry notice under it.
  * Imported by rewards-tokens.css, which holds the tokens.
  */
 .yayloyalty-account .yayloyalty-account__card {
   display: grid;
-  /* Rows 2-4 stay empty until the narrow layout below places the text and the button in them. */
+  /* Rows 2-5 stay empty until the narrow layout below places the text and the button in them. */
   grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto auto auto 1fr auto;
   align-items: center;
   column-gap: 16px;
   padding: 24px;
@@ -48,6 +48,7 @@
 }
 
 .yayloyalty-account .yayloyalty-account__unit,
+.yayloyalty-account .yayloyalty-account__pending,
 .yayloyalty-account .yayloyalty-account__caption {
   font-size: 13px;
   color: var(--yayloyalty-account-muted);
@@ -174,20 +175,24 @@
     margin-top: 0;
   }
 
-  .yayloyalty-account .yayloyalty-account__card .yayloyalty-account__caption {
+  .yayloyalty-account .yayloyalty-account__card .yayloyalty-account__pending {
     grid-row: 3;
+  }
+
+  .yayloyalty-account .yayloyalty-account__card .yayloyalty-account__caption {
+    grid-row: 4;
   }
 
   .yayloyalty-account .yayloyalty-account__art {
     grid-column: 2;
-    grid-row: 1 / 4;
+    grid-row: 1 / 5;
     align-self: start;
     width: 96px;
   }
 
   .yayloyalty-account .yayloyalty-account__card .yayloyalty-account__button {
     grid-column: 1 / -1;
-    grid-row: 4;
+    grid-row: 5;
     justify-content: center;
     margin-top: 16px;
     padding: 10px 14px;
