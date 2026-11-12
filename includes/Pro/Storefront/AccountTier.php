@@ -57,7 +57,7 @@ final class AccountTier {
             ];
         }
 
-        return TierProgress::line( $tier, $standing['next'], $standing['progress'], $standing['window_months'], null === $tier ? null : $standing['held_until'] ) + [
+        return TierProgress::line( $tier, $standing['next'], $standing['progress'], $standing['window_months'], $standing['period'], null === $tier ? null : $standing['held_until'] ) + [
             'multiplier'  => null === $tier ? null : $tier->get_multiplier(),
             'achieved_at' => null === $tier ? null : $customer->get_tier_achieved_at(),
             'tiers'       => $tiers,

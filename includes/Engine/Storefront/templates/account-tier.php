@@ -1,7 +1,8 @@
 <?php
 /**
  * My Points' "Your tier" section, under the points card: a status card (badge, multiplier, progress to the next
- * tier with a bar, the qualifying window), the member's tier details, then every tier with its threshold and perks.
+ * tier with a bar, the qualifying window or calendar period), the member's tier details, then every tier with its
+ * threshold and perks.
  * Prints nothing while `$yayloyalty_tier` is null (AccountMyPoints::MEMBER_TIER_FILTER has no answer). The progress
  * sentences are LauncherCopy's, shared with the launcher's tier-progress.php.
  * Styled by assets/storefront/account/account-tier.css.
@@ -47,7 +48,9 @@ $yayloyalty_tier_text = LauncherCopy::tier_progress_text( $yayloyalty_tier_next,
                 <span class="yayloyalty-account__tiers-fill" style="width: <?php echo esc_attr( (string) LauncherCopy::tier_progress_percent( $yayloyalty_tier['progress'], $yayloyalty_tier_threshold ) ); ?>%"></span>
             </div>
         <?php endif; ?>
-        <?php if ( null !== $yayloyalty_tier['window_months'] ) : ?>
+        <?php if ( null !== $yayloyalty_tier['period'] ) : ?>
+            <p class="yayloyalty-account__tiers-caption"><?php echo esc_html( LauncherCopy::tier_period_caption( $yayloyalty_tier['period'] ) ); ?></p>
+        <?php elseif ( null !== $yayloyalty_tier['window_months'] ) : ?>
             <p class="yayloyalty-account__tiers-caption"><?php echo esc_html( LauncherCopy::tier_window_caption( $yayloyalty_tier['window_months'] ) ); ?></p>
         <?php endif; ?>
         <dl class="yayloyalty-account__tiers-details">

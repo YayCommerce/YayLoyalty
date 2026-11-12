@@ -2,6 +2,7 @@
 namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Enums\RewardType;
+use YayLoyalty\Enums\TierMode;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Utils\CurrencyRate;
@@ -190,6 +191,24 @@ final class LauncherCopy {
     public static function tier_window_caption( int $window_months ): string {
         /* translators: 1: the store's points label, as "Points", 2: number of months. */
         return sprintf( __( 'Counts %1$s earned in the last %2$d months.', 'yayloyalty' ), SettingsHelper::points_label_plural(), $window_months );
+    }
+
+    /** The calendar period's caption: "Counts Points earned this year." One full sentence per period. */
+    public static function tier_period_caption( string $period ): string {
+        $label = SettingsHelper::points_label_plural();
+
+        if ( TierMode::CALENDAR_MONTH === $period ) {
+            /* translators: %s: the store's points label, as "Points". */
+            return sprintf( __( 'Counts %s earned this month.', 'yayloyalty' ), $label );
+        }
+
+        if ( TierMode::CALENDAR_QUARTER === $period ) {
+            /* translators: %s: the store's points label, as "Points". */
+            return sprintf( __( 'Counts %s earned this quarter.', 'yayloyalty' ), $label );
+        }
+
+        /* translators: %s: the store's points label, as "Points". */
+        return sprintf( __( 'Counts %s earned this year.', 'yayloyalty' ), $label );
     }
 
     /**

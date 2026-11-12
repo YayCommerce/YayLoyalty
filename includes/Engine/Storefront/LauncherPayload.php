@@ -7,6 +7,7 @@ use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Redemption\ProgramGate as RedemptionProgramGate;
 use YayLoyalty\Engine\Rewards\Clamp;
 use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Enums\TierMode;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -261,7 +262,7 @@ final class LauncherPayload {
      *
      * @param int|null $user_id The member; null for the Design preview.
      * @param int      $balance The member's balance, or the preview's sample.
-     * @return array{name: ?string, color: ?string, next: ?array{name: string, threshold: int}, progress: int, needed: int, window_months: ?int, held_until: ?string}|null
+     * @return array{name: ?string, color: ?string, next: ?array{name: string, threshold: int}, progress: int, needed: int, window_months: ?int, period: ?string, held_until: ?string}|null
      */
     private static function member_tier( ?int $user_id, int $balance ): ?array {
         try {
@@ -276,6 +277,8 @@ final class LauncherPayload {
              * - progress:      int, the qualifying total shown.
              * - needed:        int, max( 0, next threshold - progress ); 0 when next is null.
              * - window_months: ?int, the qualifying window in months; null outside a rolling window.
+             * - period:        ?string, the calendar period whose points count ('month', 'quarter' or 'year'); null
+             *                  outside Calendar.
              * - held_until:    ?string, UTC MySQL datetime the tier is kept until; null when not held.
              *
              * @param array|null $tier    Null.
@@ -309,6 +312,7 @@ final class LauncherPayload {
             'progress'      => $tier['progress'],
             'needed'        => $tier['needed'],
             'window_months' => $tier['window_months'],
+            'period'        => $tier['period'],
             'held_until'    => $tier['held_until'],
         ];
     }
@@ -319,7 +323,7 @@ final class LauncherPayload {
             return false;
         }
 
-        foreach ( [ 'name', 'color', 'next', 'progress', 'needed', 'window_months', 'held_until' ] as $key ) {
+        foreach ( [ 'name', 'color', 'next', 'progress', 'needed', 'window_months', 'period', 'held_until' ] as $key ) {
             if ( ! array_key_exists( $key, $tier ) ) {
                 return false;
             }
@@ -333,6 +337,7 @@ final class LauncherPayload {
             && is_int( $tier['progress'] ) && $tier['progress'] >= 0
             && is_int( $tier['needed'] ) && $tier['needed'] >= 0
             && ( null === $tier['window_months'] || ( is_int( $tier['window_months'] ) && $tier['window_months'] >= 1 ) )
+            && ( null === $tier['period'] || TierMode::is_calendar_period( $tier['period'] ) )
             && ( null === $tier['held_until'] || ( is_string( $tier['held_until'] ) && Dates::is_valid( $tier['held_until'] ) ) );
     }
 

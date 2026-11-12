@@ -1,9 +1,9 @@
 <?php
 /**
  * The launcher panel's tier line, under the points card: the member's tier badge, progress to the next tier with
- * a bar and, over a qualifying window, the window and the date the tier is kept until. Prints nothing while the
- * member's `tier` is null (LauncherPayload::MEMBER_TIER_FILTER has no answer). Launcher only: points-card.php is
- * shared with My Account and the placements, which don't show it. Styled by assets/storefront/account/tier-progress.css.
+ * a bar and, over a qualifying window or calendar period, the window or period and the date the tier is kept
+ * until. Prints nothing while the member's `tier` is null (LauncherPayload::MEMBER_TIER_FILTER has no answer).
+ * Launcher only: points-card.php is shared with My Account and the placements, which don't show it. Styled by assets/storefront/account/tier-progress.css.
  * Its sentences come from LauncherCopy, which My Points' account-tier.php also reads.
  *
  * @var array $yayloyalty_member LauncherPayload's `member` ($view['member']); `tier` set by LauncherPayload::for_balance().
@@ -41,8 +41,10 @@ $yayloyalty_tier_text = LauncherCopy::tier_progress_text( $yayloyalty_tier_next,
         </div>
     <?php endif; ?>
     <?php
-    if ( null !== $yayloyalty_tier['window_months'] ) :
-        $yayloyalty_tier_caption = LauncherCopy::tier_window_caption( $yayloyalty_tier['window_months'] );
+    if ( null !== $yayloyalty_tier['period'] || null !== $yayloyalty_tier['window_months'] ) :
+        $yayloyalty_tier_caption = null !== $yayloyalty_tier['period']
+            ? LauncherCopy::tier_period_caption( $yayloyalty_tier['period'] )
+            : LauncherCopy::tier_window_caption( $yayloyalty_tier['window_months'] );
 
         if ( null !== $yayloyalty_tier['held_until'] ) {
             /* translators: 1: the member's tier name, 2: date. */
