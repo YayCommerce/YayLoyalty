@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
  * yayloyalty_redemptions. Only Engine\Redemption\CommitWriter inserts rows,
  * under the customer's row lock; Engine\Redemption\Reversal moves only `status` and `restored_points`.
  * The commit's duplicate check, the customer drawer, the rewards list's claim summary,
- * the loyalty-code guard on orders and the order screen's remove dialog read them. The table is Schema\RedemptionsTable.
+ * the loyalty-code guard on orders, the order screen's remove dialog and RewardMismatch read them. The table is Schema\RedemptionsTable.
  */
 final class RedemptionRepository extends AbstractRepository {
 

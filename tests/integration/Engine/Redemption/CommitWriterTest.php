@@ -3,8 +3,11 @@ namespace YayLoyalty\Tests\Integration\Engine\Redemption;
 
 use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Redemption\CommitWriter;
+use YayLoyalty\Engine\Redemption\Gate;
 use YayLoyalty\Engine\Redemption\RedemptionService;
+use YayLoyalty\Engine\Redemption\SessionIntent;
 use YayLoyalty\Engine\Rewards\Clamp;
+use YayLoyalty\Engine\Rewards\Context;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Integrations\YayCurrency\OrderRateSnapshot;
@@ -281,5 +284,293 @@ final class CommitWriterTest extends IntegrationTestCase {
         $this->assertSame( [ 2200 ], $this->ledger_points( 7 ) );
         $this->assertCount( 0, $this->redemption_rows( 7 ) );
         $this->assertSame( '', (string) wc_get_order( $order->get_id() )->get_meta( CommitWriter::META_POINTS ) );
+    }
+
+    /** The real commit, with every gate and the reversal, as both adapters call it. */
+    private function service(): RedemptionService {
+        return RedemptionService::build( new SessionIntent() );
+    }
+
+    /**
+     * The order as WooCommerce leaves it when a retry reuses it: its coupon lines rebuilt from the cart.
+     *
+     * @param array<string, float> $lines Coupon code => its discount.
+     */
+    private function rebuilt_with( \WC_Order $order, array $lines ): \WC_Order {
+        $order->remove_order_items( 'coupon' );
+
+        foreach ( $lines as $code => $discount ) {
+            $coupon = new \WC_Order_Item_Coupon();
+            $coupon->set_code( $code );
+            $coupon->set_discount( $discount );
+            $order->add_item( $coupon );
+        }
+
+        $order->save();
+
+        return wc_get_order( $order->get_id() );
+    }
+
+    /** @return array<string, string> Coupon code => the row's status. */
+    private function statuses(): array {
+        $rows = $this->redemption_rows( 7 );
+
+        return array_combine( array_column( $rows, 'coupon_code' ), array_column( $rows, 'status' ) );
+    }
+
+    /** A retry swaps B for C of equal value: A is kept, B comes back, and only C is debited. */
+    public function test_a_reused_order_debits_only_its_new_line_and_restores_the_line_it_lost(): void {
+        $this->ledger_service()->earn( $this->earn_draft( 7, 100, 9850 ) );
+        list( $order, $rewards ) = $this->order_with_a_and_b();
+        list( $a, $b )           = array_values( $rewards );
+        $c                       = $this->pro_reward( RewardType::FIXED_COUPON, 700, [ 'amount' => 10 ] );
+
+        $this->assertSame( Outcome::REDEEMED, $this->service()->commit( $order )->get_status() );
+
+        $order = $this->rebuilt_with(
+            $order,
+            [
+                $a->get_coupon_code() => 5.0,
+                $c->get_coupon_code() => 10.0,
+            ]
+        );
+
+        $this->assertSame( Outcome::REDEEMED, $this->service()->commit( $order )->get_status() );
+        $this->assertSame( [ 9850, -500, -1500, 1500, -700 ], $this->ledger_points( 7 ) );
+        $this->assertSame( 8650, (int) $this->customer_row( 7 )['balance'] );
+        $this->assertSame(
+            [
+                $a->get_coupon_code() => Redemption::STATUS_APPLIED,
+                $b->get_coupon_code() => Redemption::STATUS_REMOVED,
+                $c->get_coupon_code() => Redemption::STATUS_APPLIED,
+            ],
+            $this->statuses()
+        );
+
+        $saved = wc_get_order( $order->get_id() );
+        $this->assertSame( 1200, (int) $saved->get_meta( CommitWriter::META_POINTS ) );
+        $this->assertSame( 15.0, (float) $saved->get_meta( CommitWriter::META_VALUE ) );
+    }
+
+    public function test_a_reused_order_that_swaps_its_only_reward_restores_it_and_debits_the_new_one(): void {
+        $this->ledger_service()->earn( $this->earn_draft( 7, 100, 1000 ) );
+        $a     = $this->pro_reward( RewardType::FIXED_COUPON, 500, [ 'amount' => 5 ] );
+        $b     = $this->pro_reward( RewardType::FIXED_COUPON, 600, [ 'amount' => 5 ] );
+        $order = $this->order_with_reward_lines( 7, 100.0, [ $a->get_coupon_code() => 5.0 ] );
+
+        $this->service()->commit( $order );
+        $order = $this->rebuilt_with( $order, [ $b->get_coupon_code() => 5.0 ] );
+
+        $this->assertSame( Outcome::REDEEMED, $this->service()->commit( $order )->get_status() );
+        $this->assertSame( [ 1000, -500, 500, -600 ], $this->ledger_points( 7 ) );
+        $this->assertSame( 400, (int) $this->customer_row( 7 )['balance'] );
+        $this->assertSame( 600, (int) wc_get_order( $order->get_id() )->get_meta( CommitWriter::META_POINTS ) );
+    }
+
+    /** The points the lost line gives back pay for the new one: 500 cannot buy both. */
+    public function test_a_reused_order_counts_the_restored_points_toward_the_new_line(): void {
+        $this->ledger_service()->earn( $this->earn_draft( 7, 100, 500 ) );
+        $a     = $this->pro_reward( RewardType::FIXED_COUPON, 500, [ 'amount' => 5 ] );
+        $b     = $this->pro_reward( RewardType::PERCENT_COUPON, 500, [ 'percent' => 5 ] );
+        $order = $this->order_with_reward_lines( 7, 100.0, [ $a->get_coupon_code() => 5.0 ] );
+
+        $this->service()->commit( $order );
+        $order = $this->rebuilt_with( $order, [ $b->get_coupon_code() => 5.0 ] );
+
+        $this->assertSame( Outcome::REDEEMED, $this->service()->commit( $order )->get_status() );
+        $this->assertSame( 0, (int) $this->customer_row( 7 )['balance'] );
+    }
+
+    /** A swapped for a merchant coupon of equal value: no loyalty line is left, so the commit has nothing to debit. */
+    public function test_a_reused_order_with_no_loyalty_line_left_restores_every_row(): void {
+        $this->ledger_service()->earn( $this->earn_draft( 7, 100, 1000 ) );
+        $a     = $this->pro_reward( RewardType::FIXED_COUPON, 500, [ 'amount' => 5 ] );
+        $order = $this->order_with_reward_lines( 7, 100.0, [ $a->get_coupon_code() => 5.0 ] );
+
+        $this->service()->commit( $order );
+        $order = $this->rebuilt_with( $order, [ 'merchant-five' => 5.0 ] );
+
+        $outcome = $this->service()->commit( $order );
+
+        $this->assertSame( RedemptionService::REASON_NO_INTENT, $outcome->get_reason() );
+        $this->assertNull( RedemptionService::commit_error( $outcome ) );
+        $this->assertSame( [ 1000, -500, 500 ], $this->ledger_points( 7 ) );
+        $this->assertSame( Redemption::STATUS_REMOVED, $this->statuses()[ $a->get_coupon_code() ] );
+
+        $saved = wc_get_order( $order->get_id() );
+        $this->assertSame( '', (string) $saved->get_meta( CommitWriter::META_POINTS ) );
+        $this->assertSame( '', (string) $saved->get_meta( CommitWriter::META_VALUE ) );
+    }
+
+    /** A, then B, then A again: A's key is spent, so nothing can pay for it and the checkout must stop with no line left. */
+    public function test_a_line_whose_row_was_removed_fails_the_checkout_and_leaves_no_discount(): void {
+        $this->ledger_service()->earn( $this->earn_draft( 7, 100, 1000 ) );
+        $a     = $this->pro_reward( RewardType::FIXED_COUPON, 500, [ 'amount' => 5 ] );
+        $b     = $this->pro_reward( RewardType::FIXED_COUPON, 600, [ 'amount' => 5 ] );
+        $order = $this->order_with_reward_lines( 7, 100.0, [ $a->get_coupon_code() => 5.0 ] );
+
+        $this->service()->commit( $order );
+        $order = $this->rebuilt_with( $order, [ $b->get_coupon_code() => 5.0 ] );
+        $this->service()->commit( $order );
+        $order = $this->rebuilt_with( $order, [ $a->get_coupon_code() => 5.0 ] );
+
+        $outcome = $this->service()->commit( $order );
+
+        $this->assertSame( RedemptionService::REASON_REWARD_UNAVAILABLE, RedemptionService::commit_error( $outcome ) );
+        $this->assertSame( [ 1000, -500, 500, -600, 600 ], $this->ledger_points( 7 ) );
+        $this->assertSame( 1000, (int) $this->customer_row( 7 )['balance'] );
+        $this->assertSame( [], wc_get_order( $order->get_id() )->get_coupon_codes() );
+    }
+
+    /** A kept line must not stay paid for once a failed commit takes it off the order. */
+    public function test_a_failed_commit_on_a_reused_order_restores_the_kept_line_it_takes_off(): void {
+        $this->ledger_service()->earn( $this->earn_draft( 7, 100, 600 ) );
+        $a     = $this->pro_reward( RewardType::FIXED_COUPON, 500, [ 'amount' => 5 ] );
+        $b     = $this->pro_reward( RewardType::FIXED_COUPON, 700, [ 'amount' => 5 ] );
+        $order = $this->order_with_reward_lines( 7, 100.0, [ $a->get_coupon_code() => 5.0 ] );
+
+        $this->service()->commit( $order );
+        $order = $this->rebuilt_with(
+            $order,
+            [
+                $a->get_coupon_code() => 5.0,
+                $b->get_coupon_code() => 5.0,
+            ]
+        );
+
+        $this->assertNotNull( RedemptionService::commit_error( $this->service()->commit( $order ) ) );
+        $this->assertSame( [ 600, -500, 500 ], $this->ledger_points( 7 ) );
+        $this->assertSame( 600, (int) $this->customer_row( 7 )['balance'] );
+        $this->assertSame( [], wc_get_order( $order->get_id() )->get_coupon_codes() );
+    }
+
+    public function test_a_reused_order_that_did_not_change_writes_nothing(): void {
+        $this->ledger_service()->earn( $this->earn_draft( 7, 100, 9850 ) );
+        list( $order, $rewards ) = $this->order_with_a_and_b();
+        list( $a, $b )           = array_keys( $rewards );
+
+        $this->service()->commit( $order );
+        $order = $this->rebuilt_with(
+            $order,
+            [
+                $a => 5.0,
+                $b => 10.0,
+            ]
+        );
+
+        $this->assertSame( Outcome::DUPLICATE, $this->service()->commit( $order )->get_status() );
+        $this->assertSame( [ 9850, -500, -1500 ], $this->ledger_points( 7 ) );
+    }
+
+    /** The flexible discount is kept and paid once; the swap moves only the reward lines. */
+    public function test_a_reused_stacked_order_keeps_the_flexible_discount_and_swaps_the_reward(): void {
+        $this->ledger_service()->earn( $this->earn_draft( 7, 100, 2000 ) );
+        $flexible = $this->seeded_reward();
+        $a        = $this->pro_reward( RewardType::FIXED_COUPON, 500, [ 'amount' => 5 ] );
+        $b        = $this->pro_reward( RewardType::FIXED_COUPON, 700, [ 'amount' => 5 ] );
+        $order    = $this->order_with_reward_lines(
+            7,
+            100.0,
+            [
+                $a->get_coupon_code()        => 5.0,
+                $flexible->get_coupon_code() => 5.0,
+            ]
+        );
+
+        $this->assertSame( Outcome::REDEEMED, $this->service()->commit( $order )->get_status() );
+
+        $order = $this->rebuilt_with(
+            $order,
+            [
+                $b->get_coupon_code()        => 5.0,
+                $flexible->get_coupon_code() => 5.0,
+            ]
+        );
+
+        $this->assertSame( Outcome::REDEEMED, $this->service()->commit( $order )->get_status() );
+        $this->assertSame( [ 2000, -500, -500, 500, -700 ], $this->ledger_points( 7 ) );
+        $this->assertSame( 800, (int) $this->customer_row( 7 )['balance'] );
+        $this->assertSame( 1200, (int) wc_get_order( $order->get_id() )->get_meta( CommitWriter::META_POINTS ) );
+    }
+
+    /** The flexible discount's key is spent, so a line worth more than its row could never be paid for. */
+    public function test_a_flexible_line_worth_other_than_its_row_fails_the_checkout(): void {
+        $this->ledger_service()->earn( $this->earn_draft( 7, 100, 1000 ) );
+        $flexible = $this->seeded_reward();
+        $order    = $this->order_with_reward_lines( 7, 100.0, [ $flexible->get_coupon_code() => 5.0 ] );
+
+        $this->service()->commit( $order );
+        $order = $this->rebuilt_with( $order, [ $flexible->get_coupon_code() => 8.0 ] );
+
+        $outcome = $this->service()->commit( $order );
+
+        $this->assertSame( RedemptionService::REASON_REWARD_UNAVAILABLE, RedemptionService::commit_error( $outcome ) );
+        $this->assertSame( [ 1000, -500, 500 ], $this->ledger_points( 7 ) );
+        $this->assertSame( [], wc_get_order( $order->get_id() )->get_coupon_codes() );
+    }
+
+    /** The real commit with a gate that throws, as a failed write would: an exception from inside the commit. */
+    private function failing_service(): RedemptionService {
+        $gate = new class() implements Gate {
+            public function check( Reward $reward, Context $ctx ): ?string {
+                throw new \LogicException( 'the commit failed' );
+            }
+        };
+        $add  = static function ( array $gates ) use ( $gate ): array {
+            $gates[] = $gate;
+
+            return $gates;
+        };
+
+        add_filter( 'yayloyalty_redemption_gates', $add );
+        $service = $this->service();
+        remove_filter( 'yayloyalty_redemption_gates', $add );
+
+        return $service;
+    }
+
+    /** The order must not stay payable with a discount and no debit, and the adapter must still see the failure. */
+    public function test_a_commit_that_throws_takes_its_lines_off(): void {
+        $this->ledger_service()->earn( $this->earn_draft( 7, 100, 1000 ) );
+        $a     = $this->pro_reward( RewardType::FIXED_COUPON, 500, [ 'amount' => 5 ] );
+        $order = $this->order_with_reward_lines( 7, 100.0, [ $a->get_coupon_code() => 5.0 ] );
+
+        try {
+            $this->failing_service()->commit( $order );
+            $this->fail( 'The exception must reach the adapter.' );
+        } catch ( \LogicException $e ) {
+            $this->assertSame( 'the commit failed', $e->getMessage() );
+        }
+
+        $this->assertSame( [], wc_get_order( $order->get_id() )->get_coupon_codes() );
+        $this->assertSame( [ 1000 ], $this->ledger_points( 7 ) );
+        $this->assertCount( 0, $this->redemption_rows( 7 ) );
+    }
+
+    public function test_a_commit_that_throws_on_a_reused_order_restores_its_row(): void {
+        $this->ledger_service()->earn( $this->earn_draft( 7, 100, 1000 ) );
+        $a     = $this->pro_reward( RewardType::FIXED_COUPON, 500, [ 'amount' => 5 ] );
+        $b     = $this->pro_reward( RewardType::FIXED_COUPON, 300, [ 'amount' => 5 ] );
+        $order = $this->order_with_reward_lines( 7, 100.0, [ $a->get_coupon_code() => 5.0 ] );
+
+        $this->service()->commit( $order );
+        $order = $this->rebuilt_with(
+            $order,
+            [
+                $a->get_coupon_code() => 5.0,
+                $b->get_coupon_code() => 5.0,
+            ]
+        );
+
+        try {
+            $this->failing_service()->commit( $order );
+            $this->fail( 'The exception must reach the adapter.' );
+        } catch ( \LogicException $e ) {
+            $this->assertSame( 'the commit failed', $e->getMessage() );
+        }
+
+        $this->assertSame( [], wc_get_order( $order->get_id() )->get_coupon_codes() );
+        $this->assertSame( [ 1000, -500, 500 ], $this->ledger_points( 7 ) );
+        $this->assertSame( Redemption::STATUS_REMOVED, $this->statuses()[ $a->get_coupon_code() ] );
     }
 }

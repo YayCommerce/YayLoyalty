@@ -133,7 +133,12 @@ final class OrderMissingPoints {
         $ids    = [];
 
         foreach ( is_array( $orders ) ? $orders : [] as $order ) {
-            $ids[] = $order instanceof \WC_Order ? (int) $order->get_id() : (int) $order;
+            // This filter also sees refund queries, whose objects are not WC_Order and earn nothing.
+            if ( $order instanceof \WC_Order ) {
+                $ids[] = (int) $order->get_id();
+            } elseif ( is_numeric( $order ) ) {
+                $ids[] = (int) $order;
+            }
         }
 
         $this->prime( $ids );
@@ -410,8 +415,12 @@ final class OrderMissingPoints {
         }
     }
 
-    /** @param mixed $post_or_order */
-    private static function order_of( $post_or_order ): ?\WC_Order {
+    /**
+     * The order an `add_meta_boxes` callback was given, for HPOS and legacy storage.
+     *
+     * @param mixed $post_or_order
+     */
+    public static function order_of( $post_or_order ): ?\WC_Order {
         if ( $post_or_order instanceof \WC_Order ) {
             return $post_or_order;
         }

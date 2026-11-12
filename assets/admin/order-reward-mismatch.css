@@ -1,0 +1,10 @@
+/* The order screen's "Loyalty rewards" box. Markup: includes/Engine/Admin/OrderRewardMismatch.php. */
+.yayloyalty-reward-mismatch__item + .yayloyalty-reward-mismatch__item {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #dcdcde;
+}
+
+.yayloyalty-reward-mismatch__error {
+  color: #b32d2e;
+}

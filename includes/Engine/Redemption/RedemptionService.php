@@ -20,6 +20,7 @@ use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Services\LedgerService;
 use YayLoyalty\Utils\CurrencyRate;
 use YayLoyalty\Utils\Dates;
+use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -570,6 +571,9 @@ final class RedemptionService {
      * through commit(), reward lines through commit_rewards(), and an order
      * carrying both kinds through commit_all().
      *
+     * First, on an order checkout reused, every row whose line is gone gets its points back (settle_gone_lines()),
+     * so the debit below sees them.
+     *
      * Postconditions, exactly one of:
      * - The order has no coupon line of ours: Outcome::skipped( REASON_NO_INTENT ), nothing else happens.
      * - Outcome::redeemed: the order carries `_yayloyalty_points_redeemed` /
@@ -578,45 +582,29 @@ final class RedemptionService {
      * - Outcome::duplicate: this order was already committed.
      * - Outcome::skipped( reason ): nothing was debited, so every loyalty
      *   coupon line is taken off the order — it must not stay payable with
-     *   a discount and no debit — and the adapter fails the checkout.
+     *   a discount and no debit — their rows get their points back, and the
+     *   adapter fails the checkout.
      * The session intent is cleared in the last three.
+     *
+     * A commit that throws wrote nothing, so the order is treated as skipped: its loyalty lines come off and the
+     * intent is cleared before the exception goes on, or the order would stay payable with a discount and no debit.
      *
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails (rolled back).
      */
     public function commit( \WC_Order $order ): Outcome {
-        $codes                 = array_map( 'strval', $order->get_coupon_codes() );
-        $has_flexible_discount = false;
-        $reward_codes          = [];
+        $codes = EarnContext::loyalty_codes( $order->get_coupon_codes() );
 
-        foreach ( $codes as $code ) {
-            if ( ! EarnContext::is_loyalty_code( $code ) ) {
-                continue;
-            }
+        try {
+            $outcome = $this->commit_lines( $order, $codes );
+        } catch ( \Throwable $e ) {
+            $this->intent->clear();
+            $this->take_lines_off_after_failure( $order, $codes );
 
-            if ( self::is_flexible_discount( $this->reward_for_code( $code ) ) ) {
-                $has_flexible_discount = true;
-            } else {
-                $reward_codes[] = $code;
-            }
+            throw $e;
         }
 
-        if ( ! $has_flexible_discount && [] === $reward_codes ) {
-            return Outcome::skipped( self::REASON_NO_INTENT );
-        }
-
-        if ( $has_flexible_discount ) {
-            // Read fresh: quote()'s copy may predate a merchant's edit in this request.
-            $reward = $this->flexible_reward();
-
-            if ( null === $reward ) {
-                $outcome = Outcome::skipped( self::REASON_NO_REWARD );
-            } elseif ( [] === $reward_codes ) {
-                $outcome = $this->writer->commit( $order, $reward );
-            } else {
-                $outcome = $this->writer->commit_all( $order, $this->offered_rewards_of( $reward_codes ), $reward );
-            }
-        } else {
-            $outcome = $this->writer->commit_rewards( $order, $this->offered_rewards_of( $reward_codes ) );
+        if ( [] === $codes ) {
+            return $outcome;
         }
 
         $this->intent->clear();
@@ -636,14 +624,98 @@ final class RedemptionService {
         }
 
         if ( Outcome::SKIPPED === $outcome->get_status() ) {
-            foreach ( $codes as $code ) {
-                if ( EarnContext::is_loyalty_code( $code ) ) {
-                    $order->remove_coupon( $code );
-                }
-            }
+            $this->take_lines_off( $order, $codes );
         }
 
         return $outcome;
+    }
+
+    /**
+     * Settles the lines the order lost, then debits the ones it carries, through the writer call that fits them.
+     *
+     * @param string[] $codes The loyalty codes on the order.
+     */
+    private function commit_lines( \WC_Order $order, array $codes ): Outcome {
+        $has_flexible_discount = false;
+        $reward_codes          = [];
+
+        $this->settle_gone_lines( $order, $codes );
+
+        foreach ( $codes as $code ) {
+            if ( self::is_flexible_discount( $this->reward_for_code( $code ) ) ) {
+                $has_flexible_discount = true;
+            } else {
+                $reward_codes[] = $code;
+            }
+        }
+
+        if ( ! $has_flexible_discount && [] === $reward_codes ) {
+            return Outcome::skipped( self::REASON_NO_INTENT );
+        }
+
+        if ( $has_flexible_discount ) {
+            // Read fresh: quote()'s copy may predate a merchant's edit in this request.
+            $reward = $this->flexible_reward();
+
+            if ( null === $reward ) {
+                return Outcome::skipped( self::REASON_NO_REWARD );
+            }
+
+            return [] === $reward_codes
+                ? $this->writer->commit( $order, $reward )
+                : $this->writer->commit_all( $order, $this->offered_rewards_of( $reward_codes ), $reward );
+        }
+
+        return $this->writer->commit_rewards( $order, $this->offered_rewards_of( $reward_codes ) );
+    }
+
+    /**
+     * Takes the loyalty lines off an order nothing was debited for, and gives back the rows they leave behind.
+     *
+     * @param string[] $codes The loyalty codes on the order.
+     */
+    private function take_lines_off( \WC_Order $order, array $codes ): void {
+        foreach ( $codes as $code ) {
+            $order->remove_coupon( $code );
+        }
+
+        $this->settle_gone_lines( $order, [] );
+    }
+
+    /**
+     * take_lines_off() while a commit's exception is on its way out: a second failure is logged, not thrown, so that
+     * exception still reaches the adapter. What is left of the order shows in the order screen's repair box.
+     *
+     * @param string[] $codes The loyalty codes on the order.
+     */
+    private function take_lines_off_after_failure( \WC_Order $order, array $codes ): void {
+        try {
+            $this->take_lines_off( $order, $codes );
+        } catch ( \Throwable $e ) {
+            Log::error( 'RedemptionService', sprintf( 'Taking the loyalty lines off order #%d failed: %s', (int) $order->get_id(), $e->getMessage() ) );
+        }
+    }
+
+    /**
+     * Gives back the points of every `applied` row whose line is not among $codes, notes them on the order and freezes
+     * what is left. A reused order keeps the rows of its first attempt while WooCommerce rebuilds its lines from the cart.
+     *
+     * @param string[] $codes The loyalty codes on the order.
+     */
+    private function settle_gone_lines( \WC_Order $order, array $codes ): void {
+        $points = 0;
+
+        foreach ( $this->reversal->lines_gone( $order, $codes ) as $outcome ) {
+            if ( Outcome::AWARDED === $outcome->get_status() ) {
+                $points += $outcome->get_entry()->get_points();
+            }
+        }
+
+        if ( $points > 0 ) {
+            $this->writer->freeze( $order );
+            /* translators: %s: points in the store's format, as "500 Points". */
+            $order->add_order_note( sprintf( __( '%s restored: their discount is no longer on this order.', 'yayloyalty' ), SettingsHelper::points_text( $points ) ) );
+        }
     }
 
     /**
@@ -661,6 +733,30 @@ final class RedemptionService {
         }
 
         return $rewards;
+    }
+
+    /**
+     * An admin's repair of one RewardMismatch::find() answer: returns a stale row's points, or debits an unpaid line.
+     * A reward that is gone leaves the line with no price: REASON_REWARD_UNAVAILABLE, nothing written.
+     *
+     * @param array{kind: string, code: string, points: int, reward: ?Reward} $mismatch
+     * @return Outcome awarded when points moved, else skipped or duplicate.
+     * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails (rolled back).
+     */
+    public function repair_mismatch( \WC_Order $order, array $mismatch ): Outcome {
+        if ( RewardMismatch::KIND_UNPAID_LINE === $mismatch['kind'] ) {
+            return null === $mismatch['reward'] || $mismatch['points'] < 1
+                ? Outcome::skipped( self::REASON_REWARD_UNAVAILABLE )
+                : $this->writer->debit_line( $order, $mismatch['reward'], $mismatch['code'], $mismatch['points'] );
+        }
+
+        $outcome = $this->reversal->coupon_removed( $order, $mismatch['code'] ) ?? Outcome::skipped( Reversal::REASON_NOTHING_TO_MOVE );
+
+        if ( Outcome::AWARDED === $outcome->get_status() ) {
+            $this->writer->freeze( $order );
+        }
+
+        return $outcome;
     }
 
     /**

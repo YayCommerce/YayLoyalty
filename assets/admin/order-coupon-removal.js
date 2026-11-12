@@ -4,8 +4,8 @@
  *
  * A capture-phase listener stops WooCommerce's own click handler for the codes in
  * window.yayloyaltyCouponRemoval.coupons and opens a dialog. "Restore" and "Don't restore" click the link
- * again through jQuery, so WooCommerce sends its usual request; "Restore" first adds `yayloyalty_restore`
- * and the nonce through WooCommerce's `woocommerce_order_meta_box_remove_coupon_ajax_data` filter.
+ * again through jQuery, so WooCommerce sends its usual request, first adding `yayloyalty_restore` or
+ * `yayloyalty_keep` and the nonce through WooCommerce's `woocommerce_order_meta_box_remove_coupon_ajax_data` filter.
  *
  * Plain script, no build step. The data comes from includes/Engine/Admin/OrderCouponRemoval.php.
  */
@@ -19,8 +19,10 @@
     return;
   }
 
-  /** The code the next remove request should restore; consumed by the filter. */
+  /** The code the next remove request is for; consumed by the filter. */
   var pending = null;
+  /** The flag that request carries: `yayloyalty_restore` or `yayloyalty_keep`. */
+  var choice = null;
   /** True while this script clicks the link itself, so the capture listener lets WooCommerce handle it. */
   var resending = false;
   var dialog = null;
@@ -91,11 +93,13 @@
     restore.addEventListener("click", function () {
       dialog.close();
       pending = code;
+      choice = "yayloyalty_restore";
       resend(link);
     });
     keep.addEventListener("click", function () {
       dialog.close();
-      pending = null;
+      pending = code;
+      choice = "yayloyalty_keep";
       resend(link);
     });
     cancel.addEventListener("click", function () {
@@ -132,7 +136,7 @@
   // After a restore succeeds the line is gone, and the order refuses that code again (CouponProvider).
   $(ITEMS).on("woocommerce_order_meta_box_remove_coupon_ajax_data", function (event, data) {
     if (pending !== null && data && String(data.coupon).toLowerCase() === pending) {
-      data.yayloyalty_restore = 1;
+      data[choice] = 1;
       data.yayloyalty_nonce = config.nonce;
       pending = null;
     }

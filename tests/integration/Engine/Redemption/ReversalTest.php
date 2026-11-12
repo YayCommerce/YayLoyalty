@@ -389,4 +389,42 @@ final class ReversalTest extends IntegrationTestCase {
         $this->assertSame( [ 1000, -500, 500 ], $this->ledger_points( 7 ) );
         $this->assertNull( $this->reversal()->coupon_removed( $order, 'summer10' ) );
     }
+
+    public function test_a_line_gone_from_a_reused_order_is_restored_and_removed(): void {
+        $reward = $this->seeded_reward();
+        $order  = $this->redeemed_order( $reward );
+
+        $outcomes = $this->reversal()->lines_gone( $order, [] );
+
+        $this->assertSame( Outcome::AWARDED, $outcomes[0]->get_status() );
+        $this->assertSame( [ 1000, -500, 500 ], $this->ledger_points( 7 ) );
+        $this->assertSame( Redemption::STATUS_REMOVED, $this->row()['status'] );
+        $this->assertSame( sprintf( 'refund_redeem:7:redemption:%d:flexible_discount', (int) $this->row()['id'] ), $this->last_ledger_row()['idempotency_key'] );
+
+        $this->assertSame( Reversal::REASON_NOTHING_TO_MOVE, $this->reversal()->lines_gone( $order, [] )[0]->get_reason() );
+        $this->assertSame( [ 1000, -500, 500 ], $this->ledger_points( 7 ) );
+    }
+
+    public function test_a_line_still_on_the_order_is_left_alone(): void {
+        $reward = $this->seeded_reward();
+        $order  = $this->redeemed_order( $reward );
+
+        $outcomes = $this->reversal()->lines_gone( $order, [ strtoupper( $reward->get_coupon_code() ) ] );
+
+        $this->assertSame( Reversal::REASON_NOTHING_TO_MOVE, $outcomes[0]->get_reason() );
+        $this->assertSame( Redemption::STATUS_APPLIED, $this->row()['status'] );
+    }
+
+    /** A row with no stored code matches no line, so it cannot be told to be gone. */
+    public function test_a_row_with_no_stored_code_is_left_alone(): void {
+        global $wpdb;
+
+        $order = $this->redeemed_order( $this->seeded_reward() );
+        $wpdb->update( ( new RedemptionRepository() )->table(), [ 'coupon_code' => null ], [ 'id' => (int) $this->row()['id'] ] );
+
+        $outcomes = $this->reversal()->lines_gone( $order, [] );
+
+        $this->assertSame( Reversal::REASON_NOTHING_TO_MOVE, $outcomes[0]->get_reason() );
+        $this->assertSame( [ 1000, -500 ], $this->ledger_points( 7 ) );
+    }
 }

@@ -20,6 +20,7 @@ defined( 'ABSPATH' ) || exit;
  * "Restore" tags WooCommerce's own `woocommerce_remove_order_coupon` request rather than sending one of
  * ours, so WooCommerce keeps doing the removal (taxes, usage count, totals, its note). Inside that request
  * a one-shot listener restores through Reversal::coupon_removed() when WooCommerce's save deletes the line.
+ * "Don't restore" tags the same request, and the listener only remembers the choice (Reversal::keep_debited()).
  * Every other way a line leaves an order moves no points.
  */
 final class OrderCouponRemoval {
@@ -108,12 +109,16 @@ final class OrderCouponRemoval {
     }
 
     /**
-     * Priority 1 on WooCommerce's remove-coupon request. Without `yayloyalty_restore` it does nothing. With it, a bad
-     * nonce or a missing capability answers an error WooCommerce's script shows, and WooCommerce's handler never runs.
+     * Priority 1 on WooCommerce's remove-coupon request. Without `yayloyalty_restore` or `yayloyalty_keep` it does nothing.
+     * With one, a bad nonce or a missing capability answers an error WooCommerce's script shows, and WooCommerce's handler never runs.
      */
     public function before_remove(): void {
-        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- the flag only decides whether to check our nonce below.
-        if ( empty( $_POST['yayloyalty_restore'] ) ) {
+        // phpcs:disable WordPress.Security.NonceVerification.Missing -- the flags only decide whether to check our nonce below.
+        $is_restore = ! empty( $_POST['yayloyalty_restore'] );
+        $is_keep    = ! empty( $_POST['yayloyalty_keep'] );
+        // phpcs:enable WordPress.Security.NonceVerification.Missing
+
+        if ( ! $is_restore && ! $is_keep ) {
             return;
         }
 
@@ -133,7 +138,7 @@ final class OrderCouponRemoval {
         }
 
         $listener = null;
-        $listener = function ( $item_id ) use ( $order_id, $code, &$listener ): void {
+        $listener = function ( $item_id ) use ( $order_id, $code, $is_restore, &$listener ): void {
             $item = \WC_Order_Factory::get_order_item( absint( $item_id ) );
 
             if ( ! $item instanceof \WC_Order_Item_Coupon || (int) $item->get_order_id() !== $order_id || wc_format_coupon_code( $item->get_code() ) !== $code ) {
@@ -141,7 +146,12 @@ final class OrderCouponRemoval {
             }
 
             remove_action( 'woocommerce_before_delete_order_item', $listener );
-            $this->restore( $order_id, $code );
+
+            if ( $is_restore ) {
+                $this->restore( $order_id, $code );
+            } else {
+                $this->keep( $order_id, $code );
+            }
         };
 
         add_action( 'woocommerce_before_delete_order_item', $listener );
@@ -183,6 +193,29 @@ final class OrderCouponRemoval {
             Log::error( self::class, sprintf( 'Restoring order #%d coupon %s found its ledger key spent.', $order_id, $code ) );
             self::note_failure( $order, $name );
         }
+    }
+
+    /** Remembers "Don't restore" and notes it on the order. Never throws, so the line still leaves the order. */
+    private function keep( int $order_id, string $code ): void {
+        $order = wc_get_order( $order_id );
+
+        if ( ! $order instanceof \WC_Order ) {
+            return;
+        }
+
+        $row  = $this->redemptions->find_by_order_and_coupon_code( $order_id, $code );
+        $name = null === $row ? $code : $this->name_of( $row );
+
+        try {
+            Reversal::keep_debited( $order, $code );
+        } catch ( \Throwable $e ) {
+            Log::error( self::class, sprintf( 'Keeping order #%d coupon %s debited failed: %s', $order_id, $code, $e->getMessage() ) );
+
+            return;
+        }
+
+        /* translators: %s: the reward's name, as "$5 off". */
+        $order->add_order_note( sprintf( __( '%s removed — its points were not restored.', 'yayloyalty' ), $name ), 0, true );
     }
 
     private static function note_failure( \WC_Order $order, string $name ): void {

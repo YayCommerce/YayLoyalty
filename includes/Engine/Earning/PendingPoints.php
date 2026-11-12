@@ -4,6 +4,7 @@ namespace YayLoyalty\Engine\Earning;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Utils\Dates;
+use YayLoyalty\Utils\WooOrders;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -42,7 +43,7 @@ final class PendingPoints {
         }
 
         $order->update_meta_data( self::META_PENDING, $points );
-        $this->save_meta( $order );
+        WooOrders::save_meta_only( $order );
 
         if ( null !== $user_id ) {
             $this->customers->ensure_row( $user_id );
@@ -71,7 +72,7 @@ final class PendingPoints {
         }
 
         $order->update_meta_data( self::META_RELEASED_AT, Dates::now() );
-        $this->save_meta( $order );
+        WooOrders::save_meta_only( $order );
 
         // The order's customer now, not at staging: a reassigned order releases from its new owner (floored at 0).
         $user_id = (int) $order->get_customer_id();
@@ -106,22 +107,6 @@ final class PendingPoints {
             $order->update_meta_data( self::META_CAMPAIGN, $entry->get_campaign_id() );
         }
 
-        $this->save_meta( $order );
-    }
-
-    /**
-     * Meta only, never a full save: these run inside the award transaction
-     * under the customer lock, where woocommerce_update_order must not fire.
-     * HPOS turns save_meta_data() into save() once date_modified is in the
-     * past; the filter is WooCommerce's own switch for that.
-     */
-    private function save_meta( \WC_Order $order ): void {
-        add_filter( 'woocommerce_orders_table_datastore_should_save_after_meta_change', '__return_false' );
-
-        try {
-            $order->save_meta_data();
-        } finally {
-            remove_filter( 'woocommerce_orders_table_datastore_should_save_after_meta_change', '__return_false' );
-        }
+        WooOrders::save_meta_only( $order );
     }
 }
