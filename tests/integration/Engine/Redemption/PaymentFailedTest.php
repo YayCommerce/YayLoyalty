@@ -1,7 +1,9 @@
 <?php
 namespace YayLoyalty\Tests\Integration\Engine\Redemption;
 
+use Automattic\WooCommerce\StoreApi\Exceptions\RouteException;
 use YayLoyalty\Engine\Earning\Outcome;
+use YayLoyalty\Engine\Redemption\PayForOrderRedebit;
 use YayLoyalty\Engine\Redemption\Reversal;
 use YayLoyalty\Engine\Rewards\Result;
 use YayLoyalty\Models\Redemption;
@@ -196,5 +198,40 @@ final class PaymentFailedTest extends IntegrationTestCase {
         $order->update_status( 'processing' );
 
         $this->assertSame( [ 1000, -500, 500, -500 ], $this->ledger_points( 7 ) );
+    }
+
+    public function test_pay_for_order_refuses_a_short_balance(): void {
+        $order = $this->redeemed_order( $this->seeded_reward() );
+        $this->reversal()->payment_failed( $order );
+        $this->ledger_service()->adjust( 7, -600, 'spent elsewhere', 1 );
+
+        $message = ( new PayForOrderRedebit( $this->reversal() ) )->redebit_or_message( $order );
+
+        $this->assertSame( 'You no longer have enough points for the points discount on this order.', $message );
+        $this->assertSame( 400, (int) $this->customer_row( 7 )['balance'] );
+    }
+
+    public function test_pay_for_order_debits_when_the_balance_covers_it(): void {
+        $order = $this->redeemed_order( $this->seeded_reward() );
+        $this->reversal()->payment_failed( $order );
+
+        $this->assertNull( ( new PayForOrderRedebit( $this->reversal() ) )->redebit_or_message( $order ) );
+        $this->assertSame( 500, (int) $this->customer_row( 7 )['balance'] );
+    }
+
+    public function test_the_block_pay_for_order_answers_409_on_a_short_balance(): void {
+        $order = $this->redeemed_order( $this->seeded_reward() );
+        $this->reversal()->payment_failed( $order );
+        $this->ledger_service()->adjust( 7, -600, 'spent elsewhere', 1 );
+
+        try {
+            do_action( 'woocommerce_store_api_checkout_order_processed', $order ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- firing WooCommerce's own hook as the block pay-for-order does.
+            $this->fail( 'No RouteException' );
+        } catch ( RouteException $e ) {
+            $this->assertSame( 'yayloyalty_redeem_failed', $e->getErrorCode() );
+            $this->assertSame( 409, $e->getCode() );
+        }
+
+        $this->assertSame( 400, (int) $this->customer_row( 7 )['balance'] );
     }
 }

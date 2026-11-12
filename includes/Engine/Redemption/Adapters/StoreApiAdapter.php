@@ -3,6 +3,7 @@ namespace YayLoyalty\Engine\Redemption\Adapters;
 
 use Automattic\WooCommerce\StoreApi\Exceptions\RouteException;
 use Automattic\WooCommerce\StoreApi\Schemas\V1\CartSchema;
+use YayLoyalty\Engine\Redemption\PayForOrderRedebit;
 use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Redemption\SessionIntent;
 use YayLoyalty\Engine\Storefront\RedeemCard;
@@ -33,10 +34,14 @@ final class StoreApiAdapter {
 
     private RedeemCard $card;
 
-    public function __construct( RedemptionService $service, SessionIntent $intent, RedeemCard $card ) {
+    /** The block pay-for-order fires the same order-processed hook: an order whose payment failed is debited again first. */
+    private PayForOrderRedebit $redebit;
+
+    public function __construct( RedemptionService $service, SessionIntent $intent, RedeemCard $card, PayForOrderRedebit $redebit ) {
         $this->service = $service;
         $this->intent  = $intent;
         $this->card    = $card;
+        $this->redebit = $redebit;
     }
 
     /** Attaches to the Store API once its blocks package has loaded. Called once at boot; a no-op without the package. */
@@ -218,10 +223,19 @@ final class StoreApiAdapter {
     /**
      * Precondition: the order exists with frozen totals. Postcondition: service->commit( order ) ran once;
      * a commit that debited nothing for a reason other than "no points discount on this order" stops the checkout.
+     * On the block pay-for-order, an order whose payment failed is first debited its redeemed points again,
+     * and a balance that no longer covers them stops the payment.
      *
      * @throws RouteException When the points discount could not be debited.
      */
     public function on_order_processed( \WC_Order $order ): void {
+        $message = $this->redebit->redebit_or_message( $order );
+
+        if ( null !== $message ) {
+            // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- the Store API returns the message as JSON; it is never echoed.
+            throw new RouteException( 'yayloyalty_redeem_failed', $message, 409 );
+        }
+
         $key = RedemptionService::commit_error( $this->service->commit( $order ) );
 
         if ( null !== $key ) {
