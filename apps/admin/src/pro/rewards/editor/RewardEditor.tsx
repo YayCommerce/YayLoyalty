@@ -116,6 +116,7 @@ function RewardEditorForm({ reward }: { reward: Reward }) {
         }
         reward={reward}
         type={reward.type}
+        hasConditions={normalizeRewardConditions(reward.conditions).length > 0}
         busy={mutation.isPending}
         onDraftIntent={markDraftIntent}
         onArchive={() => setArchiveOpen(true)}
@@ -234,6 +235,7 @@ function RewardCreatorForm({ type, duplicateFrom }: { type: CatalogRewardType; d
         )}
         reward={null}
         type={type}
+        hasConditions={!!duplicateFrom && normalizeRewardConditions(duplicateFrom.conditions).length > 0}
         busy={mutation.isPending}
         onDraftIntent={markDraftIntent}
         onCancel={() => navigate('/rewards')}
@@ -251,6 +253,7 @@ function RewardEditorLayout({
   title,
   reward,
   type,
+  hasConditions,
   busy,
   onDraftIntent,
   onArchive,
@@ -262,6 +265,8 @@ function RewardEditorLayout({
   /** Null while creating. */
   reward: Reward | null;
   type: Reward['type'];
+  /** Whether the stored (or duplicated) reward has conditions, which only then get a storefront teaser. */
+  hasConditions: boolean;
   busy: boolean;
   onDraftIntent: () => void;
   onArchive?: () => void;
@@ -279,7 +284,7 @@ function RewardEditorLayout({
         >
           <div className="flex flex-col items-start gap-5 lg:flex-row">
             <div className="min-w-0 flex-1">
-              <RewardEditorSections type={type} couponCode={reward?.coupon_code} />
+              <RewardEditorSections type={type} couponCode={reward?.coupon_code} hasConditions={hasConditions} />
             </div>
 
             <RewardEditorActions

@@ -10,17 +10,17 @@ import { LauncherPreviewCard } from './LauncherPreviewCard';
 export function DesignLauncherPreview() {
   const { control } = useFormContext<Design>();
   // Only what the launcher draws: editing the pages it shows on (or fields it does not render) needs no redraw.
-  const [launcher, isHiddenOnMobile, isRewardCatalogShown] = useWatch({
+  const [launcher, isHiddenOnMobile, areBonusOffersShown, isRewardCatalogShown] = useWatch({
     control,
     name: DESIGN_PREVIEW_FIELDS,
   });
   const input = useMemo<DesignPreviewInput>(
     () => ({
       launcher,
-      visibility: { hide_on_mobile: isHiddenOnMobile },
+      visibility: { hide_on_mobile: isHiddenOnMobile, show_bonus_offers: areBonusOffersShown },
       panel: { show_reward_catalog: isRewardCatalogShown },
     }),
-    [launcher, isHiddenOnMobile, isRewardCatalogShown],
+    [launcher, isHiddenOnMobile, areBonusOffersShown, isRewardCatalogShown],
   );
 
   return <LauncherPreviewCard input={input} title={PREVIEW_TITLE()} />;

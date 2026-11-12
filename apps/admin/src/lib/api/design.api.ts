@@ -20,11 +20,16 @@ export type DesignPreviewViewer = 'member' | 'guest';
  * Mirrors what `LauncherPayload::for_balance()` (and `Launcher::view()`) read, the source of truth.
  * The design fields the storefront launcher draws. A field missing here never redraws the preview; change both together.
  */
-export const DESIGN_PREVIEW_FIELDS = ['launcher', 'visibility.hide_on_mobile', 'panel.show_reward_catalog'] as const;
+export const DESIGN_PREVIEW_FIELDS = [
+  'launcher',
+  'visibility.hide_on_mobile',
+  'visibility.show_bonus_offers',
+  'panel.show_reward_catalog',
+] as const;
 
 /** DESIGN_PREVIEW_FIELDS as the request body; the server fills the rest from the stored design. */
 export type DesignPreviewInput = Pick<Design, 'launcher'> & {
-  visibility: Pick<Design['visibility'], 'hide_on_mobile'>;
+  visibility: Pick<Design['visibility'], 'hide_on_mobile' | 'show_bonus_offers'>;
   panel: Pick<Design['panel'], 'show_reward_catalog'>;
 };
 

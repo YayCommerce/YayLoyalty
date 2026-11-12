@@ -52,6 +52,9 @@ export const VISIBILITY_INCLUDE_PAGES_LIMIT_NOTE = () =>
 export const VISIBILITY_HIDE_ON_MOBILE_LABEL = () => __('Hide on mobile', 'yayloyalty');
 export const VISIBILITY_PRODUCT_MESSAGE_LABEL = () => __('Show earning line on product pages', 'yayloyalty');
 export const VISIBILITY_THANKYOU_MESSAGE_LABEL = () => __('Show points on the thank-you page', 'yayloyalty');
+export const VISIBILITY_BONUS_OFFERS_LABEL = () => __('Show bonus offers from conditional campaigns', 'yayloyalty');
+export const VISIBILITY_CART_EARN_PREVIEW_LABEL = () =>
+  __('Show the points an order will earn on cart and checkout', 'yayloyalty');
 export const VISIBILITY_HIDE_FOR_ROLES_LABEL = () => __('Hide for roles', 'yayloyalty');
 export const VISIBILITY_HIDE_FOR_ROLES_PLACEHOLDER = () => __('Select roles…', 'yayloyalty');
 export const VISIBILITY_HIDE_FOR_ROLES_DESCRIPTION = () =>
@@ -59,6 +62,16 @@ export const VISIBILITY_HIDE_FOR_ROLES_DESCRIPTION = () =>
     'Store staff are hidden by default, so you will not see the launcher while signed in as one. Preview it in a private window.',
     'yayloyalty',
   );
+
+// Storefront text section
+
+export const STOREFRONT_TEXT_SECTION_TITLE = () => __('Storefront text', 'yayloyalty');
+export const STOREFRONT_TEXT_SECTION_DESCRIPTION = () => __('Wording shoppers see outside the launcher.', 'yayloyalty');
+export const STOREFRONT_TEXT_CART_EARN_LINE_LABEL = () => __('Cart and checkout earning line', 'yayloyalty');
+export const STOREFRONT_TEXT_CART_EARN_LINE_DESCRIPTION = () =>
+  /* translators: keep {points} and {points_label} as they are; the storefront fills them in. */
+  __('{points} becomes the points the order earns and {points_label} your points label.', 'yayloyalty');
+export const STOREFRONT_TEXT_REQUIRED_ERROR = () => __('Enter the wording for this line.', 'yayloyalty');
 
 // Panel section (Pro)
 

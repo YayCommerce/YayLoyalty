@@ -18,13 +18,23 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { FlexibleDiscountConfig, FlexibleDiscountFields } from '@/pages/rewards/FlexibleDiscountFields';
 import { rewardCouponCodeCopy } from '@/pages/rewards/reward-coupon-code.copy';
+import { StorefrontTeaserField } from '../../shared/StorefrontTeaserField';
 import { RewardFormValues } from './reward-editor.form';
 
 /**
- * The editor's sections for one reward type: the built-in's rate settings, or a catalog reward's cost and value.
+ * The editor's sections for one reward type: the built-in's rate settings, or a catalog reward's cost and value,
+ * then the storefront teaser when the reward has conditions (set through the API; the editor shows none).
  * Status and schedule live in the side area. `couponCode` is the saved reward's, absent while creating.
  */
-export function RewardEditorSections({ type, couponCode }: { type: RewardType; couponCode?: string }) {
+export function RewardEditorSections({
+  type,
+  couponCode,
+  hasConditions,
+}: {
+  type: RewardType;
+  couponCode?: string;
+  hasConditions: boolean;
+}) {
   const isCatalog = isCatalogRewardType(type);
 
   return (
@@ -41,8 +51,21 @@ export function RewardEditorSections({ type, couponCode }: { type: RewardType; c
       >
         {isCatalog ? <RewardEditorValue type={type} /> : <RewardEditorFlexibleDiscount />}
       </EditorSection>
+
+      {hasConditions && (
+        <EditorSection step={3} title={__('Storefront teaser', 'yayloyalty')}>
+          <RewardEditorTeaser />
+        </EditorSection>
+      )}
     </div>
   );
+}
+
+/** No Auto preview: rewards have no preview route, so the field only says Auto words the conditions. */
+function RewardEditorTeaser() {
+  const { config, patchConfig } = useRewardConfig();
+
+  return <StorefrontTeaserField config={config} onPatch={(patch) => patchConfig({ ...patch })} />;
 }
 
 /* ─── form access ────────────────────────────────────────────────────── */

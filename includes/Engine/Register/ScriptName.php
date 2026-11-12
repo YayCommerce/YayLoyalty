@@ -27,9 +27,11 @@ class ScriptName {
 
     /** Product-page earning line: swaps the sentence when a variation is picked. */
     public const PRODUCT_EARN_SCRIPT = 'yayloyalty/script/storefront-product-earn';
+    /** The cart and checkout earn row: the script that fills the Cart and Checkout blocks' slot. */
+    public const CART_EARN_BLOCKS_SCRIPT = 'yayloyalty/script/storefront-cart-earn-blocks';
     /** The order-received page's "Points & rewards" card. */
     public const THANKYOU_STYLE = 'yayloyalty/style/storefront-thankyou';
-    /** Product-page earning line: the card around it. */
+    /** Product-page earning line and the cart and checkout earn row: the card around them. */
     public const PRODUCT_EARN_STYLE = 'yayloyalty/style/storefront-product-earn';
 
     /** The storefront blocks' editor script; block.json files name it as their editorScript. */

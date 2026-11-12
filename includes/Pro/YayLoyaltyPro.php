@@ -5,6 +5,7 @@ use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Points\Triggers\Registry as TriggerRegistry;
 use YayLoyalty\Engine\Rewards\Handlers\Registry;
+use YayLoyalty\Engine\Storefront\OfferLines;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Pro\Birthday\BirthdayEarnRow;
@@ -25,6 +26,8 @@ use YayLoyalty\Pro\Repositories\StoreLedgerRepository;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Pro\Services\DailyEarningLimit;
 use YayLoyalty\Pro\Services\DiscountRewardHandler;
+use YayLoyalty\Pro\Services\RewardConditionsMatch;
+use YayLoyalty\Pro\Storefront\ConditionPhrases;
 use YayLoyalty\Pro\Storefront\RewardsPanel;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\LedgerRepository;
@@ -102,7 +105,9 @@ final class YayLoyaltyPro {
         add_filter( EarningService::AWARD_POINTS_FILTER, [ $daily_limit, 'clamp' ], 10, 3 );
         add_filter( EarningService::POINTS_LEFT_TODAY_FILTER, [ $daily_limit, 'left_today' ], 10, 2 );
 
+        ( new RewardConditionsMatch( self::evaluator() ) )->register();
         ( new RewardsPanel() )->register();
+        ( new ConditionPhrases() )->register();
         ( new BirthdayRunner() )->register();
         ( new BirthdayFields() )->register();
         ( new BirthdayEarnRow() )->register();
@@ -149,28 +154,20 @@ final class YayLoyaltyPro {
 
     /**
      * Config keys for the triggers Pro adds. The purchase capping keys are
-     * not here: Lite whitelists them so a downgraded site keeps them.
+     * not here: Lite whitelists them so a downgraded site keeps them. Birthday's
+     * keys come from its schema, so it has no entry here.
      *
      * @param array<string, string[]> $whitelist
      * @return array<string, string[]>
      */
     public static function add_config_keys( array $whitelist ): array {
-        $whitelist[ CampaignTrigger::FIRST_ORDER ] = [
-            'points',
-            'min_subtotal',
-        ];
+        $advert = array_keys( OfferLines::CONFIG_SPECS );
 
-        $whitelist[ CampaignTrigger::ORDER_COUNT ] = [
-            'points',
-            'order_count',
-            'repeat',
-        ];
+        $whitelist[ CampaignTrigger::FIRST_ORDER ] = array_merge( [ 'points', 'min_subtotal' ], $advert );
 
-        $whitelist[ CampaignTrigger::SPEND_MILESTONE ] = [
-            'points',
-            'spend_amount',
-            'repeat',
-        ];
+        $whitelist[ CampaignTrigger::ORDER_COUNT ] = array_merge( [ 'points', 'order_count', 'repeat' ], $advert );
+
+        $whitelist[ CampaignTrigger::SPEND_MILESTONE ] = array_merge( [ 'points', 'spend_amount', 'repeat' ], $advert );
 
         return $whitelist;
     }
@@ -187,7 +184,7 @@ final class YayLoyaltyPro {
 
     /**
      * Typed config specs for the campaign triggers Pro adds. Birthday's keys are the only ones its config may hold.
-     * The other three type only `points`, which must be whole; add_config_keys() lists the rest of their keys.
+     * The other three type only `points`, which must be whole, and the teaser keys; add_config_keys() lists the rest of their keys.
      *
      * @param array<string, array<string, array<string, mixed>>> $schema
      * @return array<string, array<string, array<string, mixed>>>
@@ -199,7 +196,7 @@ final class YayLoyaltyPro {
         ];
 
         foreach ( [ CampaignTrigger::FIRST_ORDER, CampaignTrigger::ORDER_COUNT, CampaignTrigger::SPEND_MILESTONE ] as $trigger ) {
-            $schema[ $trigger ] = [ 'points' => $points ];
+            $schema[ $trigger ] = [ 'points' => $points ] + OfferLines::CONFIG_SPECS;
         }
 
         $schema[ CampaignTrigger::BIRTHDAY ] = [
@@ -209,7 +206,7 @@ final class YayLoyaltyPro {
                 'min'  => 0,
                 'max'  => 30,
             ],
-        ];
+        ] + OfferLines::CONFIG_SPECS;
 
         return $schema;
     }
@@ -227,7 +224,7 @@ final class YayLoyaltyPro {
 
     /**
      * Typed config specs for the reward types Pro adds; their keys are the
-     * only ones a config may hold.
+     * only ones a config may hold. Each lists the storefront teaser keys.
      *
      * @param array<string, array<string, array<string, mixed>>> $schema
      * @return array<string, array<string, array<string, mixed>>>
@@ -258,7 +255,7 @@ final class YayLoyaltyPro {
             ],
             'min_order'          => $money,
             'exclude_sale_items' => $exclude_sale,
-        ];
+        ] + OfferLines::CONFIG_SPECS;
 
         $schema[ RewardType::PERCENT_COUPON ] = [
             'percent'            => [
@@ -271,12 +268,12 @@ final class YayLoyaltyPro {
             'currency'           => $currency,
             'min_order'          => $money,
             'exclude_sale_items' => $exclude_sale,
-        ];
+        ] + OfferLines::CONFIG_SPECS;
 
         $schema[ RewardType::FREE_SHIPPING ] = [
             'min_order' => $money,
             'currency'  => $currency,
-        ];
+        ] + OfferLines::CONFIG_SPECS;
 
         $schema[ RewardType::FREE_PRODUCT ] = [
             'product_id'   => [
@@ -292,7 +289,7 @@ final class YayLoyaltyPro {
                 'min'      => 1,
                 'required' => true,
             ],
-        ];
+        ] + OfferLines::CONFIG_SPECS;
 
         return $schema;
     }

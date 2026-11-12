@@ -308,11 +308,28 @@ export const DEFAULT_CAMPAIGN_CONFIG: Record<LiteCampaignTrigger, Record<string,
   review: { points: 50, require_verified: true, one_per_product: true },
 };
 
+/** Mirrors OfferLines::MODE_*, the source of truth. How the storefront teases an offer to shoppers who don't qualify. */
+export const ADVERT_MODES = ['auto', 'custom', 'off'] as const;
+
+export type AdvertMode = (typeof ADVERT_MODES)[number];
+
+/** Mirrors OfferLines::TEXT_MAX, the source of truth. Longest `advert_text`. */
+export const ADVERT_TEXT_MAX = 120;
+
+/**
+ * Mirrors OfferLines::CONFIG_SPECS, the source of truth: the teaser keys every campaign trigger and
+ * reward type's config may hold. A missing `advert_mode` reads as auto.
+ */
+export interface AdvertConfig {
+  advert_mode?: AdvertMode;
+  advert_text?: string;
+}
+
 /**
  * Mirrors Campaign::config_schema()['purchase'], the source of truth. Config is untyped on the wire,
  * so every key is optional: a stored row may predate one.
  */
-export interface PurchaseConfig {
+export interface PurchaseConfig extends AdvertConfig {
   points_per_unit?: number;
   include_tax?: boolean;
   rounding?: RoundingMode;
@@ -323,12 +340,12 @@ export interface PurchaseConfig {
 }
 
 /** Mirrors Campaign::config_schema()['signup'], the source of truth. */
-export interface SignupConfig {
+export interface SignupConfig extends AdvertConfig {
   points?: number;
 }
 
 /** Mirrors Campaign::config_schema()['review'], the source of truth. */
-export interface ReviewConfig {
+export interface ReviewConfig extends AdvertConfig {
   points?: number;
   require_verified?: boolean;
   one_per_product?: boolean;
@@ -336,7 +353,7 @@ export interface ReviewConfig {
 }
 
 /** Mirrors YayLoyaltyPro::add_campaign_config_schema()['birthday'], the source of truth. */
-export interface BirthdayConfig {
+export interface BirthdayConfig extends AdvertConfig {
   points?: number;
   /** 0 to BIRTHDAY_DAYS_BEFORE_MAX: how many days before the birthday it may be paid. */
   days_before?: number;

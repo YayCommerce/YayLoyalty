@@ -2,9 +2,11 @@
 namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Engine\Earning\EarningService;
+use YayLoyalty\Engine\Points\Context;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Register\ScriptName;
+use YayLoyalty\Enums\CampaignConditionType;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Helpers\DesignHelper;
 use YayLoyalty\Helpers\SettingsHelper;
@@ -15,7 +17,8 @@ use YayLoyalty\Utils\Log;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * "Earn 20 Points with this purchase" under the price on a single product page.
+ * "Earn 20 Points with this purchase" under the price on a single product page, and under it the bonuses this
+ * product could earn more from ("Earn 40 Points for VIP members", OfferLines).
  * A member's figure goes through the earning gates; a guest's is what campaigns pay any guest, so cached pages hold nothing personal.
  */
 final class ProductEarnMessage {
@@ -26,6 +29,12 @@ final class ProductEarnMessage {
 
     private const STYLE_PATH = 'assets/storefront/product-earn.css';
 
+    /** lines() for a product that shows nothing. */
+    private const NONE = [
+        'sentence' => '',
+        'bonuses'  => '',
+    ];
+
     /** @var EarningService|null */
     private static $service;
 
@@ -35,8 +44,11 @@ final class ProductEarnMessage {
     /** @var array|null DesignHelper::get_design(), read once per request. */
     private static $design;
 
-    /** @var array<int, string> Sentences as escaped HTML by product id, for this request. */
-    private static $sentences = [];
+    /** @var array<int, array{sentence: string, bonuses: string}> lines() by product id, for this request. */
+    private static $lines = [];
+
+    /** @var Context|null The advert the bonuses are read at, once per request. */
+    private static $advert;
 
     /** @var int|null|false EarningService::points_left_today() for the member, read once per request; false until read. */
     private static $left_today = false;
@@ -54,7 +66,7 @@ final class ProductEarnMessage {
         global $product;
 
         if ( $product instanceof \WC_Product ) {
-            echo self::markup( self::sentence( $product ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup() escapes every part.
+            echo self::markup( $product ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup() escapes every part.
         }
     }
 
@@ -82,14 +94,20 @@ final class ProductEarnMessage {
 
         $product = wc_get_product( get_queried_object_id() );
 
-        return $product ? $content . self::markup( self::sentence( $product ) ) : $content;
+        return $product ? $content . self::markup( $product ) : $content;
     }
 
     /** Each variation's sentence in WooCommerce's variation data, which product-earn.js swaps in when it is picked. */
     public static function add_variation_sentence( array $data, \WC_Product $product, \WC_Product_Variation $variation ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the filter passes the parent before the variation.
-        $data['yayloyalty_earn'] = self::sentence( $variation );
+        $data['yayloyalty_earn']         = self::sentence( $variation );
+        $data['yayloyalty_earn_bonuses'] = self::bonus_lines( $variation );
 
         return $data;
+    }
+
+    /** The card's stylesheet, which the cart and checkout earn card (CartEarnPreview) shares. */
+    public static function enqueue_card_style(): void {
+        wp_enqueue_style( ScriptName::PRODUCT_EARN_STYLE, YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH, [], Launcher::asset_version( self::STYLE_PATH ) );
     }
 
     /** The stylesheet on a product page whose line shows; the script only when that product is variable. */
@@ -104,7 +122,7 @@ final class ProductEarnMessage {
             return;
         }
 
-        wp_enqueue_style( ScriptName::PRODUCT_EARN_STYLE, YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH, [], Launcher::asset_version( self::STYLE_PATH ) );
+        self::enqueue_card_style();
 
         if ( ! $product->is_type( 'variable' ) ) {
             return;
@@ -118,42 +136,128 @@ final class ProductEarnMessage {
      * A variable product speaks for its cheapest variation that earns, until the shopper picks one.
      */
     public static function sentence( \WC_Product $product ): string {
+        return self::lines( $product )['sentence'];
+    }
+
+    /**
+     * The bonus lines under sentence(), as escaped HTML paragraphs, or '' with none: the bonuses this product would
+     * pay more than the sentence's figure. A variable product's are its cheapest earning variation's.
+     */
+    public static function bonus_lines( \WC_Product $product ): string {
+        return self::lines( $product )['bonuses'];
+    }
+
+    /** @return array{sentence: string, bonuses: string} */
+    private static function lines( \WC_Product $product ): array {
         if ( ! DesignHelper::surface_enabled( self::design(), 'show_product_message' ) ) {
-            return '';
+            return self::NONE;
         }
 
         $id = $product->get_id();
 
-        if ( ! isset( self::$sentences[ $id ] ) ) {
-            self::$sentences[ $id ] = $product->is_type( 'variable' ) ? self::cheapest_variation_sentence( $product ) : self::compute( $product );
+        if ( ! isset( self::$lines[ $id ] ) ) {
+            self::$lines[ $id ] = $product->is_type( 'variable' ) ? self::cheapest_variation_lines( $product ) : self::compute( $product );
         }
 
-        return self::$sentences[ $id ];
+        return self::$lines[ $id ];
     }
 
-    /** WooCommerce keeps variation prices cached and sorted cheapest first. */
-    private static function cheapest_variation_sentence( \WC_Product_Variable $product ): string {
+    /**
+     * WooCommerce keeps variation prices cached and sorted cheapest first.
+     *
+     * @return array{sentence: string, bonuses: string}
+     */
+    private static function cheapest_variation_lines( \WC_Product_Variable $product ): array {
         foreach ( array_keys( $product->get_variation_prices( true )['price'] ) as $variation_id ) {
             $variation = wc_get_product( $variation_id );
-            $sentence  = $variation ? self::sentence( $variation ) : '';
+            $lines     = $variation ? self::lines( $variation ) : null;
 
-            if ( '' !== $sentence ) {
-                return $sentence;
+            if ( null !== $lines && '' !== $lines['sentence'] ) {
+                return $lines;
             }
         }
 
-        return '';
+        return self::NONE;
     }
 
-    private static function compute( \WC_Product $product ): string {
+    /** @return array{sentence: string, bonuses: string} */
+    private static function compute( \WC_Product $product ): array {
         if ( $product->is_type( [ 'grouped', 'external' ] ) || '' === $product->get_price() ) {
-            return '';
+            return self::NONE;
         }
 
-        $points = get_current_user_id() > 0 ? self::member_points( $product ) : self::guest_points( $product );
+        $user_id    = get_current_user_id();
+        $left_today = $user_id > 0 ? self::left_today( $user_id ) : null;
+        // One Context for the figure and the bonuses, so a member's facts are read once.
+        $viewer = ContextFactory::from_product( $product, 1, $user_id > 0 ? $user_id : null );
+        $points = $user_id > 0 ? self::member_points( $viewer, $left_today ) : self::guest_points( $product );
 
-        /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
-        return $points > 0 ? LauncherCopy::points_sentence_html( __( 'Earn {points} {points_label} with this purchase', 'yayloyalty' ), $points ) : '';
+        if ( $points <= 0 ) {
+            return self::NONE;
+        }
+
+        return [
+            /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
+            'sentence' => LauncherCopy::points_sentence_html( __( 'Earn {points} {points_label} with this purchase', 'yayloyalty' ), $points ),
+            'bonuses'  => self::bonuses( $viewer, $points, $left_today ),
+        ];
+    }
+
+    /**
+     * Each bonus that pays more than $figure on one of this product, as a paragraph. $viewer is the product's own
+     * Context, for a guest too: a bonus whose product or category condition this line fails is dropped, since
+     * buying it can't earn that. A guest's Context carries no customer, so it depends on nothing personal.
+     */
+    private static function bonuses( Context $viewer, int $figure, ?int $left_today ): string {
+        try {
+            $lines  = '';
+            $quoted = OfferLines::quoted_bonuses(
+                self::engine(),
+                self::advert(),
+                $viewer,
+                $viewer,
+                $figure,
+                $left_today,
+                static function ( array $bonus ): bool {
+                    return self::fails_on_this_product( $bonus['results'] ?? [] );
+                }
+            );
+
+            foreach ( $quoted as $bonus ) {
+                $lines .= sprintf( '<p class="%s__bonus">%s</p>', esc_attr( self::CSS_CLASS ), LauncherCopy::product_bonus( $bonus['points'], $bonus['teaser'] ) );
+            }
+
+            return $lines;
+        } catch ( \Throwable $e ) {
+            // Only the bonus lines go; the figure above them stays.
+            Log::warning( 'ProductEarnMessage', 'bonus lines failed: ' . $e->getMessage() );
+
+            return '';
+        }
+    }
+
+    /**
+     * Whether the evaluator found this product's own line failing a product or category condition.
+     *
+     * @param array<int, array<string, mixed>> $results PointsEngine::offers()' explain() rows for one bonus.
+     */
+    private static function fails_on_this_product( array $results ): bool {
+        foreach ( $results as $result ) {
+            $about_lines = in_array( $result['type'] ?? '', [ CampaignConditionType::PRODUCT_IN_CART, CampaignConditionType::CATEGORY_IN_CART ], true );
+
+            // The product's Context has a line, so these are always compared: a miss is this product's.
+            if ( $about_lines && empty( $result['matched'] ) ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function advert(): Context {
+        self::$advert = self::$advert ?? ContextFactory::for_advert( Dates::now() );
+
+        return self::$advert;
     }
 
     /** What one of this product earns a guest: only campaigns that pay a shopper with no account or history. 0 on failure. */
@@ -168,20 +272,28 @@ final class ProductEarnMessage {
         }
     }
 
-    /** What one of this product earns the member, no more than the daily limit leaves today. 0 on failure. */
-    private static function member_points( \WC_Product $product ): int {
-        try {
-            if ( false === self::$left_today ) {
-                self::$left_today = EarningService::points_left_today( get_current_user_id() );
-            }
+    /** EarningService::points_left_today() for the member, read once per request. */
+    private static function left_today( int $user_id ): ?int {
+        if ( false === self::$left_today ) {
+            self::$left_today = EarningService::points_left_today( $user_id );
+        }
 
-            if ( 0 === self::$left_today ) {
+        return self::$left_today;
+    }
+
+    /**
+     * What one of this product earns the member, no more than the daily limit leaves today. 0 on failure.
+     *
+     * @param Context  $ctx        ContextFactory::from_product() for the member.
+     * @param int|null $left_today left_today(); null for no limit.
+     */
+    private static function member_points( Context $ctx, ?int $left_today ): int {
+        try {
+            if ( 0 === $left_today ) {
                 return 0;
             }
 
-            $points = self::service()->preview( CampaignTrigger::PURCHASE, ContextFactory::from_product( $product, 1, get_current_user_id() ) )->get_points();
-
-            return null === self::$left_today ? $points : min( $points, self::$left_today );
+            return EarningService::cap_today( self::service()->preview( CampaignTrigger::PURCHASE, $ctx )->get_points(), $left_today );
         } catch ( \Throwable $e ) {
             Log::warning( 'ProductEarnMessage', 'member estimate failed: ' . $e->getMessage() );
 
@@ -207,30 +319,44 @@ final class ProductEarnMessage {
         return self::$engine;
     }
 
-    /** Styled by assets/storefront/product-earn.css; $sentence is sentence()'s escaped HTML. */
-    private static function markup( string $sentence ): string {
+    /**
+     * Styled by assets/storefront/product-earn.css. The bonus area is printed even when empty, hidden, so
+     * product-earn.js can fill it for a variation.
+     */
+    private static function markup( \WC_Product $product ): string {
+        $sentence = self::sentence( $product );
+
         if ( '' === $sentence ) {
             return '';
         }
 
-        $guest = 0 === get_current_user_id() ? self::guest_line() : '';
+        $bonuses = self::bonus_lines( $product );
+        $guest   = 0 === get_current_user_id() ? self::guest_line() : '';
 
         return sprintf(
-            '<div class="%1$s" data-default="%2$s"><p class="%1$s__line"><span class="%1$s__icon">%3$s</span><span class="%1$s__text">%4$s</span></p>%5$s</div>',
+            '<div class="%1$s" data-default="%2$s"><p class="%1$s__line"><span class="%1$s__icon">%3$s</span><span class="%1$s__text">%4$s</span></p><div class="%1$s__bonuses" data-default="%5$s"%6$s>%7$s</div>%8$s</div>',
             esc_attr( self::CSS_CLASS ),
             esc_attr( $sentence ),
             AccountMyPointsIcon::get( 'gift' ),
             $sentence,
+            esc_attr( $bonuses ),
+            '' === $bonuses ? ' hidden' : '',
+            $bonuses,
             $guest
         );
     }
 
-    /** "Sign in to earn Points, or join free & get 100 Points.", the clause only while signup pays. */
-    private static function guest_line(): string {
+    /**
+     * "Sign in to earn Points, or join free & get 100 Points.", the clause only while signup pays. Also under the cart row.
+     *
+     * @param string $css_class The card's class; the paragraph is its `__guest`.
+     */
+    public static function guest_line( string $css_class = self::CSS_CLASS ): string {
         $sign_in = sprintf( '<a href="%s">%s</a>', esc_url( (string) wc_get_page_permalink( 'myaccount' ) ), esc_html__( 'Sign in', 'yayloyalty' ) );
         $label   = esc_html( SettingsHelper::points_label_plural() );
         $route   = LauncherPayload::register_route();
-        $signup  = null === $route ? null : LauncherEarnRules::advertise( self::engine(), ContextFactory::for_advert( Dates::now() ), true )['earn'][ CampaignTrigger::SIGNUP ];
+        $advert  = null === $route ? null : LauncherEarnRules::advertised( self::engine(), CampaignTrigger::SIGNUP, self::advert() );
+        $signup  = null === $advert ? null : (int) $advert['value'];
 
         if ( null === $signup ) {
             /* translators: 1: "Sign in" link, 2: the store's points label, as "Points". */
@@ -247,6 +373,6 @@ final class ProductEarnMessage {
             $line = sprintf( esc_html__( '%1$s to earn %2$s, or %3$s.', 'yayloyalty' ), $sign_in, $label, $join );
         }
 
-        return sprintf( '<p class="%s__guest">%s</p>', esc_attr( self::CSS_CLASS ), $line );
+        return sprintf( '<p class="%s__guest">%s</p>', esc_attr( $css_class ), $line );
     }
 }

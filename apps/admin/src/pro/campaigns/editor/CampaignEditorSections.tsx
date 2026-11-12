@@ -1,10 +1,14 @@
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, useWatch } from 'react-hook-form';
 import { __ } from '@wordpress/i18n';
 
+import type { AdvertConfig } from '@/lib/schema/campaign.schema';
 import { EditorSection } from '@/components/ui/custom/editor-section';
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { CampaignFormValues } from './campaign-editor.form';
+import { Separator } from '@/components/ui/separator';
+import { StorefrontTeaserField } from '../../shared/StorefrontTeaserField';
+import { useConditionsPhraseQuery } from '../conditions-preview.api';
+import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
 import { CampaignEditorConditions } from './CampaignEditorConditions';
 import { CampaignEditorEarn } from './CampaignEditorEarn';
 
@@ -22,6 +26,7 @@ export function CampaignEditorSections() {
 
       <EditorSection step={3} title={__('Conditions', 'yayloyalty')}>
         <CampaignEditorConditions />
+        <CampaignEditorTeaser />
       </EditorSection>
     </div>
   );
@@ -44,6 +49,38 @@ function CampaignEditorBasics() {
       <FieldDescription>
         {__('The customer never sees the campaign name — it is for your team only.', 'yayloyalty')}
       </FieldDescription>
+    </>
+  );
+}
+
+/**
+ * The storefront teaser, under the conditions it words; nothing while the campaign has none, since
+ * only a campaign with conditions is teased. The Auto preview is the saved campaign's, so a new one shows none.
+ */
+function CampaignEditorTeaser() {
+  const { control, setValue } = useFormContext<CampaignFormValues>();
+  const { mode, campaign } = useCampaignEditorContext();
+  const conditions = useWatch({ control, name: 'conditions' });
+  const config = useWatch({ control, name: 'config' });
+  const hasConditions = Array.isArray(conditions) && conditions.length > 0;
+  const phrase = useConditionsPhraseQuery(campaign.id, mode === 'edit' && hasConditions);
+
+  if (!hasConditions) {
+    return null;
+  }
+
+  function patchConfig(patch: AdvertConfig) {
+    setValue('config', { ...config, ...patch }, { shouldDirty: true, shouldValidate: true });
+  }
+
+  return (
+    <>
+      <Separator />
+      <StorefrontTeaserField
+        config={config}
+        onPatch={patchConfig}
+        autoPhrase={phrase.isSuccess ? phrase.data : undefined}
+      />
     </>
   );
 }

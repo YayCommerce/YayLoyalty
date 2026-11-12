@@ -1,7 +1,8 @@
 /*
  * Every colour, radius and shadow token of the storefront's hand-written cards, defined only here. Each card's
  * stylesheet imports this file first: the My Points tab (account/rewards-tokens.css), the order-received card
- * (thankyou-points.css), the points card (redeem.css) and the product-page line (product-earn.css).
+ * (thankyou-points.css), the points card (redeem.css), and the product-page line and the cart and checkout earn
+ * card (product-earn.css).
  *
  * - The shared values are set once, as --yayloyalty-*, on every card's root. Each card then names the ones it
  *   uses with its own prefix, so a theme or custom CSS can re-point one card, or every card at once.
@@ -9,7 +10,7 @@
  * - Overrides for a context or a state stay with the rule they serve: the launcher panel's brand colour
  *   (account/launcher.css) and the order-received card's earned state (thankyou-points.css).
  */
-:is(.yayloyalty-account, .yayloyalty-thankyou-points, .yayloyalty-redeem, .yayloyalty-product-earn) {
+:is(.yayloyalty-account, .yayloyalty-thankyou-points, .yayloyalty-redeem, .yayloyalty-product-earn, .yayloyalty-cart-earn) {
   --yayloyalty-text: #171719;
   --yayloyalty-muted: #7b7c80;
   --yayloyalty-border: #e4e4e7;
@@ -88,10 +89,12 @@
 }
 
 /*
- * The product-page line. Its surface, border and muted text are tints of the theme's text colour, so it reads on
- * light and dark themes alike; the rgba() lines are for browsers without color-mix().
+ * The product-page line and the cart and checkout earn card, which share it. Their surface, border and muted text
+ * are tints of the theme's text colour, so they read on light and dark themes alike; the rgba() lines are for
+ * browsers without color-mix().
  */
-.yayloyalty-product-earn {
+.yayloyalty-product-earn,
+.yayloyalty-cart-earn {
   --yayloyalty-product-earn-surface: rgba(0, 0, 0, 0.015);
   --yayloyalty-product-earn-surface: color-mix(in srgb, currentColor 1.5%, transparent);
   --yayloyalty-product-earn-border: rgba(0, 0, 0, 0.1);

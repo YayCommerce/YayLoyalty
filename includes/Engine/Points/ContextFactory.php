@@ -14,6 +14,9 @@ defined( 'ABSPATH' ) || exit;
  */
 final class ContextFactory {
 
+    /** @var array<int, CustomerFacts|null> facts_loader()'s reads this request, by user: every variation and the cart share one. */
+    private static $preview_facts = [];
+
     /**
      * occurred_at is the order's creation date, so the order scores the same at creation and at award,
      * whatever campaigns changed in between. A caller scoring an old order against today's rules passes $occurred_at.
@@ -185,7 +188,7 @@ final class ContextFactory {
         return false;
     }
 
-    /** For the product-page earn preview. */
+    /** For the product-page earn preview. A member's history is read only when a condition asks for it. */
     public static function from_product( \WC_Product $product, int $qty = 1, ?int $user_id = null ): Context {
         $qty      = max( 1, $qty );
         $subtotal = (float) wc_get_price_excluding_tax( $product, [ 'qty' => $qty ] );
@@ -203,17 +206,22 @@ final class ContextFactory {
         );
 
         $currency = get_woocommerce_currency();
+        $now      = Dates::now();
 
         return new Context(
             $user_id,
-            Dates::now(),
+            $now,
             $currency,
             self::to_base_factor( $currency, null ),
             [ $line ],
             $subtotal,
             0.0,
             [],
-            self::user_roles( (int) $user_id )
+            self::user_roles( (int) $user_id ),
+            null,
+            null,
+            [],
+            self::facts_loader( $user_id, $now )
         );
     }
 
@@ -224,7 +232,7 @@ final class ContextFactory {
         return Context::advert( $at, $currency, self::to_base_factor( $currency, null ) );
     }
 
-    /** For the cart/checkout earn preview. */
+    /** For the cart/checkout earn preview, with the payment method and addresses chosen so far. */
     public static function from_cart( \WC_Cart $cart, ?int $user_id = null ): Context {
         $line_items = [];
 
@@ -248,18 +256,60 @@ final class ContextFactory {
 
         $coupon_codes = (array) $cart->get_applied_coupons();
         $currency     = get_woocommerce_currency();
+        $now          = Dates::now();
 
         return new Context(
             $user_id,
-            Dates::now(),
+            $now,
             $currency,
             self::to_base_factor( $currency, null ),
             $line_items,
             (float) $cart->get_subtotal(),
             (float) $cart->get_discount_total(),
             $coupon_codes,
-            self::user_roles( (int) $user_id )
+            self::user_roles( (int) $user_id ),
+            null,
+            null,
+            self::checkout_inputs(),
+            self::facts_loader( $user_id, $now )
         );
+    }
+
+    /**
+     * What the checkout has chosen so far, as from_order() reads it off the order: '' for what is not chosen yet,
+     * so the evaluator answers needs_order for a condition on it.
+     *
+     * @return array<string, string>
+     */
+    private static function checkout_inputs(): array {
+        $session  = function_exists( 'WC' ) ? WC()->session : null;
+        $customer = function_exists( 'WC' ) ? WC()->customer : null;
+        $has      = $customer instanceof \WC_Customer;
+
+        return [
+            Context::EXTRA_PAYMENT_METHOD   => $session ? (string) $session->get( 'chosen_payment_method' ) : '',
+            Context::EXTRA_BILLING_COUNTRY  => $has ? (string) $customer->get_billing_country() : '',
+            Context::EXTRA_SHIPPING_COUNTRY => $has ? (string) $customer->get_shipping_country() : '',
+        ];
+    }
+
+    /**
+     * The lazy customer_facts() loader for a member; none for a guest, whose history conditions answer no_customer.
+     * Only the storefront's previews (a product, a cart) use it, so one read per member serves the whole request:
+     * their as-of times differ by the seconds a page takes to render, and no award reads it.
+     */
+    private static function facts_loader( ?int $user_id, string $as_of ): ?\Closure {
+        if ( null === $user_id || $user_id < 1 ) {
+            return null;
+        }
+
+        return static function () use ( $user_id, $as_of ): ?CustomerFacts {
+            if ( ! array_key_exists( $user_id, self::$preview_facts ) ) {
+                self::$preview_facts[ $user_id ] = self::customer_facts( $user_id, $as_of );
+            }
+
+            return self::$preview_facts[ $user_id ];
+        };
     }
 
     /**

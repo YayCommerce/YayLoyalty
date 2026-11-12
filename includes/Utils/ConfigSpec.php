@@ -5,8 +5,9 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Checks a config value against a typed spec, for the campaign and reward config schemas.
- * Spec types: bool, string, enum [values], enum_list [values], currency, int and number [min, exclusive_min, max],
+ * Spec types: bool, string [max_length], enum [values], enum_list [values], currency, int and number [min, exclusive_min, max],
  * nullable_int, nullable_number, int_list, and limit (null = no limit). An unknown type is accepted.
+ * A string's max_length counts characters after sanitize_text_field(), what the storefront prints of it.
  */
 final class ConfigSpec {
 
@@ -17,7 +18,7 @@ final class ConfigSpec {
                 return is_bool( $value );
 
             case 'string':
-                return is_string( $value );
+                return is_string( $value ) && ( ! isset( $spec['max_length'] ) || self::text_length( $value ) <= (int) $spec['max_length'] );
 
             case 'enum':
                 return is_string( $value ) && in_array( $value, (array) ( $spec['values'] ?? [] ), true );
@@ -70,6 +71,13 @@ final class ConfigSpec {
             default:
                 return true;
         }
+    }
+
+    /** Characters left after sanitize_text_field(); trim() under plain PHPUnit, where WordPress is not loaded. */
+    private static function text_length( string $value ): int {
+        $text = function_exists( 'sanitize_text_field' ) ? sanitize_text_field( $value ) : trim( $value );
+
+        return function_exists( 'mb_strlen' ) ? mb_strlen( $text ) : strlen( $text );
     }
 
     /** A set limit: a whole number from 1. Null, for no limit, is the caller's check. */

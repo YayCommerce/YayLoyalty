@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Models;
 
+use YayLoyalty\Engine\Storefront\OfferLines;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Utils\ConfigSpec;
@@ -195,7 +196,7 @@ class Campaign extends AbstractModel {
      * It covers Lite triggers. Pro adds typed triggers through the filter, and untyped keys through config_whitelist().
      * Spec types: bool, string, enum [values], int [min], number [min, exclusive_min], int_list, limit (null = no limit).
      * Pro keys of Lite triggers are listed on purpose: a downgraded site keeps its stored values,
-     * so an upgrade restores the campaign intact.
+     * so an upgrade restores the campaign intact. Every trigger lists the storefront teaser keys (OfferLines::CONFIG_SPECS).
      *
      * @return array<string, array<string, array<string, mixed>>>
      */
@@ -220,13 +221,13 @@ class Campaign extends AbstractModel {
                 'excluded_product_ids'  => [ 'type' => 'int_list' ],
                 'excluded_category_ids' => [ 'type' => 'int_list' ],
                 'max_points_per_order'  => [ 'type' => 'limit' ],
-            ],
+            ] + OfferLines::CONFIG_SPECS,
             CampaignTrigger::SIGNUP   => [
                 'points' => [
                     'type' => 'int',
                     'min'  => 0,
                 ],
-            ],
+            ] + OfferLines::CONFIG_SPECS,
             CampaignTrigger::REVIEW   => [
                 'points'             => [
                     'type' => 'int',
@@ -238,7 +239,7 @@ class Campaign extends AbstractModel {
                     'type' => 'int',
                     'min'  => 0,
                 ],
-            ],
+            ] + OfferLines::CONFIG_SPECS,
         ];
 
         /**

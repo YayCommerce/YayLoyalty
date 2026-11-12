@@ -135,6 +135,11 @@ final class EarningService {
         return is_numeric( $left ) ? max( 0, (int) $left ) : null;
     }
 
+    /** $points no more than points_left_today() leaves: what the storefront may show a member. */
+    public static function cap_today( int $points, ?int $left_today ): int {
+        return null === $left_today ? $points : min( $points, $left_today );
+    }
+
     /**
      * Evaluates without writing. Not authoritative: award() evaluates again rather than trust a staged figure.
      *

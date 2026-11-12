@@ -70,7 +70,7 @@ final class LauncherPayload {
         }
 
         $customer = $this->customers->find_by_user_id( $user_id );
-        $payload  = $this->for_balance( $design, null === $customer ? 0 : $customer->get_balance(), EarningService::points_left_today( $user_id ) );
+        $payload  = $this->for_balance( $design, null === $customer ? 0 : $customer->get_balance(), EarningService::points_left_today( $user_id ), $user_id );
 
         if ( null !== $customer && $customer->get_balance() > 0 ) {
             $payload['member']['expires_at'] = self::expiring_soon( $customer->get_expires_at() );
@@ -96,14 +96,15 @@ final class LauncherPayload {
      * @param array    $design  DesignHelper::get_design() or DesignHelper::with_unsaved().
      * @param int|null $balance    The member's balance; null for a guest.
      * @param int|null $left_today Points the member may still earn today (EarningService::points_left_today()); null for no limit.
+     * @param int      $viewer_id  The member whose own earn values, bonuses and locked rewards are shown; 0 for what anyone is promised.
      */
-    public function for_balance( array $design, ?int $balance, ?int $left_today = null ): array {
+    public function for_balance( array $design, ?int $balance, ?int $left_today = null, int $viewer_id = 0 ): array {
         $now      = Dates::now();
         $reward   = $this->rewards->find_live_flexible_discount( $now );
         $redeem   = self::redeem_rule( $reward );
         $register = self::register_route();
         $engine   = $this->engine();
-        $rules    = null === $engine ? LauncherEarnRules::none() : LauncherEarnRules::advertise( $engine, ContextFactory::for_advert( $now ), null !== $register );
+        $rules    = null === $engine ? LauncherEarnRules::none() : LauncherEarnRules::advertise( $engine, ContextFactory::for_advert( $now ), null !== $register, $viewer_id );
         $estimate = null !== $engine && null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate() : null;
 
         return [
@@ -111,8 +112,9 @@ final class LauncherPayload {
             'earn'              => $rules['earn'],
             'purchase_min'      => $rules['purchase_min'],
             'purchase_rounding' => $rules['purchase_rounding'],
+            'earn_bonuses'      => OfferLines::enabled( $design ) ? $rules['bonuses'] : [],
             'redeem'            => $redeem,
-            'offers'            => self::redeem_offers( $now ),
+            'offers'            => self::redeem_offers( $now, $viewer_id ),
             'member'            => null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward ),
             'left_today'        => $left_today,
             'estimate'          => $estimate,
@@ -213,38 +215,49 @@ final class LauncherPayload {
     /**
      * The rows "Ways to redeem" lists after the points discount, in display order; [] when nothing subscribes.
      * A subscriber that throws gives [] and a malformed row is dropped, so neither takes the launcher down.
+     * A locked row is one the viewer can't claim yet: it must carry the teaser the template prints in its place.
      *
-     * @param string $now UTC MySQL datetime.
-     * @return array<int, array{name: string, cost: int, text: string}>
+     * @param string $now     UTC MySQL datetime.
+     * @param int    $user_id The viewer; 0 for a guest.
+     * @return array<int, array{name: string, cost: int, text: string, locked?: bool, teaser?: string}>
      */
-    private static function redeem_offers( string $now ): array {
+    private static function redeem_offers( string $now, int $user_id ): array {
         try {
             /**
              * Rows for "Ways to redeem" in the launcher and My Account, after the points discount.
              * Internal seam for Pro, not a public API.
              *
-             * @param array<int, array{name: string, cost: int, text: string}> $offers Name, cost in points, and one line under the name ('' for none).
-             * @param string                                                   $now    UTC MySQL datetime.
+             * @param array<int, array{name: string, cost: int, text: string, locked?: bool, teaser?: string}> $offers
+             *        Name, cost in points, and one line under the name ('' for none). `locked` true marks a reward the
+             *        viewer's conditions rule out, shown with `teaser` (what it takes) in place of `text`.
+             * @param string $now     UTC MySQL datetime.
+             * @param int    $user_id The viewer; 0 for a guest.
              */
-            $offers = (array) apply_filters( self::REDEEM_OFFERS_FILTER, [], $now ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+            $offers = (array) apply_filters( self::REDEEM_OFFERS_FILTER, [], $now, $user_id ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
         } catch ( \Throwable $e ) {
             Log::warning( 'LauncherPayload', 'redeem offers failed: ' . $e->getMessage() );
 
             return [];
         }
 
-        return array_values(
-            array_filter(
-                $offers,
-                static function ( $offer ): bool {
-                    return is_array( $offer )
-                        && isset( $offer['name'], $offer['cost'], $offer['text'] )
-                        && is_string( $offer['name'] ) && '' !== $offer['name']
-                        && is_int( $offer['cost'] ) && $offer['cost'] >= 1
-                        && is_string( $offer['text'] );
-                }
-            )
-        );
+        return array_values( array_filter( $offers, [ self::class, 'is_offer' ] ) );
+    }
+
+    /** @param mixed $offer */
+    private static function is_offer( $offer ): bool {
+        if ( ! is_array( $offer )
+            || ! isset( $offer['name'], $offer['cost'], $offer['text'] )
+            || ! is_string( $offer['name'] ) || '' === $offer['name']
+            || ! is_int( $offer['cost'] ) || $offer['cost'] < 1
+            || ! is_string( $offer['text'] ) ) {
+            return false;
+        }
+
+        if ( ! array_key_exists( 'locked', $offer ) || false === $offer['locked'] ) {
+            return true;
+        }
+
+        return true === $offer['locked'] && isset( $offer['teaser'] ) && is_string( $offer['teaser'] ) && '' !== trim( $offer['teaser'] );
     }
 
     /**

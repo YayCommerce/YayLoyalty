@@ -76,6 +76,13 @@
   color: var(--yayloyalty-account-muted);
 }
 
+/* A conditional campaign's teaser under the row, in the accent so it reads as an offer rather than fine print. */
+.yayloyalty-account .yayloyalty-account__item-bonus {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--yayloyalty-account-accent);
+}
+
 /* Capped so a long value such as "10 Points / $1 on orders of $50 or more" wraps instead of squeezing the name, at any width: the launcher panel is narrow on wide screens too. */
 .yayloyalty-account .yayloyalty-account__item-value {
   flex-shrink: 0;
@@ -89,4 +96,19 @@
 /* A value that is a gain, such as the guest panel's welcome bonus; 0,4,0 so a list's own value colour cannot beat it. */
 .yayloyalty-account .yayloyalty-account__list .yayloyalty-account__item .yayloyalty-account__item-value--positive {
   color: var(--yayloyalty-account-positive);
+}
+
+/* A reward the shopper can't claim yet: icon, name and cost muted, and its teaser in the accent like a bonus line. */
+.yayloyalty-account .yayloyalty-rule--locked .yayloyalty-account__item-icon {
+  opacity: 0.5;
+}
+
+.yayloyalty-account .yayloyalty-rule--locked .yayloyalty-account__item-name,
+.yayloyalty-account .yayloyalty-account__list .yayloyalty-rule--locked .yayloyalty-account__item-value {
+  color: var(--yayloyalty-account-muted);
+}
+
+.yayloyalty-account .yayloyalty-rule--locked .yayloyalty-account__item-text {
+  font-weight: 500;
+  color: var(--yayloyalty-account-accent);
 }

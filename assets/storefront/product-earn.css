@@ -1,6 +1,8 @@
 /*
- * The product-page earning line (ProductEarnMessage::markup() in includes/Engine/Storefront/ProductEarnMessage.php).
- * Hand-written and shipped as-is: no build step, and nothing from the launcher's stylesheet or the Design tab.
+ * The product-page earning line (ProductEarnMessage::markup() in includes/Engine/Storefront/ProductEarnMessage.php),
+ * and the cart and checkout earn card (CartEarnPreview), which shares it and only changes its spacing at the end of
+ * this file. Hand-written and shipped as-is: no build step, and nothing from the launcher's stylesheet or the
+ * Design tab.
  *
  * - The text keeps the theme's font and colour; the surface and border are tints of that colour,
  *   so the card reads on light and dark themes alike.
@@ -10,7 +12,8 @@
  */
 @import url("storefront-tokens.css");
 
-.yayloyalty-product-earn {
+.yayloyalty-product-earn,
+.yayloyalty-cart-earn {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -31,20 +34,24 @@
 }
 
 .yayloyalty-product-earn .yayloyalty-product-earn__line,
-.yayloyalty-product-earn .yayloyalty-product-earn__guest {
+.yayloyalty-product-earn .yayloyalty-product-earn__guest,
+.yayloyalty-cart-earn .yayloyalty-cart-earn__line,
+.yayloyalty-cart-earn .yayloyalty-cart-earn__guest {
   margin: 0;
   padding: 0;
   font-size: inherit;
   line-height: inherit;
 }
 
-.yayloyalty-product-earn .yayloyalty-product-earn__line {
+.yayloyalty-product-earn .yayloyalty-product-earn__line,
+.yayloyalty-cart-earn .yayloyalty-cart-earn__line {
   display: flex;
   align-items: flex-start;
   gap: 10px;
 }
 
-.yayloyalty-product-earn .yayloyalty-product-earn__icon {
+.yayloyalty-product-earn .yayloyalty-product-earn__icon,
+.yayloyalty-cart-earn .yayloyalty-cart-earn__icon {
   display: inline-flex;
   flex-shrink: 0;
   /* One line's height, so the icon centres on the first line when the sentence wraps. */
@@ -54,32 +61,69 @@
   opacity: 0.7;
 }
 
-.yayloyalty-product-earn .yayloyalty-product-earn__icon svg {
+.yayloyalty-product-earn .yayloyalty-product-earn__icon svg,
+.yayloyalty-cart-earn .yayloyalty-cart-earn__icon svg {
   display: block;
   width: 16px;
   height: 16px;
 }
 
-.yayloyalty-product-earn .yayloyalty-product-earn__text strong {
+.yayloyalty-product-earn .yayloyalty-product-earn__text strong,
+.yayloyalty-product-earn .yayloyalty-product-earn__bonus strong,
+.yayloyalty-cart-earn strong {
   font-weight: 600;
 }
 
+/* The bonuses this product could earn more from (ProductEarnMessage::bonus_lines()), one line each. */
+.yayloyalty-product-earn .yayloyalty-product-earn__bonuses {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.yayloyalty-product-earn .yayloyalty-product-earn__bonuses[hidden] {
+  display: none;
+}
+
 /* Lines up with the sentence, past the icon and its gap. */
-.yayloyalty-product-earn .yayloyalty-product-earn__guest {
-  padding-left: 26px;
+.yayloyalty-product-earn .yayloyalty-product-earn__bonus,
+.yayloyalty-product-earn .yayloyalty-product-earn__guest,
+.yayloyalty-cart-earn .yayloyalty-cart-earn__bonus,
+.yayloyalty-cart-earn .yayloyalty-cart-earn__guest {
+  margin: 0;
+  padding: 0 0 0 26px;
+  font-size: inherit;
+  line-height: inherit;
   color: var(--yayloyalty-product-earn-muted);
 }
 
 /* Their own colour: many themes colour links like body text and mark them only with the underline this removes. */
-.yayloyalty-product-earn .yayloyalty-product-earn__guest a {
+.yayloyalty-product-earn .yayloyalty-product-earn__guest a,
+.yayloyalty-cart-earn .yayloyalty-cart-earn__guest a {
   color: var(--yayloyalty-product-earn-link);
   font-weight: inherit;
   text-decoration: none;
 }
 
 .yayloyalty-product-earn .yayloyalty-product-earn__guest a:hover,
-.yayloyalty-product-earn .yayloyalty-product-earn__guest a:focus-visible {
+.yayloyalty-product-earn .yayloyalty-product-earn__guest a:focus-visible,
+.yayloyalty-cart-earn .yayloyalty-cart-earn__guest a:hover,
+.yayloyalty-cart-earn .yayloyalty-cart-earn__guest a:focus-visible {
   color: var(--yayloyalty-product-earn-link-hover);
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+/* The cart and checkout earn card: tighter, to fit the order summary. */
+.yayloyalty-cart-earn {
+  margin: 8px 0;
+  padding: 12px 14px;
+  font-weight: 400;
+}
+
+/* The classic totals table's cell around it: no theme padding or border doubling the card's own. */
+.yayloyalty-cart-earn-row > td {
+  padding-left: 0;
+  padding-right: 0;
+  border: 0;
 }

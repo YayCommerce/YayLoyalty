@@ -33,6 +33,7 @@ import {
 import { DesignFormValues, designToFormValues } from './design-settings.form';
 import { DesignLauncherPreview } from './DesignLauncherPreview';
 import { DesignLauncherSection } from './DesignLauncherSection';
+import { DesignStorefrontTextSection } from './DesignStorefrontTextSection';
 import { DesignVisibilitySection } from './DesignVisibilitySection';
 
 /** Lite's place for a Pro design section: the same card as an upsell, with no input. */
@@ -109,6 +110,7 @@ export default function DesignSettingsPage() {
           <div className="flex min-w-0 flex-1 flex-col gap-4">
             <DesignLauncherSection />
             <DesignVisibilitySection />
+            <DesignStorefrontTextSection />
 
             {IS_PRO_BUILD ? (
               <DesignPanelSection />
