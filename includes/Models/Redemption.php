@@ -6,20 +6,23 @@ defined( 'ABSPATH' ) || exit;
 /**
  * One reward claim: what was spent, what it bought, at what rate and on which order.
  * A refund needs these facts as they were at redemption time, never today's.
- * Written once at commit. A cancel, a refund or an admin's Restore on the order screen moves only `status` and `restored_points`.
+ * Written once at commit. A cancel, a refund, a failed payment, paying again or the line leaving the order moves only `status` and `restored_points`.
  */
 final class Redemption extends AbstractModel {
 
     /**
-     * Every row: applied (order exists, points debited) → cancelled | refunded | removed. `removed` means an admin
-     * took the line off the order and restored what was left; it is final, and no order event moves it.
+     * Every row: applied (order exists, points debited) ⇄ unpaid (the payment failed and the points went back;
+     * paying again debits them again), and applied | unpaid → cancelled | refunded | removed. `removed` means the
+     * line left the order, with what was left restored or, when an admin chose so, not; it is final, and no order
+     * event moves it.
      */
     public const STATUS_APPLIED   = 'applied';
+    public const STATUS_UNPAID    = 'unpaid';
     public const STATUS_CANCELLED = 'cancelled';
     public const STATUS_REFUNDED  = 'refunded';
     public const STATUS_REMOVED   = 'removed';
 
-    public const STORED_STATUSES = [ self::STATUS_APPLIED, self::STATUS_REFUNDED, self::STATUS_CANCELLED, self::STATUS_REMOVED ];
+    public const STORED_STATUSES = [ self::STATUS_APPLIED, self::STATUS_UNPAID, self::STATUS_REFUNDED, self::STATUS_CANCELLED, self::STATUS_REMOVED ];
 
     private ?int $id;
 

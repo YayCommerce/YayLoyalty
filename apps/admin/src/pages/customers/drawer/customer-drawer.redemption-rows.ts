@@ -6,6 +6,7 @@ import {
   REDEMPTION_STATUS_CANCELLED,
   REDEMPTION_STATUS_REMOVED,
   REDEMPTION_STATUS_REFUNDED,
+  REDEMPTION_STATUS_UNPAID,
 } from './customer-drawer.copy';
 
 export type RedemptionRow = {
@@ -33,6 +34,8 @@ function statusLabel(status: RedemptionEntry['status']): string {
   switch (status) {
     case 'applied':
       return REDEMPTION_STATUS_APPLIED();
+    case 'unpaid':
+      return REDEMPTION_STATUS_UNPAID();
     case 'refunded':
       return REDEMPTION_STATUS_REFUNDED();
     case 'cancelled':

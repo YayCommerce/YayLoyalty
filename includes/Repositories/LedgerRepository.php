@@ -170,6 +170,11 @@ class LedgerRepository extends AbstractRepository {
         )[0] ?? null;
     }
 
+    /** The newest row of $type a redemption wrote, or null: what a failed-payment restore or a pay-again debit keys on. */
+    public function latest_for_redemption( int $redemption_id, string $type ): ?LedgerEntry {
+        return $this->select_entries( 'type = %s AND redemption_id = %d', [ $type, $redemption_id ], 1, true )[0] ?? null;
+    }
+
     /**
      * The clawback rows one refund wrote, one per earn row it reversed.
      *

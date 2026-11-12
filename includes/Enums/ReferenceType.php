@@ -37,6 +37,9 @@ final class ReferenceType {
     /** Import batch id. */
     public const IMPORT = 'import';
 
+    /** yayloyalty_ledger id: the row a failed-payment restore or a pay-again debit undoes. */
+    public const LEDGER = 'ledger';
+
     /** @return string[] */
     public static function all(): array {
         return [
@@ -48,6 +51,7 @@ final class ReferenceType {
             self::USER,
             self::BIRTHDAY,
             self::IMPORT,
+            self::LEDGER,
         ];
     }
 
