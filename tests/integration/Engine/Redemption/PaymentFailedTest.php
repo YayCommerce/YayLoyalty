@@ -156,4 +156,45 @@ final class PaymentFailedTest extends IntegrationTestCase {
 
         $this->assertTrue( $this->reversal()->has_unpaid( $order ) );
     }
+
+    /** @return string[] The order's note texts. */
+    private function note_texts( \WC_Order $order ): array {
+        return array_map(
+            static function ( $note ): string {
+                return (string) $note->content;
+            },
+            wc_get_order_notes( [ 'order_id' => $order->get_id() ] )
+        );
+    }
+
+    public function test_the_failed_status_restores_and_notes(): void {
+        $order = $this->redeemed_order( $this->seeded_reward() );
+
+        $order->update_status( 'failed' );
+
+        $this->assertSame( 1000, (int) $this->customer_row( 7 )['balance'] );
+        $this->assertContains( 'Restored 500 redeemed points (payment failed).', $this->note_texts( $order ) );
+    }
+
+    public function test_failed_to_processing_debits_again_and_failed_to_pending_does_not(): void {
+        $order = $this->redeemed_order( $this->seeded_reward() );
+        $order->update_status( 'failed' );
+
+        $order->update_status( 'pending' );
+        $this->assertSame( 1000, (int) $this->customer_row( 7 )['balance'] );
+
+        $order->update_status( 'failed' );
+        $order->update_status( 'processing' );
+        $this->assertSame( 500, (int) $this->customer_row( 7 )['balance'] );
+        $this->assertContains( 'Debited 500 redeemed points again (payment received).', $this->note_texts( $order ) );
+    }
+
+    public function test_failed_then_processing_in_one_request_nets_one_debit(): void {
+        $order = $this->redeemed_order( $this->seeded_reward() );
+
+        $order->update_status( 'failed' );
+        $order->update_status( 'processing' );
+
+        $this->assertSame( [ 1000, -500, 500, -500 ], $this->ledger_points( 7 ) );
+    }
 }

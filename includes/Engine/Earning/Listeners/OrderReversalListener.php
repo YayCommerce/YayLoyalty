@@ -19,6 +19,7 @@ defined( 'ABSPATH' ) || exit;
  * The same events also return the points the order redeemed (Engine\Redemption\Reversal),
  * before the clawback and in the same transaction, so neither lands without the other.
  * An order that comes back from cancelled or the trash is debited those points again.
+ * A failed payment returns the redeemed points too, and a payment that arrives after it takes them again.
  */
 final class OrderReversalListener {
 
@@ -130,6 +131,24 @@ final class OrderReversalListener {
             fn(): array => $this->reversal->full_order( $order ),
             __( 'order cancelled', 'yayloyalty' )
         );
+    }
+
+    /**
+     * The payment failed: releases pending and returns the points the order redeemed. Nothing was earned yet,
+     * since only `completed` awards, so nothing is clawed back.
+     */
+    public function on_failed( \WC_Order $order ): void {
+        $this->pending->release( (int) $order->get_id() );
+
+        $this->note_restored( $order, $this->redemptions->payment_failed( $order ), __( 'payment failed', 'yayloyalty' ) );
+    }
+
+    /**
+     * A failed order reached a paid status without pay-for-order (a late gateway webhook, or an admin): debits the
+     * redeemed points again even past zero, because the order kept its discount and the payment arrived.
+     */
+    public function on_paid_after_failure( \WC_Order $order ): void {
+        $this->note_debited( $order, $this->redemptions->payment_retried( $order, true ), __( 'payment received', 'yayloyalty' ) );
     }
 
     /**

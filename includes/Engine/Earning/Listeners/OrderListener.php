@@ -18,6 +18,7 @@ defined( 'ABSPATH' ) || exit;
  * Routes order statuses to staging, award and reversal. The only class that routes on WooCommerce
  * order status strings; OrderStatus holds the ones read elsewhere. Every handler is safe to re-fire: staging and release are idempotent,
  * and the ledger's UNIQUE idempotency_key guards the award.
+ * A `failed` order returns the points it redeemed; leaving `failed` for a paid status takes them again.
  * Only `completed` awards, by product decision: a store that leaves orders at `processing`
  * must complete them for them to earn. Virtual orders get there from payment_complete().
  */
@@ -27,6 +28,9 @@ final class OrderListener {
     private const LIVE_STATUSES = [ 'pending', 'on-hold', 'processing', 'completed' ];
 
     private const DEAD_STATUSES = [ 'cancelled', 'trash' ];
+
+    /** Where an order that left `failed` must land for its payment to count as received. Not `pending`: pay-for-order debits that one itself. */
+    private const PAID_STATUSES = [ 'on-hold', 'processing', 'completed' ];
 
     private EarningService $service;
 
@@ -60,13 +64,17 @@ final class OrderListener {
     /**
      * Routes on $to, never $order->get_status(): by the time a late callback runs,
      * the order may have moved again. $from also decides whether the order came back
-     * from cancelled or the trash, which is handled before the route.
+     * from cancelled or the trash, or was paid after a failed payment, both handled before the route.
      */
     public function on_status_changed( int $order_id, string $from, string $to, \WC_Order $order ): void {
         Log::debug( 'OrderListener', 'order #' . $order_id . ' ' . $from . ' -> ' . $to );
 
         if ( in_array( $from, self::DEAD_STATUSES, true ) && in_array( $to, self::LIVE_STATUSES, true ) ) {
             $this->restore( $order_id, $order );
+        }
+
+        if ( 'failed' === $from && in_array( $to, self::PAID_STATUSES, true ) ) {
+            ListenerGuard::for_order( 'OrderListener', 'paid after failure', $order_id, fn() => $this->reversals->on_paid_after_failure( $order ) );
         }
 
         $this->route( $order_id, $to, $order );
@@ -118,10 +126,12 @@ final class OrderListener {
             case 'refunded':
                 ListenerGuard::for_order( 'OrderListener', 'refund', $order_id, fn() => $this->reversals->on_status_refunded( $order ) );
                 break;
-            case 'processing':
             case 'failed':
+                ListenerGuard::for_order( 'OrderListener', 'failed', $order_id, fn() => $this->reversals->on_failed( $order ) );
+                break;
+            case 'processing':
             case 'checkout-draft':
-                // Paid but not completed, still payable, or not yet an order: none stages or awards.
+                // Paid but not completed, or not yet an order: neither stages or awards.
                 break;
         }
     }
