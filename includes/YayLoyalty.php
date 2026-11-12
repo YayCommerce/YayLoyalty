@@ -67,7 +67,7 @@ class YayLoyalty {
             \YayLoyalty\Engine\Storefront\Launcher::register();
         } else {
             \YayLoyalty\Engine\Admin\ReviewPointsNote::register();
-            ( new \YayLoyalty\Engine\Admin\OrderCouponRemoval( $redemption->reversal(), new RedemptionRepository(), new RewardRepository() ) )->register();
+            ( new \YayLoyalty\Engine\Admin\OrderCouponRemoval( new RedemptionRepository(), new RewardRepository(), $reconciler ) )->register();
             ( new \YayLoyalty\Engine\Admin\OrderMissingPoints( new LedgerRepository() ) )->register();
         }
     }

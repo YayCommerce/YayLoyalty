@@ -3,24 +3,22 @@ namespace YayLoyalty\Engine\Admin;
 
 use Automattic\WooCommerce\Utilities\OrderUtil;
 use YayLoyalty\Access\Capabilities;
-use YayLoyalty\Engine\Earning\Outcome;
-use YayLoyalty\Engine\Redemption\Reversal;
+use YayLoyalty\Engine\Redemption\RemovedLineReconciler;
 use YayLoyalty\Engine\Storefront\Launcher;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Redemption;
 use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Repositories\RewardRepository;
-use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Lite's order-screen half of the admin-removal restore, for HPOS and legacy storage. Removing a loyalty
- * coupon line whose row still has points to return opens a dialog (assets/admin/order-coupon-removal.js and .css).
- * "Restore" tags WooCommerce's own `woocommerce_remove_order_coupon` request rather than sending one of
- * ours, so WooCommerce keeps doing the removal (taxes, usage count, totals, its note). Inside that request
- * a one-shot listener restores through Reversal::coupon_removed() when WooCommerce's save deletes the line.
- * Every other way a line leaves an order moves no points.
+ * Lite's order-screen half of the removal restore, for HPOS and legacy storage. The server restores a loyalty line's
+ * points however it leaves the order (Redemption\RemovedLineReconciler); this dialog only asks whether to waive that.
+ * Removing a loyalty coupon line whose row still has points to return opens it (assets/admin/order-coupon-removal.js
+ * and .css). "Don't restore" tags WooCommerce's own `woocommerce_remove_order_coupon` request with
+ * `yayloyalty_waive` rather than sending one of ours, so WooCommerce keeps doing the removal (taxes, usage count,
+ * totals, its note); "Restore" sends that request untagged.
  */
 final class OrderCouponRemoval {
 
@@ -30,17 +28,17 @@ final class OrderCouponRemoval {
 
     private const NONCE_FIELD = 'yayloyalty_nonce';
 
-    private Reversal $reversal;
-
     private RedemptionRepository $redemptions;
 
-    /** Read-only: the reward's name for the dialog and the notes. */
+    /** Read-only: the reward's name for the dialog. */
     private RewardRepository $rewards;
 
-    public function __construct( Reversal $reversal, RedemptionRepository $redemptions, RewardRepository $rewards ) {
-        $this->reversal    = $reversal;
+    private RemovedLineReconciler $reconciler;
+
+    public function __construct( RedemptionRepository $redemptions, RewardRepository $rewards, RemovedLineReconciler $reconciler ) {
         $this->redemptions = $redemptions;
         $this->rewards     = $rewards;
+        $this->reconciler  = $reconciler;
     }
 
     public function register(): void {
@@ -108,12 +106,16 @@ final class OrderCouponRemoval {
     }
 
     /**
-     * Priority 1 on WooCommerce's remove-coupon request. Without `yayloyalty_restore` it does nothing. With it, a bad
-     * nonce or a missing capability answers an error WooCommerce's script shows, and WooCommerce's handler never runs.
+     * Priority 1 on WooCommerce's remove-coupon request. It first settles the removal before WooCommerce renders the
+     * notes it answers with: WC_AJAX::remove_order_coupon() runs calculate_totals() again after the line is deleted,
+     * so the restore note shows without a reload. Without `yayloyalty_waive` it does nothing more. With it, a bad nonce
+     * or a missing capability answers an error WooCommerce's script shows, and WooCommerce's handler never runs.
      */
     public function before_remove(): void {
+        add_action( 'woocommerce_order_after_calculate_totals', [ $this->reconciler, 'settle' ] );
+
         // phpcs:ignore WordPress.Security.NonceVerification.Missing -- the flag only decides whether to check our nonce below.
-        if ( empty( $_POST['yayloyalty_restore'] ) ) {
+        if ( empty( $_POST['yayloyalty_waive'] ) ) {
             return;
         }
 
@@ -132,62 +134,7 @@ final class OrderCouponRemoval {
             return;
         }
 
-        $listener = null;
-        $listener = function ( $item_id ) use ( $order_id, $code, &$listener ): void {
-            $item = \WC_Order_Factory::get_order_item( absint( $item_id ) );
-
-            if ( ! $item instanceof \WC_Order_Item_Coupon || (int) $item->get_order_id() !== $order_id || wc_format_coupon_code( $item->get_code() ) !== $code ) {
-                return;
-            }
-
-            remove_action( 'woocommerce_before_delete_order_item', $listener );
-            $this->restore( $order_id, $code );
-        };
-
-        add_action( 'woocommerce_before_delete_order_item', $listener );
-    }
-
-    /** Restores the line's row and notes the result on the order. Never throws, so the line still leaves the order. */
-    private function restore( int $order_id, string $code ): void {
-        $order = wc_get_order( $order_id );
-
-        if ( ! $order instanceof \WC_Order ) {
-            return;
-        }
-
-        $row  = $this->redemptions->find_by_order_and_coupon_code( $order_id, $code );
-        $name = null === $row ? $code : $this->name_of( $row );
-
-        try {
-            $outcome = $this->reversal->coupon_removed( $order, $code );
-        } catch ( \Throwable $e ) {
-            Log::error( self::class, sprintf( 'Restoring order #%d coupon %s failed: %s', $order_id, $code, $e->getMessage() ) );
-            self::note_failure( $order, $name );
-
-            return;
-        }
-
-        if ( null === $outcome ) {
-            return;
-        }
-
-        if ( Outcome::AWARDED === $outcome->get_status() ) {
-            $points = null === $outcome->get_entry() ? 0 : abs( $outcome->get_entry()->get_points() );
-            /* translators: 1: the reward's name, as "$5 off", 2: points, as "500 points". */
-            $order->add_order_note( sprintf( __( '%1$s removed — %2$s restored.', 'yayloyalty' ), $name, SettingsHelper::points_text( $points ) ), 0, true );
-
-            return;
-        }
-
-        if ( Reversal::REASON_KEY_SPENT === $outcome->get_reason() ) {
-            Log::error( self::class, sprintf( 'Restoring order #%d coupon %s found its ledger key spent.', $order_id, $code ) );
-            self::note_failure( $order, $name );
-        }
-    }
-
-    private static function note_failure( \WC_Order $order, string $name ): void {
-        /* translators: %s: the reward's name, as "$5 off". */
-        $order->add_order_note( sprintf( __( '%s removed, but its points could not be restored. Adjust the customer\'s points by hand.', 'yayloyalty' ), $name ), 0, true );
+        $this->reconciler->waive( $order_id, $code );
     }
 
     /** The reward's name; "Reward" once the reward is deleted. */

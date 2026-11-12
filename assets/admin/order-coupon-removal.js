@@ -1,10 +1,11 @@
 /**
  * The order screen's Remove link on a loyalty coupon line: asks whether to return the points the customer
- * spent on it before WooCommerce removes the line.
+ * spent on it before WooCommerce removes the line. The server returns them by default, whatever removes the line;
+ * the dialog only asks whether to waive that.
  *
  * A capture-phase listener stops WooCommerce's own click handler for the codes in
  * window.yayloyaltyCouponRemoval.coupons and opens a dialog. "Restore" and "Don't restore" click the link
- * again through jQuery, so WooCommerce sends its usual request; "Restore" first adds `yayloyalty_restore`
+ * again through jQuery, so WooCommerce sends its usual request; "Don't restore" first adds `yayloyalty_waive`
  * and the nonce through WooCommerce's `woocommerce_order_meta_box_remove_coupon_ajax_data` filter.
  *
  * Plain script, no build step. The data comes from includes/Engine/Admin/OrderCouponRemoval.php.
@@ -19,7 +20,7 @@
     return;
   }
 
-  /** The code the next remove request should restore; consumed by the filter. */
+  /** The code the next remove request should not restore; consumed by the filter. */
   var pending = null;
   /** True while this script clicks the link itself, so the capture listener lets WooCommerce handle it. */
   var resending = false;
@@ -90,12 +91,12 @@
 
     restore.addEventListener("click", function () {
       dialog.close();
-      pending = code;
+      pending = null;
       resend(link);
     });
     keep.addEventListener("click", function () {
       dialog.close();
-      pending = null;
+      pending = code;
       resend(link);
     });
     cancel.addEventListener("click", function () {
@@ -129,10 +130,10 @@
   );
 
   // The code stays in config.coupons: if the request fails, the line stays and its next Remove must ask again.
-  // After a restore succeeds the line is gone, and the order refuses that code again (CouponProvider).
+  // After a removal succeeds the line is gone, and the order refuses that code again (CouponProvider).
   $(ITEMS).on("woocommerce_order_meta_box_remove_coupon_ajax_data", function (event, data) {
     if (pending !== null && data && String(data.coupon).toLowerCase() === pending) {
-      data.yayloyalty_restore = 1;
+      data.yayloyalty_waive = 1;
       data.yayloyalty_nonce = config.nonce;
       pending = null;
     }
