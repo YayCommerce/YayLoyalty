@@ -72,15 +72,10 @@ final class OrderPointsRestController extends AbstractRestController {
 
         $entry = $outcome->get_entry();
 
-        // Refunds made before the grant wrote nothing, as there was no earn row: claw back their share now, as a refund does.
-        // Cumulative, so the latest refund settles every refund so far.
-        $latest_refund = Reversal::refunds( (int) $order->get_id(), 1 )[0] ?? null;
-        $clawed_back   = 0;
+        $clawed_back = 0;
 
-        if ( $latest_refund instanceof \WC_Order_Refund ) {
-            foreach ( Reversal::build()->refund( $order, (int) $latest_refund->get_id() ) as $reversal ) {
-                $clawed_back += $reversal->get_entry() && Outcome::AWARDED === $reversal->get_status() ? -$reversal->get_entry()->get_points() : 0;
-            }
+        foreach ( Reversal::build()->settle_earlier_refunds( $order ) as $reversal ) {
+            $clawed_back += $reversal->get_entry() && Outcome::AWARDED === $reversal->get_status() ? -$reversal->get_entry()->get_points() : 0;
         }
 
         if ( (bool) $request['notify'] ) {

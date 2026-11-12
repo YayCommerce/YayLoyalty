@@ -14,6 +14,7 @@ use YayLoyalty\Engine\Redemption\CouponProvider;
 use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Redemption\Reversal as RedemptionReversal;
 use YayLoyalty\Engine\Redemption\SessionIntent;
+use YayLoyalty\Engine\Storefront\AccountClaimOrder;
 use YayLoyalty\Engine\Storefront\RedeemCard;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
@@ -80,7 +81,7 @@ class YayLoyalty {
     }
 
     /**
-     * Builds the earning composition root and attaches its four listeners. Runs once, at boot.
+     * Builds the earning composition root and attaches its four listeners and the My Points claim form. Runs once, at boot.
      * The order reversal listener also takes the redemption root's reversal: one order event returns redeemed points and claws back earned ones.
      */
     private function register_earning_listeners( RedemptionReversal $redemption_reversal ): void {
@@ -91,8 +92,10 @@ class YayLoyalty {
         $reversal  = Reversal::build();
         $reversals = new OrderReversalListener( $pending, $reversal, $redemption_reversal );
 
-        ( new OrderListener( $service, $pending, $ledger, $reversals ) )->register();
+        $orders = new OrderListener( $service, $pending, $ledger, $reversals );
+        $orders->register();
         $reversals->register();
+        ( new AccountClaimOrder( $orders, $reversal, $ledger ) )->register();
         ( new ReviewListener( $service, $reversal ) )->register();
         ( new SignupListener( $service ) )->register();
     }

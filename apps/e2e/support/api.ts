@@ -85,7 +85,13 @@ export class Api {
     await this.delete(`wp/v2/users/${id}?force=true&reassign=1`);
   }
 
-  async createOrder(customerId: number, lines: OrderLine[], status = 'pending'): Promise<number> {
+  /** A customer id of 0 makes a guest order, billed to `billingEmail`. */
+  async createOrder(
+    customerId: number,
+    lines: OrderLine[],
+    status = 'pending',
+    billingEmail = 'order@example.com',
+  ): Promise<number> {
     const lineItems = await Promise.all(
       lines.map(async (line) => ({ product_id: await this.productId(line.sku), quantity: line.quantity ?? 1 })),
     );
@@ -93,7 +99,7 @@ export class Api {
       customer_id: customerId,
       status,
       payment_method: 'cheque',
-      billing: billingAddress('order@example.com'),
+      billing: billingAddress(billingEmail),
       line_items: lineItems,
     });
 

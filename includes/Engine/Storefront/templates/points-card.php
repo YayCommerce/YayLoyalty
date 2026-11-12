@@ -1,7 +1,8 @@
 <?php
 /**
  * The points card: the My Points tab's balance block, also the launcher panel's and placed by [yayloyalty_balance] and its block.
- * A guest gets a sign-in link where the number would be. A member whose points expire within
+ * A guest gets a sign-in link where the number would be. A member with points held by open orders gets a pending line
+ * under the number (the member's `pending`). A member whose points expire within
  * LauncherPayload::EXPIRING_SOON_DAYS (the member's `expires_at`, set only for a balance above 0) gets a notice under it.
  * Styled by assets/storefront/account/points-card.css.
  *
@@ -57,6 +58,14 @@ if ( null !== $yayloyalty_card_member && null !== $yayloyalty_card_member['worth
                 <span class="yayloyalty-account__balance"><?php echo esc_html( LauncherCopy::points( $yayloyalty_card_member['balance'] ) ); ?></span>
                 <span class="yayloyalty-account__unit"><?php echo esc_html( SettingsHelper::points_label( $yayloyalty_card_member['balance'] ) ); ?></span>
             </p>
+            <?php if ( $yayloyalty_card_member['pending'] > 0 ) : ?>
+                <p class="yayloyalty-account__pending">
+                    <?php
+                    /* translators: %s: points with the store's label, as "180 Points". */
+                    echo esc_html( sprintf( __( '+%s pending, added when your orders are completed.', 'yayloyalty' ), SettingsHelper::points_text( $yayloyalty_card_member['pending'] ) ) );
+                    ?>
+                </p>
+            <?php endif; ?>
             <?php if ( '' !== $yayloyalty_card_caption ) : ?>
                 <p class="yayloyalty-account__caption"><?php echo esc_html( $yayloyalty_card_caption ); ?></p>
             <?php endif; ?>
