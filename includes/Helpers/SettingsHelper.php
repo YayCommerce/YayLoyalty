@@ -34,7 +34,7 @@ class SettingsHelper {
     public const REMINDER_DAYS_MAX = 365;
 
     /** The tier keys. Only the tiers route writes them, behind its own capability, so POST /settings drops them. */
-    public const TIER_KEYS = [ 'tiers_enabled', 'tiers_mode', 'tiers_rolling_months' ];
+    public const TIER_KEYS = [ 'tiers_enabled', 'tiers_mode', 'tiers_rolling_months', 'tiers_calendar_period' ];
 
     /** Bump when a migration changes the stored shape. */
     public const SCHEMA_VERSION = 2;
@@ -54,6 +54,7 @@ class SettingsHelper {
             'tiers_enabled'         => false,
             'tiers_mode'            => TierMode::LIFETIME,
             'tiers_rolling_months'  => TierMode::DEFAULT_ROLLING_MONTHS,
+            'tiers_calendar_period' => TierMode::DEFAULT_CALENDAR_PERIOD,
             'emails'                => [
                 // Weekly per-customer cap on loyalty emails. null means no cap. Engine\Emails\EmailThrottle enforces it.
                 'throttle_per_week' => 3,
@@ -88,6 +89,7 @@ class SettingsHelper {
             'tiers_enabled'         => 'bool',
             'tiers_mode'            => 'tier_mode',
             'tiers_rolling_months'  => 'tier_rolling_months',
+            'tiers_calendar_period' => 'tier_calendar_period',
             'emails'                => [
                 'throttle_per_week' => 'limit',
             ],
@@ -288,6 +290,9 @@ class SettingsHelper {
             case 'tier_rolling_months':
                 return TierMode::is_rolling_months( $value );
 
+            case 'tier_calendar_period':
+                return TierMode::is_calendar_period( $value );
+
             default:
                 return true;
         }
@@ -374,6 +379,9 @@ class SettingsHelper {
 
             case 'tier_rolling_months':
                 return self::is_valid_value( $value, $type ) ? (int) $value : null;
+
+            case 'tier_calendar_period':
+                return self::is_valid_value( $value, $type ) ? (string) $value : null;
 
             case 'points_label':
                 return mb_substr( trim( sanitize_text_field( (string) $value ) ), 0, self::POINTS_LABEL_MAX_LENGTH );
