@@ -31,7 +31,7 @@ This repo uses the **yay** harness. Work through its skills so every developer a
 - Product PHP runs on PHP 7.4+. `.claude/rules/yay-wordpress.md` lists what that rules out.
 <!-- yay:managed:end -->
 
-<!-- yay:project:start ref=472668aa updated=2026-11-12 -->
+<!-- yay:project:start ref=cc2a3e71 updated=2026-11-12 -->
 ## What this is
 A WooCommerce loyalty program: shoppers earn points for orders, sign-ups and reviews, and spend them as a discount at checkout (classic and block). Merchants run it from a React admin SPA under the shared YayCommerce menu. One repo ships two editions: **Pro** (default) and **Lite**, which is Pro without `includes/Pro/` and with the SPA built as `lite`. Pro adds triggers, reward types, batch expiry, birthday points, a daily earning limit, segments and reports, all attached through filters.
 
@@ -71,7 +71,7 @@ Run from the repo root on Node 22 (`nvm use`). pnpm only; `apps/admin` rejects n
 6. Keep Pro values recognisable in Lite (`all_known()`), so a downgraded site doesn't reject stored Pro rows.
 
 ## Tests
-Warranted for money and ledger logic (points math, `LedgerService` writes and balances) and for a fixed bug a test reproduces cheaply. New tests go in `tests/php/unit/` (Brain Monkey), `tests/php/integration/` (WordPress test suite in wp-env) or `tests/js/` (Vitest); run with `yayh test run unit|integration|js|all`. The older `tests/unit/` and `tests/integration/` suites still run with `composer test` and `composer test:integration`.
+Warranted for money and ledger logic (points math, `LedgerService` writes and balances) and for a fixed bug a test reproduces cheaply. New tests go in `tests/php/unit/` (Brain Monkey), `tests/php/integration/` (WordPress test suite in wp-env) or `tests/js/` (Vitest); run with `yayh test run unit|integration|js|all`. The older `tests/unit/` and `tests/integration/` suites still run with `composer test` and `composer test:integration`. Browser specs: `yayh e2e run` (build the `pro` SPA first), flows in docs/knowledge/e2e.md.
 
 ## Read when…
 - adding any function, hook or setting → [docs/knowledge/helpers.md](docs/knowledge/helpers.md) (reuse first)
@@ -80,6 +80,7 @@ Warranted for money and ledger logic (points math, `LedgerService` writes and ba
 - touching `scripts/`, the release, the admin shell, `vendor-prefixed/` or CI → [docs/knowledge/build-release.md](docs/knowledge/build-release.md)
 - adding a money, date or Pro field, or a TypeScript copy of a PHP shape → [docs/knowledge/conventions.md](docs/knowledge/conventions.md)
 - writing or fixing a test → [docs/knowledge/testing.md](docs/knowledge/testing.md)
+- writing or fixing a browser spec → [docs/knowledge/e2e.md](docs/knowledge/e2e.md)
 - touching HPOS, block checkout, coupons, emails or YayMail/YayPricing/YayCurrency → [docs/knowledge/integrations.md](docs/knowledge/integrations.md)
 - a command fails or something behaves oddly → [docs/knowledge/known-issues.md](docs/knowledge/known-issues.md)
 - changing an architectural choice → [docs/knowledge/decisions.md](docs/knowledge/decisions.md)

@@ -25,3 +25,13 @@ if [ "$(wp post list --post_type=product --name=e2e-simple-product --format=coun
 fi
 
 # Plugin-specific data the specs need (settings, pages, products) goes below.
+# AdminShell shows its Licenses page instead of the SPA until a key is stored. A placeholder: WP_HTTP_BLOCK_EXTERNAL
+# (.wp-env.json) keeps it from ever reaching the licence server.
+wp option update yayloyalty_license_key e2e-placeholder
+wp option update yayloyalty_license_info '{"license":"valid","expires":"lifetime"}' --format=json
+# The first-run wizard covers every admin screen until it is finished or exited.
+wp option update yayloyalty_setup_completed 1
+# Virtual, so checkout needs no shipping zone.
+wp wc product update "$(wp post list --post_type=product --name=e2e-simple-product --field=ID)" --virtual=true --user=admin >/dev/null
+# Block and classic checkout prefill the customer's billing address.
+wp wc customer update "$(wp user get customer --field=ID)" --user=admin --billing='{"first_name":"Jane","last_name":"Smith","address_1":"1 Test Street","city":"San Francisco","state":"CA","postcode":"94110","country":"US","email":"customer@example.com","phone":"5550100"}' >/dev/null

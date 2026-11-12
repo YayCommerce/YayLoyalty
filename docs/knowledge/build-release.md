@@ -1,7 +1,7 @@
 ---
 area: build-release
 updated: 2026-11-12
-updated_ref: 472668aa
+updated_ref: cc2a3e71
 covers: [scripts/, .github/workflows/, composer.json, package.json, pnpm-workspace.yaml, .nvmrc, phpcs.xml.dist, scoper.inc.php, readme.txt]
 ---
 

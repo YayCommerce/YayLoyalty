@@ -1,8 +1,8 @@
 ---
 area: known-issues
 updated: 2026-11-12
-updated_ref: 3f6424ea
-covers: [phpcs.xml.dist, YayLoyaltyPluginAdapter.php, tests/, includes/Pro/YayLoyaltyPro.php, includes/Engine/ActDeact.php, includes/Engine/Emails/EmailThrottle.php, includes/Engine/Storefront/, includes/Engine/Earning/Listeners/, includes/Services/CustomerActivityService.php, includes/Helpers/DesignSchema.php]
+updated_ref: cc2a3e71
+covers: [phpcs.xml.dist, YayLoyaltyPluginAdapter.php, tests/integration/bootstrap.php, includes/Pro/YayLoyaltyPro.php, includes/Engine/ActDeact.php, includes/Engine/Emails/EmailThrottle.php, includes/Engine/Storefront/, includes/Engine/Earning/Listeners/, includes/Services/CustomerActivityService.php, includes/Helpers/DesignSchema.php]
 ---
 
 # Known issues
