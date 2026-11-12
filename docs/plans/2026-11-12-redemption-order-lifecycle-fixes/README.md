@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute phases in order. Read this file, then the current phase file. Do not start a phase until the previous phase's exit criterion has been verified and `/yayplancheck` has passed on it.
 
-**Status:** active
+**Status:** done 2026-11-12
 **Goal:** Redeemed and earned points follow the order's money. A declined payment returns the redeemed points, and paying again takes them back. A loyalty line leaving an order by any route returns its points unless the admin chose "Don't restore". Amount-only refunds claw back earned points in proportion.
 **Spec:** [docs/specs/2026-11-12-redemption-order-lifecycle-fixes-design.md](../../specs/2026-11-12-redemption-order-lifecycle-fixes-design.md)
 **Architecture:**
@@ -68,7 +68,7 @@
 |---|---|---|---|
 | 1 | A declined payment returns redeemed points. Paying again takes them back, or is refused when the balance is short. | `composer test:integration -- --filter PaymentFailedTest` prints `OK (` with 0 failures, and the manual decline-then-pay walkthrough in phase 1's exit criterion passes on brandy.test | done 2026-11-12 |
 | 2 | Removing a loyalty line by any route returns its points. "Don't restore" is final. | `composer test:integration -- --filter 'RemovedLineReconcilerTest\|ReversalTest\|LoyaltyCodeOnOrderTest'` prints `OK (`, and `pnpm --filter @yayloyalty/e2e test admin-remove-loyalty-coupon` passes | done 2026-11-12 |
-| 3 | Amount-only refunds claw back earned points. Docs and the decision record are updated. | The spec's criterion 21: `composer test:integration` prints `OK (N tests`, `pnpm --filter @yayloyalty/e2e test` passes, and the three brandy.test walkthroughs pass | pending |
+| 3 | Amount-only refunds claw back earned points. Docs and the decision record are updated. | The spec's criterion 21: `composer test:integration` prints `OK (N tests`, `pnpm --filter @yayloyalty/e2e test` passes, and the three brandy.test walkthroughs pass | done 2026-11-12 |
 
 ## Interface contract
 
