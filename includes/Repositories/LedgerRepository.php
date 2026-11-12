@@ -188,26 +188,122 @@ class LedgerRepository extends AbstractRepository {
      * An order earn is matched by order and campaign (one earn row per
      * trigger, each with its campaign), and nets out ADJUST rows referencing
      * a refund: without them a restored refund would under-claw the next one.
-     * Any other earn is matched by its reference.
+     * Any other earn is matched by its reference. The match rule is
+     * clawback_match_sql(), shared with window_total(). An unsaved earn has
+     * nothing clawed back.
      *
      * @param bool $is_locking False for a read outside a transaction, such as an email check.
      */
     public function sum_refunded_for( LedgerEntry $earn, bool $is_locking = true ): int {
-        if ( null !== $earn->get_order_id() ) {
-            $campaign = null === $earn->get_campaign_id() ? 'campaign_id IS NULL' : 'campaign_id = %d';
-            $scope    = "order_id = %d AND {$campaign} AND (type = %s OR (type = %s AND reference_type = %s))";
-            $values   = array_merge(
-                [ $earn->get_order_id() ],
-                null === $earn->get_campaign_id() ? [] : [ (int) $earn->get_campaign_id() ],
-                [ LedgerType::REFUND_EARN, LedgerType::ADJUST, ReferenceType::REFUND ]
-            );
-        } else {
-            $scope  = 'reference_type = %s AND reference_id = %d AND type = %s';
-            $values = [ (string) $earn->get_reference_type(), (int) $earn->get_reference_id(), LedgerType::REFUND_EARN ];
+        global $wpdb;
+
+        if ( null === $earn->get_id() ) {
+            return 0;
         }
 
+        $table = esc_sql( $this->table() );
         // Locking by default: inside an outer transaction a plain SELECT reads its older snapshot and would over-claw.
-        return max( 0, -$this->sum_points( 'user_id = %d AND ' . $scope, array_merge( [ $earn->get_user_id() ], $values ), $is_locking ) );
+        $lock_sql = $is_locking ? ' LOCK IN SHARE MODE' : '';
+
+        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the table name and the match predicate's literals are escaped; the id is bound.
+        $sum = (int) $wpdb->get_var( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                "SELECT COALESCE(SUM(c.points), 0) FROM `{$table}` c JOIN `{$table}` e ON " . $this->clawback_match_sql( 'c', 'e' ) . " WHERE e.id = %d{$lock_sql}",
+                (int) $earn->get_id()
+            )
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+        return max( 0, -$sum );
+    }
+
+    /**
+     * Net points a user earned in [$from, $to], both bounds inclusive: the signed SUM of
+     * lifetime_earned_types() rows by their attributed date. A row's attributed date is its
+     * created_at, except a clawback's, which is the created_at of the earliest earn row it
+     * reverses (clawback_match_sql()), or its own when none matches. So a refund of an old
+     * order lowers the old window, not the current one. 0 for a guest. Takes no lock: read
+     * after the ledger commit, inside the caller's own transaction.
+     *
+     * @param string $from UTC MySQL datetime.
+     * @param string $to   UTC MySQL datetime.
+     */
+    public function window_total( int $user_id, string $from, string $to ): int {
+        global $wpdb;
+
+        if ( $user_id < 1 ) {
+            return 0;
+        }
+
+        $table      = esc_sql( $this->table() );
+        $types      = LedgerType::lifetime_earned_types();
+        $attributed = 'COALESCE( CASE WHEN ' . $this->clawback_row_sql( 'r' ) . " THEN ( SELECT MIN(e.created_at) FROM `{$table}` e WHERE " . $this->clawback_match_sql( 'r', 'e' ) . ' ) END, r.created_at )';
+
+        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- the table name and the predicate's literals are escaped; every value is bound.
+        return (int) $wpdb->get_var( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                "SELECT COALESCE(SUM(r.points), 0) FROM `{$table}` r
+                 WHERE r.user_id = %d AND r.type IN (" . Sql::in_placeholders( $types ) . ")
+                 AND {$attributed} BETWEEN %s AND %s",
+                array_merge( [ $user_id ], $types, [ $from, $to ] )
+            )
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+    }
+
+    /**
+     * The signed SUM of a user's staff ADJUST rows created strictly after $after. An ADJUST
+     * restoring a refund is a clawback's undo, not a staff change, so it is left out.
+     *
+     * @param string $after UTC MySQL datetime. A row at this exact second is excluded.
+     */
+    public function staff_adjust_since( int $user_id, string $after ): int {
+        if ( $user_id < 1 ) {
+            return 0;
+        }
+
+        return $this->sum_points(
+            'user_id = %d AND type = %s AND ( reference_type IS NULL OR reference_type <> %s ) AND created_at > %s',
+            [ $user_id, LedgerType::ADJUST, ReferenceType::REFUND, $after ]
+        );
+    }
+
+    /**
+     * Whether a ledger row is a clawback, as SQL over alias $row: a REFUND_EARN row, or the
+     * ADJUST row referencing a refund that restores one.
+     *
+     * @param string $row A table alias from this class only, never input.
+     */
+    private function clawback_row_sql( string $row ): string {
+        return sprintf(
+            "( %1\$s.type = '%2\$s' OR ( %1\$s.type = '%3\$s' AND %1\$s.reference_type = '%4\$s' ) )",
+            $row,
+            esc_sql( LedgerType::REFUND_EARN ),
+            esc_sql( LedgerType::ADJUST ),
+            esc_sql( ReferenceType::REFUND )
+        );
+    }
+
+    /**
+     * The one clawback ↔ earn match rule, as SQL over two aliases of this table. A clawback
+     * copies its earn's user, order and campaign, so an order earn is matched by order and
+     * campaign (NULL-safe: one earn row per trigger). Any other earn, such as a review's, is
+     * matched by its reference. Nothing stores the reversed earn's id.
+     *
+     * @param string $claw An alias from this class only, never input.
+     * @param string $earn An alias from this class only, never input.
+     */
+    private function clawback_match_sql( string $claw, string $earn ): string {
+        return $this->clawback_row_sql( $claw ) . sprintf(
+            " AND %2\$s.type = '%3\$s' AND %1\$s.user_id = %2\$s.user_id
+             AND (
+               ( %2\$s.order_id IS NOT NULL AND %1\$s.order_id = %2\$s.order_id AND %1\$s.campaign_id <=> %2\$s.campaign_id )
+               OR ( %2\$s.order_id IS NULL AND %1\$s.reference_type = %2\$s.reference_type AND %1\$s.reference_id = %2\$s.reference_id )
+             )",
+            $claw,
+            $earn,
+            esc_sql( LedgerType::EARN )
+        );
     }
 
     /**

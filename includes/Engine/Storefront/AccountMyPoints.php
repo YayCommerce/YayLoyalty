@@ -4,9 +4,12 @@ namespace YayLoyalty\Engine\Storefront;
 use YayLoyalty\Controllers\Schemas\LedgerQueryArgs;
 use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Register\ScriptName;
+use YayLoyalty\Enums\TierMode;
 use YayLoyalty\Helpers\DesignHelper;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Utils\Dates;
+use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -28,6 +31,9 @@ final class AccountMyPoints {
 
     /** The id of the tab's "Points history" section, so a link can land on it. */
     public const HISTORY_ANCHOR = 'yayloyalty-points-history';
+
+    /** Filters the member's "Your tier" section; see member_tier(). */
+    public const MEMBER_TIER_FILTER = 'yayloyalty_account_member_tier';
 
     /** The one file enqueued: it holds the tokens and @imports each section's file beside it. */
     private const STYLE_PATH = 'assets/storefront/account/rewards-tokens.css';
@@ -207,15 +213,152 @@ final class AccountMyPoints {
     }
 
     /**
-     * @return array{payload: array, earn: array, history: array{rows: array, total: int, page: int, filter: string}}
+     * @return array{payload: array, earn: array, tier: array|null, history: array{rows: array, total: int, page: int, filter: string}}
      */
     private static function view( int $user_id, int $page ): array {
         $card = self::card_view( $user_id );
 
         return $card + [
             'earn'    => LauncherEarnRules::for_viewer( $card['payload'], $user_id ),
+            'tier'    => self::member_tier( $user_id ),
             'history' => self::history_view( $user_id, $page ),
         ];
+    }
+
+    /**
+     * The "Your tier" section's data, or null to print none. A throwing subscriber or a malformed answer is
+     * dropped with a warning, so the rest of the tab still renders.
+     */
+    private static function member_tier( int $user_id ): ?array {
+        try {
+            /**
+             * Filters the member's "Your tier" section on the My Points tab. Internal seam for Pro, not a public API.
+             *
+             * Return null to print nothing, or an array with:
+             * - name, color:   ?string, the member's tier and its '#RRGGBB'; null when they have none.
+             * - multiplier:    ?string, the tier's earn multiplier as a decimal ("1.50"); null when they have none.
+             * - achieved_at:   ?string, UTC MySQL datetime the tier was reached; null when they have none.
+             * - next:          ?array{name: string, threshold: int}, the next tier; null at the top tier.
+             * - progress:      int, the qualifying total shown.
+             * - needed:        int, max( 0, next threshold - progress ); 0 when next is null.
+             * - window_months: ?int, the qualifying window in months; null outside a rolling window.
+             * - period:        ?string, the calendar period whose points count ('month', 'quarter' or 'year'); null
+             *                  outside Calendar.
+             * - held_until:    ?string, UTC MySQL datetime the tier is kept until; null when not held.
+             * - tiers:         non-empty list of array{name: string, color: string, threshold: int, multiplier: string,
+             *                  entry_bonus: int, is_current: bool}, in rank order; at most one is_current.
+             *
+             * @param array|null $tier    Null.
+             * @param int        $user_id The member.
+             */
+            $tier = apply_filters( self::MEMBER_TIER_FILTER, null, $user_id ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+        } catch ( \Throwable $e ) {
+            Log::warning( 'AccountMyPoints', 'member tier failed: ' . $e->getMessage() );
+
+            return null;
+        }
+
+        if ( null === $tier ) {
+            return null;
+        }
+
+        if ( ! self::is_member_tier( $tier ) ) {
+            Log::warning( 'AccountMyPoints', 'member tier malformed' );
+
+            return null;
+        }
+
+        $tiers = [];
+
+        foreach ( $tier['tiers'] as $row ) {
+            $tiers[] = [
+                'name'        => $row['name'],
+                'color'       => $row['color'],
+                'threshold'   => $row['threshold'],
+                'multiplier'  => $row['multiplier'],
+                'entry_bonus' => $row['entry_bonus'],
+                'is_current'  => $row['is_current'],
+            ];
+        }
+
+        return [
+            'name'          => $tier['name'],
+            'color'         => $tier['color'],
+            'multiplier'    => $tier['multiplier'],
+            'achieved_at'   => $tier['achieved_at'],
+            'next'          => null === $tier['next'] ? null : [
+                'name'      => $tier['next']['name'],
+                'threshold' => $tier['next']['threshold'],
+            ],
+            'progress'      => $tier['progress'],
+            'needed'        => $tier['needed'],
+            'window_months' => $tier['window_months'],
+            'period'        => $tier['period'],
+            'held_until'    => $tier['held_until'],
+            'tiers'         => $tiers,
+        ];
+    }
+
+    /** @param mixed $tier A MEMBER_TIER_FILTER answer. */
+    private static function is_member_tier( $tier ): bool {
+        if ( ! is_array( $tier ) ) {
+            return false;
+        }
+
+        foreach ( [ 'name', 'color', 'multiplier', 'achieved_at', 'next', 'progress', 'needed', 'window_months', 'period', 'held_until', 'tiers' ] as $key ) {
+            if ( ! array_key_exists( $key, $tier ) ) {
+                return false;
+            }
+        }
+
+        $next  = $tier['next'];
+        $valid = ( null === $tier['name'] || is_string( $tier['name'] ) )
+            && ( null === $tier['color'] || self::is_color( $tier['color'] ) )
+            && ( null === $tier['multiplier'] || self::is_multiplier( $tier['multiplier'] ) )
+            && ( null === $tier['achieved_at'] || ( is_string( $tier['achieved_at'] ) && Dates::is_valid( $tier['achieved_at'] ) ) )
+            && ( null === $next || ( is_array( $next ) && isset( $next['name'], $next['threshold'] ) && is_string( $next['name'] ) && '' !== $next['name'] && is_int( $next['threshold'] ) && $next['threshold'] >= 0 ) )
+            && is_int( $tier['progress'] ) && $tier['progress'] >= 0
+            && is_int( $tier['needed'] ) && $tier['needed'] >= 0
+            && ( null === $tier['window_months'] || ( is_int( $tier['window_months'] ) && $tier['window_months'] >= 1 ) )
+            && ( null === $tier['period'] || TierMode::is_calendar_period( $tier['period'] ) )
+            && ( null === $tier['held_until'] || ( is_string( $tier['held_until'] ) && Dates::is_valid( $tier['held_until'] ) ) )
+            && is_array( $tier['tiers'] ) && [] !== $tier['tiers'] && array_values( $tier['tiers'] ) === $tier['tiers'];
+
+        if ( ! $valid ) {
+            return false;
+        }
+
+        $current = 0;
+
+        foreach ( $tier['tiers'] as $row ) {
+            if ( ! is_array( $row ) || ! isset( $row['name'], $row['color'], $row['threshold'], $row['multiplier'], $row['entry_bonus'], $row['is_current'] )
+                || ! is_string( $row['name'] ) || ! self::is_color( $row['color'] ) || ! is_int( $row['threshold'] ) || $row['threshold'] < 0
+                || ! self::is_multiplier( $row['multiplier'] ) || ! is_int( $row['entry_bonus'] ) || $row['entry_bonus'] < 0 || ! is_bool( $row['is_current'] ) ) {
+                return false;
+            }
+
+            $current += $row['is_current'] ? 1 : 0;
+        }
+
+        return $current <= 1;
+    }
+
+    /**
+     * A '#RRGGBB' colour; it is printed into a style attribute, where esc_attr() can't stop a CSS declaration.
+     *
+     * @param mixed $color
+     */
+    private static function is_color( $color ): bool {
+        return is_string( $color ) && 1 === preg_match( '/^#[0-9A-Fa-f]{6}$/', $color );
+    }
+
+    /**
+     * A decimal string of at least 1.00, as Tier stores it.
+     *
+     * @param mixed $multiplier
+     */
+    private static function is_multiplier( $multiplier ): bool {
+        return is_string( $multiplier ) && is_numeric( $multiplier ) && (float) $multiplier >= 1.0;
     }
 
     /**

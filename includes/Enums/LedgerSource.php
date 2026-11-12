@@ -21,6 +21,9 @@ final class LedgerSource {
     public const EXPIRY    = 'expiry';
     public const SYSTEM    = 'system';
 
+    /** A tier's one-time entry bonus, written by Pro's TierEvaluator. Lite keeps it so stored rows still validate. */
+    public const TIER_BONUS = 'tier_bonus';
+
     /** @return string[] */
     public static function all(): array {
         return [
@@ -36,6 +39,7 @@ final class LedgerSource {
             self::IMPORT,
             self::EXPIRY,
             self::SYSTEM,
+            self::TIER_BONUS,
         ];
     }
 

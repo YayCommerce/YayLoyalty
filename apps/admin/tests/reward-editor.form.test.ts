@@ -141,6 +141,8 @@ describe('rewardFormSchema bounds mirror the PHP specs', () => {
       config,
       starts_at: null,
       ends_at: null,
+      tier_rule: 'any',
+      tier_id: null,
     };
 
     expect(rewardFormSchema('flexible_discount').safeParse({ ...values, cost_points: null }).success).toBe(true);

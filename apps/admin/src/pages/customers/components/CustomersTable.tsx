@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { __ } from '@wordpress/i18n';
 
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -15,9 +16,9 @@ import { CustomersSortDropdown } from './CustomersSortDropdown';
 import { CustomerTableRow } from './CustomerTableRow';
 
 /** Column count for the header and the "no results" row's colSpan. */
-export function countColumns(showSelection: boolean) {
-  // Six base columns and the checkbox column.
-  return 6 + (showSelection ? 1 : 0);
+export function countColumns(showSelection: boolean, showTiers: boolean) {
+  // Six base columns, the checkbox column and the Tier column.
+  return 6 + (showSelection ? 1 : 0) + (showTiers ? 1 : 0);
 }
 
 /**
@@ -32,6 +33,7 @@ export function CustomersTable({
   noMatchContent,
   sort,
   selection,
+  showTiers,
 }: {
   rows: CustomerListRow[];
   /** No data yet. */
@@ -54,19 +56,22 @@ export function CustomersTable({
     onToggle: (userId: number) => void;
     onToggleAll: () => void;
   };
+  /** Pro with tiers on: the Tier column and its sort. */
+  showTiers: boolean;
 }) {
   const { by: sortBy, dir: sortDir, onChange: onSort } = sort;
   const { enabled: showSelection, header: headerSelection, selected, onToggle: onToggleRow, onToggleAll } = selection;
 
-  const columnCount = countColumns(showSelection);
+  const columnCount = countColumns(showSelection, showTiers);
   const isEmpty = !isLoading && rows.length === 0;
 
   return (
     <>
       {/* Mobile: the sort dropdown stands in for the desktop headers' click-to-sort. */}
       <div className="flex flex-col gap-3 sm:hidden">
-        <CustomersSortDropdown by={sortBy} dir={sortDir} onChange={onSort} disabled={isEmpty} />
+        <CustomersSortDropdown by={sortBy} dir={sortDir} onChange={onSort} disabled={isEmpty} showTiers={showTiers} />
         <CustomersCardList
+          showTiers={showTiers}
           rows={rows}
           isLoading={isLoading}
           isFetching={isFetching}
@@ -101,6 +106,16 @@ export function CustomersTable({
                 onSort={onSort}
                 disabled={isEmpty}
               />
+              {IS_PRO_BUILD && showTiers && (
+                <SortableHead
+                  sortKey="tier"
+                  label={__('Tier', 'yayloyalty')}
+                  sortBy={sortBy}
+                  sortDir={sortDir}
+                  onSort={onSort}
+                  disabled={isEmpty}
+                />
+              )}
               <SortableHead
                 sortKey="balance"
                 label={__('Balance', 'yayloyalty')}
@@ -171,6 +186,7 @@ export function CustomersTable({
                   key={row.user_id}
                   customer={row}
                   showSelection={showSelection}
+                  showTiers={showTiers}
                   selected={selected.has(row.user_id)}
                   onToggle={onToggleRow}
                 />

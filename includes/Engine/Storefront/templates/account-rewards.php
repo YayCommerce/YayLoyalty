@@ -1,6 +1,7 @@
 <?php
 /**
- * My Account → Rewards: the points card, ways to earn and redeem, the guest order claim form, then the points history.
+ * My Account → Rewards: the points card, the member's tier (account-tier.php, Pro only), ways to earn and redeem,
+ * the guest order claim form, then the points history.
  * Styled by assets/storefront/account/account-rewards.css; each partial by the CSS file named after it.
  *
  * @var array $view AccountMyPoints::view().
@@ -16,11 +17,13 @@ defined( 'ABSPATH' ) || exit;
 $yayloyalty_payload = $view['payload'];
 $yayloyalty_card    = $view;
 $yayloyalty_earn    = $view['earn'];
+$yayloyalty_tier    = $view['tier'];
 $yayloyalty_history = $view['history'];
 ?>
 <div class="yayloyalty-account">
     <p class="yayloyalty-account__intro"><?php echo esc_html( AccountMyPoints::intro() ); ?></p>
     <?php require __DIR__ . '/points-card.php'; ?>
+    <?php require __DIR__ . '/account-tier.php'; ?>
     <?php // Both lists print nothing when empty, so one card stands in for the pair. ?>
     <?php if ( LauncherEarnRules::is_empty( $yayloyalty_earn ) && LauncherPayload::redeem_is_empty( $yayloyalty_payload ) ) : ?>
         <?php

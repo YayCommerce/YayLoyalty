@@ -5,6 +5,7 @@ use YayLoyalty\Database\QueryException;
 use YayLoyalty\Enums\LotStatus;
 use YayLoyalty\Models\Customer;
 use YayLoyalty\Utils\Dates;
+use YayLoyalty\Utils\Sql;
 use YayLoyalty\Utils\Table;
 
 defined( 'ABSPATH' ) || exit;
@@ -24,6 +25,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         'lifetime'      => 'c.lifetime_earned',
         'last_activity' => 'c.last_activity_at',
         'expires'       => 'c.expires_at',
+        'tier'          => 'c.tier_id',
     ];
 
     protected function table_slug(): string {
@@ -196,6 +198,119 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
             ],
             [ '%d', '%d', '%s' ]
         );
+    }
+
+    /** The tier columns set_tier_state() may write, with their formats. */
+    private const TIER_COLUMNS = [
+        'tier_id'             => '%d',
+        'tier_evaluated_at'   => '%s',
+        'tier_progress_value' => '%s',
+        'tier_achieved_at'    => '%s',
+        'tier_manual_id'      => '%d',
+        'tier_manual_until'   => '%s',
+        'tier_held_until'     => '%s',
+        'tier_held_from'      => '%s',
+    ];
+
+    /**
+     * The only write to the tier columns. Called only by Pro\Services\TierEvaluator, under the customer row
+     * lock (D20 in the tiers design). A null value writes SQL NULL.
+     *
+     * @param array<string, int|string|null> $columns Any of TIER_COLUMNS' keys.
+     * @throws \InvalidArgumentException When $columns names any other column.
+     * @throws QueryException When the write fails.
+     */
+    public function set_tier_state( int $user_id, array $columns ): void {
+        $unknown = array_diff( array_keys( $columns ), array_keys( self::TIER_COLUMNS ) );
+
+        if ( [] !== $unknown ) {
+            throw new \InvalidArgumentException( esc_html( 'YayLoyalty: set_tier_state() writes tier columns only, not ' . implode( ', ', $unknown ) . '.' ) );
+        }
+
+        if ( [] === $columns ) {
+            return;
+        }
+
+        $format = [];
+
+        foreach ( array_keys( $columns ) as $column ) {
+            $format[] = self::TIER_COLUMNS[ $column ];
+        }
+
+        $this->update( $user_id, $columns, $format );
+    }
+
+    /**
+     * The next customers by ascending user id after $after_user_id, so a batched run can resume.
+     *
+     * @return int[]
+     */
+    public function user_ids_after( int $after_user_id, int $limit ): array {
+        global $wpdb;
+
+        $ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT user_id FROM `' . esc_sql( $this->table() ) . '` WHERE user_id > %d ORDER BY user_id ASC LIMIT %d',
+                $after_user_id,
+                $limit
+            )
+        );
+
+        return array_map( 'intval', is_array( $ids ) ? $ids : [] );
+    }
+
+    /** Customers with a user id up to and including $user_id: a batched run's progress. */
+    public function count_up_to( int $user_id ): int {
+        global $wpdb;
+
+        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT COUNT(*) FROM `' . esc_sql( $this->table() ) . '` WHERE user_id <= %d',
+                $user_id
+            )
+        );
+    }
+
+    /**
+     * Customers whose manual tier floor has an end at or before $now.
+     *
+     * @return int[]
+     */
+    public function floor_ended_user_ids( string $now, int $limit ): array {
+        global $wpdb;
+
+        $ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT user_id FROM `' . esc_sql( $this->table() ) . '`
+                 WHERE tier_manual_id IS NOT NULL AND tier_manual_until IS NOT NULL AND tier_manual_until <= %s
+                 ORDER BY user_id LIMIT %d',
+                $now,
+                $limit
+            )
+        );
+
+        return array_map( 'intval', is_array( $ids ) ? $ids : [] );
+    }
+
+    /**
+     * Customers with a tier whose rolling hold ends at or before $now, earliest end first.
+     *
+     * @return int[]
+     */
+    public function hold_ended_user_ids( string $now, int $limit ): array {
+        global $wpdb;
+
+        $ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT user_id FROM `' . esc_sql( $this->table() ) . '`
+                 WHERE tier_id IS NOT NULL AND tier_held_until IS NOT NULL AND tier_held_until <= %s
+                 ORDER BY tier_held_until, user_id LIMIT %d',
+                $now,
+                $limit
+            )
+        );
+
+        return array_map( 'intval', is_array( $ids ) ? $ids : [] );
     }
 
     /**
@@ -463,7 +578,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
      * This is a read-side exception to the one-table rule, which is about write ownership.
      *
      * @param array<string, mixed>                                      $criteria CustomerRowFilters::to_criteria()'s shape.
-     * @param array{column: string, direction: string, nulls_last: bool} $order    CustomerRowSort::to_order()'s shape.
+     * @param array<string, mixed>                                      $order    CustomerRowSort::to_order()'s shape.
      * @return array{items: array<int, array<string, mixed>>, total: int, page: int, per_page: int}
      */
     public function paginate_list( array $criteria, array $order, int $page, int $per_page ): array {
@@ -481,7 +596,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
             $wpdb->prepare(
                 'SELECT c.user_id, u.display_name AS name, u.user_email AS email,
                         c.balance, c.pending_points, c.lifetime_earned,
-                        c.last_activity_at, c.expires_at
+                        c.last_activity_at, c.expires_at, c.tier_id
                  FROM `' . $table . '` c LEFT JOIN `' . $users . '` u ON u.ID = c.user_id'
                 . $where_sql . ' ORDER BY ' . $this->order_by_sql( $order )
                 . ' LIMIT %d OFFSET %d',
@@ -498,6 +613,28 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
             'page'     => $page,
             'per_page' => $per_page,
         ];
+    }
+
+    /**
+     * Customers per tier, for the tiers that have any.
+     *
+     * @return array<int, int> Tier id => customer count.
+     */
+    public function count_by_tier(): array {
+        global $wpdb;
+
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            'SELECT tier_id, COUNT(*) AS members FROM `' . esc_sql( $this->table() ) . '` WHERE tier_id IS NOT NULL GROUP BY tier_id', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- no values; the table name is escaped.
+            ARRAY_A
+        );
+
+        $counts = [];
+
+        foreach ( (array) $rows as $row ) {
+            $counts[ (int) $row['tier_id'] ] = (int) $row['members'];
+        }
+
+        return $counts;
     }
 
     /**
@@ -559,13 +696,49 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
             );
         }
 
+        $tier_where = $this->tier_where( (array) ( $criteria['tier_ids'] ?? [] ), ! empty( $criteria['tier_none'] ) );
+
+        if ( '' !== $tier_where ) {
+            $where[] = $tier_where;
+        }
+
         return $where;
     }
 
-    /** @param array{column: string, direction: string, nulls_last: bool} $order */
+    /** @param int[] $tier_ids */
+    private function tier_where( array $tier_ids, bool $tier_none ): string {
+        global $wpdb;
+
+        $in = empty( $tier_ids )
+            ? ''
+            : $wpdb->prepare( 'c.tier_id IN (' . Sql::in_placeholders( $tier_ids, '%d' ) . ')', ...$tier_ids ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders -- the IN list is placeholders only.
+
+        if ( '' !== $in && $tier_none ) {
+            return '(' . $in . ' OR c.tier_id IS NULL)';
+        }
+
+        return $tier_none ? 'c.tier_id IS NULL' : $in;
+    }
+
+    /** @param array<string, mixed> $order CustomerRowSort::to_order()'s shape. */
     private function order_by_sql( array $order ): string {
+        global $wpdb;
+
         $column    = self::LIST_ORDER_COLUMNS[ $order['column'] ] ?? self::LIST_ORDER_COLUMNS['balance'];
         $direction = 'ASC' === $order['direction'] ? 'ASC' : 'DESC';
+
+        if ( 'tier' === $order['column'] ) {
+            $tier_ids = array_map( 'intval', (array) ( $order['tier_ids'] ?? [] ) );
+
+            if ( empty( $tier_ids ) ) {
+                return 'c.user_id ASC';
+            }
+
+            // A tier's position in the rank-ordered list; tierless rows last in either direction.
+            return '(c.tier_id IS NULL) ASC, '
+                . $wpdb->prepare( 'FIELD(c.tier_id, ' . Sql::in_placeholders( $tier_ids, '%d' ) . ')', ...$tier_ids ) // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders -- the FIELD list is placeholders only.
+                . ' ' . $direction . ', c.user_id ASC';
+        }
 
         // "(col IS NULL) ASC" puts NULLs last regardless of $direction.
         $nulls_last = $order['nulls_last'] ? "({$column} IS NULL) ASC, " : '';

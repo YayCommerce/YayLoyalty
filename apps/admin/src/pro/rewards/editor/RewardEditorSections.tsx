@@ -1,5 +1,5 @@
-import { ReactNode, useState } from 'react';
-import { Package } from 'lucide-react';
+import { ReactNode, useEffect, useState } from 'react';
+import { InfoIcon, Package, TriangleAlert } from 'lucide-react';
 import { FieldError as HookFieldError, useFormContext, useWatch } from 'react-hook-form';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
@@ -7,18 +7,23 @@ import { numberConfig } from '@/lib/helpers/reward.helper';
 import { useProductSummaryQuery } from '@/lib/queries/lookup.queries';
 import { isCatalogRewardType, RewardType } from '@/lib/schema/reward.schema';
 import { cn } from '@/lib/utils';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { MoneyInput, OptionalMoneyInput, PointsInput } from '@/components/ui/custom/amount-inputs';
 import { EditorSection } from '@/components/ui/custom/editor-section';
+import { ErrorState } from '@/components/ui/custom/error-state';
 import { LookupMultiSelect } from '@/components/ui/custom/lookup-multi-select';
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { FlexibleDiscountConfig, FlexibleDiscountFields } from '@/pages/rewards/FlexibleDiscountFields';
 import { rewardCouponCodeCopy } from '@/pages/rewards/reward-coupon-code.copy';
-import { RewardFormValues } from './reward-editor.form';
+import { TierBadge } from '../../tiers/TierBadge';
+import { useTiersEnabled, useTiersQuery } from '../../tiers/tiers.queries';
+import { RewardFormValues, TierRule } from './reward-editor.form';
 
 /**
  * The editor's sections for one reward type: the built-in's rate settings, or a catalog reward's cost and value.
@@ -41,6 +46,12 @@ export function RewardEditorSections({ type, couponCode }: { type: RewardType; c
       >
         {isCatalog ? <RewardEditorValue type={type} /> : <RewardEditorFlexibleDiscount />}
       </EditorSection>
+
+      {(type === 'fixed_coupon' || type === 'percent_coupon') && (
+        <EditorSection contentClassName="gap-5" step={3} title={__('Tier', 'yayloyalty')}>
+          <RewardEditorTier />
+        </EditorSection>
+      )}
     </div>
   );
 }
@@ -360,6 +371,124 @@ function productStockLabel(status: string, quantity: number | null): { label: st
   }
 
   return { label: __('In stock', 'yayloyalty'), isAvailable: true };
+}
+
+// Tier
+
+const TIER_RULE_LABELS: Record<TierRule, string> = {
+  any: __('Any tier', 'yayloyalty'),
+  gte: __('Minimum tier', 'yayloyalty'),
+  eq: __('Only this tier', 'yayloyalty'),
+};
+
+const TIER_RULE_DESCRIPTIONS: Partial<Record<TierRule, string>> = {
+  gte: __('Only customers in this tier or a higher one see and can claim this reward.', 'yayloyalty'),
+  eq: __('Only customers in this tier see and can claim this reward.', 'yayloyalty'),
+};
+
+function RewardEditorTier() {
+  const { control, setValue, formState } = useFormContext<RewardFormValues>();
+  const tierRule = useWatch({ control, name: 'tier_rule' });
+  const tierId = useWatch({ control, name: 'tier_id' });
+  const tiersQuery = useTiersQuery();
+  const tiersEnabled = useTiersEnabled();
+  const tiers = tiersQuery.data;
+  const isRemoved = tiers !== undefined && tierId !== null && !tiers.some((tier) => tier.id === tierId);
+  const storedId = formState.defaultValues?.tier_id ?? null;
+  const wasRemoved = tiers !== undefined && storedId !== null && !tiers.some((tier) => tier.id === storedId);
+  const description = TIER_RULE_DESCRIPTIONS[tierRule];
+
+  // The server refuses a save naming a deleted tier, so a removed one is cleared; dirtying it lets Save write that.
+  useEffect(() => {
+    if (isRemoved) {
+      setValue('tier_rule', 'any', EDIT);
+      setValue('tier_id', null, EDIT);
+    }
+  }, [isRemoved, setValue]);
+
+  const changeRule = (next: TierRule) => {
+    setValue('tier_rule', next, EDIT);
+
+    if (next === 'any') {
+      setValue('tier_id', null, EDIT);
+    }
+  };
+
+  return (
+    <>
+      {!tiersEnabled && (
+        <Alert variant="outline">
+          <InfoIcon />
+          <AlertDescription>
+            {__(
+              'Tiers are off. Rewards that require a tier are hidden from every customer until you turn tiers on.',
+              'yayloyalty',
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Field orientation="responsive">
+        <FieldLabel htmlFor="reward-tier-rule">{__('Tier rule', 'yayloyalty')}</FieldLabel>
+        <FieldContent>
+          <Select
+            value={tierRule}
+            onValueChange={(next) => changeRule(next as TierRule)}
+            disabled={tiersQuery.isPending || tiersQuery.isError}
+          >
+            <SelectTrigger id="reward-tier-rule" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(TIER_RULE_LABELS) as TierRule[]).map((rule) => (
+                <SelectItem key={rule} value={rule}>
+                  {TIER_RULE_LABELS[rule]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {tiersQuery.isError && (
+            <ErrorState
+              message={__('Could not load the tiers.', 'yayloyalty')}
+              onRetry={() => void tiersQuery.refetch()}
+            />
+          )}
+          {wasRemoved && tierRule === 'any' && (
+            <Alert variant="warning">
+              <TriangleAlert />
+              <AlertDescription>{__('The tier this reward required was removed.', 'yayloyalty')}</AlertDescription>
+            </Alert>
+          )}
+        </FieldContent>
+      </Field>
+
+      {tierRule !== 'any' && (
+        <Field orientation="responsive">
+          <FieldLabel htmlFor="reward-tier-id">{__('Tier', 'yayloyalty')}</FieldLabel>
+          <FieldContent>
+            <Select
+              value={tierId === null ? '' : String(tierId)}
+              onValueChange={(next) => setValue('tier_id', Number(next), EDIT)}
+              disabled={tiersQuery.isPending || tiersQuery.isError}
+            >
+              <SelectTrigger id="reward-tier-id" className="w-full" aria-invalid={!!formState.errors.tier_id}>
+                <SelectValue placeholder={__('Select a tier', 'yayloyalty')} />
+              </SelectTrigger>
+              <SelectContent>
+                {tiers?.map((tier) => (
+                  <SelectItem key={tier.id} value={String(tier.id)}>
+                    <TierBadge name={tier.name} color={tier.color} />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FieldError errors={[formState.errors.tier_id]} />
+            {description && <FieldDescription>{description}</FieldDescription>}
+          </FieldContent>
+        </Field>
+      )}
+    </>
+  );
 }
 
 /* ─── field atoms ────────────────────────────────────────────────────── */

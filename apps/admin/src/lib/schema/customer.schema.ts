@@ -101,6 +101,8 @@ export const customerListRowSchema = z.object({
   lifetime_earned: z.number().int(),
   last_activity_at: z.string().nullable(),
   expires_at: z.string().nullable(),
+  /** May name a deleted tier; null while the customer has no tier. */
+  tier_id: z.number().int().nullable(),
 });
 
 export type CustomerListRow = z.infer<typeof customerListRowSchema>;
@@ -108,8 +110,9 @@ export type CustomerListRow = z.infer<typeof customerListRowSchema>;
 /**
  * GET /customers/{id}: the list row plus the drawer-only aggregates and panels.
  * It carries name and email so a deep link or a refresh has an identity to render.
+ * No `tier_id`: the drawer reads the tier from Pro's own route.
  */
-export const customerSchema = customerListRowSchema.extend({
+export const customerSchema = customerListRowSchema.omit({ tier_id: true }).extend({
   lifetime_redeemed: z.number().int(),
   joined_at: z.string().nullable(),
   updated_at: z.string().nullable(),
@@ -128,7 +131,7 @@ export type Customer = z.infer<typeof customerSchema>;
  * A "which filter to drop" suggestion, mapped in customers-page.filter-suggestions.ts.
  */
 export const noMatchSuggestionSchema = z.object({
-  key: z.enum(['search', 'balance_range', 'expiring_soon']),
+  key: z.enum(['search', 'balance_range', 'expiring_soon', 'tier']),
   count: z.number().int(),
 });
 
@@ -137,7 +140,7 @@ export type NoMatchSuggestion = z.infer<typeof noMatchSuggestionSchema>;
 /** Filter/sort value unions, here because customer.api.ts needs them and lib/ must not import pages/. */
 export type CustomerBalanceRange = 'any' | 'negative' | '0-1000' | '1000-10000' | '10000-plus';
 export type CustomerExpiringSoon = 'off' | '30' | '90' | 'no_expiry';
-export type CustomerSortKey = 'name' | 'balance' | 'pending' | 'lifetime' | 'last_activity' | 'expires';
+export type CustomerSortKey = 'name' | 'balance' | 'pending' | 'lifetime' | 'last_activity' | 'expires' | 'tier';
 export type CustomerSortDirection = 'asc' | 'desc';
 
 /** Request body for POST /customers/{id}/adjust — `adjustLifetime` and `customerNote` map to the wire's `adjust_lifetime` and `customer_note` in customer.api.ts; `notify` goes as is. */
@@ -165,5 +168,5 @@ export type AdjustPointsPreview = z.infer<typeof adjustPointsPreviewSchema>;
  * never imports from `pages/customers/`.
  */
 export type AdjustPointsPreviewInput = {
-  filters?: { search: string; balanceRange: string; expiringSoon: string };
+  filters?: { search: string; balanceRange: string; expiringSoon: string; tier: string };
 };

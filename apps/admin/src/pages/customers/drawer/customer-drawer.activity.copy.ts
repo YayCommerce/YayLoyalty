@@ -81,6 +81,57 @@ export function activityAccountDeletedSubLine(email: string, balanceAtDeletion: 
   );
 }
 
+/** "Bronze → Silver · Earned points"; a removed tier side reads "No tier", and an unknown reason drops the second part. */
+export function activityTierChangedSubLine(fromName: string, toName: string, reason: string): string {
+  const move = sprintf(
+    /* translators: 1: the tier the customer left; 2: the tier they moved to. */
+    __('%1$s → %2$s', 'yayloyalty'),
+    fromName || __('No tier', 'yayloyalty'),
+    toName || __('No tier', 'yayloyalty'),
+  );
+
+  return reason
+    ? sprintf(
+        /* translators: 1: the tier move, such as "Bronze → Silver"; 2: why it happened. */
+        __('%1$s · %2$s', 'yayloyalty'),
+        move,
+        reason,
+      )
+    : move;
+}
+
+/** Labels for TierChangeReason; '' for a reason this build doesn't know. */
+export function tierChangeReasonLabel(reason: string, actorName: string): string {
+  switch (reason) {
+    case 'earn':
+      return __('Earned points', 'yayloyalty');
+    case 'refund':
+      return __('Refund', 'yayloyalty');
+    case 'adjustment':
+      return __('Points adjustment', 'yayloyalty');
+    case 'manual':
+      return sprintf(
+        /* translators: %s: the staff member who assigned the tier. */
+        __('Manual by %s', 'yayloyalty'),
+        actorName,
+      );
+    case 'manual_end':
+      return __('Manual tier ended', 'yayloyalty');
+    case 'threshold_change':
+      return __('Tier thresholds changed', 'yayloyalty');
+    case 'tier_deleted':
+      return __('Tier deleted', 'yayloyalty');
+    case 'placement':
+      return __('Tiers turned on', 'yayloyalty');
+    case 'hold_end':
+      return __('Tier hold ended', 'yayloyalty');
+    case 'mode_change':
+      return __('Tier mode changed', 'yayloyalty');
+    default:
+      return '';
+  }
+}
+
 export const COLUMN_EVENT = () => __('Event', 'yayloyalty');
 export const COLUMN_BY = () => __('By', 'yayloyalty');
 
@@ -90,6 +141,7 @@ export const ACTIVITY_GROUP_ALL = () => __('All', 'yayloyalty');
 export const ACTIVITY_GROUP_ADMIN = () => __('Admin actions', 'yayloyalty');
 export const ACTIVITY_GROUP_EXPIRY = () => __('Expiry', 'yayloyalty');
 export const ACTIVITY_GROUP_EMAILS = () => __('Emails', 'yayloyalty');
+export const ACTIVITY_GROUP_TIERS = () => __('Tier changes', 'yayloyalty');
 
 export const STAFF_ONLY_LABEL = () => __('STAFF ONLY', 'yayloyalty');
 export const AUTOMATIC_ACTOR_LABEL = () => __('Automatic', 'yayloyalty');

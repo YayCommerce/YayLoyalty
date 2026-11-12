@@ -14,11 +14,12 @@ final class Capabilities {
     public const MANAGE_POINTS    = 'yayloyalty_manage_points';
     public const MANAGE_CAMPAIGNS = 'yayloyalty_manage_campaigns';
     public const MANAGE_REWARDS   = 'yayloyalty_manage_rewards';
+    public const MANAGE_TIERS     = 'yayloyalty_manage_tiers';
     public const MANAGE_SETTINGS  = 'yayloyalty_manage_settings';
     public const RUN_TOOLS        = 'yayloyalty_run_tools';
 
     /** Bump when a capability is added or removed, then teach upgrade_roles() the change. */
-    public const VERSION        = 2;
+    public const VERSION        = 3;
     public const VERSION_OPTION = 'yayloyalty_caps_version';
 
     /** @return string[] In display order. */
@@ -28,6 +29,7 @@ final class Capabilities {
             self::MANAGE_POINTS,
             self::MANAGE_CAMPAIGNS,
             self::MANAGE_REWARDS,
+            self::MANAGE_TIERS,
             self::MANAGE_SETTINGS,
             self::RUN_TOOLS,
         ];
@@ -47,6 +49,7 @@ final class Capabilities {
                 self::MANAGE_POINTS,
                 self::MANAGE_CAMPAIGNS,
                 self::MANAGE_REWARDS,
+                self::MANAGE_TIERS,
             ],
         ];
     }
@@ -100,6 +103,15 @@ final class Capabilities {
         if ( $stored < 2 ) {
             foreach ( wp_roles()->role_objects as $role ) {
                 $role->remove_cap( 'yayloyalty_manage_tiers' );
+            }
+        }
+
+        // 3: tiers are back. Whoever runs campaigns runs tiers, custom roles included.
+        if ( $stored < 3 ) {
+            foreach ( wp_roles()->role_objects as $role ) {
+                if ( $role->has_cap( self::MANAGE_CAMPAIGNS ) ) {
+                    $role->add_cap( self::MANAGE_TIERS );
+                }
             }
         }
     }

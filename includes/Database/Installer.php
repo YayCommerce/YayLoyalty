@@ -39,6 +39,7 @@ final class Installer {
             new \YayLoyalty\Database\Schema\RewardsTable(),
             new \YayLoyalty\Database\Schema\CustomerMetaTable(),
             new \YayLoyalty\Database\Schema\RedemptionsTable(),
+            new \YayLoyalty\Database\Schema\TiersTable(),
         ];
 
         /**
@@ -91,10 +92,11 @@ final class Installer {
         }
     }
 
-    /** Seeds every built-in row. Idempotent by slug, with the unique key on slug as the backstop. */
+    /** Seeds every built-in row. Campaigns and the reward are idempotent by slug; tiers seed only into an empty table. */
     private static function seed_builtins(): void {
         self::seed_builtin_campaigns();
         self::seed_builtin_reward();
+        ( new \YayLoyalty\Repositories\TierRepository() )->seed_defaults( \YayLoyalty\Utils\Dates::now() );
     }
 
     /** Seeds the built-in campaigns. Addressed by slug: ids differ between sites. */

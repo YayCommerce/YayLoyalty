@@ -3,6 +3,7 @@ namespace YayLoyalty\Helpers;
 
 use YayLoyalty\Engine\Expiry\ExpiryPolicy;
 use YayLoyalty\Enums\ExpiryMode;
+use YayLoyalty\Enums\TierMode;
 use YayLoyalty\Utils\ConfigSpec;
 
 defined( 'ABSPATH' ) || exit;
@@ -32,6 +33,9 @@ class SettingsHelper {
     /** Most days ahead an expiry reminder may go out. The zod schema mirrors it. */
     public const REMINDER_DAYS_MAX = 365;
 
+    /** The tier keys. Only the tiers route writes them, behind its own capability, so POST /settings drops them. */
+    public const TIER_KEYS = [ 'tiers_enabled', 'tiers_mode', 'tiers_rolling_months', 'tiers_calendar_period' ];
+
     /** Bump when a migration changes the stored shape. */
     public const SCHEMA_VERSION = 2;
 
@@ -46,6 +50,11 @@ class SettingsHelper {
             'max_points_per_day'    => null,
             // Whether YayCurrency's exchange fee is part of a currency's rate. Read by Integrations\YayCurrency\YayCurrencyIntegration.
             'currency_include_fee'  => true,
+            // Read by Pro's tier evaluator. Off until the merchant turns tiers on.
+            'tiers_enabled'         => false,
+            'tiers_mode'            => TierMode::LIFETIME,
+            'tiers_rolling_months'  => TierMode::DEFAULT_ROLLING_MONTHS,
+            'tiers_calendar_period' => TierMode::DEFAULT_CALENDAR_PERIOD,
             'emails'                => [
                 // Weekly per-customer cap on loyalty emails. null means no cap. Engine\Emails\EmailThrottle enforces it.
                 'throttle_per_week' => 3,
@@ -77,6 +86,10 @@ class SettingsHelper {
             'points_label_plural'   => 'points_label',
             'max_points_per_day'    => 'limit',
             'currency_include_fee'  => 'bool',
+            'tiers_enabled'         => 'bool',
+            'tiers_mode'            => 'tier_mode',
+            'tiers_rolling_months'  => 'tier_rolling_months',
+            'tiers_calendar_period' => 'tier_calendar_period',
             'emails'                => [
                 'throttle_per_week' => 'limit',
             ],
@@ -271,6 +284,15 @@ class SettingsHelper {
             case 'on_shorten':
                 return in_array( $value, [ ExpiryPolicy::ON_SHORTEN_KEEP, ExpiryPolicy::ON_SHORTEN_APPLY ], true );
 
+            case 'tier_mode':
+                return TierMode::is_valid( $value );
+
+            case 'tier_rolling_months':
+                return TierMode::is_rolling_months( $value );
+
+            case 'tier_calendar_period':
+                return TierMode::is_calendar_period( $value );
+
             default:
                 return true;
         }
@@ -352,7 +374,14 @@ class SettingsHelper {
             case 'expiry_mode':
             case 'spend_order':
             case 'on_shorten':
+            case 'tier_mode':
                 return self::is_valid_value( $value, $type ) ? $value : null;
+
+            case 'tier_rolling_months':
+                return self::is_valid_value( $value, $type ) ? (int) $value : null;
+
+            case 'tier_calendar_period':
+                return self::is_valid_value( $value, $type ) ? (string) $value : null;
 
             case 'points_label':
                 return mb_substr( trim( sanitize_text_field( (string) $value ) ), 0, self::POINTS_LABEL_MAX_LENGTH );

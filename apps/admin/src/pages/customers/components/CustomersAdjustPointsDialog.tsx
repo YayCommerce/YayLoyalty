@@ -68,6 +68,7 @@ export function CustomersAdjustPointsDialog({
   excludedCount = 0,
   selectionMode = 'partial',
   filters,
+  tierLabel = null,
   rowsOnPage = 0,
   acknowledgementResetKey = 0,
   recountedCount = null,
@@ -90,6 +91,8 @@ export function CustomersAdjustPointsDialog({
   selectionMode?: 'partial' | 'all';
   /** Bulk only, for the filter restatement. */
   filters?: CustomerListFilters;
+  /** Bulk only: the tier filter's choices as text, for the filter restatement. */
+  tierLabel?: string | null;
   /** Bulk only: rows already loaded on the current page, for the "not shown on this page" line. */
   rowsOnPage?: number;
   /** Bulk only: bumped by the caller after a pre-submit count mismatch, to force a fresh consent. */
@@ -273,6 +276,7 @@ export function CustomersAdjustPointsDialog({
             isCountLoading={bulk.usedFilters && source.isLoading}
             selectionMode={selectionMode}
             filters={filters ?? DEFAULT_CUSTOMER_LIST_FILTERS}
+            tierLabel={tierLabel}
             notShownOnPage={bulk.notShownOnPage}
             liabilityPoints={previewData?.liability_points ?? null}
             hasPreviewError={!!source.error}

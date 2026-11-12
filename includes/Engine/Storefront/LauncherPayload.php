@@ -7,6 +7,7 @@ use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Redemption\ProgramGate as RedemptionProgramGate;
 use YayLoyalty\Engine\Rewards\Clamp;
 use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Enums\TierMode;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -26,6 +27,9 @@ final class LauncherPayload {
 
     /** Extra rows for "Ways to redeem", after the points discount. */
     public const REDEEM_OFFERS_FILTER = 'yayloyalty_launcher_redeem_offers';
+
+    /** The member's tier line under the points card in the launcher; member_tier() applies it. */
+    public const MEMBER_TIER_FILTER = 'yayloyalty_launcher_member_tier';
 
     /** A member's points count as expiring soon, for the launcher's dot and the My Points tab's notice, this many days ahead. */
     public const EXPIRING_SOON_DAYS = 30;
@@ -70,7 +74,7 @@ final class LauncherPayload {
         }
 
         $customer = $this->customers->find_by_user_id( $user_id );
-        $payload  = $this->for_balance( $design, null === $customer ? 0 : $customer->get_balance(), EarningService::points_left_today( $user_id ) );
+        $payload  = $this->for_balance( $design, null === $customer ? 0 : $customer->get_balance(), EarningService::points_left_today( $user_id ), $user_id );
 
         if ( null !== $customer && $customer->get_balance() > 0 ) {
             $payload['member']['expires_at'] = self::expiring_soon( $customer->get_expires_at() );
@@ -96,8 +100,10 @@ final class LauncherPayload {
      * @param array    $design  DesignHelper::get_design() or DesignHelper::with_unsaved().
      * @param int|null $balance    The member's balance; null for a guest.
      * @param int|null $left_today Points the member may still earn today (EarningService::points_left_today()); null for no limit.
+     * @param int|null $user_id    The member the offers are listed for; null for a guest and the Design preview,
+     *                             which then see no reward a condition gates.
      */
-    public function for_balance( array $design, ?int $balance, ?int $left_today = null ): array {
+    public function for_balance( array $design, ?int $balance, ?int $left_today = null, ?int $user_id = null ): array {
         $now      = Dates::now();
         $reward   = $this->rewards->find_live_flexible_discount( $now );
         $redeem   = self::redeem_rule( $reward );
@@ -106,14 +112,20 @@ final class LauncherPayload {
         $rules    = null === $engine ? LauncherEarnRules::none() : LauncherEarnRules::advertise( $engine, ContextFactory::for_advert( $now ), null !== $register );
         $estimate = null !== $engine && null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate() : null;
 
+        $member = null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward );
+
+        if ( null !== $member ) {
+            $member['tier'] = self::member_tier( $user_id, $balance );
+        }
+
         return [
             'hide_mobile'       => ! empty( $design['visibility']['hide_on_mobile'] ),
             'earn'              => $rules['earn'],
             'purchase_min'      => $rules['purchase_min'],
             'purchase_rounding' => $rules['purchase_rounding'],
             'redeem'            => $redeem,
-            'offers'            => self::redeem_offers( $now ),
-            'member'            => null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward ),
+            'offers'            => self::redeem_offers( $now, $user_id ),
+            'member'            => $member,
             'left_today'        => $left_today,
             'estimate'          => $estimate,
             // What the estimate takes off an order, as checkout would grant it: null below the minimum.
@@ -141,9 +153,10 @@ final class LauncherPayload {
 
     /**
      * @param Reward|null $reward The cart-discount reward when it is live; null hides the worth.
-     * @return array{balance: int, worth: ?float, expires_at: ?string, pending: int} `expires_at` and `pending` stay empty
-     *         here; build() sets them for a live member: `expires_at` when points expire within EXPIRING_SOON_DAYS, `pending`
-     *         to the points open orders hold until they complete.
+     * @return array{balance: int, worth: ?float, expires_at: ?string, pending: int, tier?: ?array} `expires_at` and `pending`
+     *         stay empty here; build() sets them for a live member: `expires_at` when points expire within
+     *         EXPIRING_SOON_DAYS, `pending` to the points open orders hold until they complete. `tier` is member_tier()'s,
+     *         set by for_balance().
      */
     private static function member( int $balance, ?Reward $reward ): array {
         return [
@@ -214,19 +227,22 @@ final class LauncherPayload {
      * The rows "Ways to redeem" lists after the points discount, in display order; [] when nothing subscribes.
      * A subscriber that throws gives [] and a malformed row is dropped, so neither takes the launcher down.
      *
-     * @param string $now UTC MySQL datetime.
+     * @param string   $now     UTC MySQL datetime.
+     * @param int|null $user_id The member, or null for a guest and the Design preview.
      * @return array<int, array{name: string, cost: int, text: string}>
      */
-    private static function redeem_offers( string $now ): array {
+    private static function redeem_offers( string $now, ?int $user_id ): array {
         try {
             /**
              * Rows for "Ways to redeem" in the launcher and My Account, after the points discount.
-             * Internal seam for Pro, not a public API.
+             * A subscriber leaves out the rewards whose conditions $user_id doesn't meet.
+             * Internal seam for Pro, not a public API; the third argument is internal too.
              *
-             * @param array<int, array{name: string, cost: int, text: string}> $offers Name, cost in points, and one line under the name ('' for none).
-             * @param string                                                   $now    UTC MySQL datetime.
+             * @param array<int, array{name: string, cost: int, text: string}> $offers  Name, cost in points, and one line under the name ('' for none).
+             * @param string                                                   $now     UTC MySQL datetime.
+             * @param int|null                                                 $user_id The member; null for a guest and the Design preview.
              */
-            $offers = (array) apply_filters( self::REDEEM_OFFERS_FILTER, [], $now ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+            $offers = (array) apply_filters( self::REDEEM_OFFERS_FILTER, [], $now, $user_id ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
         } catch ( \Throwable $e ) {
             Log::warning( 'LauncherPayload', 'redeem offers failed: ' . $e->getMessage() );
 
@@ -245,6 +261,91 @@ final class LauncherPayload {
                 }
             )
         );
+    }
+
+    /**
+     * The member's tier line, or null when nothing subscribes. A subscriber that throws or answers a malformed
+     * value gives null, so neither takes the launcher down.
+     *
+     * @param int|null $user_id The member; null for the Design preview.
+     * @param int      $balance The member's balance, or the preview's sample.
+     * @return array{name: ?string, color: ?string, next: ?array{name: string, threshold: int}, progress: int, needed: int, window_months: ?int, period: ?string, held_until: ?string}|null
+     */
+    private static function member_tier( ?int $user_id, int $balance ): ?array {
+        try {
+            /**
+             * The member's tier line in the launcher, printed under the points card by tier-progress.php.
+             * Applied only for a member. Internal seam for Pro, not a public API.
+             *
+             * Return null to print nothing, or an array with:
+             * - name:          ?string, the member's tier; null when they have none (no badge).
+             * - color:         ?string, the tier's '#RRGGBB'; null when they have none.
+             * - next:          ?array{name: string, threshold: int}, the next tier; null at the top tier.
+             * - progress:      int, the qualifying total shown.
+             * - needed:        int, max( 0, next threshold - progress ); 0 when next is null.
+             * - window_months: ?int, the qualifying window in months; null outside a rolling window.
+             * - period:        ?string, the calendar period whose points count ('month', 'quarter' or 'year'); null
+             *                  outside Calendar.
+             * - held_until:    ?string, UTC MySQL datetime the tier is kept until; null when not held.
+             *
+             * @param array|null $tier    Null.
+             * @param int|null   $user_id The member; null for the Design preview.
+             * @param int        $balance The member's balance, or the preview's sample.
+             */
+            $tier = apply_filters( self::MEMBER_TIER_FILTER, null, $user_id, $balance ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+        } catch ( \Throwable $e ) {
+            Log::warning( 'LauncherPayload', 'member tier failed: ' . $e->getMessage() );
+
+            return null;
+        }
+
+        if ( null === $tier ) {
+            return null;
+        }
+
+        if ( ! self::is_member_tier( $tier ) ) {
+            Log::warning( 'LauncherPayload', 'member tier malformed' );
+
+            return null;
+        }
+
+        return [
+            'name'          => $tier['name'],
+            'color'         => $tier['color'],
+            'next'          => null === $tier['next'] ? null : [
+                'name'      => $tier['next']['name'],
+                'threshold' => $tier['next']['threshold'],
+            ],
+            'progress'      => $tier['progress'],
+            'needed'        => $tier['needed'],
+            'window_months' => $tier['window_months'],
+            'period'        => $tier['period'],
+            'held_until'    => $tier['held_until'],
+        ];
+    }
+
+    /** @param mixed $tier A MEMBER_TIER_FILTER answer. */
+    private static function is_member_tier( $tier ): bool {
+        if ( ! is_array( $tier ) ) {
+            return false;
+        }
+
+        foreach ( [ 'name', 'color', 'next', 'progress', 'needed', 'window_months', 'period', 'held_until' ] as $key ) {
+            if ( ! array_key_exists( $key, $tier ) ) {
+                return false;
+            }
+        }
+
+        $next = $tier['next'];
+
+        return ( null === $tier['name'] || is_string( $tier['name'] ) )
+            && ( null === $tier['color'] || is_string( $tier['color'] ) )
+            && ( null === $next || ( is_array( $next ) && isset( $next['name'], $next['threshold'] ) && is_string( $next['name'] ) && '' !== $next['name'] && is_int( $next['threshold'] ) && $next['threshold'] >= 0 ) )
+            && is_int( $tier['progress'] ) && $tier['progress'] >= 0
+            && is_int( $tier['needed'] ) && $tier['needed'] >= 0
+            && ( null === $tier['window_months'] || ( is_int( $tier['window_months'] ) && $tier['window_months'] >= 1 ) )
+            && ( null === $tier['period'] || TierMode::is_calendar_period( $tier['period'] ) )
+            && ( null === $tier['held_until'] || ( is_string( $tier['held_until'] ) && Dates::is_valid( $tier['held_until'] ) ) );
     }
 
     /**

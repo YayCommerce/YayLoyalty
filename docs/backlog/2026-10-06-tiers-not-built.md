@@ -8,22 +8,26 @@
 
 ## Today
 
-v1.0 has no tier UI or logic. Only the stored shape stays:
+Tiers work in Pro:
 
-- `customers` columns `tier_id`, `tier_evaluated_at` and `tier_progress_value`, with `KEY tier_id` (`includes/Database/Schema/CustomersTable.php`). Nothing writes them, and `Models\Customer` does not map them.
-- `ActivityEvent::TIER_CHANGED`. Nothing emits it, and the drawer renders only its title.
-- `CampaignConditionType::TIER` and `RewardConditionType::TIER`, kept out of `all()` by `UNAVAILABLE`. `ConditionsEvaluator` rejects them as `unsupported_condition_type`.
+- Tiers qualify in Lifetime or Rolling mode (3–24 months, with holds), set in Tiers → Qualification.
+- The tier catalogue: the `tiers` table seeded with Bronze, Silver and Gold, the `yayloyalty_manage_tiers` capability (`Capabilities` v3), Pro's tier CRUD routes (`TiersRestController`) and the Pro Tiers page with its on/off switch.
+- `Pro\Services\TierEvaluator` places customers, moves them on ledger writes, pays each tier's entry bonus once and emits `ActivityEvent::TIER_CHANGED`. Catalogue edits and the switch request sweeps that the daily `yayloyalty_tier_run` drains ([the decision record](../decisions/2026-11-04-tier-evaluator-sole-writer.md)).
+- The drawer's tier card assigns and removes a manual tier floor, the activity log has a Tier changes filter, and the Customers list shows, sorts and filters by tier, with the tier kept in saved segments.
+- Every campaign award is multiplied by the customer's tier multiplier (`Pro\Services\TierMultiplier`), and the ledger row records `tier_id` and `tier_multiplier`.
+- Coupon rewards can require a "Minimum tier" or "Only this tier", set in the reward editor: `RewardConditionType::TIER`, enforced by `Pro\Services\RewardTierCondition`. Customers who don't meet it don't see the reward on the redeem card, in the launcher or in My Account, and can't claim it.
+- The launcher's member panel shows the tier badge and progress to the next tier, with the window and hold in Rolling.
+
+Still missing:
+
+- Nothing more for conditions: `CampaignConditionType::TIER` stays in `UNAVAILABLE` by design, so campaigns stay tier-independent ([the tiers master](../specs/2026-11-02-tiers-master-design.md), D9). `ConditionsEvaluator` rejects it as `unsupported_condition_type`.
 - `CustomerFacts::$tier_id`, always null: `CustomerFactsReader` never passes it.
 
-That branch removed these placeholders. Restore them from its squash commit only as a starting point:
+The branch `trace/chore/remove-tiers-referrals` removed these placeholders. Restore them from its squash commit only as a starting point:
 
-- the Tiers page and nav item;
-- the `yayloyalty_manage_tiers` capability (`Capabilities` v2 strips it from roles);
-- the Customers list `tier` filter and the saved-segment `tier` key;
-- the drawer's Assign tier button and the activity log's Tier changes filter;
-- the dashboard's Tier distribution card and its Lite teaser;
-- the Design keys `tier.badges`, `storefront_text.tier_progress_line` and `panel.show_progress_to_next_tier`, with the Tier badges section;
 - the Tier reached, Tier ending soon and Tier lost emails, and the Loyalty: Tiers group.
+
+The dashboard's Tier distribution card and its Lite teaser stay removed: the dashboard shows nothing about tiers, and an entry bonus reads "Bonus points" in its Recent activity.
 
 ## Why it matters
 
@@ -35,12 +39,11 @@ Start from a spec. Tiers need a table with a rank, because the `TIER` conditions
 
 ## Done when
 
-- [ ] A tiers table with a rank exists, and a schema change or data migration ships it.
-- [ ] An evaluator sets `customers.tier_id`, `tier_evaluated_at` and `tier_progress_value`, and emits `ActivityEvent::TIER_CHANGED`.
-- [ ] Merchants can manage tiers on a Tiers page, behind a capability.
-- [ ] The Customers list filters by tier, and saved segments store it.
-- [ ] The drawer shows a customer's tier and lets staff assign one.
-- [ ] The dashboard shows the tier distribution.
-- [ ] The storefront shows tier badges and progress to the next tier, configured in Design.
+- [x] A tiers table with a rank exists, and a schema change or data migration ships it.
+- [x] An evaluator sets `customers.tier_id`, `tier_evaluated_at` and `tier_progress_value`, and emits `ActivityEvent::TIER_CHANGED`.
+- [x] Merchants can manage tiers on a Tiers page, behind a capability.
+- [x] The Customers list filters by tier, and saved segments store it.
+- [x] The drawer shows a customer's tier and lets staff assign one.
+- [x] The launcher shows the tier badge and progress to the next tier.
 - [ ] Tier emails send on a real trigger.
-- [ ] `TIER` leaves `UNAVAILABLE` in both condition types, and `ConditionsEvaluator` evaluates it.
+- [x] `RewardConditionType::TIER` leaves `UNAVAILABLE` and is enforced; `CampaignConditionType::TIER` stays unavailable (master D9).

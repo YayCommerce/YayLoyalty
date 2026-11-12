@@ -7,6 +7,10 @@ defined( 'ABSPATH' ) || exit;
  * A member row: cached aggregates over the user's ledger, rebuildable by
  * replay. balance and lifetime_earned are signed: a refund clawback can
  * legitimately go below zero, and nothing guards against it.
+ *
+ * The tier columns are read-only here: from_row() and the getters map them, while to_row(), get_format() and
+ * to_array() leave them out, so no customer save can overwrite them. Pro's TierEvaluator is their only
+ * writer, through CustomerRepository::set_tier_state().
  */
 class Customer extends AbstractModel {
 
@@ -46,6 +50,30 @@ class Customer extends AbstractModel {
     /** @var string */
     private $updated_at;
 
+    /** @var int|null The effective tier; may name a soft-deleted tier until the next re-evaluation. */
+    private $tier_id;
+
+    /** @var string|null */
+    private $tier_evaluated_at;
+
+    /** @var string|null decimal(19,4) as stored: the qualifying points total at the last evaluation. */
+    private $tier_progress_value;
+
+    /** @var string|null */
+    private $tier_achieved_at;
+
+    /** @var int|null The staff-assigned floor tier. */
+    private $tier_manual_id;
+
+    /** @var string|null NULL with a tier_manual_id means the floor has no end. */
+    private $tier_manual_until;
+
+    /** @var string|null The rolling hold's end. */
+    private $tier_held_until;
+
+    /** @var string|null The rolling hold's start. */
+    private $tier_held_from;
+
     public function __construct(
         int $user_id,
         int $balance = 0,
@@ -58,7 +86,15 @@ class Customer extends AbstractModel {
         string $joined_at = '',
         string $updated_at = '',
         ?int $birthday_month = null,
-        ?int $birthday_day = null
+        ?int $birthday_day = null,
+        ?int $tier_id = null,
+        ?string $tier_evaluated_at = null,
+        ?string $tier_progress_value = null,
+        ?string $tier_achieved_at = null,
+        ?int $tier_manual_id = null,
+        ?string $tier_manual_until = null,
+        ?string $tier_held_until = null,
+        ?string $tier_held_from = null
     ) {
         $this->user_id           = $user_id;
         $this->balance           = $balance;
@@ -72,6 +108,15 @@ class Customer extends AbstractModel {
         $this->updated_at        = $updated_at;
         $this->birthday_month    = $birthday_month;
         $this->birthday_day      = $birthday_day;
+
+        $this->tier_id             = $tier_id;
+        $this->tier_evaluated_at   = $tier_evaluated_at;
+        $this->tier_progress_value = $tier_progress_value;
+        $this->tier_achieved_at    = $tier_achieved_at;
+        $this->tier_manual_id      = $tier_manual_id;
+        $this->tier_manual_until   = $tier_manual_until;
+        $this->tier_held_until     = $tier_held_until;
+        $this->tier_held_from      = $tier_held_from;
     }
 
     public static function from_row( array $row ): self {
@@ -87,7 +132,15 @@ class Customer extends AbstractModel {
             (string) ( $row['joined_at'] ?? '' ),
             (string) ( $row['updated_at'] ?? '' ),
             self::cast_int( $row['birthday_month'] ?? null ),
-            self::cast_int( $row['birthday_day'] ?? null )
+            self::cast_int( $row['birthday_day'] ?? null ),
+            self::cast_int( $row['tier_id'] ?? null ),
+            self::cast_datetime( $row['tier_evaluated_at'] ?? null ),
+            isset( $row['tier_progress_value'] ) ? (string) $row['tier_progress_value'] : null,
+            self::cast_datetime( $row['tier_achieved_at'] ?? null ),
+            self::cast_int( $row['tier_manual_id'] ?? null ),
+            self::cast_datetime( $row['tier_manual_until'] ?? null ),
+            self::cast_datetime( $row['tier_held_until'] ?? null ),
+            self::cast_datetime( $row['tier_held_from'] ?? null )
         );
     }
 
@@ -166,5 +219,37 @@ class Customer extends AbstractModel {
 
     public function get_birthday_day(): ?int {
         return $this->birthday_day;
+    }
+
+    public function get_tier_id(): ?int {
+        return $this->tier_id;
+    }
+
+    public function get_tier_evaluated_at(): ?string {
+        return $this->tier_evaluated_at;
+    }
+
+    public function get_tier_progress_value(): ?string {
+        return $this->tier_progress_value;
+    }
+
+    public function get_tier_achieved_at(): ?string {
+        return $this->tier_achieved_at;
+    }
+
+    public function get_tier_manual_id(): ?int {
+        return $this->tier_manual_id;
+    }
+
+    public function get_tier_manual_until(): ?string {
+        return $this->tier_manual_until;
+    }
+
+    public function get_tier_held_until(): ?string {
+        return $this->tier_held_until;
+    }
+
+    public function get_tier_held_from(): ?string {
+        return $this->tier_held_from;
     }
 }

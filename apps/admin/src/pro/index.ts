@@ -21,6 +21,9 @@ export { CampaignTable } from './campaigns/CampaignTable';
 export { CampaignCreator, CampaignEditor } from './campaigns/editor/CampaignEditor';
 export { CampaignPerformance } from './campaigns/performance/CampaignPerformance';
 export { CustomersSavedSegmentRow } from './customers/CustomersSavedSegmentRow';
+export { CustomerTierCard } from './customers/CustomerTierCard';
+export { CustomersTierCell } from './customers/CustomersTierCell';
+export { CustomersTierFilter, useTierFilterLabel } from './customers/CustomersTierFilter';
 export { DashboardProPanels } from './dashboard/DashboardProPanels';
 export { DesignPanelSection } from './design/DesignPanelSection';
 export { DesignCustomCssSection } from './design/DesignCustomCssSection';
@@ -30,6 +33,10 @@ export { StoreLedger } from './ledger/StoreLedger';
 export { RewardTemplatePicker } from './rewards/add/RewardTemplatePicker';
 export { RewardCreator, RewardEditor } from './rewards/editor/RewardEditor';
 export { RewardTable } from './rewards/RewardTable';
+export { TierCatalog } from './tiers/TierCatalog';
+export { TierModeCard } from './tiers/TierModeCard';
+export { TierSwitchCard } from './tiers/TierSwitchCard';
+export { useTiersEnabled } from './tiers/tiers.queries';
 
 /** Keeps the sentinel reachable code rather than a literal a minifier may discard. */
 export function proBundleMarker(): string {

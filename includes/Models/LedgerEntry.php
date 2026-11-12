@@ -64,6 +64,12 @@ final class LedgerEntry extends AbstractModel {
     /** @var string */
     private $created_at;
 
+    /** @var int|null The tier whose multiplier an earn row was awarded at. */
+    private $tier_id;
+
+    /** @var string|null That multiplier, as "1.25"; null when none applied. */
+    private $tier_multiplier;
+
     public function __construct(
         ?int $id,
         int $user_id,
@@ -80,7 +86,9 @@ final class LedgerEntry extends AbstractModel {
         ?int $actor_id = null,
         string $created_at = '',
         ?string $idempotency_key = null,
-        ?string $customer_note = null
+        ?string $customer_note = null,
+        ?int $tier_id = null,
+        ?string $tier_multiplier = null
     ) {
         $this->id              = $id;
         $this->user_id         = $user_id;
@@ -98,6 +106,8 @@ final class LedgerEntry extends AbstractModel {
         $this->created_at      = $created_at;
         $this->idempotency_key = $idempotency_key;
         $this->customer_note   = $customer_note;
+        $this->tier_id         = $tier_id;
+        $this->tier_multiplier = $tier_multiplier;
     }
 
     public static function from_row( array $row ): self {
@@ -117,7 +127,9 @@ final class LedgerEntry extends AbstractModel {
             self::cast_int( $row['actor_id'] ?? null ),
             (string) ( $row['created_at'] ?? '' ),
             self::cast_string( $row['idempotency_key'] ?? null ),
-            self::cast_string( $row['customer_note'] ?? null )
+            self::cast_string( $row['customer_note'] ?? null ),
+            self::cast_int( $row['tier_id'] ?? null ),
+            self::cast_string( $row['tier_multiplier'] ?? null )
         );
     }
 
@@ -132,6 +144,8 @@ final class LedgerEntry extends AbstractModel {
             'reference_type'  => $this->reference_type,
             'reference_id'    => $this->reference_id,
             'campaign_id'     => $this->campaign_id,
+            'tier_id'         => $this->tier_id,
+            'tier_multiplier' => $this->tier_multiplier,
             'redemption_id'   => $this->redemption_id,
             'order_id'        => $this->order_id,
             'note'            => $this->note,
@@ -143,26 +157,28 @@ final class LedgerEntry extends AbstractModel {
     }
 
     public function get_format(): array {
-        return [ '%d', '%d', '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%d', '%s', '%s' ];
+        return [ '%d', '%d', '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%d', '%d', '%s', '%s', '%d', '%s', '%s' ];
     }
 
     public function to_array(): array {
         return [
-            'id'             => $this->id,
-            'user_id'        => $this->user_id,
-            'points'         => $this->points,
-            'balance_after'  => $this->balance_after,
-            'type'           => $this->type,
-            'source'         => $this->source,
-            'reference_type' => $this->reference_type,
-            'reference_id'   => $this->reference_id,
-            'campaign_id'    => $this->campaign_id,
-            'redemption_id'  => $this->redemption_id,
-            'order_id'       => $this->order_id,
-            'note'           => LedgerType::is_manual_adjustment( $this->type ) ? $this->note : null,
-            'customer_note'  => LedgerSource::MANUAL === $this->source && null !== $this->customer_note ? Text::plain( $this->customer_note ) : null,
-            'actor_id'       => $this->actor_id,
-            'created_at'     => $this->created_at,
+            'id'              => $this->id,
+            'user_id'         => $this->user_id,
+            'points'          => $this->points,
+            'balance_after'   => $this->balance_after,
+            'type'            => $this->type,
+            'source'          => $this->source,
+            'reference_type'  => $this->reference_type,
+            'reference_id'    => $this->reference_id,
+            'campaign_id'     => $this->campaign_id,
+            'tier_id'         => $this->tier_id,
+            'tier_multiplier' => $this->tier_multiplier,
+            'redemption_id'   => $this->redemption_id,
+            'order_id'        => $this->order_id,
+            'note'            => LedgerType::is_manual_adjustment( $this->type ) ? $this->note : null,
+            'customer_note'   => LedgerSource::MANUAL === $this->source && null !== $this->customer_note ? Text::plain( $this->customer_note ) : null,
+            'actor_id'        => $this->actor_id,
+            'created_at'      => $this->created_at,
         ];
     }
 
@@ -217,6 +233,14 @@ final class LedgerEntry extends AbstractModel {
 
     public function get_campaign_id(): ?int {
         return $this->campaign_id;
+    }
+
+    public function get_tier_id(): ?int {
+        return $this->tier_id;
+    }
+
+    public function get_tier_multiplier(): ?string {
+        return $this->tier_multiplier;
     }
 
     public function get_order_id(): ?int {

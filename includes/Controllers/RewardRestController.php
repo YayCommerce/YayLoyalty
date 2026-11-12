@@ -2,11 +2,14 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
+use YayLoyalty\Enums\RewardConditionType;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Reward;
+use YayLoyalty\Models\RewardConditionSet;
 use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Repositories\RewardRepository;
+use YayLoyalty\Repositories\TierRepository;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
@@ -27,9 +30,13 @@ final class RewardRestController extends AbstractRestController {
     /** @var RedemptionRepository */
     private $redemptions;
 
+    /** @var TierRepository Read-only: checks that a TIER condition names a live tier. */
+    private $tiers;
+
     public function __construct( RewardRepository $rewards, RedemptionRepository $redemptions ) {
         $this->rewards     = $rewards;
         $this->redemptions = $redemptions;
+        $this->tiers       = new TierRepository();
     }
 
     public function get_rest_base(): string {
@@ -350,7 +357,7 @@ final class RewardRestController extends AbstractRestController {
         }
 
         if ( isset( $fields['conditions'] ) ) {
-            $checks[] = $this->conditions_error( $fields['conditions'] );
+            $checks[] = $this->conditions_error( $type, $fields['conditions'] );
         }
 
         foreach ( $checks as $error ) {
@@ -382,10 +389,39 @@ final class RewardRestController extends AbstractRestController {
         return null === $conflict ? null : $this->error_invalid_arguments( $conflict );
     }
 
-    private function conditions_error( array $conditions ): ?\WP_Error {
-        return Reward::conditions_are_valid( $conditions )
-            ? null
-            : $this->error_invalid_arguments( __( 'The reward conditions are malformed.', 'yayloyalty' ) );
+    /**
+     * Structure first, then the TIER entry's two rules, whichever tier rule it holds: only coupon
+     * rewards may require a tier, and the tier must be live. On update, $type is the stored row's type.
+     */
+    private function conditions_error( string $type, array $conditions ): ?\WP_Error {
+        if ( ! Reward::conditions_are_valid( $conditions ) ) {
+            return $this->error_invalid_arguments( __( 'The reward conditions are malformed.', 'yayloyalty' ) );
+        }
+
+        $tier_id = self::required_tier_id( $conditions );
+
+        if ( null === $tier_id ) {
+            return null;
+        }
+
+        if ( ! in_array( $type, [ RewardType::FIXED_COUPON, RewardType::PERCENT_COUPON ], true ) ) {
+            return $this->error_invalid_arguments( __( 'Only coupon rewards can require a tier.', 'yayloyalty' ) );
+        }
+
+        return null === $this->tiers->find_live( $tier_id )
+            ? $this->error_invalid_arguments( __( 'That tier no longer exists.', 'yayloyalty' ) )
+            : null;
+    }
+
+    /**
+     * The tier id of the list's TIER entry, or null without one. Call only on a list that passed conditions_are_valid().
+     *
+     * @param array<int, mixed> $conditions
+     */
+    private static function required_tier_id( array $conditions ): ?int {
+        $condition = RewardConditionSet::from_array( $conditions )->find( RewardConditionType::TIER );
+
+        return null === $condition ? null : (int) $condition->get_value();
     }
 
     private static function apply_update( Reward $reward, array $changes ): void {

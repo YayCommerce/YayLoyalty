@@ -31,6 +31,31 @@ final class Dates {
         return $at->setTimezone( new \DateTimeZone( 'UTC' ) )->format( self::MYSQL_FORMAT );
     }
 
+    /**
+     * A UTC MySQL DATETIME moved by calendar months (negative to go back), with PHP's month overflow:
+     * Aug 31 + 6 months is Mar 3 in a non-leap year.
+     */
+    public static function add_months( string $utc, int $months ): string {
+        return ( new \DateTimeImmutable( $utc, new \DateTimeZone( 'UTC' ) ) )
+            ->modify( sprintf( '%+d months', $months ) )
+            ->format( self::MYSQL_FORMAT );
+    }
+
+    /** The whole calendar months from one UTC DATETIME to a later one; 0 when $to_utc is not later. */
+    public static function whole_months_between( string $from_utc, string $to_utc ): int {
+        $utc  = new \DateTimeZone( 'UTC' );
+        $from = new \DateTimeImmutable( $from_utc, $utc );
+        $to   = new \DateTimeImmutable( $to_utc, $utc );
+
+        if ( $to <= $from ) {
+            return 0;
+        }
+
+        $diff = $from->diff( $to );
+
+        return $diff->y * 12 + $diff->m;
+    }
+
     public static function to_timestamp( string $utc ): int {
         return (int) strtotime( $utc . ' UTC' );
     }

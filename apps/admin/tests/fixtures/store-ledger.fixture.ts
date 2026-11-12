@@ -16,6 +16,7 @@ export function storeLedgerEntry(overrides: Partial<StoreLedgerEntry> = {}): Sto
     order_id: 751,
     note: null,
     customer_note: null,
+    tier_name: null,
     actor_id: null,
     created_at: '2026-10-12 02:28:53',
     customer_name: 'Ada Lovelace',

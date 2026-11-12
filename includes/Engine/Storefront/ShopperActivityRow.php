@@ -6,6 +6,7 @@ use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\LedgerEntry;
+use YayLoyalty\Repositories\TierRepository;
 use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Text;
 
@@ -29,11 +30,12 @@ final class ShopperActivityRow {
     public static function items( array $entries ): array {
         $store = Text::store_name();
         $label = SettingsHelper::points_label_plural();
+        $tiers = self::tier_names( $entries );
         $items = [];
 
         foreach ( $entries as $entry ) {
             $items[] = [
-                'label' => self::label( $entry, $store, $label ),
+                'label' => self::label( $entry, $store, $label, $tiers ),
                 'meta'  => self::meta_line( $entry->get_created_at(), $entry->get_order_id() ),
                 'delta' => LauncherCopy::signed_points( $entry->get_points() ),
                 'tone'  => self::tone( $entry->get_type(), $entry->get_points() ),
@@ -63,6 +65,7 @@ final class ShopperActivityRow {
     public static function history_rows( array $entries ): array {
         $store  = Text::store_name();
         $label  = SettingsHelper::points_label_plural();
+        $tiers  = self::tier_names( $entries );
         $orders = [];
         $rows   = [];
 
@@ -77,7 +80,7 @@ final class ShopperActivityRow {
             $rows[] = [
                 'created_at' => $entry->get_created_at(),
                 'type'       => $entry->get_type(),
-                'label'      => self::label( $entry, $store, $label ),
+                'label'      => self::label( $entry, $store, $label, $tiers ),
                 'order'      => null === $order_id ? '' : $orders[ $order_id ]['number'],
                 'order_url'  => null === $order_id ? '' : $orders[ $order_id ]['url'],
                 'points'     => $entry->get_points(),
@@ -89,13 +92,33 @@ final class ShopperActivityRow {
     }
 
     /**
-     * @param string $store_name   Shown on adjustments without a customer note ("Adjustment by {store}").
-     * @param string $points_label The merchant's plural points label, as "Points".
+     * The names of the tiers these rows' entry bonuses were paid for, in one query. Tiers are soft-deleted,
+     * so a bonus keeps its label after its tier is removed, and on Lite.
+     *
+     * @param LedgerEntry[] $entries
+     * @return array<int, string> Tier id => name.
      */
-    private static function label( LedgerEntry $entry, string $store_name, string $points_label ): string {
+    private static function tier_names( array $entries ): array {
+        $ids = [];
+
+        foreach ( $entries as $entry ) {
+            if ( LedgerSource::TIER_BONUS === $entry->get_source() && null !== $entry->get_reference_id() ) {
+                $ids[] = $entry->get_reference_id();
+            }
+        }
+
+        return ( new TierRepository() )->names_by_id( $ids );
+    }
+
+    /**
+     * @param string             $store_name   Shown on adjustments without a customer note ("Adjustment by {store}").
+     * @param string             $points_label The merchant's plural points label, as "Points".
+     * @param array<int, string> $tier_names   From tier_names().
+     */
+    private static function label( LedgerEntry $entry, string $store_name, string $points_label, array $tier_names ): string {
         switch ( $entry->get_type() ) {
             case LedgerType::EARN:
-                return self::earn_label( $entry->get_source(), $points_label );
+                return self::earn_label( $entry, $points_label, $tier_names );
 
             case LedgerType::REDEEM:
                 /* translators: %s: the store's points label, as "Points". */
@@ -132,8 +155,9 @@ final class ShopperActivityRow {
         }
     }
 
-    private static function earn_label( string $source, string $points_label ): string {
-        switch ( $source ) {
+    /** @param array<int, string> $tier_names From tier_names(). */
+    private static function earn_label( LedgerEntry $entry, string $points_label, array $tier_names ): string {
+        switch ( $entry->get_source() ) {
             case LedgerSource::ORDER:
                 /* translators: %s: the store's points label, as "Points". */
                 return sprintf( __( '%s earned from an order', 'yayloyalty' ), $points_label );
@@ -147,6 +171,14 @@ final class ShopperActivityRow {
 
             case LedgerSource::BIRTHDAY:
                 return __( 'Birthday bonus', 'yayloyalty' );
+
+            case LedgerSource::TIER_BONUS:
+                $name = $tier_names[ (int) $entry->get_reference_id() ] ?? '';
+
+                return '' === $name
+                    ? __( 'Tier bonus', 'yayloyalty' )
+                    /* translators: %s: the tier's name. */
+                    : sprintf( __( '%s tier bonus', 'yayloyalty' ), $name );
 
             default:
                 /* translators: %s: the store's points label, as "Points". */

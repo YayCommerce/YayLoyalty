@@ -23,6 +23,7 @@ import EmailsSettingsPage from './pages/settings/EmailsSettingsPage';
 import ExpirySettingsPage from './pages/settings/ExpirySettingsPage';
 import GeneralSettingsPage from './pages/settings/GeneralSettingsPage';
 import SettingsLayout from './pages/settings/SettingsLayout';
+import TiersPage from './pages/tiers/TiersPage';
 
 /**
  * A route the user cannot reach 404s inside the SPA rather than rendering an
@@ -98,6 +99,10 @@ export function getManagerRouter() {
         {
           path: 'rewards/:id/edit',
           element: guarded(CAP.MANAGE_REWARDS, <RewardEditorPage />),
+        },
+        {
+          path: 'tiers',
+          element: guarded(CAP.MANAGE_TIERS, <TiersPage />),
         },
         {
           path: 'settings',

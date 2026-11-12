@@ -14,7 +14,7 @@ export function describeLedgerEntry(entry: LedgerEntry): string {
 
   switch (entry.type) {
     case 'earn':
-      return describeEarn(entry);
+      return withTierMultiplier(describeEarn(entry), entry);
 
     case 'redeem':
       return __('Redeemed for a reward', 'yayloyalty');
@@ -37,6 +37,28 @@ export function describeLedgerEntry(entry: LedgerEntry): string {
     default:
       return __('Balance change', 'yayloyalty');
   }
+}
+
+/** Appends the tier multiplier an earn row was awarded at, as "Earned on order #12 · Silver ×1.25". */
+function withTierMultiplier(label: string, entry: LedgerEntry): string {
+  if (!entry.tier_multiplier) {
+    return label;
+  }
+
+  return entry.tier_name
+    ? sprintf(
+        /* translators: 1: what the points were earned for, 2: the tier's name, 3: the multiplier, e.g. "1.25". */
+        __('%1$s · %2$s ×%3$s', 'yayloyalty'),
+        label,
+        entry.tier_name,
+        entry.tier_multiplier,
+      )
+    : sprintf(
+        /* translators: 1: what the points were earned for, 2: the multiplier, e.g. "1.25". */
+        __('%1$s · ×%2$s', 'yayloyalty'),
+        label,
+        entry.tier_multiplier,
+      );
 }
 
 function describeEarn(entry: LedgerEntry): string {
@@ -64,6 +86,15 @@ function describeEarn(entry: LedgerEntry): string {
 
     case 'import':
       return __('Imported balance', 'yayloyalty');
+
+    case 'tier_bonus':
+      return entry.tier_name
+        ? sprintf(
+            /* translators: %s: the tier's name. */
+            __('%s tier bonus', 'yayloyalty'),
+            entry.tier_name,
+          )
+        : __('Tier bonus', 'yayloyalty');
 
     default:
       return __('Points earned', 'yayloyalty');

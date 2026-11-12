@@ -1,4 +1,5 @@
 import { keepPreviousData, queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/react-query';
 
 import {
   getCustomerActivity,
@@ -111,17 +112,20 @@ export function useAdjustPointsMutation(userId: number) {
   return useMutation({
     mutationKey: ['customer', 'adjust', userId],
     mutationFn: (input: AdjustPointsInput) => adjustCustomerPoints(userId, input),
-    onSuccess: () => {
-      // The list too, or the row shows the old balance until staleTime lapses.
-      queryClient.invalidateQueries({ queryKey: customerKeyPrefix('detail', userId) });
-      queryClient.invalidateQueries({ queryKey: customerKeyPrefix('ledger', userId) });
-      // An adjustment writes a `points_adjusted` activity row.
-      queryClient.invalidateQueries({ queryKey: customerKeyPrefix('activity', userId) });
-      queryClient.invalidateQueries({ queryKey: ['customer', 'list'] });
-      // The store-wide ledger, when the drawer is open over it.
-      queryClient.invalidateQueries({ queryKey: ['customer', 'store-ledger'] });
-    },
+    onSuccess: () => invalidateCustomerViews(queryClient, userId),
   });
+}
+
+/** Refreshes every view of one customer after a write that moves their points, ledger or activity. */
+export function invalidateCustomerViews(queryClient: QueryClient, userId: number) {
+  // The list too, or the row shows the old balance until staleTime lapses.
+  void queryClient.invalidateQueries({ queryKey: customerKeyPrefix('detail', userId) });
+  void queryClient.invalidateQueries({ queryKey: customerKeyPrefix('ledger', userId) });
+  // A write such as an adjustment adds an activity row.
+  void queryClient.invalidateQueries({ queryKey: customerKeyPrefix('activity', userId) });
+  void queryClient.invalidateQueries({ queryKey: ['customer', 'list'] });
+  // The store-wide ledger, when the drawer is open over it.
+  void queryClient.invalidateQueries({ queryKey: ['customer', 'store-ledger'] });
 }
 
 /**

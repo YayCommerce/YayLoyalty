@@ -2,17 +2,20 @@
 namespace YayLoyalty\Engine\Rewards;
 
 use YayLoyalty\Engine\Points\Context as EarnContext;
+use YayLoyalty\Models\Customer;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CustomerReader;
+use YayLoyalty\Repositories\TierRepository;
 use YayLoyalty\Utils\CurrencyRate;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Builds the claim Context from WooCommerce and the customer row — the one
- * class on the quote path allowed to touch either, and it can only read:
- * it depends on CustomerReader, which has no write method. The
+ * Builds the claim Context from WooCommerce, the customer row and the tiers
+ * table — the one class on the quote path allowed to touch them, and it can
+ * only read: it depends on CustomerReader, which has no write method, and
+ * calls only TierRepository's find methods. The
  * subtotal it reports is net of every other coupon, so the clamp's cart
  * ceiling is what the customer would actually pay.
  */
@@ -20,8 +23,36 @@ final class ContextFactory {
 
     private CustomerReader $customers;
 
+    private TierRepository $tiers;
+
     public function __construct( CustomerReader $customers ) {
         $this->customers = $customers;
+        $this->tiers     = new TierRepository();
+    }
+
+    /**
+     * The conditions gate's facts for $user_id. Postconditions: null for a guest; {0, null, 0}
+     * for a user without a customer row; otherwise the row's lifetime_earned and tier_id, and
+     * the rank of that tier while it is live, else 0 (a deleted tier ranks nowhere).
+     */
+    public function facts_for( ?int $user_id ): ?RewardFacts {
+        if ( null === $user_id ) {
+            return null;
+        }
+
+        return $this->facts_of( $this->customers->find_by_user_id( $user_id ) );
+    }
+
+    /** facts_for() for a signed-in user's already-loaded row, so from_cart() reads it once. */
+    private function facts_of( ?Customer $customer ): RewardFacts {
+        if ( null === $customer ) {
+            return new RewardFacts( 0, null, 0 );
+        }
+
+        $tier_id = $customer->get_tier_id();
+        $tier    = null === $tier_id ? null : $this->tiers->find_live( $tier_id );
+
+        return new RewardFacts( $customer->get_lifetime_earned(), $tier_id, null === $tier ? 0 : $tier->get_tier_rank() );
     }
 
     /**
@@ -44,8 +75,7 @@ final class ContextFactory {
             $this->discountable_amount( $cart ),
             $currency,
             Dates::now(),
-            // TODO(redemption): pass customer facts when the Pro conditions gate lands.
-            null,
+            null === $user_id ? null : $this->facts_of( $customer ),
             $cart,
             CurrencyRate::rate( $currency )
         );
@@ -73,7 +103,7 @@ final class ContextFactory {
             max( 0.0, $this->items_subtotal( $order ) - ( $this->coupon_discounts_of( $order ) - $ours ) ),
             $order->get_currency(),
             Dates::now(),
-            null,
+            $this->facts_for( $user_id > 0 ? $user_id : null ),
             null,
             $rate
         );
@@ -103,7 +133,7 @@ final class ContextFactory {
             max( 0.0, $this->items_subtotal( $order ) - ( $this->coupon_discounts_of( $order ) - $loyalty ) ),
             $order->get_currency(),
             Dates::now(),
-            null,
+            $this->facts_for( $user_id > 0 ? $user_id : null ),
             null,
             CurrencyRate::rate( $order->get_currency(), $order )
         );
