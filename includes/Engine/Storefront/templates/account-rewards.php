@@ -1,7 +1,7 @@
 <?php
 /**
  * My Account → Rewards: the points card, the member's tier (account-tier.php, Pro only), ways to earn and redeem,
- * then the points history.
+ * the guest order claim form, then the points history.
  * Styled by assets/storefront/account/account-rewards.css; each partial by the CSS file named after it.
  *
  * @var array $view AccountMyPoints::view().
@@ -34,5 +34,6 @@ $yayloyalty_history = $view['history'];
         <?php require __DIR__ . '/ways-to-earn.php'; ?>
         <?php require __DIR__ . '/ways-to-redeem.php'; ?>
     <?php endif; ?>
+    <?php require __DIR__ . '/claim-order.php'; ?>
     <?php require __DIR__ . '/points-history.php'; ?>
 </div>
