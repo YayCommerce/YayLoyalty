@@ -56,7 +56,15 @@
     "build": "./scripts/run.sh build",
     "lint": "composer lint",
     "test": "composer test",
-    "package": "./scripts/run.sh release {edition} {version} --no-prompt"
+    "package": "./scripts/run.sh release {edition} {version} --no-prompt",
+    "e2e": "cd tests/e2e && ./node_modules/.bin/playwright test",
+    "e2e-install": "cd tests/e2e && pnpm install --ignore-workspace && ./node_modules/.bin/playwright install chromium",
+    "e2e-start": "cd tests/e2e && ./node_modules/.bin/wp-env start",
+    "e2e-stop": "cd tests/e2e && ./node_modules/.bin/wp-env stop",
+    "e2e-reset": "cd tests/e2e && ./node_modules/.bin/wp-env clean all",
+    "test-unit": "vendor/bin/phpunit -c tests/php/unit.xml.dist",
+    "test-integration": "cd tests/e2e && ./node_modules/.bin/wp-env run tests-cli --env-cwd=wp-content/plugins/yayloyalty vendor/bin/phpunit -c tests/php/integration.xml.dist",
+    "test-js": "./node_modules/.bin/vitest run --config tests/js/vitest.config.mjs"
   },
   "package": {
     "output": "release/*.zip",
@@ -93,5 +101,13 @@
     "notesDir": "docs/releases"
   },
   "checks": [],
-  "keep": []
+  "keep": [],
+  "e2e": {
+    "dir": "tests/e2e"
+  },
+  "tests": {
+    "php": "tests/php",
+    "js": "tests/js",
+    "jsRunner": "vitest"
+  }
 }

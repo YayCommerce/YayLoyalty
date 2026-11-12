@@ -1,13 +1,13 @@
 ---
 area: conventions
 updated: 2026-11-12
-updated_ref: 3f6424ea
-covers: [includes/Utils/, includes/Models/AbstractModel.php, includes/Helpers/SettingsHelper.php, includes/Controllers/BaseRestController.php, includes/Enums/, tests/, apps/e2e/, phpunit.xml.dist, phpunit-integration.xml.dist]
+updated_ref: 472668aa
+covers: [includes/Utils/, includes/Models/AbstractModel.php, includes/Helpers/SettingsHelper.php, includes/Controllers/BaseRestController.php, includes/Enums/]
 ---
 
 # Conventions
 
-> Update when: a house rule for money, dates, Pro data, TypeScript copies, wire shapes, hooks or tests changes.
+> Update when: a house rule for money, dates, Pro data, TypeScript copies, wire shapes or hooks changes.
 
 ## Money and points
 
@@ -52,9 +52,4 @@ covers: [includes/Utils/, includes/Models/AbstractModel.php, includes/Helpers/Se
 
 ## Tests
 
-| Suite | Command | Setup |
-|---|---|---|
-| PHP unit, no WordPress | `composer test` (`--filter <Name>` for one) | `tests/bootstrap.php` shims WP functions; base class `tests/unit/EngineTestCase.php` |
-| PHP integration | `composer test:integration` | Runs inside the WordPress site this plugin is installed in, plugin active. Tables move under scratch prefix `ylit_`; `IntegrationTestCase` truncates before each test instead of rolling back, because the code under test opens its own transactions |
-| SPA | `pnpm --filter @yayloyalty/admin-page test` | Vitest, node environment |
-| Browser | `pnpm --filter @yayloyalty/e2e env:start`, then `pnpm --filter @yayloyalty/e2e test` | wp-env on :8889 (`apps/e2e/.wp-env.json`), seeded by `apps/e2e/bin/setup.sh`; needs a built `pro` SPA; one worker because specs share store settings |
+Layers, helpers and the coverage map are in [testing.md](testing.md).

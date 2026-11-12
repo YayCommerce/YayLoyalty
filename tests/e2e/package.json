@@ -1,0 +1,20 @@
+{
+  "name": "yayloyalty-e2e",
+  "private": true,
+  "description": "End-to-end tests for YayLoyalty — Points,  Rewards,  Referral & VIP for WooCommerce: Playwright against a wp-env site. Set up by /yay:e2e-init.",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report",
+    "env:start": "wp-env start",
+    "env:stop": "wp-env stop",
+    "env:reset": "wp-env clean all",
+    "env:logs": "wp-env logs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "@types/node": "^20.0.0",
+    "@wordpress/env": "^11.7.0"
+  }
+}

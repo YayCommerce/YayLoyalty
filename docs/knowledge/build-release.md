@@ -1,7 +1,7 @@
 ---
 area: build-release
 updated: 2026-11-12
-updated_ref: 3f6424ea
+updated_ref: 472668aa
 covers: [scripts/, .github/workflows/, composer.json, package.json, pnpm-workspace.yaml, .nvmrc, phpcs.xml.dist, scoper.inc.php, readme.txt]
 ---
 
@@ -11,7 +11,7 @@ covers: [scripts/, .github/workflows/, composer.json, package.json, pnpm-workspa
 
 ## Toolchain
 
-- Node 22 (`.nvmrc`, `engines`), pnpm pinned by `packageManager` (`package.json`); workspaces `apps/admin`, `apps/e2e`. `apps/admin` runs `npx only-allow pnpm` on install.
+- Node 22 (`.nvmrc`, `engines`), pnpm pinned by `packageManager` (`package.json`); workspace `apps/admin`; `tests/e2e/` is a separate package installed with `--ignore-workspace`. `apps/admin` runs `npx only-allow pnpm` on install.
 - Root `postinstall` runs `composer install`, which clones the private `yaycommerce/admin-shell` repo over HTTPS.
 - No lockfiles are tracked (`.gitignore`), so installs aren't reproducible and CI can't freeze or cache.
 - `scripts/run.sh` resolves pnpm through PATH, then `corepack pnpm`, then the newest Node under `~/.nvm`.

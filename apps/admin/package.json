@@ -16,7 +16,6 @@
     "dev:storefront": "vite build --watch --config vite.storefront.config.ts",
     "build:blocks": "vite build --config vite.blocks.config.ts",
     "lint": "eslint . && prettier --check .",
-    "test": "vitest run",
     "lint:fix": "eslint . --fix && prettier --write ."
   },
   "dependencies": {

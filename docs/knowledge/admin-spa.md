@@ -1,7 +1,7 @@
 ---
 area: admin-spa
 updated: 2026-11-12
-updated_ref: 3f6424ea
+updated_ref: 472668aa
 covers: [apps/admin/, includes/Engine/Admin/Settings.php, includes/Engine/Register/, includes/Helpers/LocalizeHelper.php]
 ---
 
@@ -66,5 +66,5 @@ React 18, TypeScript, Vite, react-router (hash router), TanStack Query, react-ho
 
 ## Tests and lint
 
-- Vitest: `apps/admin/vitest.config.ts`, `tests/**/*.test.ts`, node environment (no DOM). Tests mock `@/lib/api/api` because the real client reads `window` at import. Tests sit outside the tsconfig `include`, so `tsc --noEmit` skips them.
+- SPA tests live in `tests/js/` at the repo root (see [testing.md](testing.md)). Mock `@/lib/api/api` in a test, because the real client reads `window` at import.
 - Lint: `eslint . && prettier --check .`; Prettier config (print width 120, import order, Tailwind class sort) is in `apps/admin/package.json`.
