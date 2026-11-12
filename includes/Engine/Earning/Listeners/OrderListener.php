@@ -73,7 +73,8 @@ final class OrderListener {
             $this->restore( $order_id, $order );
         }
 
-        if ( 'failed' === $from && in_array( $to, self::PAID_STATUSES, true ) ) {
+        // From `failed`, or from `pending` where an offsite gateway left the order after a pay-for-order attempt.
+        if ( in_array( $to, self::PAID_STATUSES, true ) && ! in_array( $from, self::PAID_STATUSES, true ) ) {
             ListenerGuard::for_order( 'OrderListener', 'paid after failure', $order_id, fn() => $this->reversals->on_paid_after_failure( $order ) );
         }
 

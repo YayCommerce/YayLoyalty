@@ -80,6 +80,7 @@
 - `Redemption\Reversal::has_unpaid( \WC_Order $order ): bool`. Produced by Phase 1 Task 2, consumed by Phase 1 Task 4.
 - `OrderReversalListener::on_failed( \WC_Order $order ): void` and `::on_paid_after_failure( \WC_Order $order ): void`. Produced by Phase 1 Task 3.
 - `PayForOrderRedebit::redebit_or_message( \WC_Order $order ): ?string` (null when allowed or nothing to do) and `::register(): void`. Produced by Phase 1 Task 4, consumed by `StoreApiAdapter`.
+- `PayForOrderRedebit::settle(): void`, hooked to `shutdown`: returns the points of an order it debited that still needs payment. Produced by Phase 3 Task 3.
 - `Redemption\Reversal::coupon_removed( \WC_Order $order, string $code, bool $waive = false ): ?Outcome`. It acts on `applied` and `unpaid`. Produced by Phase 2 Task 1, consumed by Phase 2 Task 2.
 - `RemovedLineReconciler::register(): void`, `::waive( int $order_id, string $code ): void` and `::settle(): void` (public, so tests call it instead of `shutdown`). Produced by Phase 2 Task 2, consumed by Phase 2 Task 3.
 - `OrderCouponRemoval::__construct( RedemptionRepository $redemptions, RewardRepository $rewards, RemovedLineReconciler $reconciler )`. Produced by Phase 2 Task 3.

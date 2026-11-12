@@ -144,10 +144,15 @@ final class OrderReversalListener {
     }
 
     /**
-     * A failed order reached a paid status without pay-for-order (a late gateway webhook, or an admin): debits the
-     * redeemed points again even past zero, because the order kept its discount and the payment arrived.
+     * An order with `unpaid` rows reached a paid status without a finished pay-for-order (a late gateway webhook, an
+     * offsite gateway, or an admin): debits the redeemed points again even past zero, because the order kept its
+     * discount and the payment arrived. Nothing for an order with no `unpaid` row.
      */
     public function on_paid_after_failure( \WC_Order $order ): void {
+        if ( ! $this->redemptions->has_unpaid( $order ) ) {
+            return;
+        }
+
         $this->note_debited( $order, $this->redemptions->payment_retried( $order, true ), __( 'payment received', 'yayloyalty' ) );
     }
 

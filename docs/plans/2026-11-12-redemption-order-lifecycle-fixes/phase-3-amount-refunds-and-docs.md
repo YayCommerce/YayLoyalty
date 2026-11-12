@@ -216,3 +216,86 @@ Then set the 2026-11-02 record's Status line to `superseded by [2026-11-12](2026
 
 Stage: the new decision record, `docs/decisions/2026-11-02-admin-removes-loyalty-coupon.md`, `docs/architecture.md`, `readme.txt`, the deleted backlog file, `docs/plans/2026-11-12-redemption-order-lifecycle-fixes/README.md`
 Message: `docs(redemption): record the payment and order-line rules`
+
+### Task 3: A pay attempt that does not go through returns the points again
+
+Added 2026-11-12 after walkthrough 2 on brandy.test: pay-for-order with the terms unticked was refused by WooCommerce, but the points were already debited, and the order stayed `failed`. `WC_Form_Handler::pay_action()` fires `woocommerce_before_pay_action` before its terms check and the gateway, and the block pay-for-order debits on `woocommerce_store_api_checkout_order_processed` before `process_payment()` can throw. The user chose to fix it in this phase, with two new tests.
+
+**Files:**
+- Modify: `includes/Engine/Redemption/PayForOrderRedebit.php`
+- Modify: `includes/Engine/Earning/Listeners/OrderListener.php`
+- Modify: `includes/Engine/Earning/Listeners/OrderReversalListener.php`
+- Test: `tests/integration/Engine/Redemption/PaymentFailedTest.php`
+- Docs: the new decision record, `docs/architecture.md`, this plan's `README.md` contract
+
+**Interfaces:**
+- Produces: `PayForOrderRedebit::settle(): void`, hooked to `shutdown` by `register()`.
+
+Behaviour to pin:
+- `redebit_or_message()` remembers each order it debited in this request (an outcome `AWARDED`).
+- `settle()` empties that list first, then reloads each order; when `wc_get_order()` loads it and it still `needs_payment()`, it calls `Reversal::payment_failed()`, so the rows are `unpaid` again under a fresh `[ ledger, id ]` key. A `Throwable` is logged with `Log::error( self::class, … )` and the loop goes on.
+- A paid status reached from `failed` or `pending` re-debits `unpaid` rows leniently: `OrderListener` calls `on_paid_after_failure()` when `$to` is paid and `$from` is not, and `on_paid_after_failure()` returns at once unless `has_unpaid()`. An offsite gateway that sets the order `pending` before redirecting is thus debited when its webhook marks it paid.
+
+- [ ] **Step 1: Write the failing tests**
+
+```php
+public function test_a_pay_attempt_that_leaves_the_order_unpaid_returns_the_points(): void {
+    $order = $this->redeemed_order( $this->seeded_reward() );
+    $this->reversal()->payment_failed( $order );
+    $redebit = new PayForOrderRedebit( $this->reversal() );
+
+    $this->assertNull( $redebit->redebit_or_message( $order ) );
+    $redebit->settle();
+
+    $this->assertSame( [ 1000, -500, 500, -500, 500 ], $this->ledger_points( 7 ) );
+    $this->assertSame( Redemption::STATUS_UNPAID, $this->row()['status'] );
+
+    $redebit->settle();
+    $this->assertSame( [ 1000, -500, 500, -500, 500 ], $this->ledger_points( 7 ) );
+
+    // An offsite gateway's webhook: pending, then paid.
+    $order->update_status( 'processing' );
+    $this->assertSame( 500, (int) $this->customer_row( 7 )['balance'] );
+    $this->assertSame( Redemption::STATUS_APPLIED, $this->row()['status'] );
+}
+
+public function test_a_pay_attempt_that_went_through_keeps_the_debit(): void {
+    $order = $this->redeemed_order( $this->seeded_reward() );
+    $this->reversal()->payment_failed( $order );
+    $redebit = new PayForOrderRedebit( $this->reversal() );
+
+    $redebit->redebit_or_message( $order );
+    $order->update_status( 'on-hold' );
+    $redebit->settle();
+
+    $this->assertSame( [ 1000, -500, 500, -500 ], $this->ledger_points( 7 ) );
+    $this->assertSame( Redemption::STATUS_APPLIED, $this->row()['status'] );
+}
+```
+
+- [ ] **Step 2: Run the tests to confirm they fail**
+
+Run: `composer test:integration -- --filter PaymentFailedTest`
+Expected: errors, "Call to undefined method …PayForOrderRedebit::settle()".
+
+- [ ] **Step 3: Implement** as pinned above; update both classes' docblocks.
+
+- [ ] **Step 4: Run the tests to confirm they pass**
+
+Run: `composer test:integration -- --filter 'PaymentFailedTest|ReversalFlowTest|OrderReversalListenerTest|RemovedLineReconcilerTest'`
+Expected: `OK (` with 0 failures.
+
+- [ ] **Step 5: Verify on brandy.test**
+
+Fail a redeeming order, open its Pay page, leave the terms unticked and press Pay. Expected: WooCommerce's terms error, the order still `failed`, the balance unchanged from before the attempt and the row `unpaid`. Then tick the terms and pay: the balance drops once and the order is on-hold.
+
+- [ ] **Step 6: Docs, lint and commit**
+
+- Decision record: the pay-again rule says an attempt that leaves the order unpaid returns the points at the end of the request, and a paid status from `pending` re-debits too.
+- `docs/architecture.md`: the pay-again bullet says the same.
+- README contract: add `PayForOrderRedebit::settle(): void`.
+
+Run: `composer lint -- includes/Engine/Redemption/PayForOrderRedebit.php includes/Engine/Earning/Listeners/OrderListener.php includes/Engine/Earning/Listeners/OrderReversalListener.php tests/integration/Engine/Redemption/PaymentFailedTest.php`
+
+Stage: those four files, the decision record, `docs/architecture.md`, `docs/plans/2026-11-12-redemption-order-lifecycle-fixes/README.md`, this file
+Message: `fix(redemption): return the points when a pay-for-order attempt does not go through`

@@ -234,4 +234,37 @@ final class PaymentFailedTest extends IntegrationTestCase {
 
         $this->assertSame( 400, (int) $this->customer_row( 7 )['balance'] );
     }
+
+    public function test_a_pay_attempt_that_leaves_the_order_unpaid_returns_the_points(): void {
+        $order = $this->redeemed_order( $this->seeded_reward() );
+        $this->reversal()->payment_failed( $order );
+        $redebit = new PayForOrderRedebit( $this->reversal() );
+
+        $this->assertNull( $redebit->redebit_or_message( $order ) );
+        $redebit->settle();
+
+        $this->assertSame( [ 1000, -500, 500, -500, 500 ], $this->ledger_points( 7 ) );
+        $this->assertSame( Redemption::STATUS_UNPAID, $this->row()['status'] );
+
+        $redebit->settle();
+        $this->assertSame( [ 1000, -500, 500, -500, 500 ], $this->ledger_points( 7 ) );
+
+        // An offsite gateway's webhook: the order went pending before the redirect, and is paid now.
+        $order->update_status( 'processing' );
+        $this->assertSame( 500, (int) $this->customer_row( 7 )['balance'] );
+        $this->assertSame( Redemption::STATUS_APPLIED, $this->row()['status'] );
+    }
+
+    public function test_a_pay_attempt_that_went_through_keeps_the_debit(): void {
+        $order = $this->redeemed_order( $this->seeded_reward() );
+        $this->reversal()->payment_failed( $order );
+        $redebit = new PayForOrderRedebit( $this->reversal() );
+
+        $redebit->redebit_or_message( $order );
+        $order->update_status( 'on-hold' );
+        $redebit->settle();
+
+        $this->assertSame( [ 1000, -500, 500, -500 ], $this->ledger_points( 7 ) );
+        $this->assertSame( Redemption::STATUS_APPLIED, $this->row()['status'] );
+    }
 }
