@@ -11,13 +11,14 @@
   "use strict";
 
   /**
-   * @param {Element}     el   The element whose content is swapped.
-   * @param {string|null} html The variation's HTML; null puts the element's data-default back.
+   * @param {Element}     el     The element whose content is swapped.
+   * @param {string|null} html   The variation's HTML; null puts $holder's data-default back.
+   * @param {Element}     holder The element carrying that default: the card for the sentence, the area for bonuses.
    * @return {string} What it now shows.
    */
-  function swap(el, html) {
+  function swap(el, html, holder) {
     if (html === null) {
-      html = el.getAttribute("data-default") || "";
+      html = holder.getAttribute("data-default") || "";
     }
 
     el.innerHTML = html;
@@ -36,12 +37,12 @@
       return;
     }
 
-    el.hidden = swap(el.querySelector(".yayloyalty-product-earn__text"), sentence) === "";
+    el.hidden = swap(el.querySelector(".yayloyalty-product-earn__text"), sentence, el) === "";
 
     var area = el.querySelector(".yayloyalty-product-earn__bonuses");
 
     if (area) {
-      area.hidden = swap(area, bonuses) === "";
+      area.hidden = swap(area, bonuses, area) === "";
     }
   }
 
