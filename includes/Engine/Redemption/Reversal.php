@@ -29,9 +29,9 @@ defined( 'ABSPATH' ) || exit;
  * Cancel restores twice and un-cancel debits once, because the key has no
  * cycle part: a second un-cancel answers REASON_KEY_SPENT. Catalog reward
  * rows follow the same rules as the flexible discount, keyed per reward.
- * An admin removing a line with Restore on the order screen returns what is
- * left of that one row under `[ redemption, id ]` and makes it `removed`,
- * a status no other event lists, so nothing moves it again.
+ * A loyalty line leaving the order by any route returns what is left of its
+ * row under `[ redemption, id ]`, unless the admin waived it, and makes it
+ * `removed`, a status no other event lists, so nothing moves it again.
  * A failed payment returns what is left of each `applied` row and makes it `unpaid`; paying again debits
  * it back and makes it `applied`. That cycle repeats without limit: each move is keyed on the ledger row
  * it undoes (`[ ledger, id ]`), so every cycle has fresh keys while a re-fired event composes the same one.
@@ -269,12 +269,14 @@ final class Reversal {
     }
 
     /**
-     * An admin removed the coupon line $code with Restore: returns whatever of its row is not restored yet; the row becomes
-     * `removed`. Acts only on an `applied` row, under the same locks as settle_each().
+     * The coupon line $code left the order, by whatever route (RemovedLineReconciler settles each one): returns whatever of its
+     * row is not restored yet; the row becomes `removed`. With $waive, the admin's "Don't restore", and for an `unpaid` row,
+     * whose points are back already, it writes no ledger row. Acts only on an `applied` or `unpaid` row, under the same locks
+     * as settle_each().
      *
      * @return Outcome|null Null when the order has no row for $code.
      */
-    public function coupon_removed( \WC_Order $order, string $code ): ?Outcome {
+    public function coupon_removed( \WC_Order $order, string $code, bool $waive = false ): ?Outcome {
         $stale = $this->redemptions->find_by_order_and_coupon_code( (int) $order->get_id(), $code );
 
         if ( null === $stale ) {
@@ -282,12 +284,18 @@ final class Reversal {
         }
 
         return Transaction::run(
-            function () use ( $stale ): Outcome {
+            function () use ( $stale, $waive ): Outcome {
                 $this->customers->ensure_and_lock( $stale->get_user_id() );
 
                 $row = $this->redemptions->lock( (int) $stale->get_id() );
 
-                if ( null === $row || Redemption::STATUS_APPLIED !== $row->get_status() ) {
+                if ( null === $row || ! in_array( $row->get_status(), [ Redemption::STATUS_APPLIED, Redemption::STATUS_UNPAID ], true ) ) {
+                    return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
+                }
+
+                if ( $waive || Redemption::STATUS_UNPAID === $row->get_status() ) {
+                    $this->redemptions->record_restore( (int) $row->get_id(), $row->get_restored_points(), Redemption::STATUS_REMOVED );
+
                     return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
                 }
 

@@ -325,21 +325,34 @@ final class ReversalTest extends IntegrationTestCase {
         $this->assertSame( sprintf( 'refund_redeem:7:redemption:%d:flexible_discount', (int) $this->row()['id'] ), $ledger['idempotency_key'] );
     }
 
-    public function test_a_line_removed_without_restore_leaves_the_row_for_the_cancel(): void {
+    public function test_a_waived_removal_is_final(): void {
         $reward = $this->seeded_reward();
         $order  = $this->redeemed_order( $reward );
 
-        $order->remove_coupon( $reward->get_coupon_code() );
-        $order->save();
+        $outcome = $this->reversal()->coupon_removed( $order, $reward->get_coupon_code(), true );
 
+        $this->assertSame( Reversal::REASON_NOTHING_TO_MOVE, $outcome->get_reason() );
         $this->assertSame( [ 1000, -500 ], $this->ledger_points( 7 ) );
-        $this->assertSame( Redemption::STATUS_APPLIED, $this->row()['status'] );
+        $this->assertSame( Redemption::STATUS_REMOVED, $this->row()['status'] );
         $this->assertSame( 0, (int) $this->row()['restored_points'] );
 
         $this->reversal()->cancelled( $order );
 
+        $this->assertSame( [ 1000, -500 ], $this->ledger_points( 7 ) );
+        $this->assertSame( Redemption::STATUS_REMOVED, $this->row()['status'] );
+    }
+
+    public function test_removing_an_unpaid_line_writes_nothing(): void {
+        $reward = $this->seeded_reward();
+        $order  = $this->redeemed_order( $reward );
+        $this->reversal()->payment_failed( $order );
+
+        $outcome = $this->reversal()->coupon_removed( $order, $reward->get_coupon_code() );
+
+        $this->assertSame( Reversal::REASON_NOTHING_TO_MOVE, $outcome->get_reason() );
         $this->assertSame( [ 1000, -500, 500 ], $this->ledger_points( 7 ) );
-        $this->assertSame( Redemption::STATUS_CANCELLED, $this->row()['status'] );
+        $this->assertSame( Redemption::STATUS_REMOVED, $this->row()['status'] );
+        $this->assertSame( 500, (int) $this->row()['restored_points'] );
     }
 
     public function test_removing_a_coupon_after_a_part_refund_restores_only_the_rest(): void {

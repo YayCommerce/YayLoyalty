@@ -72,8 +72,9 @@ final class CouponProvider {
     }
 
     /**
-     * Refuses a loyalty code on an order unless that order has an `applied` redemption row for it, so no order
-     * carries a loyalty discount no ledger row debited. A REST v3 update that keeps an existing line still passes.
+     * Refuses a loyalty code on an order unless that order has an `applied` or `unpaid` redemption row for it, so no order
+     * carries a loyalty discount no ledger row debited, or that a pay-again debits back. A REST v3 update that keeps an
+     * existing line still passes.
      * Postcondition: $valid unchanged for a cart, for any other coupon and for a debited code.
      *
      * @param mixed $valid
@@ -90,7 +91,7 @@ final class CouponProvider {
 
         $row = $this->redemptions->find_by_order_and_coupon_code( (int) $order->get_id(), $code );
 
-        if ( null === $row || Redemption::STATUS_APPLIED !== $row->get_status() ) {
+        if ( null === $row || ! in_array( $row->get_status(), [ Redemption::STATUS_APPLIED, Redemption::STATUS_UNPAID ], true ) ) {
             throw new \Exception( esc_html__( 'This loyalty discount can only be applied by the customer at checkout.', 'yayloyalty' ) );
         }
 
