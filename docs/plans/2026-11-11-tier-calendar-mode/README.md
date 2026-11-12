@@ -118,8 +118,8 @@
 
 | Phase | Delivers (user-visible) | Exit criterion (exact check) | Status |
 |---|---|---|---|
-| 1 | Calendar mode works end to end through REST: settings, upgrades with period holds, the refund and deduction rules, the daily review and renewal, `to_calendar` on switch-in and on period change, and leaving Calendar | `composer test -- --filter TierCalendarTest` and `composer test:integration -- --filter TierEvaluatorTest` pass (all cases, test count shown). On wp-env with `TZ` and `TIERS`, spec AC 1, 2, 3, 8 and 14 pass by Phase 1 Task 5's checks. AC 4–7 and 9–13 are covered by the integration cases | pending |
-| 2 | The Qualification card's Calendar option, the drawer caption, the storefront captions, the Lite check, and the end-to-end walkthrough | Spec AC 16, 17, 18, 19, 20 and the end-to-end AC 21 pass on wp-env, and `./scripts/run.sh release lite --no-prompt` validates | pending |
+| 1 | Calendar mode works end to end through REST: settings, upgrades with period holds, the refund and deduction rules, the daily review and renewal, `to_calendar` on switch-in and on period change, and leaving Calendar | `composer test -- --filter TierCalendarTest` and `composer test:integration -- --filter TierEvaluatorTest` pass (all cases, test count shown). On wp-env with `TZ` and `TIERS`, spec AC 1, 2, 3, 8 and 14 pass by Phase 1 Task 5's checks. AC 4–7 and 9–13 are covered by the integration cases | done 2026-11-12 |
+| 2 | The Qualification card's Calendar option, the drawer caption, the storefront captions, the Lite check, and the end-to-end walkthrough | Spec AC 16, 17, 18, 19, 20 and the end-to-end AC 21 pass on wp-env, and `./scripts/run.sh release lite --no-prompt` validates | implemented 2026-11-12, awaiting `/yayplancheck` |
 
 ## Interface contract
 
