@@ -67,7 +67,7 @@
 | Phase | Delivers (user-visible) | Exit criterion (exact check) | Status |
 |---|---|---|---|
 | 1 | A declined payment returns redeemed points. Paying again takes them back, or is refused when the balance is short. | `composer test:integration -- --filter PaymentFailedTest` prints `OK (` with 0 failures, and the manual decline-then-pay walkthrough in phase 1's exit criterion passes on brandy.test | done 2026-11-12 |
-| 2 | Removing a loyalty line by any route returns its points. "Don't restore" is final. | `composer test:integration -- --filter 'RemovedLineReconcilerTest\|ReversalTest\|LoyaltyCodeOnOrderTest'` prints `OK (`, and `pnpm --filter @yayloyalty/e2e test admin-remove-loyalty-coupon` passes | pending |
+| 2 | Removing a loyalty line by any route returns its points. "Don't restore" is final. | `composer test:integration -- --filter 'RemovedLineReconcilerTest\|ReversalTest\|LoyaltyCodeOnOrderTest'` prints `OK (`, and `pnpm --filter @yayloyalty/e2e test admin-remove-loyalty-coupon` passes | done 2026-11-12 |
 | 3 | Amount-only refunds claw back earned points. Docs and the decision record are updated. | The spec's criterion 21: `composer test:integration` prints `OK (N tests`, `pnpm --filter @yayloyalty/e2e test` passes, and the three brandy.test walkthroughs pass | pending |
 
 ## Interface contract
