@@ -58,21 +58,29 @@ final class Reversal {
     /**
      * Claws back each earn row's share of what the order's refunds took so far, keyed on this refund.
      *
-     * A refund with no line items (amount only) removes no base and claws back
-     * nothing, unless it leaves nothing to refund: a fully refunded order owes
-     * every point back.
+     * A refund with no product lines (an amount, as a gateway dashboard
+     * refund or a shipping refund) removes its share of the base: amount ×
+     * base ÷ order total. A fully refunded order owes every point back. An
+     * order whose total is 0.00 or less claws nothing back on a refund.
      *
-     * @return Outcome[] One per earn row.
+     * @return Outcome[] One per earn row; none when the order's total is 0.00 or less.
      */
     public function refund( \WC_Order $order, int $refund_id ): array {
+        $order_total = (float) $order->get_total();
+
+        if ( $order_total <= 0 ) {
+            return [];
+        }
+
         list( $refunds, , $is_fully_refunded ) = self::refund_state( $order );
 
         $lines            = self::product_lines( $order );
         $refunded_by_line = self::refunded_by_line( $refunds );
+        $amount_only      = self::amount_only_total( $refunds, $lines );
         $outcomes         = [];
 
         foreach ( $this->ledger->earn_rows_for_order( (int) $order->get_id() ) as $earn ) {
-            list( $original, $refunded ) = $this->bases( $lines, $refunded_by_line, $earn );
+            list( $original, $refunded ) = $this->bases( $lines, $refunded_by_line, $amount_only, $order_total, $earn );
 
             $owed       = ClawbackMath::owed( $earn->get_points(), $refunded, $original, $is_fully_refunded );
             $outcomes[] = $this->writer->refund_earn( $earn, $owed, ReferenceType::REFUND, $refund_id );
@@ -195,16 +203,42 @@ final class Reversal {
     }
 
     /**
+     * What the order's refunds without product lines add up to. A refund carries product lines when one of its items
+     * points at one of $lines through `_refunded_item_id`; its extra amount, such as shipping, then removes no base.
+     *
+     * @param \WC_Order_Refund[]                                                $refunds
+     * @param array<int, array{0: \WC_Order_Item_Product, 1: ContextLineItem}> $lines   product_lines()
+     */
+    private static function amount_only_total( array $refunds, array $lines ): float {
+        $total = 0.0;
+
+        foreach ( $refunds as $refund ) {
+            foreach ( $refund->get_items() as $line ) {
+                if ( isset( $lines[ (int) $line->get_meta( '_refunded_item_id' ) ] ) ) {
+                    continue 2;
+                }
+            }
+
+            $total += abs( (float) $refund->get_amount() );
+        }
+
+        return $total;
+    }
+
+    /**
      * The base an earn row was scored on and how much of it the order's
      * refunds removed, cumulatively. Only lines the earn's campaign counted
      * (BaseCalculator::includes_line()), so refunding an excluded product
-     * claws back nothing.
+     * claws back nothing. Amount-only refunds remove $amount_only × base ÷
+     * order total on top, and the refunded base never exceeds the base.
      *
      * @param array<int, array{0: \WC_Order_Item_Product, 1: ContextLineItem}> $lines            product_lines()
      * @param array<int, float>                                         $refunded_by_line refunded_by_line()
+     * @param float                                                     $amount_only      amount_only_total()
+     * @param float                                                     $order_total      Above 0.
      * @return float[] [ original, refunded ]
      */
-    private function bases( array $lines, array $refunded_by_line, LedgerEntry $earn ): array {
+    private function bases( array $lines, array $refunded_by_line, float $amount_only, float $order_total, LedgerEntry $earn ): array {
         $campaign = null === $earn->get_campaign_id() ? null : $this->campaigns->find_campaign( (int) $earn->get_campaign_id() );
 
         if ( null === $campaign ) {
@@ -221,6 +255,8 @@ final class Reversal {
             }
         }
 
-        return [ $original, $refunded ];
+        $refunded += $amount_only * $original / $order_total;
+
+        return [ $original, min( $refunded, $original ) ];
     }
 }

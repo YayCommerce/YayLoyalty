@@ -88,6 +88,93 @@ final class ReversalFlowTest extends IntegrationTestCase {
         $this->assertSame( 0, (int) $this->customer_row( $user_id )['balance'] );
     }
 
+    /** 90 × ( 50 × 90 ÷ 100 ) ÷ 90 = 45. */
+    public function test_an_amount_only_refund_claws_back_its_share(): void {
+        list( $user_id, $order ) = $this->order_with_shipping();
+
+        $this->refund( $order, 50 );
+
+        $this->assertSame( [ 90, -45 ], $this->ledger_points( $user_id ) );
+    }
+
+    public function test_a_second_amount_refund_that_completes_the_order_claws_back_the_rest(): void {
+        list( $user_id, $order ) = $this->order_with_shipping();
+
+        $this->refund( $order, 50 );
+        $this->refund( wc_get_order( $order->get_id() ), 50 );
+
+        $this->assertSame( [ 90, -45, -45 ], $this->ledger_points( $user_id ) );
+    }
+
+    /** The line share 10.00 plus the amount share 10 × 29.99 ÷ 29.99 = 10.00: floor( 89 × 20 ÷ 29.99 ) = 59 owed. */
+    public function test_a_line_refund_then_an_amount_refund_add_up(): void {
+        list( $user_id, $order ) = $this->completed_order();
+
+        $this->refund( $order, 10 );
+
+        $this->assertSame( [ 89, -29, -30 ], $this->ledger_points( $user_id ) );
+    }
+
+    public function test_a_line_refund_with_extra_amount_claws_back_the_line_share_only(): void {
+        $this->create_campaign( CampaignTrigger::PURCHASE, [ 'points_per_unit' => 3 ] );
+        $user_id = $this->create_customer();
+        $order   = $this->transition( $this->create_order( $user_id, [ 19.99, 10 ] ), 'completed' );
+        $line    = array_values( $order->get_items() )[1];
+
+        $this->refund(
+            $order,
+            15,
+            [
+                $line->get_id() => [
+                    'qty'          => 1,
+                    'refund_total' => 10,
+                ],
+            ]
+        );
+
+        $this->assertSame( [ 89, -29 ], $this->ledger_points( $user_id ) );
+    }
+
+    /** A 40.00 line and a −40.00 fee: the order earns 40 and totals 0.00, so its only possible amount refund is 0.00. */
+    public function test_an_amount_refund_on_a_zero_total_order_claws_nothing(): void {
+        $this->create_campaign();
+        $user_id = $this->create_customer();
+        $order   = $this->create_order( $user_id, [ 40 ] );
+
+        $fee = new \WC_Order_Item_Fee();
+        $fee->set_name( 'Gift' );
+        $fee->set_total( -40 );
+        $order->add_item( $fee );
+        $order->calculate_totals( false );
+        $order->save();
+        $order = $this->transition( wc_get_order( $order->get_id() ), 'completed' );
+
+        $this->refund( $order, 0 );
+
+        $this->assertSame( [ 40 ], $this->ledger_points( $user_id ) );
+    }
+
+    /**
+     * A completed order of a 90.00 line at 1 point per unit, which earns 90, and 10.00 shipping: 100.00 in all.
+     *
+     * @return array{0: int, 1: \WC_Order}
+     */
+    private function order_with_shipping(): array {
+        $this->create_campaign( CampaignTrigger::PURCHASE, [ 'points_per_unit' => 1 ] );
+        $user_id = $this->create_customer();
+        $order   = $this->create_order( $user_id, [ 90 ] );
+
+        $shipping = new \WC_Order_Item_Shipping();
+        $shipping->set_method_title( 'Flat rate' );
+        $shipping->set_total( 10 );
+        $order->add_item( $shipping );
+        $order->calculate_totals( false );
+        $order->save();
+        $this->assertSame( 100.0, (float) $order->get_total() );
+
+        return [ $user_id, $this->transition( wc_get_order( $order->get_id() ), 'completed' ) ];
+    }
+
     /**
      * A completed order of 19.99 + 10.00 at 3 points per unit, with its 10.00 line refunded.
      *
