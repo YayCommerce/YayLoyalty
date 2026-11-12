@@ -7,6 +7,7 @@ import { toastApiError } from '@/lib/api/api';
 import { formatStoredDate } from '@/lib/helpers/format.helper';
 import { formatPoints, shortPoints } from '@/lib/helpers/points.helper';
 import type { Customer } from '@/lib/schema/customer.schema';
+import type { TiersCalendarPeriod } from '@/lib/schema/tier.schema';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
 import { ErrorState } from '@/components/ui/custom/error-state';
@@ -46,9 +47,10 @@ export function CustomerTierCard({ customer }: { customer: Customer }) {
     manual,
     mode,
     window_months: windowMonths,
+    period,
     held_until: heldUntil,
   } = query.data;
-  const isRolling = mode === 'rolling' && windowMonths !== null;
+  const showsHold = mode === 'rolling' || mode === 'calendar';
 
   return (
     <div className="flex flex-col gap-2">
@@ -58,7 +60,7 @@ export function CustomerTierCard({ customer }: { customer: Customer }) {
             label={__('Tier', 'yayloyalty')}
             size="lg"
             value={tier ? <TierBadge name={tier.name} color={tier.color} /> : __('No tier', 'yayloyalty')}
-            subLine={tier && achievedAt ? tierSince(achievedAt, isRolling ? heldUntil : null) : undefined}
+            subLine={tier && achievedAt ? tierSince(achievedAt, showsHold ? heldUntil : null) : undefined}
           />
           <div className="flex min-w-0 flex-col gap-2">
             <CustomerDrawerStat
@@ -83,20 +85,7 @@ export function CustomerTierCard({ customer }: { customer: Customer }) {
                   />
                 </div>
                 <span className="text-muted-foreground text-xs tabular-nums">
-                  {isRolling
-                    ? sprintf(
-                        /* translators: 1: points earned in the window, 2: points the next tier needs, 3: the window's length in months. */
-                        __('%1$s / %2$s in the last %3$s months', 'yayloyalty'),
-                        formatPoints(progress),
-                        formatPoints(next.threshold),
-                        String(windowMonths),
-                      )
-                    : sprintf(
-                        /* translators: 1: points earned, 2: points the next tier needs. */
-                        __('%1$s / %2$s', 'yayloyalty'),
-                        formatPoints(progress),
-                        formatPoints(next.threshold),
-                      )}
+                  {progressCaption(progress, next.threshold, mode === 'calendar' ? period : null, windowMonths)}
                 </span>
               </div>
             )}
@@ -132,7 +121,46 @@ export function CustomerTierCard({ customer }: { customer: Customer }) {
   );
 }
 
-/** The TIER sub-line; a running Rolling hold adds its end. */
+/** The bar's caption: this period's total in Calendar, the window's in Rolling, else the plain total. */
+function progressCaption(
+  progress: number,
+  threshold: number,
+  period: TiersCalendarPeriod | null,
+  windowMonths: number | null,
+): string {
+  const earned = formatPoints(progress);
+  const needed = formatPoints(threshold);
+
+  if (period === 'month') {
+    /* translators: 1: points earned this period, 2: points the next tier needs. */
+    return sprintf(__('%1$s / %2$s this month', 'yayloyalty'), earned, needed);
+  }
+
+  if (period === 'quarter') {
+    /* translators: 1: points earned this period, 2: points the next tier needs. */
+    return sprintf(__('%1$s / %2$s this quarter', 'yayloyalty'), earned, needed);
+  }
+
+  if (period === 'year') {
+    /* translators: 1: points earned this period, 2: points the next tier needs. */
+    return sprintf(__('%1$s / %2$s this year', 'yayloyalty'), earned, needed);
+  }
+
+  if (windowMonths !== null) {
+    return sprintf(
+      /* translators: 1: points earned in the window, 2: points the next tier needs, 3: the window's length in months. */
+      __('%1$s / %2$s in the last %3$s months', 'yayloyalty'),
+      earned,
+      needed,
+      String(windowMonths),
+    );
+  }
+
+  /* translators: 1: points earned, 2: points the next tier needs. */
+  return sprintf(__('%1$s / %2$s', 'yayloyalty'), earned, needed);
+}
+
+/** The TIER sub-line; a running Rolling or Calendar hold adds its end. */
 function tierSince(achievedAt: string, heldUntil: string | null): string {
   return heldUntil
     ? sprintf(

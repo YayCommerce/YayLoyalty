@@ -4,8 +4,11 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
 import {
+  TIERS_CALENDAR_PERIODS,
   TIERS_ROLLING_MONTHS,
+  tiersCalendarPeriodSchema,
   tiersRollingMonthsSchema,
+  type TiersCalendarPeriod,
   type TierSettings,
   type TierSettingsInput,
 } from '@/lib/schema/tier.schema';
@@ -23,7 +26,39 @@ type TierMode = TierSettings['tiers_mode'];
 type RollingMonths = TierSettings['tiers_rolling_months'];
 
 /** Which confirm a save asks for; none while tiers are off. */
-type Change = 'to_rolling' | 'to_lifetime' | 'months';
+type Change = 'to_rolling' | 'to_lifetime' | 'to_calendar' | 'months' | 'period';
+
+const PERIOD_LABELS: Record<TiersCalendarPeriod, () => string> = {
+  month: () => __('Monthly', 'yayloyalty'),
+  quarter: () => __('Quarterly', 'yayloyalty'),
+  year: () => __('Yearly', 'yayloyalty'),
+};
+
+/** The Calendar confirms' description, one full sentence per period. */
+const PERIOD_KEEPS: Record<TiersCalendarPeriod, () => string> = {
+  month: () =>
+    __(
+      'Every current member keeps their tier until the end of this month. Then each is reviewed on the points they earned in it.',
+      'yayloyalty',
+    ),
+  quarter: () =>
+    __(
+      'Every current member keeps their tier until the end of this quarter. Then each is reviewed on the points they earned in it.',
+      'yayloyalty',
+    ),
+  year: () =>
+    __(
+      'Every current member keeps their tier until the end of this year. Then each is reviewed on the points they earned in it.',
+      'yayloyalty',
+    ),
+};
+
+/** The confirm for a save that changes the mode, by the target mode. */
+const MODE_CHANGES: Record<TierMode, Change> = {
+  lifetime: 'to_lifetime',
+  rolling: 'to_rolling',
+  calendar: 'to_calendar',
+};
 
 const MODES: { value: TierMode; label: () => string; description: () => string }[] = [
   {
@@ -38,9 +73,21 @@ const MODES: { value: TierMode; label: () => string; description: () => string }
     description: () =>
       __('Points earned in a recent window. Reaching a tier holds it for the same number of months.', 'yayloyalty'),
   },
+  {
+    value: 'calendar',
+    label: () => __('Calendar', 'yayloyalty'),
+    description: () =>
+      __(
+        'Points earned in each calendar month, quarter or year. A tier is kept for the rest of that period and all of the next.',
+        'yayloyalty',
+      ),
+  },
 ];
 
-/** The Tiers page "Qualification" card: how customers qualify, Lifetime or Rolling, and the window's length. */
+/**
+ * The Tiers page "Qualification" card: how customers qualify (Lifetime, Rolling or Calendar), with Rolling's window
+ * length and Calendar's period.
+ */
 export function TierModeCard() {
   const { data: settings } = useTierSettingsQuery();
 
@@ -57,6 +104,7 @@ function TierModeForm({ settings }: { settings: TierSettings }) {
   const updateSettings = useUpdateTierSettingsMutation();
   const [mode, setMode] = useState<TierMode>(settings.tiers_mode);
   const [months, setMonths] = useState<RollingMonths>(settings.tiers_rolling_months);
+  const [period, setPeriod] = useState<TiersCalendarPeriod>(settings.tiers_calendar_period);
   const [confirming, setConfirming] = useState<Change>();
 
   const input: TierSettingsInput = {};
@@ -69,9 +117,13 @@ function TierModeForm({ settings }: { settings: TierSettings }) {
     input.tiers_rolling_months = months;
   }
 
+  if (mode === 'calendar' && period !== settings.tiers_calendar_period) {
+    input.tiers_calendar_period = period;
+  }
+
   const isDirty = Object.keys(input).length > 0;
   const isSweeping = settings.sweep !== null;
-  const change: Change = input.tiers_mode ? (mode === 'rolling' ? 'to_rolling' : 'to_lifetime') : 'months';
+  const change: Change = input.tiers_mode ? MODE_CHANGES[mode] : mode === 'calendar' ? 'period' : 'months';
 
   function onSave() {
     if (settings.tiers_enabled) {
@@ -110,6 +162,16 @@ function TierModeForm({ settings }: { settings: TierSettings }) {
       ),
       confirmLabel: __('Switch', 'yayloyalty'),
     },
+    to_calendar: {
+      title: __('Switch to calendar qualification?', 'yayloyalty'),
+      description: PERIOD_KEEPS[period](),
+      confirmLabel: __('Switch', 'yayloyalty'),
+    },
+    period: {
+      title: __('Change the calendar period?', 'yayloyalty'),
+      description: PERIOD_KEEPS[period](),
+      confirmLabel: __('Change', 'yayloyalty'),
+    },
     months: {
       title: __('Change the rolling window?', 'yayloyalty'),
       description: __(
@@ -129,7 +191,7 @@ function TierModeForm({ settings }: { settings: TierSettings }) {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <RadioGroup
-            className="grid gap-3 sm:grid-cols-2"
+            className="grid gap-3 sm:grid-cols-3"
             value={mode}
             onValueChange={(next) => setMode(next as TierMode)}
             aria-label={__('Qualification', 'yayloyalty')}
@@ -170,6 +232,26 @@ function TierModeForm({ settings }: { settings: TierSettings }) {
                           __('%s months', 'yayloyalty'),
                           String(value),
                         )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FieldContent>
+            </Field>
+          )}
+
+          {mode === 'calendar' && (
+            <Field>
+              <FieldLabel htmlFor="yayloyalty-tiers-calendar-period">{__('Period', 'yayloyalty')}</FieldLabel>
+              <FieldContent>
+                <Select value={period} onValueChange={(next) => setPeriod(tiersCalendarPeriodSchema.parse(next))}>
+                  <SelectTrigger id="yayloyalty-tiers-calendar-period" className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIERS_CALENDAR_PERIODS.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {PERIOD_LABELS[value]()}
                       </SelectItem>
                     ))}
                   </SelectContent>
