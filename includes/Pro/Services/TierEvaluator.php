@@ -26,13 +26,15 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The only writer of the customer tier columns (D20 in the tiers design), the rolling hold's two columns
- * included, in Lifetime and Rolling mode. It runs after the ledger commit, never inside LedgerService's
+ * included, in Lifetime, Rolling and Calendar mode. It runs after the ledger commit, never inside LedgerService's
  * lock, and takes the customer row lock in its own transaction. TierDecision decides the move; this class
  * gathers the state and writes the columns, the `tier_changed` activity row and the entry bonus, then fires
  * `yayloyalty_tier_changed` after commit.
  *
  * Lifetime qualifies on points earned and writes no hold column. Rolling qualifies on the window total
  * (LedgerRepository::window_total()) and, during an active hold, lets the qualifying total keep the tier.
+ * Calendar qualifies on the better of the current and previous calendar period (TierCalendar), holding a
+ * tier through the period after the one that earned it.
  *
  * Every entry point does nothing while tiers are off or when the user no longer exists.
  */
@@ -85,11 +87,20 @@ final class TierEvaluator {
         return true === ( $settings['tiers_enabled'] ?? false );
     }
 
-    /** TierMode::ROLLING only when the merchant picked it; TierMode::LIFETIME otherwise. */
+    /** TierMode::ROLLING or TierMode::CALENDAR only when the merchant picked it; TierMode::LIFETIME otherwise. */
     public static function mode(): string {
         $settings = SettingsHelper::get_settings();
+        $mode     = $settings['tiers_mode'] ?? null;
 
-        return TierMode::ROLLING === ( $settings['tiers_mode'] ?? null ) ? TierMode::ROLLING : TierMode::LIFETIME;
+        return TierMode::ROLLING === $mode || TierMode::CALENDAR === $mode ? $mode : TierMode::LIFETIME;
+    }
+
+    /** The calendar period, a TierMode::CALENDAR_* constant: the stored setting or its default. */
+    public static function calendar_period(): string {
+        $settings = SettingsHelper::get_settings();
+        $period   = $settings['tiers_calendar_period'] ?? null;
+
+        return TierMode::is_calendar_period( $period ) ? $period : TierMode::DEFAULT_CALENDAR_PERIOD;
     }
 
     /** The rolling window's length in months, the stored setting or its default. */
@@ -124,8 +135,9 @@ final class TierEvaluator {
      * One customer of a sweep. Placement sets the exact tier and pays no bonus. Re-evaluation moves a
      * customer whose tier or floor tier was deleted to their target, and only raises everyone else. The
      * mode sweeps do re-evaluation's work too, since a request merges it away: to_rolling then starts or
-     * clears each hold without moving anyone, and to_lifetime clears every hold and only raises, on
-     * Lifetime rules. Both run their own path whatever tiers_mode holds.
+     * clears each hold without moving anyone, to_calendar sets or clears each hold to the current period's
+     * end without moving anyone, and to_lifetime clears every hold and only raises, on Lifetime rules. Each
+     * runs its own path whatever tiers_mode holds.
      *
      * @param string $mode A TierSweep::MODE_* constant.
      */
@@ -159,7 +171,7 @@ final class TierEvaluator {
                     }
                 } elseif ( TierSweep::MODE_TO_LIFETIME === $mode ) {
                     $plan = self::plan( TierDecision::MOVE_UP, TierChangeReason::MODE_CHANGE, TierDecision::KIND_UP );
-                } elseif ( TierSweep::MODE_TO_ROLLING === $mode ) {
+                } elseif ( TierSweep::MODE_TO_ROLLING === $mode || TierSweep::MODE_TO_CALENDAR === $mode ) {
                     $plan = self::plan( TierDecision::MOVE_UP, TierChangeReason::TIER_DELETED, TierDecision::KIND_HOLD_ONLY );
                 } else {
                     $plan = self::plan( TierDecision::MOVE_UP, TierChangeReason::THRESHOLD_CHANGE, TierDecision::KIND_UP );
@@ -170,6 +182,8 @@ final class TierEvaluator {
                     $plan['clear_hold'] = true;
                 } elseif ( TierSweep::MODE_TO_ROLLING === $mode ) {
                     $plan['mode'] = TierMode::ROLLING;
+                } elseif ( TierSweep::MODE_TO_CALENDAR === $mode ) {
+                    $plan['mode'] = TierMode::CALENDAR;
                 }
 
                 return $plan;
@@ -180,21 +194,30 @@ final class TierEvaluator {
     }
 
     /**
-     * A rolling hold ended: moves the customer to exactly the tier their window and floor give, which
-     * renews the hold when that is their tier. Does nothing in Lifetime, or when, under the lock, the hold
-     * no longer ends by now (an evaluation since the daily job read the id started a new one).
+     * A Rolling or Calendar hold ended: moves the customer to exactly the tier their window and floor give,
+     * which renews the hold when that is their tier. Does nothing in Lifetime, or when, under the lock, the
+     * hold no longer ends by now (an evaluation since the daily job read the id started a new one). A Calendar
+     * hold ends on a period's last second, so it waits until that second has passed and the next period has
+     * begun; reviewed earlier, it would read the period that is ending as the current one.
      */
     public function end_hold( int $user_id ): void {
-        if ( TierMode::ROLLING !== self::mode() ) {
+        $mode = self::mode();
+
+        if ( TierMode::ROLLING !== $mode && TierMode::CALENDAR !== $mode ) {
             return;
         }
 
         $this->apply(
             $user_id,
-            static function ( Customer $customer ): ?array {
+            static function ( Customer $customer ) use ( $mode ): ?array {
                 $held_until = $customer->get_tier_held_until();
+                $now        = Dates::now();
 
-                if ( null === $customer->get_tier_id() || null === $held_until || $held_until > Dates::now() ) {
+                if ( null === $customer->get_tier_id() || null === $held_until || $held_until > $now ) {
+                    return null;
+                }
+
+                if ( TierMode::CALENDAR === $mode && Dates::offset( 1, $held_until ) > $now ) {
                     return null;
                 }
 
@@ -341,6 +364,19 @@ final class TierEvaluator {
                         $columns['tier_held_from']  = null;
                         $columns['tier_held_until'] = null;
                     }
+                } elseif ( TierMode::CALENDAR === $mode ) {
+                    $decision = $this->calendar_decision( $customer, $live, $floor, $current_rank, $plan['kind'], $now );
+                    $total    = $decision['total'];
+
+                    if ( TierDecision::HOLD_START === $decision['hold'] ) {
+                        $hold = TierCalendar::hold_dates( $decision['source'], $decision['bounds'], self::calendar_period(), wp_timezone() );
+
+                        $columns['tier_held_from']  = $hold['from'];
+                        $columns['tier_held_until'] = $hold['until'];
+                    } elseif ( TierDecision::HOLD_CLEAR === $decision['hold'] ) {
+                        $columns['tier_held_from']  = null;
+                        $columns['tier_held_until'] = null;
+                    }
                 } else {
                     $total    = $customer->get_lifetime_earned();
                     $decision = TierDecision::move( $current_id, $current_rank, TierDecision::target( $live, $total, $floor ), $plan['move'] );
@@ -428,6 +464,55 @@ final class TierEvaluator {
             $hold_active,
             $kind
         );
+    }
+
+    /**
+     * The Calendar move for one customer under their lock. The window tier is the better of the current period's
+     * total so far and the previous period's total plus staff adjustments since it ended; a tie goes to current.
+     * KIND_HOLD_ONLY (to_calendar) takes the previous source, so its hold runs to the current period's end. While
+     * the hold is active, the qualifying total is the period that earned it (TierCalendar::qualifying_window())
+     * plus staff adjustments since.
+     *
+     * @param array<int, Tier> $live
+     * @return array{changed: bool, to: Tier|null, is_upgrade: bool, hold: string, source: string, bounds: array{current_start: string, next_start: string, previous_start: string}, total: int}
+     *         TierDecision::rolling_move(), the window tier's TierCalendar::SOURCE_*, the period bounds, and the
+     *         current period's total.
+     */
+    private function calendar_decision( Customer $customer, array $live, ?Tier $floor, int $current_rank, string $kind, string $now ): array {
+        $tz       = wp_timezone();
+        $period   = self::calendar_period();
+        $user_id  = $customer->get_user_id();
+        $bounds   = TierCalendar::bounds( $now, $period, $tz );
+        $prev_end = Dates::offset( -1, $bounds['current_start'] );
+        $current  = $this->ledger_rows->window_total( $user_id, $bounds['current_start'], $now );
+        $previous = $this->ledger_rows->window_total( $user_id, $bounds['previous_start'], $prev_end )
+            + $this->ledger_rows->staff_adjust_since( $user_id, $prev_end );
+
+        [ $window_tier, $source ] = TierCalendar::pick( TierDecision::target( $live, $current, null ), TierDecision::target( $live, $previous, null ) );
+
+        if ( TierDecision::KIND_HOLD_ONLY === $kind ) {
+            $source = TierCalendar::SOURCE_PREVIOUS;
+        }
+
+        $current_id  = $customer->get_tier_id();
+        $held_until  = $customer->get_tier_held_until();
+        $hold_active = null !== $current_id && null !== $held_until && $held_until > $now;
+        $qualifying  = null;
+
+        if ( $hold_active ) {
+            $window     = TierCalendar::qualifying_window( $customer->get_tier_held_from(), $held_until, $period, $tz );
+            $qualifying = TierDecision::target(
+                $live,
+                $this->ledger_rows->window_total( $user_id, $window['from'], $window['to'] ) + $this->ledger_rows->staff_adjust_since( $user_id, $window['to'] ),
+                null
+            );
+        }
+
+        return TierDecision::rolling_move( $current_id, $current_rank, $window_tier, $qualifying, $floor, $hold_active, $kind ) + [
+            'source' => $source,
+            'bounds' => $bounds,
+            'total'  => $current,
+        ];
     }
 
     /**

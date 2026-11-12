@@ -32,6 +32,12 @@ final class TierSweep {
     public const MODE_TO_LIFETIME = 'to_lifetime';
 
     /**
+     * Qualification switched to Calendar, or its period changed: every member who isn't floor-held keeps their
+     * tier, held to the end of the current period.
+     */
+    public const MODE_TO_CALENDAR = 'to_calendar';
+
+    /**
      * Asks for a sweep. Everything happens after the outermost commit, because a rolled-back write must
      * neither leave a sweep behind nor queue a run, and a rollback doesn't undo the options cache.
      *
@@ -77,7 +83,7 @@ final class TierSweep {
     /** @return array{mode: string, after_user_id: int, total: int, started_at: string, token: string}|null Null when none is pending. */
     public static function current(): ?array {
         $stored = get_option( self::OPTION, null );
-        $modes  = [ self::MODE_PLACEMENT, self::MODE_REEVALUATE, self::MODE_TO_ROLLING, self::MODE_TO_LIFETIME ];
+        $modes  = [ self::MODE_PLACEMENT, self::MODE_REEVALUATE, self::MODE_TO_ROLLING, self::MODE_TO_LIFETIME, self::MODE_TO_CALENDAR ];
 
         if ( ! is_array( $stored ) || ! in_array( $stored['mode'] ?? null, $modes, true ) ) {
             return null;
@@ -140,7 +146,7 @@ final class TierSweep {
     }
 
     private static function is_mode_sweep( string $mode ): bool {
-        return self::MODE_TO_ROLLING === $mode || self::MODE_TO_LIFETIME === $mode;
+        return in_array( $mode, [ self::MODE_TO_ROLLING, self::MODE_TO_LIFETIME, self::MODE_TO_CALENDAR ], true );
     }
 
     /** @param array{mode: string, after_user_id: int, total: int, started_at: string, token: string} $sweep */

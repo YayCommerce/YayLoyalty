@@ -5,6 +5,7 @@ use YayLoyalty\Enums\ActivityEvent;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\LedgerEntry;
+use YayLoyalty\Pro\Services\TierCalendar;
 use YayLoyalty\Pro\Services\TierEvaluator;
 use YayLoyalty\Pro\Services\TierSweep;
 use YayLoyalty\Pro\YayLoyaltyPro;
@@ -20,6 +21,8 @@ use YayLoyalty\Utils\Table;
  * never lifts the customer a second step in the same evaluation; a refund or deduction moves them down.
  * In Rolling mode: the window total qualifies, an upgrade starts a hold, a negative row during a hold is
  * judged on the qualifying total, a hold end moves or renews, and the mode sweeps set or clear holds.
+ * In Calendar mode: the better of the current and previous period qualifies, holds run to a period's end,
+ * and a negative row during a hold is judged on the period that earned it.
  * Points move through LedgerService, whose recorded hook runs the evaluator after commit, as on a live site.
  */
 final class TierEvaluatorTest extends IntegrationTestCase {
@@ -32,6 +35,9 @@ final class TierEvaluatorTest extends IntegrationTestCase {
 
     /** @var int The pinned `tiers_rolling_months`. */
     private $rolling_months = 6;
+
+    /** @var string The pinned `tiers_calendar_period`. */
+    private $calendar_period = 'year';
 
     /** @var int[] Users this test created, deleted in tearDown(). */
     private $users = [];
@@ -65,10 +71,11 @@ final class TierEvaluatorTest extends IntegrationTestCase {
     /** @return array<string, mixed> */
     public function pinned_settings(): array {
         return [
-            'schema_version'       => SettingsHelper::SCHEMA_VERSION,
-            'tiers_enabled'        => $this->tiers_enabled,
-            'tiers_mode'           => $this->tiers_mode,
-            'tiers_rolling_months' => $this->rolling_months,
+            'schema_version'        => SettingsHelper::SCHEMA_VERSION,
+            'tiers_enabled'         => $this->tiers_enabled,
+            'tiers_mode'            => $this->tiers_mode,
+            'tiers_rolling_months'  => $this->rolling_months,
+            'tiers_calendar_period' => $this->calendar_period,
         ];
     }
 
@@ -488,6 +495,240 @@ final class TierEvaluatorTest extends IntegrationTestCase {
         $this->assertSame( [ null, null ], $this->hold_of( $lifetime ) );
     }
 
+    public function test_calendar_upgrade_holds_through_next_period(): void {
+        $yearly  = $this->customer();
+        $monthly = $this->customer();
+
+        $this->with_calendar(
+            'year',
+            function () use ( $yearly ): void {
+                $this->earn( $yearly, 3001, 900 );
+                $this->assertSame( 'Silver', $this->tier_of( $yearly ) );
+                $this->assertSame( $this->calendar_hold( 'current', 'year' ), $this->hold_of( $yearly ) );
+                $this->assertSame( 900, (int) $this->customer_row( $yearly )['tier_progress_value'] );
+            }
+        );
+        $this->with_calendar(
+            'month',
+            function () use ( $monthly ): void {
+                $this->earn( $monthly, 3002, 900 );
+                $this->assertSame( $this->calendar_hold( 'current', 'month' ), $this->hold_of( $monthly ) );
+            }
+        );
+    }
+
+    public function test_calendar_refund_inside_and_outside_the_qualifying_period(): void {
+        $old  = $this->held_from_previous( 3000 );
+        $user = $old->get_user_id();
+        $hold = $this->hold_of( $user );
+
+        $this->with_calendar(
+            'year',
+            function () use ( $old, $user, $hold ): void {
+                $new = $this->earn( $user, 3003, 100 );
+                $this->ledger_service()->refund_earn( $new, 100, 'refund', 2 ); // Kept-period order: no effect.
+                $this->assertSame( 'Gold', $this->tier_of( $user ) );
+                $this->assertSame( $hold, $this->hold_of( $user ) );
+
+                $this->ledger_service()->refund_earn( $old, 500, 'refund', 3 ); // Previous and qualifying 2,500.
+                $this->assertSame( 'Silver', $this->tier_of( $user ) );
+                $this->assertSame( [ 'refund' ], $this->last_change( $user, [ 'reason' ] ) );
+                $this->assertSame( $this->calendar_hold( 'previous', 'year' ), $this->hold_of( $user ) );
+            }
+        );
+    }
+
+    public function test_calendar_staff_deduction_counts_against_the_hold(): void {
+        $user = $this->held_from_previous( 3200 )->get_user_id();
+
+        $this->with_calendar(
+            'year',
+            function () use ( $user ): void {
+                $this->ledger_service()->adjust( $user, -100, 'staff', 1 ); // Previous and qualifying 3,100.
+                $this->assertSame( 'Gold', $this->tier_of( $user ) );
+
+                $this->ledger_service()->adjust( $user, -200, 'staff', 1 ); // Previous and qualifying 2,900.
+                $this->assertSame( 'Silver', $this->tier_of( $user ) );
+                $this->assertSame( [ 'adjustment' ], $this->last_change( $user, [ 'reason' ] ) );
+                $this->assertSame( $this->calendar_hold( 'previous', 'year' ), $this->hold_of( $user ) );
+            }
+        );
+    }
+
+    public function test_calendar_placement_uses_the_previous_period(): void {
+        $user = $this->customer();
+        $this->set_bonus( 'Silver', 50 );
+        $this->with_tiers_off(
+            function () use ( $user ): void {
+                $this->backdate( $this->earn( $user, 3004, 900 ), $this->in_previous_period( 'year' ) );
+                $this->earn( $user, 3005, 200 );
+            }
+        );
+
+        $this->with_calendar(
+            'year',
+            function () use ( $user ): void {
+                TierEvaluator::build()->sweep_one( $user, TierSweep::MODE_PLACEMENT );
+                $this->assertSame( 'Silver', $this->tier_of( $user ) );
+                $this->assertSame( [ 'placement' ], $this->last_change( $user, [ 'reason' ] ) );
+                $this->assertSame( $this->calendar_hold( 'previous', 'year' ), $this->hold_of( $user ) );
+                $this->assertSame( [], $this->bonus_rows( $user ) );
+            }
+        );
+    }
+
+    public function test_calendar_floor_end_starts_a_period_hold(): void {
+        $user      = $this->customer();
+        $evaluator = TierEvaluator::build();
+
+        $this->with_calendar(
+            'year',
+            function () use ( $user, $evaluator ): void {
+                $this->earn( $user, 3006, 900 );
+                $evaluator->assign_floor( $user, $this->tier_id( 'Gold' ), 30, 1 );
+                $this->assertSame( [ null, null ], $this->hold_of( $user ) );
+
+                $evaluator->clear_floor( $user, null );
+                $this->assertSame( 'Silver', $this->tier_of( $user ) );
+                $this->assertSame( [ 'manual_end' ], $this->last_change( $user, [ 'reason' ] ) );
+                $this->assertSame( $this->calendar_hold( 'current', 'year' ), $this->hold_of( $user ) );
+            }
+        );
+    }
+
+    public function test_calendar_hold_end_reviews_the_previous_period(): void {
+        $this->with_calendar(
+            'year',
+            function (): void {
+                $moved   = $this->ended_calendar_hold( 'Gold', 900 );
+                $renewed = $this->ended_calendar_hold( 'Silver', 900 );
+                $dropped = $this->ended_calendar_hold( 'Gold', 0 );
+                $waiting = $this->ended_calendar_hold( 'Gold', 0 );
+                $this->set_customer( $waiting, [ 'tier_held_until' => Dates::now() ] ); // Inside the period's last second.
+                $rows      = count( $this->changes( $renewed ) );
+                $evaluator = TierEvaluator::build();
+
+                foreach ( [ $moved, $renewed, $dropped, $waiting ] as $user ) {
+                    $evaluator->end_hold( $user );
+                }
+
+                $this->assertSame( [ 'Gold', 'Silver', 'hold_end' ], $this->last_change( $moved, [ 'from_name', 'to_name', 'reason' ] ) );
+                $this->assertSame( $this->calendar_hold( 'previous', 'year' ), $this->hold_of( $moved ) );
+                $this->assertSame( 'Silver', $this->tier_of( $renewed ) );
+                $this->assertCount( $rows, $this->changes( $renewed ) );
+                $this->assertSame( $this->calendar_hold( 'previous', 'year' ), $this->hold_of( $renewed ) );
+                $this->assertSame( 'Bronze', $this->tier_of( $dropped ) );
+                $this->assertSame( $this->calendar_hold( 'current', 'year' ), $this->hold_of( $dropped ) ); // Tie goes to current.
+                $this->assertSame( 'Gold', $this->tier_of( $waiting ) );
+            }
+        );
+    }
+
+    public function test_to_calendar_step(): void {
+        $evaluator = TierEvaluator::build();
+        $silver    = $this->customer();
+        $floored   = $this->customer();
+        $this->with_tiers_off(
+            function () use ( $silver, $floored ): void {
+                $this->ledger_service()->adjust( $silver, 900, 'seed', 1 );
+                $this->ledger_service()->adjust( $floored, 100, 'seed', 1 );
+            }
+        );
+        $evaluator->sweep_one( $silver, TierSweep::MODE_PLACEMENT );
+        $evaluator->assign_floor( $floored, $this->tier_id( 'Gold' ), null, 1 );
+        $this->set_customer(
+            $silver,
+            [
+                'tier_held_from'  => Dates::now(),
+                'tier_held_until' => Dates::add_months( Dates::now(), 6 ),
+            ]
+        ); // A Rolling hold to replace.
+        $rows = [ count( $this->changes( $silver ) ), count( $this->changes( $floored ) ) ];
+
+        $this->with_calendar(
+            'year',
+            function () use ( $evaluator, $silver, $floored ): void {
+                $evaluator->sweep_one( $silver, TierSweep::MODE_TO_CALENDAR );
+                $evaluator->sweep_one( $floored, TierSweep::MODE_TO_CALENDAR );
+                $this->assertSame( 'Silver', $this->tier_of( $silver ) );
+                $this->assertSame( $this->calendar_hold( 'previous', 'year' ), $this->hold_of( $silver ) );
+                $this->assertSame( 'Gold', $this->tier_of( $floored ) );
+                $this->assertSame( [ null, null ], $this->hold_of( $floored ) );
+            }
+        );
+        $this->with_calendar(
+            'quarter',
+            function () use ( $evaluator, $silver ): void {
+                $evaluator->sweep_one( $silver, TierSweep::MODE_TO_CALENDAR ); // Period change.
+                $this->assertSame( $this->calendar_hold( 'previous', 'quarter' ), $this->hold_of( $silver ) );
+            }
+        );
+
+        $this->assertSame( $rows, [ count( $this->changes( $silver ) ), count( $this->changes( $floored ) ) ] );
+    }
+
+    /** @group tier-sweep */
+    public function test_mode_round_trip_keeps_tiers(): void {
+        $this->set_bonus( 'Silver', 100 );
+        $this->set_bonus( 'Gold', 200 );
+        $evaluator = TierEvaluator::build();
+        $silver    = $this->customer();
+        $floored   = $this->customer();
+        $earn      = null;
+        $this->with_tiers_off(
+            function () use ( $silver, $floored, &$earn ): void {
+                $earn = $this->earn( $silver, 3300, 900 );
+                ( new CustomerRepository() )->ensure_row( $floored );
+            }
+        );
+        $this->backdate( $earn, $this->in_previous_period( 'year' ) );
+        $evaluator->sweep_one( $silver, TierSweep::MODE_PLACEMENT );
+        $evaluator->assign_floor( $floored, $this->tier_id( 'Gold' ), null, 1 );
+        $before = [ $this->changes( $silver ), $this->bonus_rows( $silver ), $this->changes( $floored ), $this->bonus_rows( $floored ) ];
+
+        $this->with_calendar(
+            'year',
+            function () use ( $evaluator, $silver, $floored ): void {
+                $evaluator->sweep_one( $silver, TierSweep::MODE_TO_CALENDAR );
+                $evaluator->sweep_one( $floored, TierSweep::MODE_TO_CALENDAR );
+                $this->assertSame( $this->calendar_hold( 'previous', 'year' ), $this->hold_of( $silver ) );
+            }
+        );
+        $this->assertSame( [ 'Silver', 'Gold' ], [ $this->tier_of( $silver ), $this->tier_of( $floored ) ] );
+        $this->assertSame( [ null, null ], $this->hold_of( $floored ) );
+
+        $this->with_rolling(
+            6,
+            function () use ( $evaluator, $silver, $floored ): void {
+                $evaluator->sweep_one( $silver, TierSweep::MODE_TO_ROLLING );
+                $evaluator->sweep_one( $floored, TierSweep::MODE_TO_ROLLING );
+            }
+        );
+        $this->assertSame( [ 'Silver', 'Gold' ], [ $this->tier_of( $silver ), $this->tier_of( $floored ) ] );
+        $this->assertSame( [ null, null ], $this->hold_of( $floored ) );
+        $this->assertFreshHold( $silver );
+
+        $this->with_calendar(
+            'month',
+            function () use ( $evaluator, $silver, $floored ): void {
+                $evaluator->sweep_one( $silver, TierSweep::MODE_TO_CALENDAR );
+                $evaluator->sweep_one( $floored, TierSweep::MODE_TO_CALENDAR );
+                $this->assertSame( $this->calendar_hold( 'previous', 'month' ), $this->hold_of( $silver ) ); // The Rolling hold is replaced.
+            }
+        );
+        $this->assertSame( [ 'Silver', 'Gold' ], [ $this->tier_of( $silver ), $this->tier_of( $floored ) ] );
+        $this->assertSame( [ null, null ], $this->hold_of( $floored ) );
+
+        $evaluator->sweep_one( $silver, TierSweep::MODE_TO_LIFETIME );
+        $evaluator->sweep_one( $floored, TierSweep::MODE_TO_LIFETIME );
+
+        $this->assertSame( [ 'Silver', 'Gold' ], [ $this->tier_of( $silver ), $this->tier_of( $floored ) ] );
+        $this->assertSame( [ null, null ], $this->hold_of( $silver ) );
+        $this->assertSame( [ null, null ], $this->hold_of( $floored ) );
+        // No switch moved anyone or paid a bonus.
+        $this->assertSame( $before, [ $this->changes( $silver ), $this->bonus_rows( $silver ), $this->changes( $floored ), $this->bonus_rows( $floored ) ] );
+    }
+
     public function test_lifetime_writes_no_hold(): void {
         $user = $this->customer();
         $this->ledger_service()->adjust( $user, 780, 'seed', 1 );
@@ -516,6 +757,67 @@ final class TierEvaluatorTest extends IntegrationTestCase {
                 'tier_id'         => $this->tier_id( 'Gold' ),
                 'tier_held_from'  => $from,
                 'tier_held_until' => Dates::add_months( $from, 6 ),
+            ]
+        );
+
+        return $user;
+    }
+
+    /**
+     * A Gold customer holding the tier to the end of this year, earned on $points dated in the previous year
+     * (order 3100, written with tiers off).
+     */
+    private function held_from_previous( int $points ): LedgerEntry {
+        $user = $this->customer();
+        $earn = null;
+        $this->with_tiers_off(
+            function () use ( $user, $points, &$earn ): void {
+                $earn = $this->earn( $user, 3100, $points );
+            }
+        );
+        $this->backdate( $earn, $this->in_previous_period( 'year' ) );
+        [ $from, $until ] = $this->calendar_hold( 'previous', 'year' );
+        $this->set_customer(
+            $user,
+            [
+                'tier_id'         => $this->tier_id( 'Gold' ),
+                'tier_held_from'  => $from,
+                'tier_held_until' => $until,
+            ]
+        );
+
+        return $earn;
+    }
+
+    /**
+     * A customer at $tier whose calendar hold ended with the previous year, with $previous_points earned in that
+     * year (written with tiers off), or just a customer row when 0.
+     */
+    private function ended_calendar_hold( string $tier, int $previous_points ): int {
+        static $order = 0;
+
+        $user = $this->customer();
+
+        if ( $previous_points > 0 ) {
+            ++$order;
+            $earn = null;
+            $this->with_tiers_off(
+                function () use ( $user, $previous_points, $order, &$earn ): void {
+                    $earn = $this->earn( $user, 3200 + $order, $previous_points );
+                }
+            );
+            $this->backdate( $earn, $this->in_previous_period( 'year' ) );
+        } else {
+            ( new CustomerRepository() )->ensure_row( $user );
+        }
+
+        $bounds = TierCalendar::bounds( Dates::now(), 'year', $this->tz() );
+        $this->set_customer(
+            $user,
+            [
+                'tier_id'         => $this->tier_id( $tier ),
+                'tier_held_from'  => $bounds['previous_start'],
+                'tier_held_until' => Dates::offset( -1, $bounds['current_start'] ),
             ]
         );
 
@@ -580,6 +882,46 @@ final class TierEvaluatorTest extends IntegrationTestCase {
         global $wpdb;
 
         $wpdb->update( Table::name( 'customers' ), $columns, [ 'user_id' => $user_id ] ); // phpcs:ignore WordPress.DB -- a test fixture sets state directly.
+    }
+
+    /** Calendar mode with $period, in a fixed UTC+7 site time zone while $body runs. */
+    private function with_calendar( string $period, callable $body ): void {
+        $zone = static function (): string {
+            return 'Asia/Ho_Chi_Minh';
+        };
+
+        $this->tiers_mode      = 'calendar';
+        $this->calendar_period = $period;
+        add_filter( 'pre_option_timezone_string', $zone );
+
+        try {
+            $body();
+        } finally {
+            remove_filter( 'pre_option_timezone_string', $zone );
+            $this->tiers_mode      = 'lifetime';
+            $this->calendar_period = 'year';
+        }
+    }
+
+    /** The site time zone with_calendar() pins. */
+    private function tz(): \DateTimeZone {
+        return new \DateTimeZone( 'Asia/Ho_Chi_Minh' );
+    }
+
+    /**
+     * The hold TierCalendar gives a tier reached in $source's period, as of now.
+     *
+     * @return array{0: string, 1: string} tier_held_from and tier_held_until.
+     */
+    private function calendar_hold( string $source, string $period ): array {
+        $hold = TierCalendar::hold_dates( $source, TierCalendar::bounds( Dates::now(), $period, $this->tz() ), $period, $this->tz() );
+
+        return [ $hold['from'], $hold['until'] ];
+    }
+
+    /** A moment one day into the previous $period. */
+    private function in_previous_period( string $period ): string {
+        return Dates::offset( DAY_IN_SECONDS, TierCalendar::bounds( Dates::now(), $period, $this->tz() )['previous_start'] );
     }
 
     private function with_rolling( int $months, callable $body ): void {

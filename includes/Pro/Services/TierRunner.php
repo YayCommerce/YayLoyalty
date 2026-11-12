@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The daily Action Scheduler job for tiers. Each run, while tiers are on: ends the manual floors that are
- * due, then in Rolling mode ends the holds that are due, then evaluates the next batch of the pending
+ * due, then in Rolling or Calendar mode ends the holds that are due, then evaluates the next batch of the pending
  * sweep (TierSweep). It queues an async continuation while any step filled its batch, as BirthdayRunner
  * does. A floor that ended but has not been cleared yet already counts for nothing, since TierEvaluator
  * ignores an ended floor; an ended hold that has not been processed already counts as inactive.
@@ -60,8 +60,11 @@ final class TierRunner {
             );
         }
 
-        if ( TierMode::ROLLING === TierEvaluator::mode() ) {
-            $held = $customers->hold_ended_user_ids( Dates::now(), self::BATCH_SIZE );
+        $mode = TierEvaluator::mode();
+
+        if ( TierMode::ROLLING === $mode || TierMode::CALENDAR === $mode ) {
+            // A Calendar hold ends on a period's last second; it is due only once the next period has begun, as end_hold() checks.
+            $held = $customers->hold_ended_user_ids( TierMode::CALENDAR === $mode ? Dates::offset( -1 ) : Dates::now(), self::BATCH_SIZE );
 
             if ( count( $held ) === self::BATCH_SIZE ) {
                 $has_more = true;
