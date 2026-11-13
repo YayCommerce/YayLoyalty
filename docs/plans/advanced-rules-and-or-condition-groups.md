@@ -8,7 +8,7 @@ design: UX-1
 trello:
 type: feat
 branch: feat/p-1-advanced-rules-and-or-condition-groups
-pr:
+pr: 189
 editions: [pro, lite]
 created: 2026-11-13
 reviewed: yes
