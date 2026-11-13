@@ -2,24 +2,28 @@
 namespace YayLoyalty\Models;
 
 use YayLoyalty\Enums\CampaignConditionType;
+use YayLoyalty\Utils\ConditionMatch;
 use YayLoyalty\Utils\ConditionValueRules;
 use YayLoyalty\Utils\IsoCodes;
-use YayLoyalty\Utils\Json;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * A campaign's `conditions`: a flat ANDed list, at most one entry per type, stored as JSON in the campaigns table.
+ * A campaign's `conditions`: one list joined by all or any (Utils\ConditionMatch), at most one entry per type, stored as JSON in the campaigns table.
  * An empty list applies to everyone. This class validates and normalises on save, and
- * Pro\Services\ConditionsEvaluator evaluates. It shares only Utils\ConditionValueRules with RewardConditionSet.
+ * Pro\Services\ConditionsEvaluator evaluates. It shares only Utils\ConditionValueRules and Utils\ConditionMatch with RewardConditionSet.
  */
 final class CampaignConditionSet {
+
+    /** @var string */
+    private $match;
 
     /** @var CampaignCondition[] */
     private $conditions;
 
     /** @param CampaignCondition[] $conditions */
-    public function __construct( array $conditions = [] ) {
+    public function __construct( array $conditions = [], string $match_mode = ConditionMatch::MATCH_ALL ) {
+        $this->match      = $match_mode;
         $this->conditions = array_values(
             array_filter(
                 $conditions,
@@ -31,40 +35,49 @@ final class CampaignConditionSet {
     }
 
     /**
-     * Builds from { type, operator, value } maps. Lenient: validate() is the strict check.
+     * Builds from a flat list or { match, conditions } of { type, operator, value } maps. Lenient: validate() is the strict check.
      *
-     * @param array<int, mixed> $list
+     * @param array<int|string, mixed> $raw
      */
-    public static function from_array( array $list ): self {
+    public static function from_array( array $raw ): self {
+        $parsed     = ConditionMatch::parse( $raw );
         $conditions = [];
 
-        foreach ( $list as $entry ) {
+        foreach ( $parsed['conditions'] as $entry ) {
             if ( is_array( $entry ) ) {
                 $conditions[] = CampaignCondition::from_array( $entry );
             }
         }
 
-        return new self( $conditions );
+        return new self( $conditions, $parsed['match'] );
     }
 
     /** Builds from the stored column value. Malformed JSON yields an empty set, never an exception. */
     public static function from_json( ?string $raw ): self {
-        return self::from_array( Json::decode_list( $raw, [] ) );
+        return self::from_array( ConditionMatch::decode( $raw ) );
     }
 
-    /** @return array<int, array{type: string, operator: string, value: mixed}> */
+    /** @return array{match: string, conditions: array} */
     public function to_array(): array {
-        return array_map(
-            static function ( CampaignCondition $condition ) {
-                return $condition->to_array();
-            },
-            $this->conditions
-        );
+        return [
+            'match'      => $this->match,
+            'conditions' => array_map(
+                static function ( CampaignCondition $condition ) {
+                    return $condition->to_array();
+                },
+                $this->conditions
+            ),
+        ];
     }
 
     /** Encodes for the `conditions` column, in the envelope Campaign::to_row() writes. */
     public function to_json(): string {
-        return Json::encode_list( $this->to_array(), Campaign::CONFIG_SCHEMA_VERSION );
+        return ConditionMatch::encode( $this->to_array(), Campaign::CONFIG_SCHEMA_VERSION );
+    }
+
+    /** How the conditions combine: ConditionMatch::MATCH_ALL or MATCH_ANY. */
+    public function match(): string {
+        return $this->match;
     }
 
     /** @return CampaignCondition[] */
@@ -81,7 +94,22 @@ final class CampaignConditionSet {
     }
 
     /**
-     * Canonicalises a raw list for storage: scalars widened to lists, ids cast,
+     * Canonicalises a flat list or { match, conditions } for storage, the list normalised by normalize_list(). Never throws.
+     *
+     * @param array<int|string, mixed> $raw
+     * @return array{match: string, conditions: array}
+     */
+    public static function normalize( array $raw ): array {
+        $parsed = ConditionMatch::parse( $raw );
+
+        return [
+            'match'      => $parsed['match'],
+            'conditions' => self::normalize_list( $parsed['conditions'] ),
+        ];
+    }
+
+    /**
+     * Canonicalises the list: scalars widened to lists, ids cast,
      * codes upper-cased, roles lower-cased, lists de-duplicated, entries
      * ordered cheap-first for evaluation. Never throws: unknown types pass
      * through for validate() to reject.
@@ -89,7 +117,7 @@ final class CampaignConditionSet {
      * @param array<int, mixed> $list
      * @return array<int, array{type: string, operator: string, value: mixed}>
      */
-    public static function normalize( array $list ): array {
+    private static function normalize_list( array $list ): array {
         $schema = CampaignConditionType::schema();
         $out    = [];
 
@@ -168,13 +196,14 @@ final class CampaignConditionSet {
     }
 
     /**
-     * Non-throwing check for the save boundary. It normalises first.
+     * Non-throwing check for the save boundary. It checks the raw structure, then normalises.
      *
-     * @param array<int, mixed> $list
+     * @param array<int|string, mixed> $raw A flat list or { match, conditions }.
      */
-    public static function is_valid( array $list ): bool {
+    public static function is_valid( array $raw ): bool {
         try {
-            self::from_array( self::normalize( $list ) )->validate();
+            ConditionMatch::assert_structure( $raw );
+            self::from_array( self::normalize( $raw ) )->validate();
 
             return true;
         } catch ( \InvalidArgumentException $e ) {
@@ -183,12 +212,14 @@ final class CampaignConditionSet {
     }
 
     /**
-     * @throws \InvalidArgumentException On the first problem: an unknown type,
+     * @throws \InvalidArgumentException On the first problem: a malformed structure, an unknown type,
      *         an operator the type does not accept, a value of the wrong shape,
      *         an empty list value, a duplicate type, a missing required sub-key
      *         (currency, source), or customer_ids past its cap.
      */
     public function validate(): void {
+        ConditionMatch::assert_structure( $this->to_array() );
+
         $schema = CampaignConditionType::schema();
         $seen   = [];
 
@@ -207,7 +238,7 @@ final class CampaignConditionSet {
                 throw new \InvalidArgumentException(
                     esc_html(
                         sprintf(
-                            'YayLoyalty: condition type "%s" appears more than once. Conditions are ANDed — use a single entry.',
+                            'YayLoyalty: condition type "%s" appears more than once. Conditions are combined — use a single entry.',
                             $type
                         )
                     )

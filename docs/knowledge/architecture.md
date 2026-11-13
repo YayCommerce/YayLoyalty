@@ -1,7 +1,7 @@
 ---
 area: architecture
-updated: 2026-11-12
-updated_ref: 3f6424ea
+updated: 2026-11-13
+updated_ref: 6ec1e2d
 covers: [yayloyalty.php, YayLoyaltyPluginAdapter.php, includes/YayLoyalty.php, includes/Access/, includes/Database/, includes/Models/, includes/Repositories/, includes/Services/, includes/Controllers/, includes/Engine/, includes/Enums/, includes/Pro/YayLoyaltyPro.php]
 ---
 
@@ -54,7 +54,7 @@ A second copy of the plugin (both editions active) defines `plugin_init` first; 
 | `customers` | Per-user aggregates: balance, lifetime, pending, `expires_at`, birthday |
 | `ledger` | Append-only points events, `balance_after` chain, unique `idempotency_key` |
 | `lots`, `lot_allocations` | Expiry batches and what each spend took from them. Invariant: `SUM(open remaining) = max(0, balance)` |
-| `campaigns`, `rewards` | Earn rules and redeemable rewards; unique `slug`, `is_builtin` |
+| `campaigns`, `rewards` | Earn rules and redeemable rewards; unique `slug`, `is_builtin`. `conditions` is one list with a match, all or any (`Utils/ConditionMatch.php`): an `all` list, or none, is stored in the 1.0.0 `{"schema_version":1,"items":[…]}` list envelope, an `any` list in the same envelope plus `"match":"any"` at `schema_version` 2. The models and REST read either shape and always serve `{ match, conditions }` |
 | `customer_meta` | Append-only activity timeline (`meta_key` is the event type) |
 | `redemptions` | One row per applied reward; `value`/`base_value` decimal(19,4), `rate_snapshot` decimal(19,10). Only `Engine\Redemption\CommitWriter` inserts |
 
@@ -126,10 +126,11 @@ Daily Action Scheduler action `yayloyalty_expiry_run` (group `yayloyalty`, batch
 
 ## Pro and Lite
 
-Lite is the Pro tree with `includes/Pro/` removed at release (see [build-release.md](build-release.md)). `YayLoyaltyPro::boot()` (`includes/Pro/YayLoyaltyPro.php`) attaches everything Pro does through filters and actions Lite exposes: extra triggers, reward types, the `batch` expiry mode, REST controllers, emails, the conditions evaluator, `DailyEarningLimit`, the Rewards panel, the birthday runner and fields. It writes no tables of its own.
+Lite is the Pro tree with `includes/Pro/` removed at release (see [build-release.md](build-release.md)). `YayLoyaltyPro::boot()` (`includes/Pro/YayLoyaltyPro.php`) attaches everything Pro does through filters and actions Lite exposes: extra triggers, reward types, the `batch` expiry mode, REST controllers, emails, the campaign and reward conditions evaluators, `DailyEarningLimit`, the Rewards panel, the birthday runner and fields. It writes no tables of its own.
 
 - **Add a seam, never a strip marker.** Pro widens Lite's lists through filters; Lite's `all_known()` lists stay unfiltered so a site downgraded to Lite still recognises stored Pro values (`Enums/CampaignTrigger.php`, `Enums/RewardType.php`).
-- Lite fails open without a conditions evaluator: a conditional campaign applies to everyone after a downgrade (`Engine/Points/PointsEngine.php`).
+- Lite fails open without a conditions evaluator: a conditional campaign applies to everyone after a downgrade (`Engine/Points/PointsEngine.php`), and a conditional reward is redeemable by everyone (`yayloyalty_reward_conditions_match` defaults to true in `Engine/Redemption/RewardGate.php`; Pro answers it with `Pro/Services/RewardConditionsEvaluator.php`). A 1.0.0 reader reads a `schema_version` 2 tree as no conditions.
+- The rewards Context carries a lazy customer-facts loader shared by its copies (`Engine/Rewards/Context.php`), so facts are read only when a `lifetime_points` condition runs. The Pro redeem card hides a reward the shopper's conditions exclude (`Pro/Storefront/RewardsPanel.php`).
 - A downgraded site keeps a stored `batch` expiry mode but runs inactivity.
 
 The admin SPA's side of the split is in [admin-spa.md](admin-spa.md#editions).

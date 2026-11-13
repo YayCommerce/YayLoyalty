@@ -1,7 +1,7 @@
 ---
 area: decisions
-updated: 2026-11-12
-updated_ref: 3f6424ea
+updated: 2026-11-13
+updated_ref: 6ec1e2d
 covers: [includes/YayLoyalty.php, includes/Services/LedgerService.php, includes/Database/, includes/Engine/Redemption/, includes/Engine/Earning/, apps/admin/src/main.tsx, apps/admin/src/pro/index.ts, scripts/run.sh]
 ---
 
@@ -54,5 +54,10 @@ covers: [includes/YayLoyalty.php, includes/Services/LedgerService.php, includes/
 **Evidence:** `includes/Utils/Dates.php`, `includes/Database/Installer.php`, `yayloyalty.php`.
 
 ### Lite fails open without a conditions evaluator
-**Why:** failing closed would disable every conditional campaign when a site downgrades from Pro.
-**Evidence:** `includes/Engine/Points/PointsEngine.php`.
+**Why:** failing closed would disable every conditional campaign or reward when a site downgrades from Pro.
+**Evidence:** `includes/Engine/Points/PointsEngine.php`, `includes/Engine/Redemption/RewardGate.php`.
+
+### 2026-11-13 Conditions are one list matched by all or any, flat rows untouched
+**Why:** Merchants asked for the YayPricing model: one list of conditions and one Any/All switch, no groups. An `all` list keeps the 1.0.0 list envelope, so flat rows need no migration; an `any` list adds `"match":"any"` at `schema_version` 2 to the same envelope, so a 1.0.0 reader still sees its items and reads them as `all`, which fails closed. At most one entry per type under either match. New conditions start as `all`.
+**Rejected:** two levels of AND/OR groups (built first in P-1, then removed at review); a nested tree (BS-1 option B); a data migration.
+**Evidence:** `includes/Utils/ConditionMatch.php`, P-1.

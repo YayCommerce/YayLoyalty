@@ -172,7 +172,7 @@ final class PointsEngine {
 
     /** Whether a campaign's conditions let every shopper through: it has none, or none are enforced (Lite). */
     private static function applies_to_everyone( Campaign $campaign ): bool {
-        return [] === $campaign->get_conditions() || null === self::conditions_evaluator();
+        return ! $campaign->has_conditions() || null === self::conditions_evaluator();
     }
 
     /** The attached conditions evaluator, or null when conditions are not enforced. */

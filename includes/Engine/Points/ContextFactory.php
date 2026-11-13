@@ -276,7 +276,7 @@ final class ContextFactory {
     /**
      * @return string[]
      */
-    private static function user_roles( int $user_id ): array {
+    public static function user_roles( int $user_id ): array {
         if ( $user_id < 1 ) {
             return [];
         }

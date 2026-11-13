@@ -1,7 +1,7 @@
 ---
 area: helpers
-updated: 2026-11-12
-updated_ref: 3f6424ea
+updated: 2026-11-13
+updated_ref: 6ec1e2d
 covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, includes/Access/, includes/Services/, includes/Controllers/AbstractRestController.php, includes/Engine/Earning/, includes/Engine/Expiry/ExpiryRunner.php, includes/Engine/Emails/Emails.php, includes/Engine/Storefront/, includes/Engine/Points/, apps/admin/src/lib/, apps/admin/src/hooks/, apps/admin/src/components/layout/]
 ---
 
@@ -15,6 +15,7 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 - `Utils\Sql::in_placeholders($values, '%d')` (`includes/Utils/Sql.php`): placeholders for a prepared `IN (…)`.
 - `Database\Transaction::run($fn)` / `after_commit($fn)` (`includes/Database/Transaction.php`): the only way to open a transaction; defer emails and actions until commit.
 - `Utils\Json::encode|decode|encode_list|decode_list` (`includes/Utils/Json.php`): versioned JSON columns; never throws on read.
+- `Utils\ConditionMatch::parse|decode|encode|assert_structure|fold` (`includes/Utils/ConditionMatch.php`): a campaign's or reward's `conditions` as `{ match, conditions }`; reads a flat list as `all`. `Campaign|Reward::has_conditions()` asks whether there is a condition.
 - `Services\LedgerService` (`includes/Services/LedgerService.php`): every points change. `adjust()` / `record()` for manual rows; `earn()`, `refund_earn()`, `restore_refund()`, `expire()`, `redeem()` for keyed system rows. Get an instance from an existing composition root, don't construct a new one.
 - `Engine\Earning\IdempotencyKey::compose|for_earn` (`includes/Engine/Earning/IdempotencyKey.php`): the key for any new ledger write.
 - `Repositories\CustomerReader` (`includes/Repositories/CustomerReader.php`): depend on this when code may read a customer but must never write one.
@@ -62,6 +63,7 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 
 ## SPA (`apps/admin/src/`)
 
+- `toConditionList`, `hasConditions`, `conditionListSchema` (`lib/schema/condition-match.schema.ts`): read either `conditions` wire shape; `ConditionListEditor` and `mergeConditionErrors` (`pro/conditions/`) edit and validate one in a Pro form.
 - `api`, `toastApiError`, `getApiErrorMessage`, `isNotFoundError`, `isAbortError` (`lib/api/api.ts`): every REST call and failure toast.
 - `parsePaginated`, `paginatedSchema`, `fetchAllPages`, `MAX_PER_PAGE` (`lib/api/paginated.ts`): list responses.
 - `Can`, `can`, `useCapability`, `CAP` (`lib/access.tsx`): hide or disable by capability.
@@ -77,4 +79,4 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 
 Public: `yayloyalty_points_awarded` (after commit), `yayloyalty_points_redeemed`, `yayloyalty_ledger_recorded`, `yayloyalty_pro_booted`, `yayloyalty_redeem_card` (renders the card), `yayloyalty_yaymail_register_emails`, `yayloyalty_yaymail_register_shortcodes`.
 
-Seams Pro attaches through (documented "Internal seam, not a public API"): `yayloyalty_earning_gates`, `yayloyalty_redemption_gates`, `yayloyalty_register_trigger_handlers`, `yayloyalty_register_reward_handlers`, `yayloyalty_award_points` (can only lower), `yayloyalty_points_left_today`, `yayloyalty_order_award_triggers`, `yayloyalty_campaign_conditions_evaluator`, `yayloyalty_rest_controllers`, `yayloyalty_rest_item_schema`, `yayloyalty_campaign_config_schema`, `yayloyalty_reward_config_schema`, `yayloyalty_localize_admin_data`, `yayloyalty_plugin_name`. Others: `yayloyalty_table_schemas`, `yayloyalty_run_migrations`, `yayloyalty_currency_rate`, `yayloyalty_context_to_base_factor`.
+Seams Pro attaches through (documented "Internal seam, not a public API"): `yayloyalty_earning_gates`, `yayloyalty_redemption_gates`, `yayloyalty_register_trigger_handlers`, `yayloyalty_register_reward_handlers`, `yayloyalty_award_points` (can only lower), `yayloyalty_points_left_today`, `yayloyalty_order_award_triggers`, `yayloyalty_campaign_conditions_evaluator`, `yayloyalty_reward_conditions_match`, `yayloyalty_rest_controllers`, `yayloyalty_rest_item_schema`, `yayloyalty_campaign_config_schema`, `yayloyalty_reward_config_schema`, `yayloyalty_localize_admin_data`, `yayloyalty_plugin_name`. Others: `yayloyalty_table_schemas`, `yayloyalty_run_migrations`, `yayloyalty_currency_rate`, `yayloyalty_context_to_base_factor`.

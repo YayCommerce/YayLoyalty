@@ -60,7 +60,13 @@ final class RewardsPanel {
 
         $user_id = (int) $context['user_id'];
         $balance = (int) $context['balance'];
-        $options = $service->reward_options( $cart, $user_id );
+        // A reward the shopper's conditions exclude is not theirs to see.
+        $options = array_filter(
+            $service->reward_options( $cart, $user_id ),
+            static function ( array $option ): bool {
+                return Result::REASON_CONDITIONS_NOT_MET !== $option['quote']->get_reason();
+            }
+        );
 
         if ( [] === $options || self::is_refused( $options ) ) {
             return $rows;

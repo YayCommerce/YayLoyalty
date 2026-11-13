@@ -25,6 +25,7 @@ use YayLoyalty\Pro\Repositories\StoreLedgerRepository;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Pro\Services\DailyEarningLimit;
 use YayLoyalty\Pro\Services\DiscountRewardHandler;
+use YayLoyalty\Pro\Services\RewardConditionsEvaluator;
 use YayLoyalty\Pro\Storefront\RewardsPanel;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\LedgerRepository;
@@ -87,6 +88,7 @@ final class YayLoyaltyPro {
         add_filter( 'yayloyalty_reward_config_schema', [ self::class, 'add_reward_config_schema' ] );
         add_action( 'yayloyalty_register_reward_handlers', [ self::class, 'register_reward_handlers' ] );
         add_filter( PointsEngine::CONDITIONS_EVALUATOR_FILTER, [ self::class, 'conditions_evaluator' ] );
+        add_filter( 'yayloyalty_reward_conditions_match', [ new RewardConditionsEvaluator(), 'matches' ], 10, 3 );
         add_filter( 'yayloyalty_rest_controllers', [ self::class, 'add_controllers' ] );
         add_filter( 'yayloyalty_rest_item_schema', [ self::class, 'describe_pro_config' ], 10, 2 );
         add_filter( 'yayloyalty_localize_admin_data', [ self::class, 'add_segments' ] );

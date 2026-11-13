@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { Resolver, ResolverResult } from 'react-hook-form';
+import type { Resolver } from 'react-hook-form';
 
 import { dateToStored } from '@/lib/helpers/format.helper';
 import {
@@ -12,7 +12,8 @@ import {
   campaignUpdateInputSchema,
   CreatableCampaignTrigger,
 } from '@/lib/schema/campaign.schema';
-import { validateConditionValue } from './CampaignEditorConditions';
+import { toConditionList } from '@/lib/schema/condition-match.schema';
+import { mergeConditionErrors } from '../../conditions/condition-form';
 
 /**
  * The form's fields: CampaignUpdateInput, in both modes. `trigger` lives outside the form, in
@@ -30,7 +31,7 @@ export function campaignToFormValues(campaign: Campaign): CampaignFormValues {
     // Cloned: form state must never share references with the query cache, or an in-place
     // edit corrupts what other readers have cached.
     config: structuredClone(campaign.config),
-    conditions: structuredClone(normalizeConditions(campaign.conditions)),
+    conditions: structuredClone(toConditionList<CampaignCondition>(campaign.conditions)),
     starts_at: campaign.starts_at,
     ends_at: campaign.ends_at,
   };
@@ -84,54 +85,6 @@ export function synthesizeDraftCampaign(): Campaign {
     points_issued: 0,
     is_deletable: false,
   };
-}
-
-/** The wire type is object | array; narrow to an array once here. */
-function normalizeConditions(conditions: Campaign['conditions']): CampaignCondition[] {
-  return Array.isArray(conditions) ? (conditions as CampaignCondition[]) : [];
-}
-
-/**
- * Adds per-condition value errors to the zodResolver result. `value` is
- * z.unknown(), so zod never checks it; running validateConditionValue in the
- * resolver keeps it on RHF's normal lifecycle for every save path, unlike
- * setError (wiped by the next resolver run) or a native submit listener
- * (never fired by a dialog button). Builds the array through a plain Record
- * because RHF's mapped error type for an array of unknown does not iterate.
- */
-export function mergeConditionErrors(
-  result: ResolverResult<CampaignFormValues>,
-  values: CampaignFormValues,
-): ResolverResult<CampaignFormValues> {
-  const conditions = Array.isArray(values.conditions) ? values.conditions : [];
-  const additions: Record<number, { type: 'manual'; message: string }> = {};
-
-  conditions.forEach((condition, index) => {
-    const message = validateConditionValue(condition);
-
-    if (message) {
-      additions[index] = { type: 'manual', message };
-    }
-  });
-
-  if (Object.keys(additions).length === 0) {
-    return result;
-  }
-
-  const currentErrors = result.errors as Record<string, unknown> & {
-    conditions?: Array<{ value?: { type: string; message: string } } | undefined>;
-  };
-  const existing = Array.isArray(currentErrors.conditions) ? [...currentErrors.conditions] : [];
-
-  Object.entries(additions).forEach(([indexKey, error]) => {
-    const index = Number(indexKey);
-    existing[index] = { ...existing[index], value: error };
-  });
-
-  return {
-    values: {},
-    errors: { ...currentErrors, conditions: existing },
-  } as ResolverResult<CampaignFormValues>;
 }
 
 /** One resolver for both editor modes: the fields it validates are the same in each. */

@@ -6,12 +6,13 @@ use YayLoyalty\Engine\Points\CustomerFacts;
 use YayLoyalty\Enums\CampaignConditionType;
 use YayLoyalty\Models\CampaignCondition;
 use YayLoyalty\Models\CampaignConditionSet;
+use YayLoyalty\Utils\ConditionMatch;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Evaluates a campaign's `conditions`, a flat ANDed list, against values already on the Context.
+ * Evaluates a campaign's `conditions`, joined by all or any, against values already on the Context.
  * Queries nothing. Attached through PointsEngine::CONDITIONS_EVALUATOR_FILTER.
  *
  * Unknown conditions fail here, while Lite, with no evaluator, lets them match: Pro can evaluate,
@@ -42,34 +43,33 @@ final class ConditionsEvaluator {
     private const REASON_NEEDS_ORDER = 'needs_order';
 
     /**
-     * Whether every condition matches the event.
+     * Whether the conditions match the event: explain()'s verdict.
      *
-     * @param array $conditions Flat list of {type, operator, value} objects.
+     * @param array $conditions A flat list or { match, conditions } of {type, operator, value} objects.
      */
     public function evaluate( array $conditions, Context $ctx ): bool {
-        foreach ( $this->explain( $conditions, $ctx ) as $result ) {
-            if ( ! $result['matched'] ) {
-                return false;
-            }
-        }
-
-        return true;
+        return $this->explain( $conditions, $ctx )['matched'];
     }
 
     /**
-     * Per-condition results for the preview endpoint. evaluate() folds over
-     * this, so the preview cannot disagree with award time.
+     * Per-condition results for the preview endpoint. evaluate() returns its verdict,
+     * so the preview cannot disagree with award time.
      *
-     * @return array<int, array<string, mixed>>
+     * @return array{matched: bool, match: string, conditions: array<int, array<string, mixed>>}
      */
     public function explain( array $conditions, Context $ctx ): array {
+        $set     = CampaignConditionSet::from_array( $conditions );
         $results = [];
 
-        foreach ( CampaignConditionSet::from_array( $conditions )->all() as $condition ) {
+        foreach ( $set->all() as $condition ) {
             $results[] = $this->evaluate_one( $condition, $ctx );
         }
 
-        return $results;
+        return [
+            'matched'    => ConditionMatch::fold( $set->match(), array_column( $results, 'matched' ) ),
+            'match'      => $set->match(),
+            'conditions' => $results,
+        ];
     }
 
     /**
@@ -234,21 +234,7 @@ final class ConditionsEvaluator {
             return $this->reject( $result, 'unsupported_operator' );
         }
 
-        $wanted = array_map(
-            static function ( $item ) {
-                return is_scalar( $item ) ? (string) $item : '';
-            },
-            is_array( $value ) ? $value : [ $value ]
-        );
-
-        $actual = array_map(
-            static function ( $item ) {
-                return (string) $item;
-            },
-            $actual
-        );
-
-        $intersects = [] !== array_intersect( $wanted, $actual );
+        $intersects = ConditionCompare::intersects( $actual, $value );
 
         $result['matched'] = CampaignConditionType::OP_IN === $operator ? $intersects : ! $intersects;
         $result['reason']  = $result['matched'] ? 'matched' : 'no_overlap';
@@ -267,17 +253,10 @@ final class ConditionsEvaluator {
             return $this->reject( $result, 'unsupported_operator' );
         }
 
-        if ( CampaignConditionType::OP_BETWEEN === $operator ) {
-            if ( ! is_array( $value ) || ! isset( $value[0], $value[1] )
-                || ! is_numeric( $value[0] ) || ! is_numeric( $value[1] ) ) {
-                return $this->reject( $result, 'non_numeric_value' );
-            }
+        $matched = ConditionCompare::numeric( $actual, $operator, $value );
 
-            $matched = $actual >= (float) $value[0] && $actual <= (float) $value[1];
-        } elseif ( ! is_numeric( $value ) ) {
+        if ( null === $matched ) {
             return $this->reject( $result, 'non_numeric_value' );
-        } else {
-            $matched = $this->compare( $actual, $operator, (float) $value );
         }
 
         $result['matched'] = $matched;
@@ -285,22 +264,6 @@ final class ConditionsEvaluator {
         $result['actual']  = $actual;
 
         return $result;
-    }
-
-    /** One-sided numeric comparison; $operator is a NUMERIC_OPERATORS entry other than between. */
-    private function compare( float $actual, string $operator, float $expected ): bool {
-        switch ( $operator ) {
-            case CampaignConditionType::OP_EQ:
-                return abs( $actual - $expected ) < 0.00001;
-            case CampaignConditionType::OP_GT:
-                return $actual > $expected;
-            case CampaignConditionType::OP_GTE:
-                return $actual >= $expected;
-            case CampaignConditionType::OP_LT:
-                return $actual < $expected;
-            default: // OP_LTE
-                return $actual <= $expected;
-        }
     }
 
     /**

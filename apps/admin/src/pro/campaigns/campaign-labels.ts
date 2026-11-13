@@ -9,6 +9,7 @@ import {
   CampaignTrigger,
   DisplayStatus,
 } from '@/lib/schema/campaign.schema';
+import { toConditionList } from '@/lib/schema/condition-match.schema';
 import type { badgeVariants } from '@/components/ui/badge';
 
 /** Campaign presentation strings derived from the real fields; the wire carries none. */
@@ -59,16 +60,17 @@ export function givesLabel(trigger: CampaignTrigger, config: Record<string, unkn
   );
 }
 
+/** An all list reads as a comma list, "Country, Order count"; an any list as "Country OR Order count". */
 export function conditionsLabel(conditions: unknown): string {
-  const list = Array.isArray(conditions) ? conditions : [];
+  const list = toConditionList(conditions);
 
-  if (list.length === 0) {
+  if (list.conditions.length === 0) {
     return __('No conditions', 'yayloyalty');
   }
 
-  return list
-    .map((condition) => humanizeConditionType(String((condition as { type?: unknown }).type ?? '')))
-    .join(', ');
+  const joiner = list.match === 'any' ? ` ${__('OR', 'yayloyalty')} ` : ', ';
+
+  return list.conditions.map((condition) => humanizeConditionType(condition.type)).join(joiner);
 }
 
 /** Falls back to slug-to-title-case for a type this build does not recognise, so a stale row never renders blank. */
