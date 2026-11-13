@@ -3,6 +3,7 @@ namespace YayLoyalty\Models;
 
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\Status;
+use YayLoyalty\Utils\ConditionGroups;
 use YayLoyalty\Utils\ConfigSpec;
 use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Json;
@@ -40,7 +41,7 @@ class Campaign extends AbstractModel {
     /** @var array */
     private $config;
 
-    /** @var array */
+    /** @var array{match: string, groups: array} The ConditionGroups tree. */
     private $conditions;
 
     /** @var string|null */
@@ -92,7 +93,7 @@ class Campaign extends AbstractModel {
         $this->status      = $status;
         $this->priority    = $priority;
         $this->config      = self::validate_config( $trigger, $config );
-        $this->conditions  = $conditions;
+        $this->conditions  = ConditionGroups::parse( $conditions );
         $this->starts_at   = $starts_at;
         $this->ends_at     = $ends_at;
         $this->is_builtin  = $is_builtin;
@@ -112,7 +113,7 @@ class Campaign extends AbstractModel {
             (string) ( $row['status'] ?? Status::ACTIVE ),
             self::cast_int_default( $row['priority'] ?? 0 ),
             Json::decode( $row['config'] ?? null, [] ),
-            Json::decode_list( $row['conditions'] ?? null, [] ),
+            ConditionGroups::decode( $row['conditions'] ?? null ),
             self::cast_datetime( $row['starts_at'] ?? null ),
             self::cast_datetime( $row['ends_at'] ?? null ),
             self::cast_bool( $row['is_builtin'] ?? 0 ),
@@ -132,7 +133,7 @@ class Campaign extends AbstractModel {
             'status'       => $this->status,
             'priority'     => $this->priority,
             'config'       => Json::encode( $this->config, self::CONFIG_SCHEMA_VERSION ),
-            'conditions'   => Json::encode_list( $this->conditions, self::CONFIG_SCHEMA_VERSION ),
+            'conditions'   => ConditionGroups::encode( $this->conditions, self::CONFIG_SCHEMA_VERSION ),
             'starts_at'    => $this->starts_at,
             'ends_at'      => $this->ends_at,
             'is_builtin'   => $this->is_builtin ? 1 : 0,
@@ -306,7 +307,7 @@ class Campaign extends AbstractModel {
         return true;
     }
 
-    /** Whether a conditions list is acceptable to store. The controller answers 4xx on false. */
+    /** Whether a flat list or a tree of conditions is acceptable to store. The controller answers 4xx on false. */
     public static function conditions_are_valid( array $conditions ): bool {
         return CampaignConditionSet::is_valid( $conditions );
     }
@@ -391,8 +392,20 @@ class Campaign extends AbstractModel {
         return $this->config;
     }
 
+    /** @return array{match: string, groups: array} The ConditionGroups tree. */
     public function get_conditions(): array {
         return $this->conditions;
+    }
+
+    /** Whether any group holds a condition. Without one, everyone qualifies. */
+    public function has_conditions(): bool {
+        foreach ( $this->conditions['groups'] as $group ) {
+            if ( [] !== $group['conditions'] ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function get_starts_at(): ?string {
@@ -474,7 +487,7 @@ class Campaign extends AbstractModel {
         $this->config = self::validate_config( $this->trigger, $config );
     }
 
-    /** Normalises a conditions list and stores it. Rejection is conditions_are_valid()'s job. */
+    /** Normalises a flat list or a tree and stores the tree. Rejection is conditions_are_valid()'s job. */
     public function set_conditions( array $conditions ): void {
         $this->conditions = CampaignConditionSet::normalize( $conditions );
     }
