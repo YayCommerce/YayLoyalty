@@ -471,13 +471,7 @@ class Reward extends AbstractModel {
 
     /** Whether any group holds a condition. Without one, everyone qualifies. */
     public function has_conditions(): bool {
-        foreach ( $this->conditions['groups'] as $group ) {
-            if ( [] !== $group['conditions'] ) {
-                return true;
-            }
-        }
-
-        return false;
+        return ! RewardConditionSet::from_array( $this->conditions )->is_empty();
     }
 
     public function get_starts_at(): ?string {

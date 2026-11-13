@@ -399,13 +399,7 @@ class Campaign extends AbstractModel {
 
     /** Whether any group holds a condition. Without one, everyone qualifies. */
     public function has_conditions(): bool {
-        foreach ( $this->conditions['groups'] as $group ) {
-            if ( [] !== $group['conditions'] ) {
-                return true;
-            }
-        }
-
-        return false;
+        return ! CampaignConditionSet::from_array( $this->conditions )->is_empty();
     }
 
     public function get_starts_at(): ?string {
