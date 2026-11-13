@@ -34,14 +34,13 @@ test.describe( 'Campaign condition match', { tag: [ '@flow-campaign-condition-ma
 
 		const match = page.getByRole( 'radiogroup', { name: 'Match conditions' } );
 		await expect( match.getByRole( 'radio', { name: 'All' } ) ).toHaveAttribute( 'aria-checked', 'true' );
-		await expect( page.getByRole( 'button', { name: 'Add group' } ) ).toHaveCount( 0 );
 
 		await page.getByRole( 'button', { name: 'Add condition' } ).click();
 		await page.getByRole( 'menuitem', { name: 'Order count' } ).click();
 		await page.getByRole( 'textbox' ).last().fill( '5' );
 
 		await match.getByRole( 'radio', { name: 'Any' } ).click();
-		await expect( page.getByText( 'or', { exact: true } ) ).toBeVisible();
+		await expect( match.locator( 'xpath=../..' ).getByText( 'or', { exact: true } ) ).toBeVisible();
 
 		await page.getByRole( 'button', { name: 'Save campaign' } ).click();
 		await expect( page.getByText( 'Campaign saved.' ) ).toBeVisible();

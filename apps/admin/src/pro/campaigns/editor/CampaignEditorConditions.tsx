@@ -3,7 +3,7 @@ import { __ } from '@wordpress/i18n';
 import { CAMPAIGN_CONDITION_TYPES } from '@/lib/schema/campaign.schema';
 import { ConditionListEditor } from '../../conditions/ConditionListEditor';
 
-/** Conditions section: the campaign vocabulary in the shared group editor. */
+/** Conditions section of the campaign editor. */
 export function CampaignEditorConditions() {
   return (
     <ConditionListEditor
