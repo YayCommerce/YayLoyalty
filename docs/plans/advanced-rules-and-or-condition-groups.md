@@ -1,7 +1,7 @@
 ---
 id: P-1
 title: Advanced rules: AND/OR condition groups
-status: in-progress
+status: done
 from: BS-1
 roadmap: R-1
 design: UX-1
@@ -11,6 +11,7 @@ branch: feat/p-1-advanced-rules-and-or-condition-groups
 pr:
 editions: [pro, lite]
 created: 2026-11-13
+reviewed: pending
 ---
 # P-1 Advanced rules: AND/OR condition groups
 
@@ -87,7 +88,7 @@ A merchant builds a campaign's or a reward's conditions as groups joined by AND/
 - [x] T4 Reward conditions enforced in Pro: a lazy facts loader on the rewards Context, a reward conditions evaluator on `yayloyalty_reward_conditions_match`, and redeem-card rows hidden when the conditions exclude the shopper: `includes/Engine/Rewards/Context.php`, `includes/Engine/Rewards/ContextFactory.php`, `includes/Engine/Points/ContextFactory.php`, `includes/Pro/Services/RewardConditionsEvaluator.php` (new), `includes/Pro/YayLoyaltyPro.php`, `includes/Pro/Storefront/RewardsPanel.php`, `tests/php/unit/Pro/Services/RewardConditionsEvaluatorTest.php` (new) [risk: 3]
   - Reuse: `Points\ContextFactory::customer_facts()` and `user_roles()` (made public) in `includes/Engine/Points/ContextFactory.php`; the closure-resolve pattern of `Points\Context::get_customer_facts()` (`includes/Engine/Points/Context.php:188-195`); `ConditionGroups::fold()` (T1); `RewardConditionType` operators; `Result::REASON_CONDITIONS_NOT_MET` in `includes/Engine/Rewards/Result.php`
   - Callers: `RewardConditionsEvaluator::matches()` → filter `yayloyalty_reward_conditions_match` (applied in `RewardGate::check()`), registered in `YayLoyaltyPro::boot()`; `Points\ContextFactory::user_roles()` (now public) → `RewardConditionsEvaluator::matches()`.
-- [x] T5 SPA wire shape, the one reader for both shapes, and the grouped labels: `apps/admin/src/lib/schema/condition-groups.schema.ts` (new), `apps/admin/src/lib/schema/campaign.schema.ts`, `apps/admin/src/lib/schema/reward.schema.ts`, `apps/admin/src/pro/campaigns/campaign-labels.ts`, `apps/admin/src/pro/rewards/reward-labels.ts`, `apps/admin/src/pro/campaigns/add/campaign-templates.ts`, `apps/admin/src/pro/campaigns/editor/campaign-editor.form.ts`, `apps/admin/src/pro/rewards/editor/reward-editor.form.ts`, `tests/js/lib/schema/condition-groups.schema.test.ts` (new). UX-1 "Copy" (labels).
+- [x] T5 SPA wire shape, the one reader for both shapes, and the grouped labels: `apps/admin/src/lib/schema/condition-groups.schema.ts` (new), `apps/admin/src/lib/schema/campaign.schema.ts`, `apps/admin/src/lib/schema/reward.schema.ts`, `apps/admin/src/pro/campaigns/campaign-labels.ts`, `apps/admin/src/pro/rewards/reward-labels.ts`, `apps/admin/src/pro/campaigns/add/campaign-templates.ts`, `apps/admin/src/pro/campaigns/editor/campaign-editor.form.ts`, `apps/admin/src/pro/rewards/editor/reward-editor.form.ts`, `apps/admin/src/pro/rewards/editor/RewardEditor.tsx`, `apps/admin/src/pro/campaigns/ConditionsPreview.tsx`, `tests/js/lib/schema/condition-groups.schema.test.ts` (new). UX-1 "Copy" (labels). The `campaign-editor.form.ts` reader change lands with T6, which rewrites the same file's error merge.
   - Reuse: `conditionTypeLabel()` in `campaign-labels.ts`; `campaignConditionSchema` and `rewardConditionSchema` as the leaf schemas; `structuredClone` as in `campaignToFormValues()`
   - Callers:
     - `conditionTreeSchema()` → `campaignUpdateInputSchema`, `rewardFieldsSchema` (T5).
@@ -104,7 +105,7 @@ A merchant builds a campaign's or a reward's conditions as groups joined by AND/
 
 **Tests:** [unit] CampaignConditionSetTest (tests/php/unit/Models/CampaignConditionSetTest.php) — a stored 1.0.0 flat list reads as one AND group and re-encodes byte-identical in the v1 envelope, a grouped tree round-trips as schema_version 2, empty groups are dropped, and a repeated type within a group or an 11th group is rejected; [unit] ConditionsEvaluatorTest (tests/php/unit/Pro/Services/ConditionsEvaluatorTest.php) — the acceptance example, country US AND (lifetime spend >= 500 OR order count >= 5), matches only the right customers across the four combinations, a flat list still ANDs, and evaluate() equals explain()'s verdict; [unit] RewardConditionsEvaluatorTest (tests/php/unit/Pro/Services/RewardConditionsEvaluatorTest.php) — role, specific-customer and lifetime-points groups decide redeemability, a guest fails a conditional reward and passes an unconditional one, and the facts loader is not called unless a lifetime_points condition runs; [js] condition-groups.schema.test (tests/js/lib/schema/condition-groups.schema.test.ts) — toConditionTree reads a flat list as one all group and leaves a tree unchanged, and conditionsLabel renders "Country AND (Lifetime spend OR Order count)"
 
-**E2E:** campaign-condition-groups: in the campaign editor build country US (billing) AND (lifetime spend at least 500 OR order count at least 5), save, reload, and the two groups come back with Group 1 "all", Group 2 "any" and the top "all"
+**E2E:** campaign-condition-groups: seed a draft campaign with country US (billing) through REST, then in the campaign editor build country US (billing) AND (lifetime spend at least 500 OR order count at least 5), save, reload, and the two groups come back with Group 1 "all", Group 2 "any" and the top "all"
 
 ## Verify
 - `yayh test run unit --id=P-1` → exit 0 (unit)
