@@ -83,8 +83,13 @@ final class ConditionMatch {
             return;
         }
 
-        if ( array_key_exists( 'conditions', $raw ) && ! is_array( $raw['conditions'] ) ) {
+        // A shape missing its list would save as no conditions, opening the campaign or reward to everyone.
+        if ( ! is_array( $raw['conditions'] ?? null ) ) {
             throw self::bad( 'conditions must be a list' );
+        }
+
+        if ( [] !== array_diff( array_keys( $raw ), [ self::MATCH_KEY, 'conditions' ] ) ) {
+            throw self::bad( 'take only "match" and "conditions"' );
         }
 
         if ( ! in_array( self::match_of( $raw ), [ self::MATCH_ALL, self::MATCH_ANY ], true ) ) {

@@ -90,6 +90,18 @@ final class CampaignConditionSetTest extends TestCase {
         );
     }
 
+    public function test_a_match_without_its_list_is_rejected_rather_than_saved_as_no_conditions() {
+        $this->assertFalse( CampaignConditionSet::is_valid( [ 'match' => 'any' ] ) );
+        $this->assertFalse(
+            CampaignConditionSet::is_valid(
+                [
+                    'match' => 'any',
+                    0       => $this->order_count( 5 ),
+                ]
+            )
+        );
+    }
+
     /** Lifetime spend >= 500 USD OR order count >= 5. */
     private function any_list(): array {
         return [
