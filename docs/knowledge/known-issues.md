@@ -1,7 +1,7 @@
 ---
 area: known-issues
-updated: 2026-11-12
-updated_ref: cc2a3e71
+updated: 2026-11-13
+updated_ref: 6ec1e2d
 covers: [phpcs.xml.dist, YayLoyaltyPluginAdapter.php, tests/integration/bootstrap.php, includes/Pro/YayLoyaltyPro.php, includes/Engine/ActDeact.php, includes/Engine/Emails/EmailThrottle.php, includes/Engine/Storefront/, includes/Engine/Earning/Listeners/, includes/Services/CustomerActivityService.php, includes/Helpers/DesignSchema.php]
 ---
 

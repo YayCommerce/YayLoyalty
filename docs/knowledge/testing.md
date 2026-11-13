@@ -1,7 +1,7 @@
 ---
 area: testing
-updated: 2026-11-12
-updated_ref: cc2a3e71
+updated: 2026-11-13
+updated_ref: 6ec1e2d
 covers: [tests/php/, tests/js/, tests/unit/, tests/integration/, tests/bootstrap.php, phpunit.xml.dist, phpunit-integration.xml.dist, tests/e2e/.wp-env.json]
 ---
 
@@ -56,6 +56,10 @@ Run one test with `vendor/bin/phpunit -c tests/php/unit.xml.dist --filter <Name>
 | `SettingsHelper::validate`, `sanitize_output`, `is_valid`, `update_settings` | unit | critical | `tests/php/unit/Helpers/SettingsHelperTest.php` @baseline | `includes/Helpers/SettingsHelper.php` |
 | `LedgerService` lot invariant, idempotent earn, correction | integration | critical | `tests/php/integration/Services/LedgerServiceTest.php` @baseline | `includes/Services/LedgerService.php` |
 | SPA `format.helper` money and UTC dates | js | important | `tests/js/lib/helpers/format.helper.test.ts` @baseline | `apps/admin/src/lib/helpers/format.helper.ts` |
+| `ConditionGroups` and `CampaignConditionSet` per-group rules, v1/v2 encoding | unit | critical | `tests/php/unit/Models/CampaignConditionSetTest.php` @P-1 | `includes/Utils/ConditionGroups.php`, `includes/Models/CampaignConditionSet.php` |
+| Pro `ConditionsEvaluator` group fold | unit | critical | `tests/php/unit/Pro/Services/ConditionsEvaluatorTest.php` @P-1 | `includes/Pro/Services/ConditionsEvaluator.php` |
+| Pro `RewardConditionsEvaluator`, lazy facts | unit | critical | `tests/php/unit/Pro/Services/RewardConditionsEvaluatorTest.php` @P-1 | `includes/Pro/Services/RewardConditionsEvaluator.php` |
+| SPA `toConditionTree`, `conditionsLabel` | js | important | `tests/js/lib/schema/condition-groups.schema.test.ts` @P-1 | `apps/admin/src/lib/schema/condition-groups.schema.ts` |
 | `Dates::site_day_to_utc` invalid day | unit | important | bug: B-1 | `includes/Utils/Dates.php` |
 | `Dates` site-day and DST helpers | unit | critical | candidate | `includes/Utils/Dates.php` |
 | `LotService::rebuild` / `backfill` | unit | critical | candidate | `includes/Services/LotService.php` |

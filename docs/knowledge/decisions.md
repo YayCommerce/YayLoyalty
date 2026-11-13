@@ -1,7 +1,7 @@
 ---
 area: decisions
-updated: 2026-11-12
-updated_ref: 3f6424ea
+updated: 2026-11-13
+updated_ref: 6ec1e2d
 covers: [includes/YayLoyalty.php, includes/Services/LedgerService.php, includes/Database/, includes/Engine/Redemption/, includes/Engine/Earning/, apps/admin/src/main.tsx, apps/admin/src/pro/index.ts, scripts/run.sh]
 ---
 
@@ -54,5 +54,10 @@ covers: [includes/YayLoyalty.php, includes/Services/LedgerService.php, includes/
 **Evidence:** `includes/Utils/Dates.php`, `includes/Database/Installer.php`, `yayloyalty.php`.
 
 ### Lite fails open without a conditions evaluator
-**Why:** failing closed would disable every conditional campaign when a site downgrades from Pro.
-**Evidence:** `includes/Engine/Points/PointsEngine.php`.
+**Why:** failing closed would disable every conditional campaign or reward when a site downgrades from Pro.
+**Evidence:** `includes/Engine/Points/PointsEngine.php`, `includes/Engine/Redemption/RewardGate.php`.
+
+### 2026-11-13 Conditions are two levels of groups, flat rows untouched
+**Why:** "A AND (B OR C)" needs one level of grouping. One `all` group keeps the 1.0.0 list envelope, so flat rows need no migration and a 1.0.0 reader still understands them; only a real grouping is written as `schema_version` 2. A type may repeat across groups but not within one, at most 10 groups, and empty groups are dropped on save.
+**Rejected:** a nested tree (BS-1 option B); a data migration.
+**Evidence:** `includes/Utils/ConditionGroups.php`, P-1.
