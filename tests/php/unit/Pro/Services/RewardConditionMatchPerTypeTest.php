@@ -28,6 +28,8 @@ final class RewardConditionMatchPerTypeTest extends TestCase {
                 $roles = [
                     self::CUSTOMER => [ 'customer' ],
                     self::VIP      => [ 'vip' ],
+                    10             => [ 'vip' ],
+                    11             => [ 'customer' ],
                 ];
 
                 return isset( $roles[ $user_id ] ) ? (object) [ 'roles' => $roles[ $user_id ] ] : false;
@@ -119,6 +121,67 @@ final class RewardConditionMatchPerTypeTest extends TestCase {
             ),
             "$type under any"
         );
+    }
+
+    /**
+     * All three types in one reward, over every hold/fail combination. The shopper picks the role and
+     * customer results: 9 is a listed vip, 10 an unlisted vip, 11 a listed customer, 7 neither.
+     */
+    public function test_all_three_types_in_one_reward() {
+        $conditions = [
+            [
+                'type'     => 'user_role',
+                'operator' => 'in',
+                'value'    => [ 'vip' ],
+            ],
+            [
+                'type'     => 'customer_ids',
+                'operator' => 'in',
+                'value'    => [ self::VIP, 11 ],
+            ],
+            [
+                'type'     => 'lifetime_points',
+                'operator' => 'gte',
+                'value'    => 1000,
+            ],
+        ];
+        $shoppers   = [
+            self::VIP      => [ true, true ],
+            10             => [ true, false ],
+            11             => [ false, true ],
+            self::CUSTOMER => [ false, false ],
+        ];
+
+        foreach ( $shoppers as $user_id => list( $role_holds, $listed ) ) {
+            foreach ( [ true, false ] as $points_hold ) {
+                $ctx   = $this->ctx( $user_id, $points_hold ? 1500 : 10 );
+                $held  = (int) $role_holds + (int) $listed + (int) $points_hold;
+                $label = sprintf( 'user %d, %d of 3 hold', $user_id, $held );
+
+                $this->assertSame(
+                    3 === $held,
+                    $this->redeemable(
+                        [
+                            'match'      => 'all',
+                            'conditions' => $conditions,
+                        ],
+                        $ctx
+                    ),
+                    "$label under all"
+                );
+                $this->assertSame(
+                    $held > 0,
+                    $this->redeemable(
+                        [
+                            'match'      => 'any',
+                            'conditions' => $conditions,
+                        ],
+                        $ctx
+                    ),
+                    "$label under any"
+                );
+            }
+        }
     }
 
     private function redeemable( array $conditions, Context $ctx ): bool {

@@ -4,7 +4,9 @@ namespace YayTests\Unit\Pro\Services;
 use YayLoyalty\Engine\Points\Context;
 use YayLoyalty\Engine\Points\ContextLineItem;
 use YayLoyalty\Engine\Points\CustomerFacts;
+use YayLoyalty\Models\CampaignConditionSet;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
+use YayLoyalty\Utils\ConditionMatch;
 use YayTests\Unit\TestCase;
 
 /**
@@ -116,6 +118,98 @@ final class CampaignConditionMatchPerTypeTest extends TestCase {
             ),
             "$type under any"
         );
+    }
+
+    /**
+     * @return array<string, array{string[]}>
+     */
+    public function lists(): array {
+        return [
+            'three conditions' => [ [ 'user_role', 'currency', 'country' ] ],
+            'four conditions'  => [ [ 'country', 'product_in_cart', 'lifetime_spend', 'order_count' ] ],
+            'every type'       => [ array_keys( $this->types() ) ],
+        ];
+    }
+
+    /**
+     * Every hold/fail combination of several conditions in one campaign: `all` holds only when every
+     * condition does, `any` when at least one does.
+     *
+     * @dataProvider lists
+     * @param string[] $list_types
+     */
+    public function test_a_longer_list_needs_every_condition_under_all_and_one_under_any( array $list_types ) {
+        $types      = $this->types();
+        $conditions = [];
+
+        foreach ( $list_types as $type ) {
+            $conditions[] = $types[ $type ][0];
+        }
+
+        $evaluator = new ConditionsEvaluator();
+        $count     = count( $list_types );
+
+        for ( $mask = 0; $mask < ( 1 << $count ); $mask++ ) {
+            $values = [];
+            $held   = 0;
+
+            foreach ( $list_types as $i => $type ) {
+                $holds = (bool) ( $mask & ( 1 << $i ) );
+                $held += $holds ? 1 : 0;
+                $values = array_merge( $values, $holds ? $types[ $type ][1] : $types[ $type ][2] );
+            }
+
+            $ctx   = $this->context( $values );
+            $label = sprintf( '%d of %d hold (mask %d)', $held, $count, $mask );
+
+            $all = $evaluator->explain(
+                [
+                    'match'      => 'all',
+                    'conditions' => $conditions,
+                ],
+                $ctx
+            );
+
+            $this->assertCount( $count, $all['conditions'], $label );
+            $this->assertSame( $held, count( array_filter( array_column( $all['conditions'], 'matched' ) ) ), "$label: per-condition results" );
+            $this->assertSame( $held === $count, $all['matched'], "$label under all" );
+            $this->assertSame(
+                $held > 0,
+                $evaluator->evaluate(
+                    [
+                        'match'      => 'any',
+                        'conditions' => $conditions,
+                    ],
+                    $ctx
+                ),
+                "$label under any"
+            );
+        }
+    }
+
+    public function test_a_four_condition_any_list_keeps_its_match_and_conditions_through_storage() {
+        \Brain\Monkey\Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+
+        $types = $this->types();
+        $list  = [
+            'match'      => 'any',
+            'conditions' => [ $types['country'][0], $types['product_in_cart'][0], $types['lifetime_spend'][0], $types['order_count'][0] ],
+        ];
+
+        $this->assertTrue( CampaignConditionSet::is_valid( $list ) );
+
+        $stored = ConditionMatch::decode( ConditionMatch::encode( CampaignConditionSet::normalize( $list ), 1 ) );
+
+        $this->assertSame( 'any', $stored['match'] );
+        // normalize() stores conditions in the type's declaration order, which doesn't change the verdict.
+        $this->assertSame( [ 'country', 'product_in_cart', 'order_count', 'lifetime_spend' ], array_column( $stored['conditions'], 'type' ) );
+
+        // Only the order count holds: any matches before and after storage, all doesn't.
+        $ctx       = $this->context( [ 'orders' => 5 ] );
+        $evaluator = new ConditionsEvaluator();
+
+        $this->assertTrue( $evaluator->evaluate( $stored, $ctx ) );
+        $this->assertFalse( $evaluator->evaluate( array_merge( $stored, [ 'match' => 'all' ] ), $ctx ) );
     }
 
     /**
