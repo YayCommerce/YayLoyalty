@@ -18,11 +18,19 @@ export const conditionResultSchema = z.object({
   actual: z.number().optional(),
 });
 
+export const conditionGroupResultSchema = z.object({
+  match: z.string(),
+  matched: z.boolean(),
+  conditions: z.array(conditionResultSchema),
+});
+
 export const conditionsPreviewSchema = z.object({
   campaign_id: z.number().int(),
   user_id: z.number().int(),
   matches: z.boolean(),
-  conditions: z.array(conditionResultSchema),
+  /** How the groups combine: all | any. */
+  match: z.string(),
+  groups: z.array(conditionGroupResultSchema),
 });
 
 export type ConditionResult = z.infer<typeof conditionResultSchema>;

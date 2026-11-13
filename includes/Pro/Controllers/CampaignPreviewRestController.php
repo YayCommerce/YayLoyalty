@@ -6,6 +6,7 @@ use YayLoyalty\Controllers\AbstractRestController;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Repositories\CampaignRepository;
+use YayLoyalty\Utils\ConditionGroups;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
@@ -62,28 +63,29 @@ final class CampaignPreviewRestController extends AbstractRestController {
             return $this->error_not_found( __( 'Campaign not found.', 'yayloyalty' ) );
         }
 
-        $user_id    = (int) $request['user_id'];
-        $conditions = $campaign->get_conditions();
+        $user_id = (int) $request['user_id'];
 
         // No conditions means everyone qualifies, as in PointsEngine::conditions_match().
-        if ( empty( $conditions ) ) {
+        if ( ! $campaign->has_conditions() ) {
             return [
                 'campaign_id' => (int) $campaign->get_id(),
                 'user_id'     => $user_id,
                 'matches'     => true,
-                'conditions'  => [],
+                'match'       => ConditionGroups::MATCH_ALL,
+                'groups'      => [],
             ];
         }
 
         // Facts as of now: every paid order so far counts.
-        $results = $this->evaluator->explain( $conditions, ContextFactory::from_user( $user_id, Dates::now() ) );
+        $report = $this->evaluator->explain( $campaign->get_conditions(), ContextFactory::from_user( $user_id, Dates::now() ) );
 
         return [
             'campaign_id' => (int) $campaign->get_id(),
             'user_id'     => $user_id,
-            // Folded from the same results, so verdict and explanation cannot disagree.
-            'matches'     => ! in_array( false, array_column( $results, 'matched' ), true ),
-            'conditions'  => $results,
+            // The evaluator's own verdict, so verdict and explanation cannot disagree.
+            'matches'     => $report['matched'],
+            'match'       => $report['match'],
+            'groups'      => $report['groups'],
         ];
     }
 

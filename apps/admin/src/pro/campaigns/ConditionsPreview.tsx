@@ -28,13 +28,16 @@ export function ConditionsPreview({
     mutationFn: (id: number) => previewConditions(campaignId, id),
   });
 
-  const stored = Array.isArray(conditions) ? conditions : [];
+  const hasStored = Array.isArray(conditions)
+    ? conditions.length > 0
+    : Array.isArray((conditions as { groups?: unknown } | null)?.groups) &&
+      (conditions as { groups: unknown[] }).groups.length > 0;
   const parsedUserId = Number.parseInt(userId, 10);
   const canPreview = Number.isFinite(parsedUserId) && parsedUserId > 0;
 
   return (
     <div className="flex flex-col gap-4">
-      {stored.length === 0 && (
+      {!hasStored && (
         <p className="text-muted-foreground text-sm">
           {__('This campaign has no conditions, so every customer qualifies.', 'yayloyalty')}
         </p>
@@ -76,32 +79,51 @@ export function ConditionsPreview({
             </span>
           </div>
 
-          {preview.data.conditions.length > 0 && (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{__('Condition', 'yayloyalty')}</TableHead>
-                    <TableHead>{__('Expected', 'yayloyalty')}</TableHead>
-                    <TableHead>{__('Result', 'yayloyalty')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {preview.data.conditions.map((result, index) => (
-                    <TableRow key={`${result.type}-${index}`}>
-                      <TableCell>{result.type}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs">
-                        {result.operator} {describeValue(result.value)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={result.matched ? 'primary' : 'secondary'}>{describeReason(result)}</Badge>
-                      </TableCell>
+          {preview.data.groups.map((group, groupIndex) => (
+            <div key={groupIndex} className="flex flex-col gap-1">
+              {preview.data.groups.length > 1 && (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="font-medium">
+                    {sprintf(
+                      /* translators: %d: the group's position. */
+                      __('Group %d', 'yayloyalty'),
+                      groupIndex + 1,
+                    )}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {group.match === 'any' ? __('any', 'yayloyalty') : __('all', 'yayloyalty')}
+                  </span>
+                  <Badge variant={group.matched ? 'primary' : 'secondary'}>
+                    {group.matched ? __('Matched', 'yayloyalty') : __('No match', 'yayloyalty')}
+                  </Badge>
+                </div>
+              )}
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{__('Condition', 'yayloyalty')}</TableHead>
+                      <TableHead>{__('Expected', 'yayloyalty')}</TableHead>
+                      <TableHead>{__('Result', 'yayloyalty')}</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {group.conditions.map((result, index) => (
+                      <TableRow key={`${result.type}-${index}`}>
+                        <TableCell>{result.type}</TableCell>
+                        <TableCell className="text-muted-foreground text-xs">
+                          {result.operator} {describeValue(result.value)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={result.matched ? 'primary' : 'secondary'}>{describeReason(result)}</Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
-          )}
+          ))}
         </div>
       )}
     </div>
