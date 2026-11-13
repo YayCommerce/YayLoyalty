@@ -1,4 +1,4 @@
-<!-- Kit-managed by the yay plugin 0.8.0. Run /yay:harness-update instead of editing; put repo-specific notes in another docs/ file. -->
+<!-- Kit-managed by the yay plugin 0.13.0. Run /yay:harness-update instead of editing; put repo-specific notes in another docs/ file. -->
 # From roadmap to release
 
 A worked example: shipping **v1.0.0** of this plugin with three features, from the roadmap to the release tag. Lines starting with `/yay:` are typed into Claude Code; lines starting with `yayh` are run in the terminal.

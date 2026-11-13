@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "plugin": {
-    "name": "YayLoyalty — Points, Rewards, Referral & VIP for WooCommerce",
+    "name": "YayLoyalty \u2014 Points, Rewards, Referral & VIP for WooCommerce",
     "slug": "yayloyalty",
     "mainFile": "yayloyalty.php",
     "textDomain": "yayloyalty",
@@ -48,7 +48,8 @@
       "backlog",
       "dashboard",
       "customers"
-    ]
+    ],
+    "mergeMethod": "squash"
   },
   "commands": {
     "install": "pnpm install && composer install",

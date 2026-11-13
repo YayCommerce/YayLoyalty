@@ -1,4 +1,4 @@
-<!-- Kit-managed by the yay plugin 0.8.0. Run /yay:harness-update instead of editing. -->
+<!-- Kit-managed by the yay plugin 0.13.0. Run /yay:harness-update instead of editing. -->
 # Git rules
 
 - **Branches:** `<type>/<slug>`, with type one of: feat, fix, chore, hotfix, docs, refactor, test. Get the name from `yayh git branch-name <type> "<title>" --id=<P-n|B-n>`, so work with an artifact leads with its id (`feat/p-4-refund-window`). Use the plan for planned work, the bug for a fix, and `R-<n>` only when there's no plan. One branch per plan or bug, in its own worktree under `.claude/worktrees/<slug>/` (`yayh git worktree <branch> [from]`).
