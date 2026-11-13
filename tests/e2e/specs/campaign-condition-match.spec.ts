@@ -32,23 +32,25 @@ test.describe( 'Campaign condition match', { tag: [ '@flow-campaign-condition-ma
 	test( 'a second condition matched by any comes back as saved', async ( { page } ) => {
 		await page.goto( `/wp-admin/admin.php?page=yayloyalty#/campaigns/${ id }/edit` );
 
-		const match = page.getByRole( 'combobox', { name: 'Match conditions' } );
-		await expect( match ).toHaveText( 'all' );
+		const match = page.getByRole( 'group', { name: 'Match conditions' } );
+		await expect( match.getByRole( 'radio', { name: 'All' } ) ).toHaveAttribute( 'aria-checked', 'true' );
 		await expect( page.getByRole( 'button', { name: 'Add group' } ) ).toHaveCount( 0 );
 
 		await page.getByRole( 'button', { name: 'Add condition' } ).click();
 		await page.getByRole( 'menuitem', { name: 'Order count' } ).click();
 		await page.getByRole( 'textbox' ).last().fill( '5' );
 
-		await match.click();
-		await page.getByRole( 'option', { name: 'any' } ).click();
+		await match.getByRole( 'radio', { name: 'Any' } ).click();
+		await expect( page.getByText( 'or', { exact: true } ) ).toBeVisible();
 
 		await page.getByRole( 'button', { name: 'Save campaign' } ).click();
 		await expect( page.getByText( 'Campaign saved.' ) ).toBeVisible();
 
 		await page.reload();
 
-		await expect( page.getByRole( 'combobox', { name: 'Match conditions' } ) ).toHaveText( 'any' );
+		await expect(
+			page.getByRole( 'group', { name: 'Match conditions' } ).getByRole( 'radio', { name: 'Any' } )
+		).toHaveAttribute( 'aria-checked', 'true' );
 		await expect( page.getByText( 'Country' ).first() ).toBeVisible();
 		await expect( page.getByText( 'Order count' ).first() ).toBeVisible();
 		expect( storedConditions( id ) ).toContain( '"match":"any"' );

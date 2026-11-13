@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { XIcon } from 'lucide-react';
+import { Trash2Icon } from 'lucide-react';
 import { get, FieldError as HookFieldError, useController, useFormContext, useWatch } from 'react-hook-form';
 import { __ } from '@wordpress/i18n';
 
@@ -62,39 +62,42 @@ export function ConditionRow({
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="w-36 shrink-0 text-sm font-medium">{conditionTypeLabel(type)}</span>
+    <div className="flex items-start gap-2">
+      <div className="flex min-w-0 flex-1 flex-col gap-2 rounded-lg border p-2">
+        <div className="flex items-center gap-2">
+          <span className="w-32 shrink-0 pl-1 text-sm font-medium">{conditionTypeLabel(type)}</span>
 
-        <Select value={operator} onValueChange={handleOperatorChange}>
-          <SelectTrigger size="sm" className="w-36 shrink-0">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {spec.operators.map((op) => (
-              <SelectItem key={op} value={op}>
-                {OPERATOR_LABELS[op] ?? op}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select value={operator} onValueChange={handleOperatorChange}>
+            <SelectTrigger size="sm" className="w-32 shrink-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {spec.operators.map((op) => (
+                <SelectItem key={op} value={op}>
+                  {OPERATOR_LABELS[op] ?? op}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <div className="min-w-56 flex-1">
-          <ConditionValueEditor path={path} type={type} operator={operator} />
+          <div className="min-w-0 flex-1">
+            <ConditionValueEditor path={path} type={type} operator={operator} />
+          </div>
         </div>
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label={__('Remove condition', 'yayloyalty')}
-          onClick={onRemove}
-        >
-          <XIcon className="size-4" />
-        </Button>
+        <FieldError errors={[error]} />
       </div>
 
-      <FieldError errors={[error]} />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="mt-1.5"
+        aria-label={__('Remove condition', 'yayloyalty')}
+        onClick={onRemove}
+      >
+        <Trash2Icon className="size-4" />
+      </Button>
     </div>
   );
 }

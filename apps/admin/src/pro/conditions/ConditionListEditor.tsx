@@ -1,5 +1,5 @@
 import { PlusIcon } from 'lucide-react';
-import { useController, useFieldArray, useFormContext } from 'react-hook-form';
+import { useController, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { __ } from '@wordpress/i18n';
 
 import { CampaignCondition, CampaignConditionType } from '@/lib/schema/campaign.schema';
@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { conditionTypeLabel } from '../campaigns/campaign-labels';
 import { conditionPath, ConditionsFormValues, defaultConditionValue, firstOperatorFor } from './condition-form';
 import { ConditionRow } from './ConditionRow';
@@ -33,6 +33,7 @@ export function ConditionListEditor({
 }) {
   const { control } = useFormContext<ConditionsFormValues>();
   const { fields, append, remove } = useFieldArray({ control, name: 'conditions.conditions' });
+  const match = useWatch({ control, name: 'conditions.match' });
   const usedTypes = new Set<string>(fields.map((field) => field.type));
 
   return (
@@ -47,18 +48,27 @@ export function ConditionListEditor({
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span>{__('Match', 'yayloyalty')}</span>
-            <MatchSelect />
-            <span>{__('of these conditions', 'yayloyalty')}</span>
+            <span>{__('Applies if', 'yayloyalty')}</span>
+            <MatchToggle />
+            <span>{__('of these conditions match.', 'yayloyalty')}</span>
           </div>
-          <div className="flex flex-col gap-3">
+          <div className="relative flex flex-col gap-3">
+            {fields.length > 1 && <span aria-hidden className="bg-border absolute inset-y-6 left-5 w-px" />}
             {fields.map((field, index) => (
-              <ConditionRow
-                key={field.id}
-                path={conditionPath(index)}
-                type={field.type}
-                onRemove={() => remove(index)}
-              />
+              <div key={field.id} className="flex items-start gap-3">
+                <div className="relative flex h-12 w-10 shrink-0 items-center justify-center">
+                  {index === 0 ? (
+                    <span aria-hidden className="border-foreground/60 bg-background size-3.5 rounded-full border-4" />
+                  ) : (
+                    <span className="bg-muted text-muted-foreground rounded-md px-2 py-0.5 text-xs">
+                      {match === 'any' ? __('or', 'yayloyalty') : __('and', 'yayloyalty')}
+                    </span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <ConditionRow path={conditionPath(index)} type={field.type} onRemove={() => remove(index)} />
+                </div>
+              </div>
             ))}
           </div>
         </>
@@ -83,7 +93,7 @@ function AddConditionMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button type="button" variant="outline" size="sm">
+        <Button type="button" variant="secondary" className="w-full">
           <PlusIcon className="size-4" />
           {__('Add condition', 'yayloyalty')}
         </Button>
@@ -99,20 +109,21 @@ function AddConditionMenu({
   );
 }
 
-function MatchSelect() {
+function MatchToggle() {
   const { control } = useFormContext<ConditionsFormValues>();
   const { field } = useController({ control, name: 'conditions.match' });
 
   return (
-    <Select value={field.value} onValueChange={field.onChange}>
-      <SelectTrigger size="sm" className="w-24" aria-label={__('Match conditions', 'yayloyalty')}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">{__('all', 'yayloyalty')}</SelectItem>
-        <SelectItem value="any">{__('any', 'yayloyalty')}</SelectItem>
-      </SelectContent>
-    </Select>
+    <Segmented
+      shape="square"
+      size="sm"
+      value={field.value}
+      onValueChange={(value) => value && field.onChange(value)}
+      aria-label={__('Match conditions', 'yayloyalty')}
+    >
+      <SegmentedItem value="any">{__('Any', 'yayloyalty')}</SegmentedItem>
+      <SegmentedItem value="all">{__('All', 'yayloyalty')}</SegmentedItem>
+    </Segmented>
   );
 }
 
