@@ -49,7 +49,7 @@
       "dashboard",
       "customers"
     ],
-    "mergeMethod": "squash"
+    "mergeMethod": "merge"
   },
   "commands": {
     "install": "pnpm install && composer install",
