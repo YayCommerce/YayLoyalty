@@ -71,7 +71,8 @@ final class Dates {
     public static function site_day_to_utc( string $ymd, string $modify = '' ): ?string {
         $start = \DateTimeImmutable::createFromFormat( '!Y-m-d', $ymd, wp_timezone() );
 
-        if ( false === $start ) {
+        // createFromFormat() rolls 2026-02-30 over to 2 March instead of failing.
+        if ( false === $start || $start->format( 'Y-m-d' ) !== $ymd ) {
             return null;
         }
 
