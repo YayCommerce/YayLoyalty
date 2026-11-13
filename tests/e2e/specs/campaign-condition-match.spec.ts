@@ -32,7 +32,7 @@ test.describe( 'Campaign condition match', { tag: [ '@flow-campaign-condition-ma
 	test( 'a second condition matched by any comes back as saved', async ( { page } ) => {
 		await page.goto( `/wp-admin/admin.php?page=yayloyalty#/campaigns/${ id }/edit` );
 
-		const match = page.getByRole( 'group', { name: 'Match conditions' } );
+		const match = page.getByRole( 'radiogroup', { name: 'Match conditions' } );
 		await expect( match.getByRole( 'radio', { name: 'All' } ) ).toHaveAttribute( 'aria-checked', 'true' );
 		await expect( page.getByRole( 'button', { name: 'Add group' } ) ).toHaveCount( 0 );
 
@@ -49,7 +49,7 @@ test.describe( 'Campaign condition match', { tag: [ '@flow-campaign-condition-ma
 		await page.reload();
 
 		await expect(
-			page.getByRole( 'group', { name: 'Match conditions' } ).getByRole( 'radio', { name: 'Any' } )
+			page.getByRole( 'radiogroup', { name: 'Match conditions' } ).getByRole( 'radio', { name: 'Any' } )
 		).toHaveAttribute( 'aria-checked', 'true' );
 		await expect( page.getByText( 'Country' ).first() ).toBeVisible();
 		await expect( page.getByText( 'Order count' ).first() ).toBeVisible();
