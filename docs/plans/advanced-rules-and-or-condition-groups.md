@@ -69,7 +69,7 @@ A merchant builds a campaign's or a reward's conditions as groups joined by AND/
 - **Compatibility.** Flat rows are untouched on disk. HPOS and block checkout are unaffected: the order data and the Store API path are unchanged, and the reward gate runs in the shared quote path. Uninstall is unaffected (same columns).
 
 ## Tasks
-- [ ] T1 Shared condition-group structure, and both condition sets validate and normalize per group: `includes/Utils/ConditionGroups.php` (new), `includes/Models/CampaignConditionSet.php`, `includes/Models/RewardConditionSet.php`, `tests/php/unit/Models/CampaignConditionSetTest.php` (new) [risk: 3]
+- [x] T1 Shared condition-group structure, and both condition sets validate and normalize per group: `includes/Utils/ConditionGroups.php` (new), `includes/Models/CampaignConditionSet.php`, `includes/Models/RewardConditionSet.php`, `tests/php/unit/Models/CampaignConditionSetTest.php` (new) [risk: 3]
   - Reuse: `Json::encode()`, `encode_list()`, `decode()`, `decode_list()` in `includes/Utils/Json.php`; `ConditionValueRules::bad()` in `includes/Utils/ConditionValueRules.php`; each set's existing `normalize_value()` / `validate_value()` per entry
   - Callers:
     - `ConditionGroups::parse()` → both sets' `from_array()` / `normalize()` (T1), and the `Campaign` and `Reward` constructors (T2).
