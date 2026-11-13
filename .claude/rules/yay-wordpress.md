@@ -2,7 +2,7 @@
 paths:
   - "**/*.php"
 ---
-<!-- Kit-managed by the yay plugin 0.8.0. Run /yay:harness-update instead of editing. -->
+<!-- Kit-managed by the yay plugin 0.13.0. Run /yay:harness-update instead of editing. -->
 # WordPress and PHP rules (YayLoyalty — Points,  Rewards,  Referral & VIP for WooCommerce)
 
 ## PHP 7.4 floor

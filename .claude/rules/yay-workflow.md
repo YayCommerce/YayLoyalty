@@ -1,4 +1,4 @@
-<!-- Kit-managed by the yay plugin 0.8.0. Run /yay:harness-update instead of editing; put repo-specific rules in a .claude/rules/ file without the yay- prefix. -->
+<!-- Kit-managed by the yay plugin 0.13.0. Run /yay:harness-update instead of editing; put repo-specific rules in a .claude/rules/ file without the yay- prefix. -->
 # Workflow rules
 
 - **Plan as much as the work needs.** Feature work goes roadmap item → brainstorm → plan → implement, and bug work goes debug → fix, but each change gets the lightest lane that fits. **Tiny** (one or two files, about 30 lines, no customer-visible decision): no plan file, the PR holds the goal and the checks. **Small** (an S item, one area, about 3 tasks): a `lane: small` plan with Goal, Tasks and Verify. **Standard**: the full plan. When the work has an `R-`, `BS-`, `P-` or `B-` id, link it in front-matter (`from:`), commit trailers and the PR. If there's no artifact, pick the lane and go on. Don't refuse to continue.
