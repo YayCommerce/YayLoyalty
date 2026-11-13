@@ -7,10 +7,10 @@ import { formatWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
 import { pointsPhrase } from '@/lib/helpers/points.helper';
 import { numberConfig } from '@/lib/helpers/reward.helper';
 import { isScheduleInOrder } from '@/lib/schema/campaign.schema';
+import { ConditionTree, emptyConditionTree, toConditionTree } from '@/lib/schema/condition-groups.schema';
 import {
   CatalogRewardType,
   isCatalogRewardType,
-  normalizeRewardConditions,
   Reward,
   REWARD_CONFIG_SCHEMAS,
   RewardCondition,
@@ -173,25 +173,25 @@ export function formValuesToUpdateInput(
   reward: Reward,
   intent: RewardSaveIntent,
 ): RewardUpdateInput {
-  return formValuesToBody(values, normalizeRewardConditions(reward.conditions), intent);
+  return formValuesToBody(values, toConditionTree<RewardCondition>(reward.conditions), intent);
 }
 
 /**
  * POST body for a new reward of `type`. `sourceConditions` is a duplicated
- * reward's stored list, so rules the form cannot show survive the copy.
+ * reward's stored tree, so rules the form cannot show survive the copy.
  */
 export function formValuesToCreateInput(
   values: RewardFormValues,
   type: CatalogRewardType,
   intent: RewardSaveIntent,
-  sourceConditions: RewardCondition[] = [],
+  sourceConditions: ConditionTree<RewardCondition> = emptyConditionTree(),
 ): RewardCreateInput {
   return { type, ...formValuesToBody(values, sourceConditions, intent) };
 }
 
 function formValuesToBody(
   values: RewardFormValues,
-  storedConditions: RewardCondition[],
+  storedConditions: ConditionTree<RewardCondition>,
   intent: RewardSaveIntent,
 ): RewardUpdateInput {
   return {

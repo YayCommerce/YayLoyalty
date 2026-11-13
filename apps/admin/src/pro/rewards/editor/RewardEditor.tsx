@@ -7,12 +7,8 @@ import { __, sprintf } from '@wordpress/i18n';
 import { toastApiError } from '@/lib/api/api';
 import { storeCurrency } from '@/lib/helpers/format.helper';
 import { useCreateRewardMutation, useRewardQuery, useUpdateRewardMutation } from '@/lib/queries/reward.queries';
-import {
-  CatalogRewardType,
-  normalizeRewardConditions,
-  resolveRewardDisplayStatus,
-  Reward,
-} from '@/lib/schema/reward.schema';
+import { toConditionTree } from '@/lib/schema/condition-groups.schema';
+import { CatalogRewardType, resolveRewardDisplayStatus, Reward, RewardCondition } from '@/lib/schema/reward.schema';
 import { EditorSaveIntent, useEditorSave } from '@/hooks/useEditorSave';
 import { Badge } from '@/components/ui/badge';
 import { Button, LoadingButton } from '@/components/ui/button';
@@ -207,7 +203,7 @@ function RewardCreatorForm({ type, duplicateFrom }: { type: CatalogRewardType; d
     form,
     async (values, intent) => {
       try {
-        const sourceConditions = duplicateFrom ? normalizeRewardConditions(duplicateFrom.conditions) : [];
+        const sourceConditions = toConditionTree<RewardCondition>(duplicateFrom?.conditions);
         const created = await mutation.mutateAsync(formValuesToCreateInput(values, type, intent, sourceConditions));
         // The baseline must stop counting as unsaved, or the redirect re-trips the leave guard.
         form.reset(values);

@@ -9,6 +9,7 @@ import {
   CampaignTrigger,
   DisplayStatus,
 } from '@/lib/schema/campaign.schema';
+import { ConditionGroup, ConditionMatch, toConditionTree } from '@/lib/schema/condition-groups.schema';
 import type { badgeVariants } from '@/components/ui/badge';
 
 /** Campaign presentation strings derived from the real fields; the wire carries none. */
@@ -59,16 +60,37 @@ export function givesLabel(trigger: CampaignTrigger, config: Record<string, unkn
   );
 }
 
+/**
+ * One all group reads as before groups existed, "Country, Order count". Two or more groups read as
+ * "Country AND (Lifetime spend OR Order count)", a group of several in parentheses.
+ */
 export function conditionsLabel(conditions: unknown): string {
-  const list = Array.isArray(conditions) ? conditions : [];
+  const tree = toConditionTree(conditions);
+  const groups = tree.groups.filter((group) => group.conditions.length > 0);
 
-  if (list.length === 0) {
+  if (groups.length === 0) {
     return __('No conditions', 'yayloyalty');
   }
 
-  return list
-    .map((condition) => humanizeConditionType(String((condition as { type?: unknown }).type ?? '')))
-    .join(', ');
+  if (groups.length === 1) {
+    return groups[0].match === 'all' ? groupLabel(groups[0], ', ') : groupLabel(groups[0], matchJoiner('any'));
+  }
+
+  return groups
+    .map((group) => {
+      const label = groupLabel(group, matchJoiner(group.match));
+
+      return group.conditions.length > 1 ? `(${label})` : label;
+    })
+    .join(matchJoiner(tree.match));
+}
+
+function groupLabel(group: ConditionGroup<{ type: string }>, joiner: string): string {
+  return group.conditions.map((condition) => humanizeConditionType(condition.type)).join(joiner);
+}
+
+function matchJoiner(match: ConditionMatch): string {
+  return ` ${match === 'any' ? __('OR', 'yayloyalty') : __('AND', 'yayloyalty')} `;
 }
 
 /** Falls back to slug-to-title-case for a type this build does not recognise, so a stale row never renders blank. */

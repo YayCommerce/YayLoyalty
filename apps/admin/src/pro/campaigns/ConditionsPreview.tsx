@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { hasConditions } from '@/lib/schema/condition-groups.schema';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/custom/error-state';
@@ -28,10 +29,7 @@ export function ConditionsPreview({
     mutationFn: (id: number) => previewConditions(campaignId, id),
   });
 
-  const hasStored = Array.isArray(conditions)
-    ? conditions.length > 0
-    : Array.isArray((conditions as { groups?: unknown } | null)?.groups) &&
-      (conditions as { groups: unknown[] }).groups.length > 0;
+  const hasStored = hasConditions(conditions);
   const parsedUserId = Number.parseInt(userId, 10);
   const canPreview = Number.isFinite(parsedUserId) && parsedUserId > 0;
 

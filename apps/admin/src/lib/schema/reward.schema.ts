@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { __ } from '@wordpress/i18n';
 
 import { deleteResponseSchema, resolveDisplayStatus, Status, statusSchema } from '@/lib/schema/campaign.schema';
+import { conditionTreeSchema } from '@/lib/schema/condition-groups.schema';
 
 /** Mirrors RewardRestController::define_item_schema(), the source of truth. */
 
@@ -96,29 +97,14 @@ export const rewardConditionSchema = z.object({
 
 export type RewardCondition = z.infer<typeof rewardConditionSchema>;
 
-/**
- * The stored conditions as a list, defensively: the wire type is a loose
- * union, so an object (empty legacy envelope) or a malformed entry degrades
- * to fewer rules rather than a crash.
- */
-export function normalizeRewardConditions(conditions: Reward['conditions']): RewardCondition[] {
-  if (!Array.isArray(conditions)) {
-    return [];
-  }
-
-  return conditions.filter(
-    (entry): entry is RewardCondition =>
-      !!entry && typeof entry === 'object' && typeof (entry as { type?: unknown }).type === 'string',
-  );
-}
-
 /** The editable fields, unrefined so the editor form can pick from them. */
 export const rewardFieldsSchema = z.object({
   name: z.string().trim().min(1, __('A reward needs a name.', 'yayloyalty')),
   status: rewardStatusSchema,
   cost_points: z.number().int().nullable(),
   config: z.record(z.string(), z.unknown()),
-  conditions: z.array(rewardConditionSchema),
+  /** The ConditionGroups tree; the server also accepts a flat list. */
+  conditions: conditionTreeSchema(rewardConditionSchema),
   starts_at: z.string().nullable(),
   /** Exclusive; see rewardSchema.ends_at. */
   ends_at: z.string().nullable(),
