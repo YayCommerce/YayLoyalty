@@ -60,7 +60,7 @@ final class RewardsPanel {
 
         $user_id = (int) $context['user_id'];
         $balance = (int) $context['balance'];
-        // A reward the shopper's conditions exclude is not theirs to see; RedemptionService still refuses it at commit.
+        // A reward the shopper's conditions exclude is not theirs to see.
         $options = array_filter(
             $service->reward_options( $cart, $user_id ),
             static function ( array $option ): bool {

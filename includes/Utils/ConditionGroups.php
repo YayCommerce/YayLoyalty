@@ -6,8 +6,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * The structure of a campaign's or a reward's `conditions`: groups of conditions, each group and the root
  * joined by `all` (AND) or `any` (OR). A flat list, as 1.0.0 stored and as any API caller may still send,
- * reads as one `all` group. The condition vocabularies and value checks stay on CampaignConditionSet and
- * RewardConditionSet, which run them per group.
+ * reads as one `all` group.
  *
  * Tree: { match: all|any, groups: [ { match: all|any, conditions: [ {type, operator, value} ] } ] }.
  */

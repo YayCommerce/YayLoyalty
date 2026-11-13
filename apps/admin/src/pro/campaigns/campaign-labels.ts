@@ -61,7 +61,7 @@ export function givesLabel(trigger: CampaignTrigger, config: Record<string, unkn
 }
 
 /**
- * One all group reads as before groups existed, "Country, Order count". Two or more groups read as
+ * One all group reads as a comma list, "Country, Order count". Two or more groups read as
  * "Country AND (Lifetime spend OR Order count)", a group of several in parentheses.
  */
 export function conditionsLabel(conditions: unknown): string {

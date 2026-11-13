@@ -22,7 +22,7 @@ import { ConditionRow } from './ConditionRow';
  * The `conditions` tree of a campaign or reward form: one group shows as a plain list with its own
  * all/any, two or more as group cards under a top all/any. At most one entry per type in a group.
  * Per-type value validation runs in the editor's resolver (mergeConditionErrors), not here, so it
- * covers every save path. Empty groups are kept in form state and dropped by the server on save.
+ * covers every save path.
  */
 export function ConditionGroupsEditor({
   types,
@@ -129,7 +129,7 @@ export function ConditionGroupsEditor({
   );
 }
 
-/** Zero or one group: today's list, with "Match [all] of these conditions" once there is a condition. */
+/** Zero or one group: a plain list, with "Match [all] of these conditions" once there is a condition. */
 function SingleGroup({
   idPrefix,
   types,
