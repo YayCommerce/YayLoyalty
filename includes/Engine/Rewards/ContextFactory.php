@@ -2,6 +2,7 @@
 namespace YayLoyalty\Engine\Rewards;
 
 use YayLoyalty\Engine\Points\Context as EarnContext;
+use YayLoyalty\Engine\Points\ContextFactory as EarnContextFactory;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CustomerReader;
 use YayLoyalty\Utils\CurrencyRate;
@@ -36,6 +37,7 @@ final class ContextFactory {
     public function from_cart( \WC_Cart $cart, ?int $user_id, ?int $points_requested ): Context {
         $customer = null === $user_id ? null : $this->customers->find_by_user_id( $user_id );
         $currency = CurrencyRate::current();
+        $now      = Dates::now();
 
         return new Context(
             $user_id,
@@ -43,9 +45,8 @@ final class ContextFactory {
             $points_requested,
             $this->discountable_amount( $cart ),
             $currency,
-            Dates::now(),
-            // TODO(redemption): pass customer facts when the Pro conditions gate lands.
-            null,
+            $now,
+            static fn() => EarnContextFactory::customer_facts( $user_id, $now ),
             $cart,
             CurrencyRate::rate( $currency )
         );
@@ -73,7 +74,7 @@ final class ContextFactory {
             max( 0.0, $this->items_subtotal( $order ) - ( $this->coupon_discounts_of( $order ) - $ours ) ),
             $order->get_currency(),
             Dates::now(),
-            null,
+            self::facts_loader( $order ),
             null,
             $rate
         );
@@ -103,10 +104,19 @@ final class ContextFactory {
             max( 0.0, $this->items_subtotal( $order ) - ( $this->coupon_discounts_of( $order ) - $loyalty ) ),
             $order->get_currency(),
             Dates::now(),
-            null,
+            self::facts_loader( $order ),
             null,
             CurrencyRate::rate( $order->get_currency(), $order )
         );
+    }
+
+    /** The order's customer's facts as of now, the order itself left out, so the commit re-check sees what the cart saw. */
+    private static function facts_loader( \WC_Order $order ): \Closure {
+        $user_id  = (int) $order->get_customer_id();
+        $order_id = (int) $order->get_id();
+        $now      = Dates::now();
+
+        return static fn() => EarnContextFactory::customer_facts( $user_id > 0 ? $user_id : null, $now, $order_id );
     }
 
     /** What the flexible discount's coupon line takes off the order: line_discount_of() the flexible reward's code. 0 without the line. */
