@@ -64,7 +64,7 @@ export function MultiSelectCombobox({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <ComboboxTrigger className="w-full" disabled={disabled} aria-expanded={open}>
+      <ComboboxTrigger className="w-full min-w-0" disabled={disabled} aria-expanded={open}>
         <span className={cn('flex flex-wrap gap-1', value.length > 0 && '-ml-2')}>
           {selectedOptions.length > 0 ? (
             selectedOptions.map((o) => (
