@@ -248,21 +248,7 @@ final class ConditionsEvaluator {
             return $this->reject( $result, 'unsupported_operator' );
         }
 
-        $wanted = array_map(
-            static function ( $item ) {
-                return is_scalar( $item ) ? (string) $item : '';
-            },
-            is_array( $value ) ? $value : [ $value ]
-        );
-
-        $actual = array_map(
-            static function ( $item ) {
-                return (string) $item;
-            },
-            $actual
-        );
-
-        $intersects = [] !== array_intersect( $wanted, $actual );
+        $intersects = ConditionCompare::intersects( $actual, $value );
 
         $result['matched'] = CampaignConditionType::OP_IN === $operator ? $intersects : ! $intersects;
         $result['reason']  = $result['matched'] ? 'matched' : 'no_overlap';
@@ -281,17 +267,10 @@ final class ConditionsEvaluator {
             return $this->reject( $result, 'unsupported_operator' );
         }
 
-        if ( CampaignConditionType::OP_BETWEEN === $operator ) {
-            if ( ! is_array( $value ) || ! isset( $value[0], $value[1] )
-                || ! is_numeric( $value[0] ) || ! is_numeric( $value[1] ) ) {
-                return $this->reject( $result, 'non_numeric_value' );
-            }
+        $matched = ConditionCompare::numeric( $actual, $operator, $value );
 
-            $matched = $actual >= (float) $value[0] && $actual <= (float) $value[1];
-        } elseif ( ! is_numeric( $value ) ) {
+        if ( null === $matched ) {
             return $this->reject( $result, 'non_numeric_value' );
-        } else {
-            $matched = $this->compare( $actual, $operator, (float) $value );
         }
 
         $result['matched'] = $matched;
@@ -299,22 +278,6 @@ final class ConditionsEvaluator {
         $result['actual']  = $actual;
 
         return $result;
-    }
-
-    /** One-sided numeric comparison; $operator is a NUMERIC_OPERATORS entry other than between. */
-    private function compare( float $actual, string $operator, float $expected ): bool {
-        switch ( $operator ) {
-            case CampaignConditionType::OP_EQ:
-                return abs( $actual - $expected ) < 0.00001;
-            case CampaignConditionType::OP_GT:
-                return $actual > $expected;
-            case CampaignConditionType::OP_GTE:
-                return $actual >= $expected;
-            case CampaignConditionType::OP_LT:
-                return $actual < $expected;
-            default: // OP_LTE
-                return $actual <= $expected;
-        }
     }
 
     /**
