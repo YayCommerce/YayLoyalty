@@ -7,7 +7,7 @@ editions: [pro, lite]
 found_in: 1.0.0
 fixed_in:
 branch: fix/b-1-dates-site-day-to-utc-accepts-an-impossible-da
-pr:
+pr: 190
 created: 2026-11-12
 ---
 # B-1 Dates::site_day_to_utc accepts an impossible date instead of returning null
