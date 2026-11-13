@@ -11,7 +11,7 @@ branch: feat/p-1-advanced-rules-and-or-condition-groups
 pr:
 editions: [pro, lite]
 created: 2026-11-13
-reviewed: pending
+reviewed: yes
 ---
 # P-1 Advanced rules: AND/OR condition groups
 
