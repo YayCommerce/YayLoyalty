@@ -12,7 +12,7 @@ import {
   campaignUpdateInputSchema,
   CreatableCampaignTrigger,
 } from '@/lib/schema/campaign.schema';
-import { toConditionTree } from '@/lib/schema/condition-groups.schema';
+import { toConditionList } from '@/lib/schema/condition-match.schema';
 import { mergeConditionErrors } from '../../conditions/condition-form';
 
 /**
@@ -31,7 +31,7 @@ export function campaignToFormValues(campaign: Campaign): CampaignFormValues {
     // Cloned: form state must never share references with the query cache, or an in-place
     // edit corrupts what other readers have cached.
     config: structuredClone(campaign.config),
-    conditions: structuredClone(toConditionTree<CampaignCondition>(campaign.conditions)),
+    conditions: structuredClone(toConditionList<CampaignCondition>(campaign.conditions)),
     starts_at: campaign.starts_at,
     ends_at: campaign.ends_at,
   };

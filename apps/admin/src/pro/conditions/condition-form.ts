@@ -3,21 +3,21 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import { storeCurrency } from '@/lib/helpers/format.helper';
 import { CAMPAIGN_CONDITION_SCHEMA, CampaignCondition, CampaignConditionType } from '@/lib/schema/campaign.schema';
-import type { ConditionTree } from '@/lib/schema/condition-groups.schema';
+import type { ConditionList } from '@/lib/schema/condition-match.schema';
 
 /**
  * The slice of an editor form the condition editor reads and writes. The campaign and reward forms
- * both hold a ConditionGroups tree under `conditions`; the reward types are a subset of the campaign
+ * both hold { match, conditions } under `conditions`; the reward types are a subset of the campaign
  * ones with the same value shapes, so one spec table (CAMPAIGN_CONDITION_SCHEMA) serves both.
  */
 export interface ConditionsFormValues {
-  conditions: ConditionTree<CampaignCondition>;
+  conditions: ConditionList<CampaignCondition>;
 }
 
-export type ConditionPath = `conditions.groups.${number}.conditions.${number}`;
+export type ConditionPath = `conditions.conditions.${number}`;
 
-export function conditionPath(groupIndex: number, index: number): ConditionPath {
-  return `conditions.groups.${groupIndex}.conditions.${index}`;
+export function conditionPath(index: number): ConditionPath {
+  return `conditions.conditions.${index}`;
 }
 
 /** The default operator on add. */
@@ -187,30 +187,27 @@ function validateBetweenPair(value: unknown): string | null {
 }
 
 type RowErrors = Array<Record<string, unknown> | undefined>;
-type GroupErrors = Array<(Record<string, unknown> & { conditions?: RowErrors }) | undefined>;
 
 /**
  * Adds per-condition value errors to the zodResolver result, at
- * `conditions.groups.<g>.conditions.<i>.value`. `value` is z.unknown(), so zod
- * never checks it; running validateConditionValue in the resolver keeps it on
+ * `conditions.conditions.<i>.value`. `value` is z.unknown(), so zod never
+ * checks it; running validateConditionValue in the resolver keeps it on
  * RHF's normal lifecycle for every save path, unlike setError (wiped by the
  * next resolver run) or a native submit listener (never fired by a dialog
  * button). Builds the errors through plain records because RHF's mapped error
- * type for nested arrays of unknown does not iterate.
+ * type for an array of unknown does not iterate.
  */
 export function mergeConditionErrors<V extends FieldValues>(result: ResolverResult<V>, values: V): ResolverResult<V> {
-  const tree = (values as Partial<ConditionsFormValues>).conditions;
-  const groups = Array.isArray(tree?.groups) ? tree.groups : [];
-  const additions: Array<{ groupIndex: number; index: number; message: string }> = [];
+  const list = (values as Partial<ConditionsFormValues>).conditions;
+  const conditions = Array.isArray(list?.conditions) ? list.conditions : [];
+  const additions: Array<{ index: number; message: string }> = [];
 
-  groups.forEach((group, groupIndex) => {
-    (Array.isArray(group?.conditions) ? group.conditions : []).forEach((condition, index) => {
-      const message = validateConditionValue(condition);
+  conditions.forEach((condition, index) => {
+    const message = validateConditionValue(condition);
 
-      if (message) {
-        additions.push({ groupIndex, index, message });
-      }
-    });
+    if (message) {
+      additions.push({ index, message });
+    }
   });
 
   if (additions.length === 0) {
@@ -218,23 +215,18 @@ export function mergeConditionErrors<V extends FieldValues>(result: ResolverResu
   }
 
   const currentErrors = result.errors as Record<string, unknown> & {
-    conditions?: Record<string, unknown> & { groups?: GroupErrors };
+    conditions?: Record<string, unknown> & { conditions?: RowErrors };
   };
-  const groupErrors: GroupErrors = Array.isArray(currentErrors.conditions?.groups)
-    ? [...currentErrors.conditions.groups]
+  const rows: RowErrors = Array.isArray(currentErrors.conditions?.conditions)
+    ? [...currentErrors.conditions.conditions]
     : [];
 
-  additions.forEach(({ groupIndex, index, message }) => {
-    const group = { ...groupErrors[groupIndex] };
-    const rows: RowErrors = Array.isArray(group.conditions) ? [...group.conditions] : [];
-
+  additions.forEach(({ index, message }) => {
     rows[index] = { ...rows[index], value: { type: 'manual', message } };
-    group.conditions = rows;
-    groupErrors[groupIndex] = group;
   });
 
   return {
     values: {},
-    errors: { ...currentErrors, conditions: { ...currentErrors.conditions, groups: groupErrors } },
+    errors: { ...currentErrors, conditions: { ...currentErrors.conditions, conditions: rows } },
   } as unknown as ResolverResult<V>;
 }

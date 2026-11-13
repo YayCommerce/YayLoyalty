@@ -8,7 +8,7 @@ import {
   Status,
   statusSchema,
 } from '@/lib/schema/campaign.schema';
-import { conditionTreeSchema } from '@/lib/schema/condition-groups.schema';
+import { conditionListSchema } from '@/lib/schema/condition-match.schema';
 
 /** Mirrors RewardRestController::define_item_schema(), the source of truth. */
 
@@ -119,8 +119,8 @@ export const rewardFieldsSchema = z.object({
   status: rewardStatusSchema,
   cost_points: z.number().int().nullable(),
   config: z.record(z.string(), z.unknown()),
-  /** The ConditionGroups tree; the server also accepts a flat list. */
-  conditions: conditionTreeSchema(rewardConditionSchema),
+  /** { match, conditions }; the server also accepts a flat list. */
+  conditions: conditionListSchema(rewardConditionSchema),
   starts_at: z.string().nullable(),
   /** Exclusive; see rewardSchema.ends_at. */
   ends_at: z.string().nullable(),

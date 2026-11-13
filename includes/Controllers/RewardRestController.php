@@ -512,7 +512,7 @@ final class RewardRestController extends AbstractRestController {
                     'context' => [ 'view', 'edit' ],
                 ],
                 'conditions'         => [
-                    'description' => __( 'Read as { match, groups: [ { match, conditions } ] }, match being all or any. A flat list of conditions is accepted on write as one all group.', 'yayloyalty' ),
+                    'description' => __( 'Read as { match, conditions }, match being all or any. A flat list of conditions is accepted on write as all.', 'yayloyalty' ),
                     'type'        => [ 'object', 'array' ],
                     'context'     => [ 'view', 'edit' ],
                 ],

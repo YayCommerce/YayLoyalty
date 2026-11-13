@@ -13,7 +13,7 @@ One file per sprint (`sprint-<n>.md`), `later.md` for unscheduled work, and a ge
 
 | Section | Dates | Goal | Items | Dev-days |
 |---|---|---|---|---|
-| [Sprint 1](sprint-1.md) | 2026-11-13 → 2026-11-26 | Merchants can combine campaign and reward conditions with AND/OR groups (1.1.0). | 1 (0 shipped) | 8 |
+| [Sprint 1](sprint-1.md) | 2026-11-13 → 2026-11-26 | Merchants can match campaign and reward conditions by any or all (1.1.0). | 1 (0 shipped) | 8 |
 | [Sprint 2](sprint-2.md) | 2026-11-27 → 2026-12-10 | Customers move up VIP tiers and get each tier's perks (1.1.0). | 1 (0 shipped) | 8 |
 | [Sprint 3](sprint-3.md) | 2026-12-11 → 2026-12-24 | The points widgets can be placed in Elementor, Bricks and Divi (1.1.0). | 1 (0 shipped) | 8 |
 | [Sprint 4](sprint-4.md) | 2026-12-25 → 2027-01-07 | Customers earn points for referring friends who order (1.1.0). | 1 (0 shipped) | 8 |

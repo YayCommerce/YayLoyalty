@@ -1,7 +1,7 @@
 import { __ } from '@wordpress/i18n';
 
 import { BirthdayConfig, CreatableCampaignTrigger, DEFAULT_CAMPAIGN_CONFIG } from '@/lib/schema/campaign.schema';
-import { emptyConditionTree } from '@/lib/schema/condition-groups.schema';
+import { emptyConditionList } from '@/lib/schema/condition-match.schema';
 import { CampaignFormValues } from '../editor/campaign-editor.form';
 
 /** One card on the "Add a campaign" chooser: one per creatable trigger, each opening an empty campaign of that kind. */
@@ -71,7 +71,7 @@ function emptySeed(trigger: CreatableCampaignTrigger, name: string): CampaignFor
     name,
     status: 'active',
     config: structuredClone(SEED_CONFIG[trigger]),
-    conditions: emptyConditionTree(),
+    conditions: emptyConditionList(),
     starts_at: null,
     ends_at: null,
   };

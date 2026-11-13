@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { hasConditions } from '@/lib/schema/condition-groups.schema';
+import { hasConditions } from '@/lib/schema/condition-match.schema';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/custom/error-state';
@@ -77,51 +77,32 @@ export function ConditionsPreview({
             </span>
           </div>
 
-          {preview.data.groups.map((group, groupIndex) => (
-            <div key={groupIndex} className="flex flex-col gap-1">
-              {preview.data.groups.length > 1 && (
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="font-medium">
-                    {sprintf(
-                      /* translators: %d: the group's position. */
-                      __('Group %d', 'yayloyalty'),
-                      groupIndex + 1,
-                    )}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {group.match === 'any' ? __('any', 'yayloyalty') : __('all', 'yayloyalty')}
-                  </span>
-                  <Badge variant={group.matched ? 'primary' : 'secondary'}>
-                    {group.matched ? __('Matched', 'yayloyalty') : __('No match', 'yayloyalty')}
-                  </Badge>
-                </div>
-              )}
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{__('Condition', 'yayloyalty')}</TableHead>
-                      <TableHead>{__('Expected', 'yayloyalty')}</TableHead>
-                      <TableHead>{__('Result', 'yayloyalty')}</TableHead>
+          {preview.data.conditions.length > 0 && (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{__('Condition', 'yayloyalty')}</TableHead>
+                    <TableHead>{__('Expected', 'yayloyalty')}</TableHead>
+                    <TableHead>{__('Result', 'yayloyalty')}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {preview.data.conditions.map((result, index) => (
+                    <TableRow key={`${result.type}-${index}`}>
+                      <TableCell>{result.type}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">
+                        {result.operator} {describeValue(result.value)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={result.matched ? 'primary' : 'secondary'}>{describeReason(result)}</Badge>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {group.conditions.map((result, index) => (
-                      <TableRow key={`${result.type}-${index}`}>
-                        <TableCell>{result.type}</TableCell>
-                        <TableCell className="text-muted-foreground text-xs">
-                          {result.operator} {describeValue(result.value)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={result.matched ? 'primary' : 'secondary'}>{describeReason(result)}</Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>

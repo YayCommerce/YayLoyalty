@@ -57,7 +57,7 @@ covers: [includes/YayLoyalty.php, includes/Services/LedgerService.php, includes/
 **Why:** failing closed would disable every conditional campaign or reward when a site downgrades from Pro.
 **Evidence:** `includes/Engine/Points/PointsEngine.php`, `includes/Engine/Redemption/RewardGate.php`.
 
-### 2026-11-13 Conditions are two levels of groups, flat rows untouched
-**Why:** "A AND (B OR C)" needs one level of grouping. One `all` group keeps the 1.0.0 list envelope, so flat rows need no migration and a 1.0.0 reader still understands them; only a real grouping is written as `schema_version` 2. A type may repeat across groups but not within one, at most 10 groups, and empty groups are dropped on save.
-**Rejected:** a nested tree (BS-1 option B); a data migration.
-**Evidence:** `includes/Utils/ConditionGroups.php`, P-1.
+### 2026-11-13 Conditions are one list matched by all or any, flat rows untouched
+**Why:** Merchants asked for the YayPricing model: one list of conditions and one Any/All switch, no groups. An `all` list keeps the 1.0.0 list envelope, so flat rows need no migration; an `any` list adds `"match":"any"` at `schema_version` 2 to the same envelope, so a 1.0.0 reader still sees its items and reads them as `all`, which fails closed. At most one entry per type under either match. New conditions start as `all`.
+**Rejected:** two levels of AND/OR groups (built first in P-1, then removed at review); a nested tree (BS-1 option B); a data migration.
+**Evidence:** `includes/Utils/ConditionMatch.php`, P-1.

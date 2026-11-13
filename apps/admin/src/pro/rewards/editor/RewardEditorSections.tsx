@@ -18,7 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { FlexibleDiscountConfig, FlexibleDiscountFields } from '@/pages/rewards/FlexibleDiscountFields';
 import { rewardCouponCodeCopy } from '@/pages/rewards/reward-coupon-code.copy';
-import { ConditionGroupsEditor } from '../../conditions/ConditionGroupsEditor';
+import { ConditionListEditor } from '../../conditions/ConditionListEditor';
 import { RewardFormValues } from './reward-editor.form';
 
 /**
@@ -45,7 +45,7 @@ export function RewardEditorSections({ type, couponCode }: { type: RewardType; c
 
       {isCatalog && (
         <EditorSection step={3} title={__('Who can redeem', 'yayloyalty')}>
-          <ConditionGroupsEditor
+          <ConditionListEditor
             types={REWARD_CONDITION_TYPES}
             emptyTitle={__('No conditions — every customer can redeem this reward', 'yayloyalty')}
             emptyDescription={__('Add one to limit it, for example to a customer role.', 'yayloyalty')}

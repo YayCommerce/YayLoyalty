@@ -15,7 +15,7 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 - `Utils\Sql::in_placeholders($values, '%d')` (`includes/Utils/Sql.php`): placeholders for a prepared `IN (…)`.
 - `Database\Transaction::run($fn)` / `after_commit($fn)` (`includes/Database/Transaction.php`): the only way to open a transaction; defer emails and actions until commit.
 - `Utils\Json::encode|decode|encode_list|decode_list` (`includes/Utils/Json.php`): versioned JSON columns; never throws on read.
-- `Utils\ConditionGroups::parse|decode|encode|assert_structure|fold` (`includes/Utils/ConditionGroups.php`): a campaign's or reward's `conditions` tree; reads a flat list as one `all` group. `Campaign|Reward::has_conditions()` asks whether any group holds a condition.
+- `Utils\ConditionMatch::parse|decode|encode|assert_structure|fold` (`includes/Utils/ConditionMatch.php`): a campaign's or reward's `conditions` as `{ match, conditions }`; reads a flat list as `all`. `Campaign|Reward::has_conditions()` asks whether there is a condition.
 - `Services\LedgerService` (`includes/Services/LedgerService.php`): every points change. `adjust()` / `record()` for manual rows; `earn()`, `refund_earn()`, `restore_refund()`, `expire()`, `redeem()` for keyed system rows. Get an instance from an existing composition root, don't construct a new one.
 - `Engine\Earning\IdempotencyKey::compose|for_earn` (`includes/Engine/Earning/IdempotencyKey.php`): the key for any new ledger write.
 - `Repositories\CustomerReader` (`includes/Repositories/CustomerReader.php`): depend on this when code may read a customer but must never write one.
@@ -63,7 +63,7 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 
 ## SPA (`apps/admin/src/`)
 
-- `toConditionTree`, `hasConditions`, `conditionTreeSchema` (`lib/schema/condition-groups.schema.ts`): read either `conditions` wire shape; `ConditionGroupsEditor` and `mergeConditionErrors` (`pro/conditions/`) edit and validate one in a Pro form.
+- `toConditionList`, `hasConditions`, `conditionListSchema` (`lib/schema/condition-match.schema.ts`): read either `conditions` wire shape; `ConditionListEditor` and `mergeConditionErrors` (`pro/conditions/`) edit and validate one in a Pro form.
 - `api`, `toastApiError`, `getApiErrorMessage`, `isNotFoundError`, `isAbortError` (`lib/api/api.ts`): every REST call and failure toast.
 - `parsePaginated`, `paginatedSchema`, `fetchAllPages`, `MAX_PER_PAGE` (`lib/api/paginated.ts`): list responses.
 - `Can`, `can`, `useCapability`, `CAP` (`lib/access.tsx`): hide or disable by capability.

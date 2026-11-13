@@ -32,7 +32,7 @@ covers: [includes/Utils/, includes/Models/AbstractModel.php, includes/Helpers/Se
 ## Settings and stored JSON
 
 - Read settings with `SettingsHelper::get_settings()`; save with `update_settings()`, which writes only the sent fields over what's stored. Unknown keys are dropped both ways; defaults are translated, so they're never stored.
-- JSON columns are LONGTEXT stamped with `schema_version`, written with `Utils\Json::encode` / `encode_list` and read with `decode` / `decode_list`, which never throw. A `conditions` column goes through `Utils\ConditionGroups::encode` / `decode` instead.
+- JSON columns are LONGTEXT stamped with `schema_version`, written with `Utils\Json::encode` / `encode_list` and read with `decode` / `decode_list`, which never throw. A `conditions` column goes through `Utils\ConditionMatch::encode` / `decode` instead.
 
 ## Wire shapes and TypeScript copies
 

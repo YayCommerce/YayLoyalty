@@ -10,6 +10,8 @@ created: 2026-11-13
 ---
 # UX-1 Condition groups editor
 
+> **Superseded in part (2026-11-13):** groups were dropped (P-1 Revision). The editor is the "one group" screen below for good: "Match [all|any] of these conditions" above the rows, an "Add condition" menu, no "Add group" and no group cards. The reward editor's "Who can redeem" uses the same list.
+
 ## Job
 A store admin targets a campaign or a reward at a mix of customers, such as "country is US AND (lifetime spend at least $500 OR order count at least 5)". They should build that in the editor they already use, without learning a query language. Done means: they save it, and when they reopen it the groups and the AND/OR choices are exactly as they left them.
 

@@ -4,7 +4,7 @@ import { __ } from '@wordpress/i18n';
 import { dateToStored } from '@/lib/helpers/format.helper';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import type { RoundingMode } from '@/lib/points-math/points-math';
-import { conditionTreeSchema } from '@/lib/schema/condition-groups.schema';
+import { conditionListSchema } from '@/lib/schema/condition-match.schema';
 
 /** Mirrors CampaignRestController::define_item_schema(), the source of truth. */
 
@@ -253,8 +253,8 @@ export const campaignUpdateInputSchema = z
     status: statusSchema,
     /** Loose on purpose; see campaignSchema.config. */
     config: z.record(z.string(), z.unknown()),
-    /** The ConditionGroups tree; the server also accepts a flat list. */
-    conditions: conditionTreeSchema(campaignConditionSchema),
+    /** { match, conditions }; the server also accepts a flat list. */
+    conditions: conditionListSchema(campaignConditionSchema),
     starts_at: z.string().nullable(),
     /** Exclusive; see campaignSchema.ends_at. */
     ends_at: z.string().nullable(),

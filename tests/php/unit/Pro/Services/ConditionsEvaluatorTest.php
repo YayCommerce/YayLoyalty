@@ -12,56 +12,36 @@ use YayTests\Unit\TestCase;
 final class ConditionsEvaluatorTest extends TestCase {
 
     /**
-     * @return array<string, array{string, float, int, bool}>
+     * @return array<string, array{string, int, bool, bool}>
      */
-    public function acceptance_matrix(): array {
+    public function match_matrix(): array {
         return [
-            'US, spend only'       => [ 'US', 600.0, 0, true ],
-            'US, orders only'      => [ 'US', 0.0, 5, true ],
-            'US, neither'          => [ 'US', 499.0, 4, false ],
-            'not US, spend+orders' => [ 'CA', 600.0, 5, false ],
+            'all, both hold' => [ 'all', 5, true, true ],
+            'all, one holds' => [ 'all', 4, true, false ],
+            'any, one holds' => [ 'any', 4, true, true ],
+            'any, neither'   => [ 'any', 4, false, false ],
         ];
     }
 
     /**
-     * Country US (billing) AND ( lifetime spend >= 500 USD OR order count >= 5 ).
+     * Country US (billing) and order count >= 5, joined by `match`.
      *
-     * @dataProvider acceptance_matrix
+     * @dataProvider match_matrix
      */
-    public function test_the_acceptance_example_matches_only_the_right_customers( string $country, float $spend, int $orders, bool $expected ) {
-        $evaluator = new ConditionsEvaluator();
-        $ctx       = $this->context( $country, $spend, $orders );
-        $tree      = [
-            'match'  => 'all',
-            'groups' => [
-                [
-                    'match'      => 'all',
-                    'conditions' => [ $this->country_us() ],
-                ],
-                [
-                    'match'      => 'any',
-                    'conditions' => [
-                        [
-                            'type'     => 'lifetime_spend',
-                            'operator' => 'gte',
-                            'value'    => [
-                                'amount'   => 500,
-                                'currency' => 'USD',
-                            ],
-                        ],
-                        $this->order_count( 5 ),
-                    ],
-                ],
-            ],
+    public function test_the_match_joins_the_conditions( string $match_mode, int $orders, bool $is_us, bool $expected ) {
+        $evaluator  = new ConditionsEvaluator();
+        $ctx        = $this->context( $is_us ? 'US' : 'CA', 0.0, $orders );
+        $conditions = [
+            'match'      => $match_mode,
+            'conditions' => [ $this->country_us(), $this->order_count( 5 ) ],
         ];
 
-        $report = $evaluator->explain( $tree, $ctx );
+        $report = $evaluator->explain( $conditions, $ctx );
 
         $this->assertSame( $expected, $report['matched'] );
-        $this->assertSame( $report['matched'], $evaluator->evaluate( $tree, $ctx ) );
-        $this->assertCount( 2, $report['groups'] );
-        $this->assertSame( 'any', $report['groups'][1]['match'] );
-        $this->assertSame( 'US' === $country, $report['groups'][0]['matched'] );
+        $this->assertSame( $report['matched'], $evaluator->evaluate( $conditions, $ctx ) );
+        $this->assertSame( $match_mode, $report['match'] );
+        $this->assertCount( 2, $report['conditions'] );
     }
 
     public function test_a_flat_list_still_ands_every_condition() {
@@ -70,31 +50,7 @@ final class ConditionsEvaluatorTest extends TestCase {
 
         $this->assertFalse( $evaluator->evaluate( $flat, $this->context( 'US', 0.0, 4 ) ) );
         $this->assertTrue( $evaluator->evaluate( $flat, $this->context( 'US', 0.0, 5 ) ) );
-
-        $report = $evaluator->explain( $flat, $this->context( 'US', 0.0, 4 ) );
-        $this->assertCount( 1, $report['groups'] );
-        $this->assertSame( 'all', $report['groups'][0]['match'] );
-        $this->assertSame( $report['matched'], $evaluator->evaluate( $flat, $this->context( 'US', 0.0, 4 ) ) );
-    }
-
-    public function test_ored_groups_match_when_one_group_matches() {
-        $evaluator = new ConditionsEvaluator();
-        $tree      = [
-            'match'  => 'any',
-            'groups' => [
-                [
-                    'match'      => 'all',
-                    'conditions' => [ $this->order_count( 10 ) ],
-                ],
-                [
-                    'match'      => 'all',
-                    'conditions' => [ $this->country_us() ],
-                ],
-            ],
-        ];
-
-        $this->assertTrue( $evaluator->evaluate( $tree, $this->context( 'US', 0.0, 0 ) ) );
-        $this->assertFalse( $evaluator->evaluate( $tree, $this->context( 'CA', 0.0, 0 ) ) );
+        $this->assertSame( 'all', $evaluator->explain( $flat, $this->context( 'US', 0.0, 4 ) )['match'] );
     }
 
     private function context( string $billing_country, float $spend, int $orders ): Context {

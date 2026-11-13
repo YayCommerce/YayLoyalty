@@ -7,7 +7,7 @@ import { formatWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
 import { pointsPhrase } from '@/lib/helpers/points.helper';
 import { numberConfig } from '@/lib/helpers/reward.helper';
 import { isScheduleInOrder } from '@/lib/schema/campaign.schema';
-import { ConditionTree, emptyConditionTree, toConditionTree } from '@/lib/schema/condition-groups.schema';
+import { ConditionList, emptyConditionList, toConditionList } from '@/lib/schema/condition-match.schema';
 import {
   CatalogRewardType,
   isCatalogRewardType,
@@ -26,7 +26,7 @@ import { defaultRewardName } from '../reward-labels';
 
 /**
  * The form's fields. `conditions` is edited in "Who can redeem" for catalog
- * rewards; the built-in shows none, and a save sends its stored tree back untouched.
+ * rewards; the built-in shows none, and a save sends its stored conditions back untouched.
  */
 export interface RewardFormValues {
   name: string;
@@ -35,7 +35,7 @@ export interface RewardFormValues {
   /** Null only for flexible_discount, whose customer picks the amount. */
   cost_points: number | null;
   config: Record<string, unknown>;
-  conditions: ConditionTree<RewardCondition>;
+  conditions: ConditionList<RewardCondition>;
   starts_at: string | null;
   ends_at: string | null;
 }
@@ -118,7 +118,7 @@ export function rewardCreateSeed(type: CatalogRewardType, currency: string): Rew
     status: 'active',
     cost_points: SEED_COST_POINTS[type],
     config,
-    conditions: emptyConditionTree(),
+    conditions: emptyConditionList(),
     starts_at: null,
     ends_at: null,
   };
@@ -136,7 +136,7 @@ export function rewardToFormValues(reward: Reward, storeCurrency: string): Rewar
     cost_points: reward.cost_points,
     // Cloned: form state must never share references with the query cache.
     config: structuredClone({ ...base, ...reward.config }),
-    conditions: structuredClone(toConditionTree<RewardCondition>(reward.conditions)),
+    conditions: structuredClone(toConditionList<RewardCondition>(reward.conditions)),
     starts_at: reward.starts_at,
     ends_at: reward.ends_at,
   };

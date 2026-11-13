@@ -2,158 +2,114 @@
 namespace YayLoyalty\Models;
 
 use YayLoyalty\Enums\CampaignConditionType;
-use YayLoyalty\Utils\ConditionGroups;
+use YayLoyalty\Utils\ConditionMatch;
 use YayLoyalty\Utils\ConditionValueRules;
 use YayLoyalty\Utils\IsoCodes;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * A campaign's `conditions`: groups joined by all/any (Utils\ConditionGroups), at most one entry per type in a group, stored as JSON in the campaigns table.
+ * A campaign's `conditions`: one list joined by all or any (Utils\ConditionMatch), at most one entry per type, stored as JSON in the campaigns table.
  * An empty list applies to everyone. This class validates and normalises on save, and
- * Pro\Services\ConditionsEvaluator evaluates. It shares only Utils\ConditionValueRules and Utils\ConditionGroups with RewardConditionSet.
+ * Pro\Services\ConditionsEvaluator evaluates. It shares only Utils\ConditionValueRules and Utils\ConditionMatch with RewardConditionSet.
  */
 final class CampaignConditionSet {
 
     /** @var string */
     private $match;
 
-    /** @var array<int, array{match: string, conditions: CampaignCondition[]}> */
-    private $groups;
+    /** @var CampaignCondition[] */
+    private $conditions;
 
-    /**
-     * @param array<int, array{match?: string, conditions?: array}> $groups Each group's conditions are CampaignCondition objects.
-     */
-    public function __construct( array $groups = [], string $root_match = ConditionGroups::MATCH_ALL ) {
-        $this->match  = $root_match;
-        $this->groups = [];
-
-        foreach ( $groups as $group ) {
-            $this->groups[] = [
-                'match'      => (string) ( $group['match'] ?? ConditionGroups::MATCH_ALL ),
-                'conditions' => array_values(
-                    array_filter(
-                        (array) ( $group['conditions'] ?? [] ),
-                        static function ( $condition ) {
-                            return $condition instanceof CampaignCondition;
-                        }
-                    )
-                ),
-            ];
-        }
+    /** @param CampaignCondition[] $conditions */
+    public function __construct( array $conditions = [], string $match_mode = ConditionMatch::MATCH_ALL ) {
+        $this->match      = $match_mode;
+        $this->conditions = array_values(
+            array_filter(
+                $conditions,
+                static function ( $condition ) {
+                    return $condition instanceof CampaignCondition;
+                }
+            )
+        );
     }
 
     /**
-     * Builds from a flat list or a tree of { type, operator, value } maps. Lenient: validate() is the strict check.
+     * Builds from a flat list or { match, conditions } of { type, operator, value } maps. Lenient: validate() is the strict check.
      *
      * @param array<int|string, mixed> $raw
      */
     public static function from_array( array $raw ): self {
-        $tree   = ConditionGroups::parse( $raw );
-        $groups = [];
+        $parsed     = ConditionMatch::parse( $raw );
+        $conditions = [];
 
-        foreach ( $tree['groups'] as $group ) {
-            $conditions = [];
-
-            foreach ( $group['conditions'] as $entry ) {
-                if ( is_array( $entry ) ) {
-                    $conditions[] = CampaignCondition::from_array( $entry );
-                }
+        foreach ( $parsed['conditions'] as $entry ) {
+            if ( is_array( $entry ) ) {
+                $conditions[] = CampaignCondition::from_array( $entry );
             }
-
-            $groups[] = [
-                'match'      => $group['match'],
-                'conditions' => $conditions,
-            ];
         }
 
-        return new self( $groups, $tree['match'] );
+        return new self( $conditions, $parsed['match'] );
     }
 
     /** Builds from the stored column value. Malformed JSON yields an empty set, never an exception. */
     public static function from_json( ?string $raw ): self {
-        return self::from_array( ConditionGroups::decode( $raw ) );
+        return self::from_array( ConditionMatch::decode( $raw ) );
     }
 
-    /** @return array{match: string, groups: array<int, array{match: string, conditions: array}>} */
+    /** @return array{match: string, conditions: array} */
     public function to_array(): array {
         return [
-            'match'  => $this->match,
-            'groups' => array_map(
-                static function ( array $group ) {
-                    return [
-                        'match'      => $group['match'],
-                        'conditions' => array_map(
-                            static function ( CampaignCondition $condition ) {
-                                return $condition->to_array();
-                            },
-                            $group['conditions']
-                        ),
-                    ];
+            'match'      => $this->match,
+            'conditions' => array_map(
+                static function ( CampaignCondition $condition ) {
+                    return $condition->to_array();
                 },
-                $this->groups
+                $this->conditions
             ),
         ];
     }
 
     /** Encodes for the `conditions` column, in the envelope Campaign::to_row() writes. */
     public function to_json(): string {
-        return ConditionGroups::encode( $this->to_array(), Campaign::CONFIG_SCHEMA_VERSION );
+        return ConditionMatch::encode( $this->to_array(), Campaign::CONFIG_SCHEMA_VERSION );
     }
 
-    /** How the groups combine: ConditionGroups::MATCH_ALL or MATCH_ANY. */
+    /** How the conditions combine: ConditionMatch::MATCH_ALL or MATCH_ANY. */
     public function match(): string {
         return $this->match;
     }
 
-    /** @return array<int, array{match: string, conditions: CampaignCondition[]}> */
-    public function groups(): array {
-        return $this->groups;
-    }
-
-    /** @return CampaignCondition[] Every group's conditions, in order. */
+    /** @return CampaignCondition[] */
     public function all(): array {
-        return [] === $this->groups ? [] : array_merge( ...array_column( $this->groups, 'conditions' ) );
+        return $this->conditions;
     }
 
     public function is_empty(): bool {
-        return [] === $this->all();
+        return [] === $this->conditions;
     }
 
     public function count(): int {
-        return count( $this->all() );
+        return count( $this->conditions );
     }
 
     /**
-     * Canonicalises a flat list or a tree for storage: the tree shape, each group normalised
-     * by normalize_list(), and empty groups dropped. Never throws.
+     * Canonicalises a flat list or { match, conditions } for storage, the list normalised by normalize_list(). Never throws.
      *
      * @param array<int|string, mixed> $raw
-     * @return array{match: string, groups: array<int, array{match: string, conditions: array}>}
+     * @return array{match: string, conditions: array}
      */
     public static function normalize( array $raw ): array {
-        $tree   = ConditionGroups::parse( $raw );
-        $groups = [];
-
-        foreach ( $tree['groups'] as $group ) {
-            $conditions = self::normalize_list( $group['conditions'] );
-
-            if ( [] !== $conditions ) {
-                $groups[] = [
-                    'match'      => $group['match'],
-                    'conditions' => $conditions,
-                ];
-            }
-        }
+        $parsed = ConditionMatch::parse( $raw );
 
         return [
-            'match'  => $tree['match'],
-            'groups' => $groups,
+            'match'      => $parsed['match'],
+            'conditions' => self::normalize_list( $parsed['conditions'] ),
         ];
     }
 
     /**
-     * Canonicalises one group's list: scalars widened to lists, ids cast,
+     * Canonicalises the list: scalars widened to lists, ids cast,
      * codes upper-cased, roles lower-cased, lists de-duplicated, entries
      * ordered cheap-first for evaluation. Never throws: unknown types pass
      * through for validate() to reject.
@@ -242,11 +198,11 @@ final class CampaignConditionSet {
     /**
      * Non-throwing check for the save boundary. It checks the raw structure, then normalises.
      *
-     * @param array<int|string, mixed> $raw A flat list or a tree.
+     * @param array<int|string, mixed> $raw A flat list or { match, conditions }.
      */
     public static function is_valid( array $raw ): bool {
         try {
-            ConditionGroups::assert_structure( $raw );
+            ConditionMatch::assert_structure( $raw );
             self::from_array( self::normalize( $raw ) )->validate();
 
             return true;
@@ -262,23 +218,12 @@ final class CampaignConditionSet {
      *         (currency, source), or customer_ids past its cap.
      */
     public function validate(): void {
-        ConditionGroups::assert_structure( $this->to_array() );
+        ConditionMatch::assert_structure( $this->to_array() );
 
-        foreach ( $this->groups as $group ) {
-            self::validate_group( $group['conditions'] );
-        }
-    }
-
-    /**
-     * One group's checks. A type may repeat across groups, not within one.
-     *
-     * @param CampaignCondition[] $conditions
-     */
-    private static function validate_group( array $conditions ): void {
         $schema = CampaignConditionType::schema();
         $seen   = [];
 
-        foreach ( $conditions as $condition ) {
+        foreach ( $this->conditions as $condition ) {
             $type = $condition->get_type();
 
             if ( ! CampaignConditionType::is_valid( $type ) ) {
@@ -293,7 +238,7 @@ final class CampaignConditionSet {
                 throw new \InvalidArgumentException(
                     esc_html(
                         sprintf(
-                            'YayLoyalty: condition type "%s" appears more than once in a group. Conditions in a group are combined — use a single entry.',
+                            'YayLoyalty: condition type "%s" appears more than once. Conditions are combined — use a single entry.',
                             $type
                         )
                     )

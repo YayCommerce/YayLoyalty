@@ -6,7 +6,7 @@ use YayLoyalty\Controllers\AbstractRestController;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Repositories\CampaignRepository;
-use YayLoyalty\Utils\ConditionGroups;
+use YayLoyalty\Utils\ConditionMatch;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
@@ -71,8 +71,8 @@ final class CampaignPreviewRestController extends AbstractRestController {
                 'campaign_id' => (int) $campaign->get_id(),
                 'user_id'     => $user_id,
                 'matches'     => true,
-                'match'       => ConditionGroups::MATCH_ALL,
-                'groups'      => [],
+                'match'       => ConditionMatch::MATCH_ALL,
+                'conditions'  => [],
             ];
         }
 
@@ -85,7 +85,7 @@ final class CampaignPreviewRestController extends AbstractRestController {
             // The evaluator's own verdict, so verdict and explanation cannot disagree.
             'matches'     => $report['matched'],
             'match'       => $report['match'],
-            'groups'      => $report['groups'],
+            'conditions'  => $report['conditions'],
         ];
     }
 

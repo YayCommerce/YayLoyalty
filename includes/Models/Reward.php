@@ -3,7 +3,7 @@ namespace YayLoyalty\Models;
 
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Enums\Status;
-use YayLoyalty\Utils\ConditionGroups;
+use YayLoyalty\Utils\ConditionMatch;
 use YayLoyalty\Utils\ConfigSpec;
 use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Json;
@@ -59,7 +59,7 @@ class Reward extends AbstractModel {
     /** @var array */
     private $config;
 
-    /** @var array{match: string, groups: array} The ConditionGroups tree. */
+    /** @var array{match: string, conditions: array} See ConditionMatch. */
     private $conditions;
 
     /** @var string|null */
@@ -117,7 +117,7 @@ class Reward extends AbstractModel {
         $this->sort_order  = $sort_order;
         $this->cost_points = $cost_points;
         $this->config      = $config;
-        $this->conditions  = ConditionGroups::parse( $conditions );
+        $this->conditions  = ConditionMatch::parse( $conditions );
         $this->starts_at   = $starts_at;
         $this->ends_at     = $ends_at;
         $this->is_builtin  = $is_builtin;
@@ -139,7 +139,7 @@ class Reward extends AbstractModel {
             self::cast_int_default( $row['sort_order'] ?? 0 ),
             self::cast_int( $row['cost_points'] ?? null ),
             Json::decode( $row['config'] ?? null, [] ),
-            ConditionGroups::decode( $row['conditions'] ?? null ),
+            ConditionMatch::decode( $row['conditions'] ?? null ),
             self::cast_datetime( $row['starts_at'] ?? null ),
             self::cast_datetime( $row['ends_at'] ?? null ),
             self::cast_bool( $row['is_builtin'] ?? 0 ),
@@ -161,7 +161,7 @@ class Reward extends AbstractModel {
             'sort_order'  => $this->sort_order,
             'cost_points' => $this->cost_points,
             'config'      => Json::encode( $this->config, self::CONFIG_SCHEMA_VERSION ),
-            'conditions'  => ConditionGroups::encode( $this->conditions, self::CONFIG_SCHEMA_VERSION ),
+            'conditions'  => ConditionMatch::encode( $this->conditions, self::CONFIG_SCHEMA_VERSION ),
             'starts_at'   => $this->starts_at,
             'ends_at'     => $this->ends_at,
             'is_builtin'  => $this->is_builtin ? 1 : 0,
@@ -405,7 +405,7 @@ class Reward extends AbstractModel {
         }
     }
 
-    /** Whether a flat list or a tree of conditions is acceptable to store. The controller answers 4xx on false. */
+    /** Whether a flat list or { match, conditions } is acceptable to store. The controller answers 4xx on false. */
     public static function conditions_are_valid( array $conditions ): bool {
         return RewardConditionSet::is_valid( $conditions );
     }
@@ -464,12 +464,12 @@ class Reward extends AbstractModel {
         return $this->config;
     }
 
-    /** @return array{match: string, groups: array} The ConditionGroups tree. */
+    /** @return array{match: string, conditions: array} See ConditionMatch. */
     public function get_conditions(): array {
         return $this->conditions;
     }
 
-    /** Whether any group holds a condition. Without one, everyone qualifies. */
+    /** Whether there is a condition. Without one, everyone qualifies. */
     public function has_conditions(): bool {
         return ! RewardConditionSet::from_array( $this->conditions )->is_empty();
     }
@@ -552,7 +552,7 @@ class Reward extends AbstractModel {
         $this->config = self::validate_config( $this->type, $config );
     }
 
-    /** Normalises a flat list or a tree and stores the tree. Rejection is conditions_are_valid()'s job. */
+    /** Normalises a flat list or { match, conditions } and stores { match, conditions }. Rejection is conditions_are_valid()'s job. */
     public function set_conditions( array $conditions ): void {
         $this->conditions = RewardConditionSet::normalize( $conditions );
     }

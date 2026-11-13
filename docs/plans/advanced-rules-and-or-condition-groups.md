@@ -15,6 +15,14 @@ reviewed: yes
 ---
 # P-1 Advanced rules: AND/OR condition groups
 
+## Revision (2026-11-13): one list, any or all
+At review the developer dropped groups for the YayPricing model: one list of conditions and one Any/All switch, for campaigns and rewards. New conditions start as All. What changed from the tasks below:
+- `Utils\ConditionGroups` became `Utils\ConditionMatch`: `{ match, conditions }`, no groups, no 10-group cap. An `all` list keeps the 1.0.0 envelope; an `any` list is the same envelope plus `"match":"any"` at `schema_version` 2, so a 1.0.0 reader sees its items and reads them as All (fails closed, not open).
+- The condition sets, both evaluators and the preview endpoint work on one list; the preview returns `match` and `conditions`, as before plus `match`.
+- `ConditionGroupsEditor` became `ConditionListEditor`: "Match [all|any] of these conditions" above the rows, no "Add group".
+- Goal 1's example is now "lifetime spend >= $500 OR order count >= 5". "A AND (B OR C)" is out of scope.
+- The reward enforcement, the reward editor section, the gate order and the storefront filter (T4-T7) are unchanged.
+
 ## Goal
 A merchant builds a campaign's or a reward's conditions as groups joined by AND/OR. For example: country is US AND (lifetime spend >= $500 OR order count >= 5). The campaign then awards points, or the reward can be redeemed, only for customers who match. Done means:
 1. That example, saved in the campaign editor, awards points on a completed order only to a customer it matches, and it reloads in the editor exactly as saved.

@@ -7,7 +7,7 @@ use YayLoyalty\Enums\RewardConditionType;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Models\RewardCondition;
 use YayLoyalty\Models\RewardConditionSet;
-use YayLoyalty\Utils\ConditionGroups;
+use YayLoyalty\Utils\ConditionMatch;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -35,21 +35,11 @@ final class RewardConditionsEvaluator {
         $roles    = null;
         $verdicts = [];
 
-        foreach ( $set->groups() as $group ) {
-            if ( [] === $group['conditions'] ) {
-                continue;
-            }
-
-            $results = [];
-
-            foreach ( $group['conditions'] as $condition ) {
-                $results[] = $this->evaluate_one( $condition, $ctx, $roles );
-            }
-
-            $verdicts[] = ConditionGroups::fold( $group['match'], $results );
+        foreach ( $set->all() as $condition ) {
+            $verdicts[] = $this->evaluate_one( $condition, $ctx, $roles );
         }
 
-        return ConditionGroups::fold( $set->match(), $verdicts );
+        return ConditionMatch::fold( $set->match(), $verdicts );
     }
 
     /**

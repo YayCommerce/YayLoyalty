@@ -9,7 +9,7 @@ import {
   CampaignTrigger,
   DisplayStatus,
 } from '@/lib/schema/campaign.schema';
-import { ConditionGroup, ConditionMatch, toConditionTree } from '@/lib/schema/condition-groups.schema';
+import { toConditionList } from '@/lib/schema/condition-match.schema';
 import type { badgeVariants } from '@/components/ui/badge';
 
 /** Campaign presentation strings derived from the real fields; the wire carries none. */
@@ -60,37 +60,17 @@ export function givesLabel(trigger: CampaignTrigger, config: Record<string, unkn
   );
 }
 
-/**
- * One all group reads as a comma list, "Country, Order count". Two or more groups read as
- * "Country AND (Lifetime spend OR Order count)", a group of several in parentheses.
- */
+/** An all list reads as a comma list, "Country, Order count"; an any list as "Country OR Order count". */
 export function conditionsLabel(conditions: unknown): string {
-  const tree = toConditionTree(conditions);
-  const groups = tree.groups.filter((group) => group.conditions.length > 0);
+  const list = toConditionList(conditions);
 
-  if (groups.length === 0) {
+  if (list.conditions.length === 0) {
     return __('No conditions', 'yayloyalty');
   }
 
-  if (groups.length === 1) {
-    return groups[0].match === 'all' ? groupLabel(groups[0], ', ') : groupLabel(groups[0], matchJoiner('any'));
-  }
+  const joiner = list.match === 'any' ? ` ${__('OR', 'yayloyalty')} ` : ', ';
 
-  return groups
-    .map((group) => {
-      const label = groupLabel(group, matchJoiner(group.match));
-
-      return group.conditions.length > 1 ? `(${label})` : label;
-    })
-    .join(matchJoiner(tree.match));
-}
-
-function groupLabel(group: ConditionGroup<{ type: string }>, joiner: string): string {
-  return group.conditions.map((condition) => humanizeConditionType(condition.type)).join(joiner);
-}
-
-function matchJoiner(match: ConditionMatch): string {
-  return ` ${match === 'any' ? __('OR', 'yayloyalty') : __('AND', 'yayloyalty')} `;
+  return list.conditions.map((condition) => humanizeConditionType(condition.type)).join(joiner);
 }
 
 /** Falls back to slug-to-title-case for a type this build does not recognise, so a stale row never renders blank. */

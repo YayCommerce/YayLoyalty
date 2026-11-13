@@ -54,7 +54,7 @@ A second copy of the plugin (both editions active) defines `plugin_init` first; 
 | `customers` | Per-user aggregates: balance, lifetime, pending, `expires_at`, birthday |
 | `ledger` | Append-only points events, `balance_after` chain, unique `idempotency_key` |
 | `lots`, `lot_allocations` | Expiry batches and what each spend took from them. Invariant: `SUM(open remaining) = max(0, balance)` |
-| `campaigns`, `rewards` | Earn rules and redeemable rewards; unique `slug`, `is_builtin`. `conditions` is a group tree (`Utils/ConditionGroups.php`): one `all` group, or none, is stored in the 1.0.0 `{"schema_version":1,"items":[…]}` list envelope, a real grouping as `schema_version` 2. The models and REST read either shape and always serve the tree |
+| `campaigns`, `rewards` | Earn rules and redeemable rewards; unique `slug`, `is_builtin`. `conditions` is one list with a match, all or any (`Utils/ConditionMatch.php`): an `all` list, or none, is stored in the 1.0.0 `{"schema_version":1,"items":[…]}` list envelope, an `any` list in the same envelope plus `"match":"any"` at `schema_version` 2. The models and REST read either shape and always serve `{ match, conditions }` |
 | `customer_meta` | Append-only activity timeline (`meta_key` is the event type) |
 | `redemptions` | One row per applied reward; `value`/`base_value` decimal(19,4), `rate_snapshot` decimal(19,10). Only `Engine\Redemption\CommitWriter` inserts |
 

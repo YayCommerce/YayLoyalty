@@ -6,13 +6,13 @@ use YayLoyalty\Engine\Points\CustomerFacts;
 use YayLoyalty\Enums\CampaignConditionType;
 use YayLoyalty\Models\CampaignCondition;
 use YayLoyalty\Models\CampaignConditionSet;
-use YayLoyalty\Utils\ConditionGroups;
+use YayLoyalty\Utils\ConditionMatch;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Evaluates a campaign's `conditions`, groups joined by all/any, against values already on the Context.
+ * Evaluates a campaign's `conditions`, joined by all or any, against values already on the Context.
  * Queries nothing. Attached through PointsEngine::CONDITIONS_EVALUATOR_FILTER.
  *
  * Unknown conditions fail here, while Lite, with no evaluator, lets them match: Pro can evaluate,
@@ -45,44 +45,30 @@ final class ConditionsEvaluator {
     /**
      * Whether the conditions match the event: explain()'s verdict.
      *
-     * @param array $conditions A flat list or a ConditionGroups tree of {type, operator, value} objects.
+     * @param array $conditions A flat list or { match, conditions } of {type, operator, value} objects.
      */
     public function evaluate( array $conditions, Context $ctx ): bool {
         return $this->explain( $conditions, $ctx )['matched'];
     }
 
     /**
-     * Per-group, per-condition results for the preview endpoint. evaluate() returns its verdict,
-     * so the preview cannot disagree with award time. A group with no conditions is skipped.
+     * Per-condition results for the preview endpoint. evaluate() returns its verdict,
+     * so the preview cannot disagree with award time.
      *
-     * @return array{matched: bool, match: string, groups: array<int, array{match: string, matched: bool, conditions: array<int, array<string, mixed>>}>}
+     * @return array{matched: bool, match: string, conditions: array<int, array<string, mixed>>}
      */
     public function explain( array $conditions, Context $ctx ): array {
-        $set    = CampaignConditionSet::from_array( $conditions );
-        $groups = [];
+        $set     = CampaignConditionSet::from_array( $conditions );
+        $results = [];
 
-        foreach ( $set->groups() as $group ) {
-            if ( [] === $group['conditions'] ) {
-                continue;
-            }
-
-            $results = [];
-
-            foreach ( $group['conditions'] as $condition ) {
-                $results[] = $this->evaluate_one( $condition, $ctx );
-            }
-
-            $groups[] = [
-                'match'      => $group['match'],
-                'matched'    => ConditionGroups::fold( $group['match'], array_column( $results, 'matched' ) ),
-                'conditions' => $results,
-            ];
+        foreach ( $set->all() as $condition ) {
+            $results[] = $this->evaluate_one( $condition, $ctx );
         }
 
         return [
-            'matched' => ConditionGroups::fold( $set->match(), array_column( $groups, 'matched' ) ),
-            'match'   => $set->match(),
-            'groups'  => $groups,
+            'matched'    => ConditionMatch::fold( $set->match(), array_column( $results, 'matched' ) ),
+            'match'      => $set->match(),
+            'conditions' => $results,
         ];
     }
 

@@ -54,20 +54,11 @@ final class RewardConditionsEvaluatorTest extends TestCase {
         $this->assertFalse( $this->redeemable( $reward, $this->ctx( 8 ) ) );
     }
 
-    public function test_ored_groups_of_role_and_lifetime_points_decide_redeemability() {
+    public function test_an_any_list_of_role_and_lifetime_points_decides_redeemability() {
         $reward = $this->reward(
             [
-                'match'  => 'any',
-                'groups' => [
-                    [
-                        'match'      => 'all',
-                        'conditions' => [ $this->role_in( 'wholesale' ) ],
-                    ],
-                    [
-                        'match'      => 'all',
-                        'conditions' => [ $this->lifetime_points_at_least( 1000 ) ],
-                    ],
-                ],
+                'match'      => 'any',
+                'conditions' => [ $this->role_in( 'wholesale' ), $this->lifetime_points_at_least( 1000 ) ],
             ]
         );
 

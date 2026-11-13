@@ -74,7 +74,7 @@ The site runs this checkout with `YAYLOYALTY_IS_DEVELOPMENT` false, so it serves
 | Expiry settings save with confirmation | admin | important | candidate | `apps/admin/src/pages/settings/ExpirySettingsPage.tsx` |
 | Design settings save and reset | admin | minor | candidate | `apps/admin/src/pages/settings/DesignSettingsPage.tsx` |
 | Email settings and weekly throttle | admin | important | candidate | `apps/admin/src/pages/settings/EmailsSettingsPage.tsx` |
-| Campaign condition groups save and reload | admin | important | `specs/campaign-condition-groups.spec.ts` @flow-campaign-condition-groups | `apps/admin/src/pro/conditions/ConditionGroupsEditor.tsx` |
+| Campaign condition match (any/all) saves and reloads | admin | important | `specs/campaign-condition-match.spec.ts` @flow-campaign-condition-match | `apps/admin/src/pro/conditions/ConditionListEditor.tsx` |
 | Campaign create, edit, pause | admin | important | candidate | `apps/admin/src/pro/campaigns/editor/CampaignEditor.tsx` |
 | Reward create and edit | admin | important | candidate | `apps/admin/src/pro/rewards/editor/RewardEditor.tsx` |
 | Customer drawer, ledger and activity tabs | admin | important | candidate | `apps/admin/src/pages/customers/drawer/CustomerDrawer.tsx` |
