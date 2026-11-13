@@ -5,7 +5,7 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { numberConfig } from '@/lib/helpers/reward.helper';
 import { useProductSummaryQuery } from '@/lib/queries/lookup.queries';
-import { isCatalogRewardType, RewardType } from '@/lib/schema/reward.schema';
+import { isCatalogRewardType, REWARD_CONDITION_TYPES, RewardType } from '@/lib/schema/reward.schema';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { MoneyInput, OptionalMoneyInput, PointsInput } from '@/components/ui/custom/amount-inputs';
@@ -18,10 +18,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { FlexibleDiscountConfig, FlexibleDiscountFields } from '@/pages/rewards/FlexibleDiscountFields';
 import { rewardCouponCodeCopy } from '@/pages/rewards/reward-coupon-code.copy';
+import { ConditionGroupsEditor } from '../../conditions/ConditionGroupsEditor';
 import { RewardFormValues } from './reward-editor.form';
 
 /**
- * The editor's sections for one reward type: the built-in's rate settings, or a catalog reward's cost and value.
+ * The editor's sections for one reward type: the built-in's rate settings, or a catalog reward's cost and value and who can redeem it.
  * Status and schedule live in the side area. `couponCode` is the saved reward's, absent while creating.
  */
 export function RewardEditorSections({ type, couponCode }: { type: RewardType; couponCode?: string }) {
@@ -41,6 +42,16 @@ export function RewardEditorSections({ type, couponCode }: { type: RewardType; c
       >
         {isCatalog ? <RewardEditorValue type={type} /> : <RewardEditorFlexibleDiscount />}
       </EditorSection>
+
+      {isCatalog && (
+        <EditorSection step={3} title={__('Who can redeem', 'yayloyalty')}>
+          <ConditionGroupsEditor
+            types={REWARD_CONDITION_TYPES}
+            emptyTitle={__('No conditions — every customer can redeem this reward', 'yayloyalty')}
+            emptyDescription={__('Add one to limit it, for example to a customer role.', 'yayloyalty')}
+          />
+        </EditorSection>
+      )}
     </div>
   );
 }

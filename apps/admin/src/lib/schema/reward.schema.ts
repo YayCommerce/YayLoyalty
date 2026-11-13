@@ -1,7 +1,13 @@
 import { z } from 'zod';
 import { __ } from '@wordpress/i18n';
 
-import { deleteResponseSchema, resolveDisplayStatus, Status, statusSchema } from '@/lib/schema/campaign.schema';
+import {
+  CampaignConditionType,
+  deleteResponseSchema,
+  resolveDisplayStatus,
+  Status,
+  statusSchema,
+} from '@/lib/schema/campaign.schema';
 import { conditionTreeSchema } from '@/lib/schema/condition-groups.schema';
 
 /** Mirrors RewardRestController::define_item_schema(), the source of truth. */
@@ -87,6 +93,16 @@ export const rewardListParamsSchema = z.object({
 export type RewardListParams = z.infer<typeof rewardListParamsSchema>;
 
 /* ─── Write ─────────────────────────────────────────────────────────── */
+
+/**
+ * Mirrors RewardConditionType::all(), the source of truth. What the reward editor offers; each shares
+ * its spec with the campaign type of the same name (CAMPAIGN_CONDITION_SCHEMA).
+ */
+export const REWARD_CONDITION_TYPES = [
+  'user_role',
+  'customer_ids',
+  'lifetime_points',
+] as const satisfies readonly CampaignConditionType[];
 
 /** One availability rule; loose here because RewardConditionSet validates it on save. */
 export const rewardConditionSchema = z.object({

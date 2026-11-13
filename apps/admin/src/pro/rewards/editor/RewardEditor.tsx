@@ -7,8 +7,7 @@ import { __, sprintf } from '@wordpress/i18n';
 import { toastApiError } from '@/lib/api/api';
 import { storeCurrency } from '@/lib/helpers/format.helper';
 import { useCreateRewardMutation, useRewardQuery, useUpdateRewardMutation } from '@/lib/queries/reward.queries';
-import { toConditionTree } from '@/lib/schema/condition-groups.schema';
-import { CatalogRewardType, resolveRewardDisplayStatus, Reward, RewardCondition } from '@/lib/schema/reward.schema';
+import { CatalogRewardType, resolveRewardDisplayStatus, Reward } from '@/lib/schema/reward.schema';
 import { EditorSaveIntent, useEditorSave } from '@/hooks/useEditorSave';
 import { Badge } from '@/components/ui/badge';
 import { Button, LoadingButton } from '@/components/ui/button';
@@ -72,7 +71,7 @@ function RewardEditorForm({ reward }: { reward: Reward }) {
     form,
     async (values, intent) => {
       try {
-        const saved = await mutation.mutateAsync(formValuesToUpdateInput(values, reward, intent));
+        const saved = await mutation.mutateAsync(formValuesToUpdateInput(values, intent));
         form.reset(rewardToFormValues(saved, storeCurrency()));
         toast.success(__('Reward saved.', 'yayloyalty'));
         return true;
@@ -203,8 +202,7 @@ function RewardCreatorForm({ type, duplicateFrom }: { type: CatalogRewardType; d
     form,
     async (values, intent) => {
       try {
-        const sourceConditions = toConditionTree<RewardCondition>(duplicateFrom?.conditions);
-        const created = await mutation.mutateAsync(formValuesToCreateInput(values, type, intent, sourceConditions));
+        const created = await mutation.mutateAsync(formValuesToCreateInput(values, type, intent));
         // The baseline must stop counting as unsaved, or the redirect re-trips the leave guard.
         form.reset(values);
         toast.success(__('Reward created.', 'yayloyalty'));
