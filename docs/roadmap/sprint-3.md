@@ -10,3 +10,4 @@ Goal: The points widgets can be placed in Elementor, Bricks and Divi (1.1.0).
 - acceptance: In Elementor, Bricks and Divi a merchant drags in the points balance, ways to earn, ways to redeem and redeem card widgets, sees a live preview in the builder, and they render the same as the shortcodes; a site without the builder loads no builder code
 - target: 1.1.0
 - started: 2026-11-16
+- built: 2026-11-16

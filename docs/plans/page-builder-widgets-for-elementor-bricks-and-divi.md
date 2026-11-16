@@ -1,7 +1,7 @@
 ---
 id: P-2
 title: Page builder widgets for Elementor, Bricks and Divi
-status: in-progress
+status: done
 from: BS-2
 roadmap: R-3
 design:
