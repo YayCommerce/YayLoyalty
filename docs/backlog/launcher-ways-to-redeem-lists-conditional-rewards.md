@@ -4,7 +4,7 @@ title: Launcher Ways to redeem lists conditional rewards to every shopper
 kind: deferred
 status: open
 from: P-1
-affects: [R-1]
+affects: [R-1, R-8]
 default:
 decision:
 created: 2026-11-13
