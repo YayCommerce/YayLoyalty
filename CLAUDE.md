@@ -44,7 +44,7 @@ A WooCommerce loyalty program: shoppers earn points for orders, sign-ups and rev
 | `includes/Services/`, `Repositories/`, `Models/`, `Database/` | Ledger and lots, one-table SQL, typed rows, schemas and `Installer` |
 | `includes/Controllers/` | REST `yayloyalty/v1` |
 | `includes/Utils/`, `includes/Helpers/` | Shared helpers, settings and design storage |
-| `includes/Integrations/` | YayMail, YayPricing, YayCurrency |
+| `includes/Integrations/` | YayMail, YayPricing, YayCurrency, page builders (Elementor, Bricks, Divi 4) |
 | `includes/Pro/` | Pro only; removed from the Lite zip |
 | `apps/admin/` | Admin SPA (React, Vite, TS); `src/pro/` is Pro only |
 | `tests/` | Test suites: `php/` and `js/` (current), `unit/` and `integration/` (older), `e2e/` (wp-env package) |

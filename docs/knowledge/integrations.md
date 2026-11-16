@@ -35,6 +35,11 @@ Every integration is detected by a constant the partner defines before YayLoyalt
 | YayPricing | `YAYDP_VERSION` ≥ 3.5.8 | Six loyalty conditions on `yaydp_register_conditions`. `LoyaltyCouponRerun` re-runs `calculate_totals()` once when the loyalty coupon set changed, because YayPricing skips an unchanged cart signature | `includes/Integrations/YayPricing/` |
 | YayCurrency | `YAY_CURRENCY_VERSION` | Answers `yayloyalty_currency_rate` (the order's saved rate, else the live rate); snapshots the rate on non-base orders; stops YayCurrency converting loyalty coupons twice; skips conversion on `yayloyalty/v1` REST so the SPA sees base currency | `includes/Integrations/YayCurrency/YayCurrencyIntegration.php` |
 | YayCommerce AdminShell | Composer package, scoped | Shared menu, licence screens, version election between Yay plugins | `YayLoyaltyPluginAdapter.php`, see [build-release.md](build-release.md#the-admin-shell-and-vendor-prefixed) |
+| Elementor | Its own hooks only (`elementor/widgets/register`, `elementor/elements/categories_registered`, `elementor/preview/enqueue_styles`) | Four classic widgets (Points balance, Ways to earn, Ways to redeem, Redeem card) in a YayLoyalty category | `includes/Integrations/PageBuilders/Elementor/` |
+| Bricks (theme) | `init` at 11, after Bricks loads `\Bricks\Element` at 10; skipped without `\Bricks\Elements` | The same four as elements, registered with their class (Bricks otherwise takes the last declared class); category label through `bricks/builder/i18n` | `includes/Integrations/PageBuilders/Bricks/` |
+| Divi 4 (theme) | `et_builder_ready` | The same four as modules with partial Visual Builder support (PHP render over `et_fb_ajax_render_shortcode`), named "YayLoyalty …" since Divi 4 has no module groups | `includes/Integrations/PageBuilders/Divi/` |
+
+The page builders differ from the plugins above: Bricks and Divi are themes, which load after YayLoyalty boots, so they are never detected by constant; only their hooks are added. Every element prints its shortcode through `PageBuilders/PlacementWidgets::output()`, which shows a placeholder (`templates/builder-placeholder.php`) only when the placement is empty in a builder preview.
 
 ## Multi-currency
 

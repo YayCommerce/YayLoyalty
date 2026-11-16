@@ -62,6 +62,10 @@ Yes. YayLoyalty is a WooCommerce extension and does nothing without it.
 
 Yes. The redeem card works in the classic shortcode Cart and Checkout and in the Cart and Checkout blocks.
 
+= Does it work with Elementor, Bricks or Divi? =
+
+Yes. Each builder gets four YayLoyalty elements: Points balance, Ways to earn, Ways to redeem and Redeem card. Drag one onto a page and it shows exactly what its shortcode shows. In the builder, an element with nothing to show for you (for example the Redeem card with an empty cart) displays a short note in its place. Divi is supported through its Divi 4 modules.
+
 = What happens to points when an order is refunded? =
 
 The points earned from that order are taken back, and points the customer spent on it are returned. A partial refund takes back the matching share.

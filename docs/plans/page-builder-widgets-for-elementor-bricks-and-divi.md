@@ -54,7 +54,7 @@ In Elementor, Bricks and Divi a merchant finds a "YayLoyalty" group with four el
 - [x] T4 Divi 4 modules — `includes/Integrations/PageBuilders/Divi/DiviModules.php` (new), `includes/Integrations/PageBuilders/Divi/PlacementModule.php` (new), four subclasses (new), `includes/Integrations/PageBuilders/PageBuildersIntegration.php`
   - Reuse: `PlacementWidgets` (T1); Divi's `ET_Builder_Module`, `et_core_is_fb_enabled()`
   - Callers: `DiviModules::register()` → action `et_builder_ready`; `enqueue_builder_styles()` → action `wp_enqueue_scripts`; module classes → instantiated in `register()`, which is how Divi 4 registers modules
-- [ ] T5 Knowledge and readme — `CLAUDE.md` (Layout row for `includes/Integrations/`), `docs/knowledge/integrations.md` (Partner plugins: Elementor, Bricks, Divi rows), `docs/knowledge/architecture.md` (Storefront placements line), `readme.txt` (FAQ line naming the builder elements) [risk: 1]
+- [x] T5 Knowledge and readme — `CLAUDE.md` (Layout row for `includes/Integrations/`), `docs/knowledge/integrations.md` (Partner plugins: Elementor, Bricks, Divi rows), `docs/knowledge/architecture.md` (Storefront placements line), `readme.txt` (FAQ line naming the builder elements) [risk: 1]
   - Reuse: n/a
 
 **Tests:** [unit] test_output_is_the_shortcode_or_a_placeholder_only_in_preview, test_empty_output_stays_empty_on_the_live_page_and_becomes_the_placeholder_in_preview, test_an_unknown_key_prints_nothing (tests/php/unit/Integrations/PageBuilders/PlacementWidgetsTest.php) — a live page must print exactly the shortcode's output, and `''` must stay `''` outside a builder; [manual] each builder's drag, preview and front-end render (Verify) — the builders aren't in wp-env and Bricks/Divi are paid themes

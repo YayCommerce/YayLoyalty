@@ -121,7 +121,7 @@ Daily Action Scheduler action `yayloyalty_expiry_run` (group `yayloyalty`, batch
 
 - Launcher (floating widget, front end only): `Storefront/Launcher.php`, plain `assets/storefront/launcher.js`, built `assets/dist/storefront/launcher.css`.
 - My Account endpoint `my-points` (`Storefront/AccountMyPoints.php`); rewrite rules flush once per `REWRITE_VERSION` bump.
-- Shortcodes `[yayloyalty_balance]`, `[yayloyalty_ways_to_earn]`, `[yayloyalty_ways_to_redeem]`, `[yayloyalty_redeem]`; blocks `yayloyalty/points-balance`, `ways-to-earn`, `ways-to-redeem` from `includes/Engine/Storefront/blocks/*/block.json`, editor script `assets/dist/blocks/editor.js`.
+- Shortcodes `[yayloyalty_balance]`, `[yayloyalty_ways_to_earn]`, `[yayloyalty_ways_to_redeem]`, `[yayloyalty_redeem]`; blocks `yayloyalty/points-balance`, `ways-to-earn`, `ways-to-redeem` from `includes/Engine/Storefront/blocks/*/block.json`, editor script `assets/dist/blocks/editor.js`. The four shortcodes are also Elementor, Bricks and Divi 4 elements (`includes/Integrations/PageBuilders/`, see [integrations.md](integrations.md#partner-plugins)).
 - Thank-you page and product page earn messages: `ThankYouPoints`, `ProductEarnMessage`.
 
 ## Pro and Lite
