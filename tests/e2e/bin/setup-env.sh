@@ -35,3 +35,5 @@ wp option update yayloyalty_setup_completed 1
 wp wc product update "$(wp post list --post_type=product --name=e2e-simple-product --field=ID)" --virtual=true --user=admin >/dev/null
 # Block and classic checkout prefill the customer's billing address.
 wp wc customer update "$(wp user get customer --field=ID)" --user=admin --billing='{"first_name":"Jane","last_name":"Smith","address_1":"1 Test Street","city":"San Francisco","state":"CA","postcode":"94110","country":"US","email":"customer@example.com","phone":"5550100"}' >/dev/null
+# Elementor is in the dev site only for the page builder spec, which activates it; every other spec runs without it.
+wp plugin deactivate elementor >/dev/null 2>&1 || true
