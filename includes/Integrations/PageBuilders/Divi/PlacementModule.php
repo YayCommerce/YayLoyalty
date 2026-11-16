@@ -33,6 +33,9 @@ abstract class PlacementModule extends \ET_Builder_Module {
      * @param string $render_slug The module's slug.
      */
     public function render( $attrs, $content, $render_slug ) {
-        return PlacementWidgets::output( static::PLACEMENT, DiviModules::is_preview() );
+        $html = PlacementWidgets::output( static::PLACEMENT, DiviModules::is_preview() );
+
+        // Divi adds this wrapper (order class, CSS ID and class, spacing) itself only with full Visual Builder support.
+        return '' === $html ? '' : $this->_render_module_wrapper( $html, $render_slug );
     }
 }
