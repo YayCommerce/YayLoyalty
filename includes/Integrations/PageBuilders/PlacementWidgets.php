@@ -9,9 +9,7 @@ use YayLoyalty\Engine\Storefront\RedeemCard;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The four placements every page builder element prints, once for Elementor, Bricks and Divi. An element prints its
- * shortcode's output, so a live page matches the shortcode exactly; in a builder preview, a placement that prints
- * nothing shows a placeholder instead, so the element stays visible and selectable.
+ * The four placements every page builder element prints, once for Elementor, Bricks and Divi.
  *
  * @since 1.1.0
  */
@@ -74,19 +72,19 @@ final class PlacementWidgets {
     }
 
     private static function placeholder( string $key ): string {
-        $yayloyalty_placeholder_title = self::title( $key );
-        $yayloyalty_placeholder_text  = self::hint( $key );
+        $title = self::title( $key );
+        $text  = self::hint( $key );
 
         $html = OutputCapture::capture(
-            static function () use ( $yayloyalty_placeholder_title, $yayloyalty_placeholder_text ): void {
-                require dirname( __DIR__, 2 ) . '/Engine/Storefront/templates/builder-placeholder.php';
+            static function () use ( $title, $text ): void {
+                require dirname( __DIR__, 2 ) . '/Engine/Storefront/templates/account-rewards-state.php';
             },
             'PlacementWidgets'
         );
 
         wp_enqueue_style( ScriptName::ACCOUNT_STYLE );
 
-        return '<div class="yayloyalty-account yayloyalty-placement">' . trim( (string) $html ) . '</div>';
+        return trim( (string) $html );
     }
 
     private static function hint( string $key ): string {

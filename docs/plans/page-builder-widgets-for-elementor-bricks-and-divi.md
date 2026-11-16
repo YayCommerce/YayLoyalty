@@ -42,7 +42,7 @@ In Elementor, Bricks and Divi a merchant finds a "YayLoyalty" group with four el
 - **Storage, REST, migrations:** none. Builders save their own element references; removing YayLoyalty leaves the builder's usual "missing widget" state.
 
 ## Tasks
-- [x] T1 Shared placement list, output and builder placeholder — `includes/Integrations/PageBuilders/PlacementWidgets.php` (new), `includes/Engine/Storefront/templates/builder-placeholder.php` (new; borrows `account-rewards-state.css`'s card, as `no-ways-card.php` does, so no new CSS)
+- [x] T1 Shared placement list, output and builder placeholder — `includes/Integrations/PageBuilders/PlacementWidgets.php` (new), the placeholder is the account tab's state card, `includes/Engine/Storefront/templates/account-rewards-state.php`, so no new template or CSS
   - Reuse: `Placements::BALANCE_SHORTCODE` / `WAYS_TO_EARN_SHORTCODE` / `WAYS_TO_REDEEM_SHORTCODE` and `RedeemCard::SHORTCODE` (the shortcodes themselves, so output matches); `OutputCapture::capture()` for the placeholder template; `ScriptName::ACCOUNT_STYLE`
   - Callers: `PlacementWidgets::title()` → each element's label (T2–T4); `PlacementWidgets::output()` → each element's `render()` (T2–T4); `PlacementWidgets::enqueue_preview_styles()` → each adapter's preview-styles hook (T2–T4)
 - [x] T2 Elementor widgets — `includes/Integrations/PageBuilders/PageBuildersIntegration.php` (new), `includes/Integrations/PageBuilders/Elementor/ElementorWidgets.php` (new), `includes/Integrations/PageBuilders/Elementor/PlacementWidget.php` (new), four subclasses `PointsBalanceWidget`, `WaysToEarnWidget`, `WaysToRedeemWidget`, `RedeemCardWidget` (new), `includes/YayLoyalty.php`

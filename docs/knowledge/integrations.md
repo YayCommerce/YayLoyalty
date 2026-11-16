@@ -39,7 +39,7 @@ Every integration is detected by a constant the partner defines before YayLoyalt
 | Bricks (theme) | `init` at 11, after Bricks loads `\Bricks\Element` at 10; skipped without `\Bricks\Elements` | The same four as elements, registered with their class (Bricks otherwise takes the last declared class); category label through `bricks/builder/i18n` | `includes/Integrations/PageBuilders/Bricks/` |
 | Divi 4 (theme) | `et_builder_ready` | The same four as modules with partial Visual Builder support (PHP render over `et_fb_ajax_render_shortcode`), named "YayLoyalty …" since Divi 4 has no module groups | `includes/Integrations/PageBuilders/Divi/` |
 
-The page builders differ from the plugins above: Bricks and Divi are themes, which load after YayLoyalty boots, so they are never detected by constant; only their hooks are added. Every element prints its shortcode through `PageBuilders/PlacementWidgets::output()`, which shows a placeholder (`templates/builder-placeholder.php`) only when the placement is empty in a builder preview.
+The page builders differ from the plugins above: Bricks and Divi are themes, which load after YayLoyalty boots, so they are never detected by constant; only their hooks are added. Every element prints its shortcode through `PageBuilders/PlacementWidgets::output()`, which shows a placeholder (the account tab's state card, `templates/account-rewards-state.php`) only when the placement is empty in a builder preview.
 
 ## Multi-currency
 
