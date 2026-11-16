@@ -14,5 +14,5 @@ final class PointsBalanceModule extends PlacementModule {
 
     public const PLACEMENT = PlacementWidgets::POINTS_BALANCE;
 
-    public $slug = 'yayloyalty_points_balance';
+    public $slug = 'yayloyalty_divi_points_balance';
 }

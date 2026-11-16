@@ -14,5 +14,5 @@ final class WaysToEarnModule extends PlacementModule {
 
     public const PLACEMENT = PlacementWidgets::WAYS_TO_EARN;
 
-    public $slug = 'yayloyalty_ways_to_earn';
+    public $slug = 'yayloyalty_divi_ways_to_earn';
 }

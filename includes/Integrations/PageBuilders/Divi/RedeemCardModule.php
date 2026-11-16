@@ -14,5 +14,5 @@ final class RedeemCardModule extends PlacementModule {
 
     public const PLACEMENT = PlacementWidgets::REDEEM_CARD;
 
-    public $slug = 'yayloyalty_redeem_card';
+    public $slug = 'yayloyalty_divi_redeem_card';
 }

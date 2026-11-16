@@ -14,5 +14,5 @@ final class WaysToRedeemModule extends PlacementModule {
 
     public const PLACEMENT = PlacementWidgets::WAYS_TO_REDEEM;
 
-    public $slug = 'yayloyalty_ways_to_redeem';
+    public $slug = 'yayloyalty_divi_ways_to_redeem';
 }
