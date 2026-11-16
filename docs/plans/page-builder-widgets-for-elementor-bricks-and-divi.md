@@ -8,7 +8,7 @@ design:
 trello:
 type: feat
 branch: feat/p-2-page-builder-widgets-for-elementor-bricks-and
-pr:
+pr: 194
 editions: [pro, lite]
 created: 2026-11-16
 ---
