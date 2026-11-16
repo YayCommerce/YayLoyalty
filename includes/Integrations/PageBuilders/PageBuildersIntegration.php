@@ -2,6 +2,7 @@
 namespace YayLoyalty\Integrations\PageBuilders;
 
 use YayLoyalty\Integrations\PageBuilders\Bricks\BricksElements;
+use YayLoyalty\Integrations\PageBuilders\Divi\DiviModules;
 use YayLoyalty\Integrations\PageBuilders\Elementor\ElementorWidgets;
 use YayLoyalty\Utils\SingletonTrait;
 
@@ -20,5 +21,6 @@ final class PageBuildersIntegration {
     protected function __construct() {
         ElementorWidgets::register();
         BricksElements::register();
+        DiviModules::register();
     }
 }
