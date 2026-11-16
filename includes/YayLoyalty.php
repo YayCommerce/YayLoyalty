@@ -37,6 +37,7 @@ class YayLoyalty {
         \YayLoyalty\Integrations\YayMail\YayMailIntegration::get_instance();
         \YayLoyalty\Integrations\YayCurrency\YayCurrencyIntegration::get_instance();
         \YayLoyalty\Integrations\YayPricing\YayPricingIntegration::get_instance();
+        \YayLoyalty\Integrations\PageBuilders\PageBuildersIntegration::get_instance();
 
         // The only reference to Pro in the Lite tree. Lite strips includes/Pro/, so add a seam, never a second reference.
         // It runs before rest_api_init and any campaign read, so Pro's filters are attached first.
