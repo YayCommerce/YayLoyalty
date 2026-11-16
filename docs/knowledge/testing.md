@@ -1,7 +1,7 @@
 ---
 area: testing
-updated: 2026-11-13
-updated_ref: 6ec1e2d
+updated: 2026-11-16
+updated_ref: 65c5667
 covers: [tests/php/, tests/js/, tests/unit/, tests/integration/, tests/bootstrap.php, phpunit.xml.dist, phpunit-integration.xml.dist, tests/e2e/.wp-env.json]
 ---
 
@@ -60,6 +60,7 @@ Run one test with `vendor/bin/phpunit -c tests/php/unit.xml.dist --filter <Name>
 | Pro `ConditionsEvaluator` all/any fold | unit | critical | `tests/php/unit/Pro/Services/ConditionsEvaluatorTest.php` @P-1 | `includes/Pro/Services/ConditionsEvaluator.php` |
 | Pro `RewardConditionsEvaluator`, lazy facts | unit | critical | `tests/php/unit/Pro/Services/RewardConditionsEvaluatorTest.php` @P-1 | `includes/Pro/Services/RewardConditionsEvaluator.php` |
 | SPA `toConditionList`, `conditionsLabel` | js | important | `tests/js/lib/schema/condition-match.schema.test.ts` @P-1 | `apps/admin/src/lib/schema/condition-match.schema.ts` |
+| Page builder `PlacementWidgets::output` shortcode or preview-only placeholder | unit | important | `tests/php/unit/Integrations/PageBuilders/PlacementWidgetsTest.php` @P-2 | `includes/Integrations/PageBuilders/PlacementWidgets.php` |
 | `Dates::site_day_to_utc` invalid day | unit | important | bug: B-1 | `includes/Utils/Dates.php` |
 | `Dates` site-day and DST helpers | unit | critical | candidate | `includes/Utils/Dates.php` |
 | `LotService::rebuild` / `backfill` | unit | critical | candidate | `includes/Services/LotService.php` |
