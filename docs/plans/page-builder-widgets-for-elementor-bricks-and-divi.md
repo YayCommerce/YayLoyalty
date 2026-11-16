@@ -63,7 +63,7 @@ In Elementor, Bricks and Divi a merchant finds a "YayLoyalty" group with four el
 
 ## Verify
 - `yayh test run unit` → exit 0 (unit)
-- `composer lint` → no new errors in `includes/Integrations/PageBuilders/` (the `dev` baseline still fails, see known-issues)
+- `vendor/bin/phpcs includes/Integrations/PageBuilders/` → exit 0 (`composer lint` as a whole still fails on the `dev` baseline, see known-issues)
 - `php -l` on every new file → exit 0
 - `wp eval 'do_action("init"); echo class_exists("YayLoyalty\\Integrations\\PageBuilders\\Elementor\\PlacementWidget", false) || class_exists("YayLoyalty\\Integrations\\PageBuilders\\Divi\\PlacementModule", false) || class_exists("YayLoyalty\\Integrations\\PageBuilders\\Bricks\\PlacementElement", false) ? "loaded" : "none";'` with Elementor deactivated and a non-Divi, non-Bricks theme → none
 - Elementor (4.4.0, local): edit a page → panel search "points" shows the four elements under YayLoyalty → drag each in → Points balance, Ways to earn and Ways to redeem show real output for the admin (or the placeholder when the admin is outside the program); Redeem card shows the placeholder with an empty cart and the real card with items in the cart → update the page.
