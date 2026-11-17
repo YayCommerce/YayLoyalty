@@ -90,10 +90,10 @@ Other paths:
 - **Page and tabs:** `PageLayout` with the tab links, as the Settings page's tabs (`apps/admin/src/pages/settings/`).
 - **Program live:** `Switch`, off by default on a new install. Turning it off hides every storefront piece. Existing referrals keep their state, and held ones still release.
 - **Sections 1–5:** numbered `Card`s with `Field`, `FieldLabel` and `FieldDescription`, as the general settings page.
-  - Money uses the store-currency `AmountInput` (`components/ui/custom/amount-inputs.tsx`).
+  - Money uses the store-currency `MoneyInput` (`components/ui/custom/amount-inputs.tsx`).
   - Days and points use `NumberInput` with a unit, as the campaign editor (`pro/campaigns/editor/CampaignEditorEarn.tsx:147-180`).
-  - The "= $10.00" next to the points is the existing points-to-money helper the Rewards screens use.
-- **Fixed or Percentage:** a two-option `RadioGroup`. Percentage shows "%" in place of the currency and caps at 100.
+  - No money value next to the points: the point's value comes from the flexible discount reward, which this page doesn't load (decided while building P-3).
+- **Fixed or Percentage:** a two-option `RadioGroup`. Percentage shows "%" in place of the currency; above 100 shows the validation error rather than clamping.
 - **Minimum order:** 0 means no minimum. The same value is the qualifying minimum (BL-7 decided), so a qualifying order always uses the coupon.
 - **Hold for:** 0–90 days, default 14.
 - **Exclude orders that used another coupon:** `Checkbox`, on by default.
@@ -293,7 +293,7 @@ Other paths:
 - **Settings change only new referrals:** held referrals keep the terms they were created under, as the 1a footer says.
 
 ## Acceptance
-- Referral → Settings: set $10 fixed, $50 minimum, 30 days, 1,000 points, 14-day hold, then Save and reload. The values are kept and the preview card reads "Give $10, get 1,000 points". Percentage 150 is blocked with "Percentage must be 1 to 100."
+- Referral → Settings: set $10 fixed, $50 minimum, 30 days, 1,000 points, 14-day hold, then Save and reload. The values are kept and the preview card reads "Give $10.00, get 1,000 points" (money in the store's price format). Percentage 150 is blocked with "Percentage must be 1 to 100."
 - As a customer, My Account → Referrals shows the offer, a `?yl_ref=` link and Copy link → "Copied", and the clipboard holds the link. With the program off, the tab and the Ways to earn row are gone.
 - A new visitor opens the link and registers. With a $60 cart, checkout (classic and block) shows "Referral discount −$10.00". With a $40 cart it doesn't.
 - After that order completes, Referral → Referrals shows it On hold with "releases {date}". The customer's list shows "On the way · arrives {date}".

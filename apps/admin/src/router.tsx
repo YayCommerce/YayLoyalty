@@ -2,6 +2,8 @@ import { ReactElement } from 'react';
 import { createHashRouter, redirect } from 'react-router';
 
 import { Can, CAP, Capability } from '@/lib/access';
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
+import { ReferralSettingsPage } from '@/pro';
 import AppLayout from './AppLayout';
 import NotFoundPage from './pages/404';
 import ErrorPage from './pages/500';
@@ -107,6 +109,11 @@ export function getManagerRouter() {
             {
               index: true,
               loader: () => redirect('/referral/settings'),
+            },
+            {
+              path: 'settings',
+              // The parent's `guarded()` checks CAP.VIEW; Lite 404s the parent, so this never renders there.
+              element: IS_PRO_BUILD ? <ReferralSettingsPage /> : null,
             },
           ],
         },
