@@ -15,6 +15,7 @@ use YayLoyalty\Pro\Controllers\CampaignPerformanceRestController;
 use YayLoyalty\Pro\Controllers\CampaignPreviewRestController;
 use YayLoyalty\Pro\Controllers\CustomerSegmentsRestController;
 use YayLoyalty\Pro\Controllers\DashboardProRestController;
+use YayLoyalty\Pro\Controllers\ReferralSettingsRestController;
 use YayLoyalty\Pro\Controllers\StoreLedgerRestController;
 use YayLoyalty\Pro\Database\ProInstaller;
 use YayLoyalty\Pro\Emails\ProEmails;
@@ -342,6 +343,7 @@ final class YayLoyaltyPro {
             new CampaignPointsRepository(),
             new LedgerRepository()
         );
+        $controllers[] = new ReferralSettingsRestController();
         $controllers[] = new StoreLedgerRestController(
             new StoreLedgerRepository( new LedgerRepository() ),
             new LedgerRepository()
