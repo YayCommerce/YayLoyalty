@@ -21,8 +21,10 @@ use YayLoyalty\Pro\Database\ProInstaller;
 use YayLoyalty\Pro\Emails\ProEmails;
 use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
 use YayLoyalty\Pro\Integrations\YayMail\ProYayMail;
+use YayLoyalty\Pro\Referrals\ReferralAttribution;
 use YayLoyalty\Pro\Repositories\CampaignPerformanceRepository;
 use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
+use YayLoyalty\Pro\Repositories\ReferralRepository;
 use YayLoyalty\Pro\Repositories\StoreLedgerRepository;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Pro\Services\DailyEarningLimit;
@@ -30,6 +32,7 @@ use YayLoyalty\Pro\Services\DiscountRewardHandler;
 use YayLoyalty\Pro\Services\RewardConditionsEvaluator;
 use YayLoyalty\Pro\Storefront\RewardsPanel;
 use YayLoyalty\Repositories\CampaignRepository;
+use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\DashboardRepository;
 use YayLoyalty\Services\Dashboard\DashboardCache;
@@ -112,6 +115,7 @@ final class YayLoyaltyPro {
         ( new BirthdayRunner() )->register();
         ( new BirthdayFields() )->register();
         ( new BirthdayEarnRow() )->register();
+        ( new ReferralAttribution( new CustomerRepository(), new ReferralRepository() ) )->register();
 
         /** Fires once Pro has attached its hooks. Pro-internal; absent from Lite. */
         do_action( 'yayloyalty_pro_booted' );
