@@ -16,6 +16,7 @@ use YayLoyalty\Pro\Controllers\CampaignPreviewRestController;
 use YayLoyalty\Pro\Controllers\CustomerSegmentsRestController;
 use YayLoyalty\Pro\Controllers\DashboardProRestController;
 use YayLoyalty\Pro\Controllers\StoreLedgerRestController;
+use YayLoyalty\Pro\Database\ProInstaller;
 use YayLoyalty\Pro\Emails\ProEmails;
 use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
 use YayLoyalty\Pro\Integrations\YayMail\ProYayMail;
@@ -78,6 +79,8 @@ final class YayLoyaltyPro {
         }
 
         self::$booted = true;
+
+        ProInstaller::register();
 
         add_filter( 'yayloyalty_campaign_triggers', [ self::class, 'add_triggers' ] );
         add_filter( 'yayloyalty_campaign_config_whitelist', [ self::class, 'add_config_keys' ] );
