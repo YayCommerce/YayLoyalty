@@ -1,7 +1,7 @@
 ---
 area: decisions
-updated: 2026-11-13
-updated_ref: 6ec1e2d
+updated: 2026-11-17
+updated_ref: e166d61
 covers: [includes/YayLoyalty.php, includes/Services/LedgerService.php, includes/Database/, includes/Engine/Redemption/, includes/Engine/Earning/, apps/admin/src/main.tsx, apps/admin/src/pro/index.ts, scripts/run.sh]
 ---
 

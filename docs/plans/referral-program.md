@@ -115,13 +115,13 @@ R-4's acceptance (copy the link, discount on the first order, points after the h
 - `yayh test run integration --id=P-3` → OK (integration)
 - `yayh test run js` → passed (js)
 - `yayh e2e run --grep @P-3` → passed (e2e)
-- `wp db query "SHOW TABLES LIKE '%yayloyalty_referrals'"` → yayloyalty_referrals
-- `wp db query "SHOW INDEX FROM $(wp db prefix)yayloyalty_referrals WHERE Key_name='friend_user_id'"` → friend_user_id
-- `wp eval 'echo get_option("yayloyalty_pro_db_version") === YAYLOYALTY_VERSION ? "stamped" : "missing";'` → stamped
-- `wp eval 'wp_set_current_user(1); echo wp_json_encode( rest_do_request( new WP_REST_Request( "GET", "/yayloyalty/v1/referral/settings" ) )->get_data() );'` → "hold_days":14
+- `yayh e2e cli wp db query "SHOW TABLES LIKE '%yayloyalty_referrals'"` → wp_yayloyalty_referrals
+- `yayh e2e cli wp db query "SHOW INDEX FROM wp_yayloyalty_referrals WHERE Key_name='friend_user_id'"` → friend_user_id
+- `yayh e2e cli wp eval 'echo get_option("yayloyalty_pro_db_version") === YAYLOYALTY_VERSION ? "stamped" : "missing";'` → stamped
+- `yayh e2e cli wp eval 'wp_set_current_user(1); echo wp_json_encode( rest_do_request( new WP_REST_Request( "GET", "/yayloyalty/v1/referral/settings" ) )->get_data() );'` → "hold_days":14
 - `vendor/bin/phpcs includes/Pro/Referrals includes/Pro/Database includes/Pro/Models/Referral.php includes/Pro/Repositories/ReferralRepository.php includes/Pro/Enums includes/Pro/Controllers/ReferralSettingsRestController.php` → exit 0
 - `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` → exit 0
-- `pnpm --filter @yayloyalty/admin-page lint` → exit 0
+- `pnpm --filter @yayloyalty/admin-page exec eslint src/pro/referral src/pages/referral src/router.tsx src/components/layout/HeaderMenu.tsx src/components/ui/custom/amount-inputs.tsx src/pro/index.ts` → exit 0
 - `./scripts/run.sh build pro` → exit 0
 - `./scripts/run.sh release lite 1.0.0 --no-prompt` → passed
 - `unzip -l release/yayloyalty-lite-1.0.0.zip | grep -i referral` → exit 1

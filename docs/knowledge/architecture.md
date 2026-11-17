@@ -1,7 +1,7 @@
 ---
 area: architecture
-updated: 2026-11-16
-updated_ref: 65c5667
+updated: 2026-11-17
+updated_ref: e166d61
 covers: [yayloyalty.php, YayLoyaltyPluginAdapter.php, includes/YayLoyalty.php, includes/Access/, includes/Database/, includes/Models/, includes/Repositories/, includes/Services/, includes/Controllers/, includes/Engine/, includes/Enums/, includes/Pro/YayLoyaltyPro.php]
 ---
 

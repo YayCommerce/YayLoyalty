@@ -1,7 +1,7 @@
 ---
 area: conventions
-updated: 2026-11-13
-updated_ref: 6ec1e2d
+updated: 2026-11-17
+updated_ref: e166d61
 covers: [includes/Utils/, includes/Models/AbstractModel.php, includes/Helpers/SettingsHelper.php, includes/Controllers/BaseRestController.php, includes/Enums/]
 ---
 
@@ -26,7 +26,7 @@ covers: [includes/Utils/, includes/Models/AbstractModel.php, includes/Helpers/Se
 ## Pro data in Lite
 
 - Pro values (trigger and reward type constants) stay in Lite enums, and Lite's `all_known()` lists stay unfiltered, so a downgraded site still accepts stored Pro rows. Pro widens lists through filters; never add a strip marker.
-- Pro data lives in Lite tables and options; Lite ignores what it doesn't offer.
+- Pro data lives in Lite tables and options; Lite ignores what it doesn't offer. The exception is a Pro-only feature with no Lite counterpart (referral): its table (`referrals`) and option (`yayloyalty_referral_settings`) are Pro's own, added through `yayloyalty_table_schemas` and installed by `ProInstaller`.
 - SPA zod schemas accept Pro values too (`ALL_KNOWN_REWARD_TYPES`).
 
 ## Settings and stored JSON

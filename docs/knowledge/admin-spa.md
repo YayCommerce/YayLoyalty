@@ -1,7 +1,7 @@
 ---
 area: admin-spa
-updated: 2026-11-13
-updated_ref: 6ec1e2d
+updated: 2026-11-17
+updated_ref: e166d61
 covers: [apps/admin/, includes/Engine/Admin/Settings.php, includes/Engine/Register/, includes/Helpers/LocalizeHelper.php]
 ---
 
