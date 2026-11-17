@@ -1,7 +1,7 @@
 ---
 id: P-3
 title: Referral data, settings and link attribution
-status: in-progress
+status: done
 from: BS-3
 roadmap: R-4
 design: UX-2

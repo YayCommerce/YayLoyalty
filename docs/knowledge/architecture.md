@@ -1,7 +1,7 @@
 ---
 area: architecture
 updated: 2026-11-17
-updated_ref: e166d61
+updated_ref: 79b743c
 covers: [yayloyalty.php, YayLoyaltyPluginAdapter.php, includes/YayLoyalty.php, includes/Access/, includes/Database/, includes/Models/, includes/Repositories/, includes/Services/, includes/Controllers/, includes/Engine/, includes/Enums/, includes/Pro/YayLoyaltyPro.php]
 ---
 
@@ -69,7 +69,7 @@ A second copy of the plugin (both editions active) defines `plugin_init` first; 
 
 **User meta:** `_yayloyalty_opted_out`, `_yayloyalty_email_sends` (`EmailThrottle`), `yayloyalty_dashboard_dismissed`, Pro's `yayloyalty_birthday_month` / `_day`.
 
-**Cookies:** Pro's `yayloyalty_ref` (the referral code from a `?yl_ref=` link; HttpOnly, SameSite=Lax, cleared at signup) — `Pro/Referrals/ReferralAttribution.php`.
+**Cookies:** Pro's `yayloyalty_ref` (`CODE.<visit unix time>` from a `?yl_ref=` link, so signup is checked against the current cookie window; HttpOnly, SameSite=Lax, cleared at signup) — `Pro/Referrals/ReferralAttribution.php`.
 
 **Transients:** `yayloyalty_dashboard_v2_<range>` (5 min, only above 10,000 members; flushed on every ledger and campaign write; bump the key when the payload shape changes) — `Services/Dashboard/DashboardCache.php`.
 
