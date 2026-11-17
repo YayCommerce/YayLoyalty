@@ -6,11 +6,7 @@ use YayLoyalty\Database\Schema\AbstractTableSchema;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * Installs Pro's own tables. Lite's install runs on activation before Pro boots, and skips while
- * `yayloyalty_db_version` is current, so a fresh Pro activation or a Lite → Pro switch at the same
- * version would never create them. Pro keeps its own stamp and runs the idempotent install once.
- */
+/** Installs Pro's own tables under Pro's own version stamp. */
 final class ProInstaller {
 
     public const OPTION_DB_VERSION = 'yayloyalty_pro_db_version';
@@ -40,17 +36,8 @@ final class ProInstaller {
         $installed = Installer::install_locked( static fn(): bool => get_option( self::OPTION_DB_VERSION ) !== YAYLOYALTY_VERSION );
 
         // Stamped only once the table is there, so a failed install retries on the next request.
-        if ( $installed && self::tables_exist() ) {
+        if ( $installed && ( new ReferralsTable() )->exists() ) {
             update_option( self::OPTION_DB_VERSION, YAYLOYALTY_VERSION );
         }
-    }
-
-    private static function tables_exist(): bool {
-        global $wpdb;
-
-        $table = ( new ReferralsTable() )->table_name();
-        $found = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a schema probe; WordPress has no API for it.
-
-        return $table === $found;
     }
 }

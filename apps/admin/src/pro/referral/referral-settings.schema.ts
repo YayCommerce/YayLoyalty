@@ -26,7 +26,5 @@ export const referralSettingsSchema = z.object({
 
 export type ReferralSettings = z.infer<typeof referralSettingsSchema>;
 
-export type ReferralDiscountType = ReferralSettings['discount_type'];
-
 /** POST body: only the fields that changed. */
 export type ReferralSettingsUpdate = Partial<ReferralSettings>;

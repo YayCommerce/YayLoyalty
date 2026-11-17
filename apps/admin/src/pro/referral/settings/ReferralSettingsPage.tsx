@@ -1,4 +1,3 @@
-import { ReactNode } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, FieldPath, useForm, UseFormReturn } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -8,9 +7,10 @@ import { toastApiError } from '@/lib/api/api';
 import { storeCurrency } from '@/lib/helpers/format.helper';
 import { useEditorSave } from '@/hooks/useEditorSave';
 import { LoadingButton } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AMOUNT_INPUT_WIDTH, MoneyInput } from '@/components/ui/custom/amount-inputs';
+import { EditorSection } from '@/components/ui/custom/editor-section';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
 import {
@@ -38,17 +38,6 @@ import {
 import { ReferralOfferPreview } from './ReferralOfferPreview';
 
 type Form = UseFormReturn<ReferralSettingsFormValues>;
-
-function Section({ step, title, children }: { step: number; title: string; children: ReactNode }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{`${step} ${title}`}</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">{children}</CardContent>
-    </Card>
-  );
-}
 
 /** A whole-number field with a unit, its help text and its validation error. */
 function NumberField(props: {
@@ -147,7 +136,7 @@ function ReferralSettingsForm({ settings }: { settings: ReferralSettings }) {
           </CardContent>
         </Card>
 
-        <Section step={1} title={COPY.friendTitle()}>
+        <EditorSection step={1} title={COPY.friendTitle()}>
           <Field>
             <FieldLabel htmlFor="referral-discount_amount">{COPY.discountLabel()}</FieldLabel>
             <FieldContent className="flex flex-col gap-3">
@@ -225,9 +214,9 @@ function ReferralSettingsForm({ settings }: { settings: ReferralSettings }) {
             min={1}
             max={REFERRAL_LIMITS.COUPON_DAYS_MAX}
           />
-        </Section>
+        </EditorSection>
 
-        <Section step={2} title={COPY.advocateTitle()}>
+        <EditorSection step={2} title={COPY.advocateTitle()}>
           <NumberField
             form={form}
             name="advocate_points"
@@ -236,9 +225,9 @@ function ReferralSettingsForm({ settings }: { settings: ReferralSettings }) {
             min={1}
             hint={COPY.advocateHint()}
           />
-        </Section>
+        </EditorSection>
 
-        <Section step={3} title={COPY.payoutTitle()}>
+        <EditorSection step={3} title={COPY.payoutTitle()}>
           <NumberField
             form={form}
             name="hold_days"
@@ -248,9 +237,9 @@ function ReferralSettingsForm({ settings }: { settings: ReferralSettings }) {
             max={REFERRAL_LIMITS.HOLD_DAYS_MAX}
             hint={COPY.holdHint()}
           />
-        </Section>
+        </EditorSection>
 
-        <Section step={4} title={COPY.rulesTitle()}>
+        <EditorSection step={4} title={COPY.rulesTitle()}>
           <Field orientation="horizontal">
             <Controller
               control={form.control}
@@ -266,9 +255,9 @@ function ReferralSettingsForm({ settings }: { settings: ReferralSettings }) {
             <FieldLabel htmlFor="referral-exclude_other_coupons">{COPY.excludeOtherCoupons()}</FieldLabel>
           </Field>
           <FieldDescription>{COPY.rulesNote()}</FieldDescription>
-        </Section>
+        </EditorSection>
 
-        <Section step={5} title={COPY.attributionTitle()}>
+        <EditorSection step={5} title={COPY.attributionTitle()}>
           <NumberField
             form={form}
             name="cookie_days"
@@ -278,7 +267,7 @@ function ReferralSettingsForm({ settings }: { settings: ReferralSettings }) {
             max={REFERRAL_LIMITS.COOKIE_DAYS_MAX}
             hint={COPY.cookieHint()}
           />
-        </Section>
+        </EditorSection>
 
         {canEdit && (
           <div className="flex items-center justify-end gap-3">

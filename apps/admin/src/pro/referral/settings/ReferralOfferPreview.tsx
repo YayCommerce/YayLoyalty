@@ -1,4 +1,4 @@
-import { formatStoreNumber, formatWPCurrency } from '@/lib/helpers/format.helper';
+import { formatPercent, formatWPCurrency } from '@/lib/helpers/format.helper';
 import { pointsPhrase } from '@/lib/helpers/points.helper';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import type { ReferralSettingsFormValues } from './referral-settings.form';
 /** "$10" or "10%": what the friend gets, as the customer reads it. */
 function discountText(values: ReferralSettingsFormValues): string {
   if (values.discount_type === 'percent') {
-    return `${formatStoreNumber(values.discount_amount, Number.isInteger(values.discount_amount) ? 0 : 2)}%`;
+    return formatPercent(values.discount_amount, 2);
   }
 
   return formatWPCurrency(values.discount_amount);

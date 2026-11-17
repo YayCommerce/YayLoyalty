@@ -8,10 +8,7 @@ use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * yayloyalty_referrals, Pro's own table (Pro\Database\ReferralsTable). SQL for this one table only;
- * status changes are conditional updates, so two writers can't both move a row.
- */
+/** yayloyalty_referrals, Pro's own table (Pro\Database\ReferralsTable). SQL for this one table only. */
 final class ReferralRepository extends AbstractRepository {
 
     protected function table_slug(): string {
