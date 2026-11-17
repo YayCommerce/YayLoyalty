@@ -57,14 +57,19 @@ A second copy of the plugin (both editions active) defines `plugin_init` first; 
 | `campaigns`, `rewards` | Earn rules and redeemable rewards; unique `slug`, `is_builtin`. `conditions` is one list with a match, all or any (`Utils/ConditionMatch.php`): an `all` list, or none, is stored in the 1.0.0 `{"schema_version":1,"items":[…]}` list envelope, an `any` list in the same envelope plus `"match":"any"` at `schema_version` 2. The models and REST read either shape and always serve `{ match, conditions }` |
 | `customer_meta` | Append-only activity timeline (`meta_key` is the event type) |
 | `redemptions` | One row per applied reward; `value`/`base_value` decimal(19,4), `rate_snapshot` decimal(19,10). Only `Engine\Redemption\CommitWriter` inserts |
+| `referrals` (Pro only) | One row per referred friend: advocate, friend (unique), the code used, `status` (`Pro/Enums/ReferralStatus.php`), a `terms` JSON snapshot of the settings at signup, `coupon_expires_at`, `first_order_id`, `hold_until`. Schema `Pro/Database/ReferralsTable.php`, SQL `Pro/Repositories/ReferralRepository.php` |
 
 **Upgrades.** `Installer::maybe_upgrade()` runs `install()` whenever option `yayloyalty_db_version` !== `YAYLOYALTY_VERSION`, under an `add_option` mutex (`yayloyalty_upgrading`, reclaimed after 60 s). `install()` = `dbDelta` per schema → seed built-in campaigns and the "Points discount" reward → `Capabilities::install()` → `run_migrations()` → `verify()` (logs columns and indexes dbDelta skipped) → stamp the version last. There is no per-migration version, so every migration must be idempotent. `dbDelta` never drops, so dropped indexes are removed in `run_migrations()`.
 
-**Options:** `yayloyalty_settings` (`SettingsHelper`), `yayloyalty_design` (`DesignHelper`), `yayloyalty_reviewed`, `yayloyalty_setup_completed`, `yayloyalty_db_version`, `yayloyalty_caps_version`, `yayloyalty_expiry_applied_signature`, `yayloyalty_rewrite_version`, and Pro's `yayloyalty_customer_segments`.
+**Options:** `yayloyalty_settings` (`SettingsHelper`), `yayloyalty_design` (`DesignHelper`), `yayloyalty_reviewed`, `yayloyalty_setup_completed`, `yayloyalty_db_version`, `yayloyalty_caps_version`, `yayloyalty_expiry_applied_signature`, `yayloyalty_rewrite_version`, and Pro's `yayloyalty_customer_segments`, `yayloyalty_referral_settings` (`Pro/Referrals/ReferralSettings.php`) and `yayloyalty_pro_db_version`.
+
+**Pro tables.** Pro adds its schemas through `yayloyalty_table_schemas`, so every Lite version bump installs them too. Activation runs before Pro boots and `maybe_upgrade()` skips while `yayloyalty_db_version` is current, so `Pro/Database/ProInstaller.php` keeps its own stamp, `yayloyalty_pro_db_version`, and runs `Installer::install_locked()` (the same mutex) once per version; it stamps only once the table exists. A site downgraded to Lite keeps the table, unused.
 
 **Order meta:** `_yayloyalty_points_pending`, `_yayloyalty_points_released_at`, `_yayloyalty_points_earned`, `_yayloyalty_campaign_id` (`Engine/Earning/PendingPoints.php`); `_yayloyalty_points_redeemed`, `_yayloyalty_redeem_value` (`CommitWriter`).
 
 **User meta:** `_yayloyalty_opted_out`, `_yayloyalty_email_sends` (`EmailThrottle`), `yayloyalty_dashboard_dismissed`, Pro's `yayloyalty_birthday_month` / `_day`.
+
+**Cookies:** Pro's `yayloyalty_ref` (the referral code from a `?yl_ref=` link; HttpOnly, SameSite=Lax, cleared at signup) — `Pro/Referrals/ReferralAttribution.php`.
 
 **Transients:** `yayloyalty_dashboard_v2_<range>` (5 min, only above 10,000 members; flushed on every ledger and campaign write; bump the key when the payload shape changes) — `Services/Dashboard/DashboardCache.php`.
 
@@ -83,7 +88,7 @@ Namespace `yayloyalty/v1`. Every route's `permission_callback` is `$this->requir
 | MANAGE_SETTINGS | settings, design (`reset`, `preview`), emails writes; `setup`, `setup/dismiss` |
 | signed-in shopper | `StorefrontActivityRestController` |
 
-Pro adds controllers through `yayloyalty_rest_controllers` (campaign preview and performance, segments, Pro dashboard, store ledger).
+Pro adds controllers through `yayloyalty_rest_controllers` (campaign preview and performance, segments, Pro dashboard, store ledger, `referral/settings`: GET under VIEW, POST under MANAGE_CAMPAIGNS).
 
 - Writes go through `exec_write()` (inside `Transaction::run`; a returned `WP_Error` rolls back). Any `Throwable` becomes a generic 500 with a 12-char correlation id; the real message goes only to `Log::error` (`BaseRestController.php`).
 - Write args come from the item schema minus read-only props; `ALWAYS_READONLY` (id, timestamps, `is_builtin`, `balance_after`, `actor_id`) can't be mass-assigned, even through `yayloyalty_rest_item_schema`.
@@ -126,7 +131,9 @@ Daily Action Scheduler action `yayloyalty_expiry_run` (group `yayloyalty`, batch
 
 ## Pro and Lite
 
-Lite is the Pro tree with `includes/Pro/` removed at release (see [build-release.md](build-release.md)). `YayLoyaltyPro::boot()` (`includes/Pro/YayLoyaltyPro.php`) attaches everything Pro does through filters and actions Lite exposes: extra triggers, reward types, the `batch` expiry mode, REST controllers, emails, the campaign and reward conditions evaluators, `DailyEarningLimit`, the Rewards panel, the birthday runner and fields. It writes no tables of its own.
+Lite is the Pro tree with `includes/Pro/` removed at release (see [build-release.md](build-release.md)). `YayLoyaltyPro::boot()` (`includes/Pro/YayLoyaltyPro.php`) attaches everything Pro does through filters and actions Lite exposes: extra triggers, reward types, the `batch` expiry mode, REST controllers, emails, the campaign and reward conditions evaluators, `DailyEarningLimit`, the Rewards panel, the birthday runner and fields. Its only table is `referrals`, installed by `ProInstaller` (see Storage).
+
+- **Referral attribution:** a `?yl_ref=CODE` link sets the `yayloyalty_ref` cookie on `template_redirect` at priority 0, before core's canonical and old-slug redirects drop the query string. A self-registration (`SignupListener::is_self_registration()`) on `user_register` at priority 20, after the member row exists, becomes a `pending` referral while the program is on and the code belongs to an existing user other than the new one. Codes are upper case; `CustomerRepository::find_user_by_referral_code()` joins `users`, because a deleted account's member row outlives it. A full-page cache that serves `?yl_ref=` URLs without running PHP never sets the cookie; exclude the argument from the cache.
 
 - **Add a seam, never a strip marker.** Pro widens Lite's lists through filters; Lite's `all_known()` lists stay unfiltered so a site downgraded to Lite still recognises stored Pro values (`Enums/CampaignTrigger.php`, `Enums/RewardType.php`).
 - Lite fails open without a conditions evaluator: a conditional campaign applies to everyone after a downgrade (`Engine/Points/PointsEngine.php`), and a conditional reward is redeemable by everyone (`yayloyalty_reward_conditions_match` defaults to true in `Engine/Redemption/RewardGate.php`; Pro answers it with `Pro/Services/RewardConditionsEvaluator.php`). A 1.0.0 reader reads a `schema_version` 2 tree as no conditions.

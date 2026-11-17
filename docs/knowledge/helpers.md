@@ -19,6 +19,8 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 - `Services\LedgerService` (`includes/Services/LedgerService.php`): every points change. `adjust()` / `record()` for manual rows; `earn()`, `refund_earn()`, `restore_refund()`, `expire()`, `redeem()` for keyed system rows. Get an instance from an existing composition root, don't construct a new one.
 - `Engine\Earning\IdempotencyKey::compose|for_earn` (`includes/Engine/Earning/IdempotencyKey.php`): the key for any new ledger write.
 - `Repositories\CustomerReader` (`includes/Repositories/CustomerReader.php`): depend on this when code may read a customer but must never write one.
+- `Database\Installer::install_locked($still_needed)` (`includes/Database/Installer.php`): run the idempotent install under the upgrade mutex; Pro's `ProInstaller` uses it.
+- `Repositories\CustomerRepository::find_user_by_referral_code($code)`: the existing user who owns a referral code.
 
 ## Money, points and dates (PHP)
 
@@ -32,6 +34,7 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 - `Helpers\SettingsHelper::get_settings()` / `update_settings()` / `get_default_settings()`: the only way to read or save settings.
 - `Helpers\DesignHelper::get_design|update_design|surface_enabled|with_unsaved|reset` (`includes/Helpers/DesignHelper.php`): storefront design; `surface_enabled()` decides whether a storefront surface shows.
 - `Helpers\EmailsHelper::get_emails|update_emails|registered_emails` (`includes/Helpers/EmailsHelper.php`): loyalty email on/off state.
+- Pro `Referrals\ReferralSettings::get|invalid_field|update` (`includes/Pro/Referrals/ReferralSettings.php`): the referral program's settings; money as base-currency strings.
 - `Utils\ConfigSpec::matches|is_limit|within_bounds` and `Utils\ConditionValueRules` (`includes/Utils/`): validate campaign and reward config against a typed spec.
 
 ## Eligibility and earning (PHP)
@@ -68,6 +71,7 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 - `parsePaginated`, `paginatedSchema`, `fetchAllPages`, `MAX_PER_PAGE` (`lib/api/paginated.ts`): list responses.
 - `Can`, `can`, `useCapability`, `CAP` (`lib/access.tsx`): hide or disable by capability.
 - `IS_PRO_BUILD` (`lib/is-pro-build.ts`) and `ProGate` (`components/pro/ProGate.tsx`): edition gating and the upsell.
+- `MoneyInput`, `PointsInput` (`components/ui/custom/amount-inputs.tsx`): money in a currency and whole points with their unit; `MoneyInput` takes an `id` for its label.
 - `useEditorSave` (`hooks/useEditorSave.ts`) and `useRouteLeaveGuard` (`hooks/useRouteLeaveGuard.tsx`): save, draft and leave-with-unsaved-changes flow.
 - `resolveQueryLoad` (`components/layout/resolve-query-load.tsx`) and `PageLayout` (`components/layout/PageLayout.tsx`): page loading states and header.
 - `useDebouncedSearchCommit` (`hooks/useDebouncedSearchCommit.ts`): search inputs.

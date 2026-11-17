@@ -40,7 +40,7 @@ React 18, TypeScript, Vite, react-router (hash router), TanStack Query, react-ho
 
 | Path | What |
 |---|---|
-| `src/router.tsx` | Hash routes: dashboard, customers, ledger, campaigns, rewards, settings (general, expiry, design, emails). Each wrapped in `guarded(CAP.X, …)`, which must match the `HeaderMenu` item's cap |
+| `src/router.tsx` | Hash routes: dashboard, customers, ledger, campaigns, rewards, referral (Pro: settings), settings (general, expiry, design, emails). Each wrapped in `guarded(CAP.X, …)`, which must match the `HeaderMenu` item's cap. A Pro-only item is behind `IS_PRO_BUILD` in `HeaderMenu`, and its route renders a Lite-safe wrapper in `pages/` that 404s in Lite (`LedgerPage`, `ReferralPage`) |
 | `src/lib/api/<x>.api.ts` | HTTP calls |
 | `src/lib/schema/<x>.schema.ts` | zod schemas; TypeScript copies of PHP shapes, each with a "Mirrors X" docblock naming the PHP source |
 | `src/lib/queries/<x>.queries.ts` | `X_QUERIES` `queryOptions` + `useXQuery` / `useXMutation`; keys `['<domain>', 'list'|'detail', params]`; mutations invalidate by prefix |

@@ -57,6 +57,11 @@ covers: [includes/YayLoyalty.php, includes/Services/LedgerService.php, includes/
 **Why:** failing closed would disable every conditional campaign or reward when a site downgrades from Pro.
 **Evidence:** `includes/Engine/Points/PointsEngine.php`, `includes/Engine/Redemption/RewardGate.php`.
 
+### 2026-11-17 Referral is Pro's first table of its own, with its own install stamp
+**Why:** referral is a Pro-only feature (BS-3), so a Lite site must have no referrals table, and Pro data in a Lite table would ship Lite a schema it never uses. Lite's install runs on activation before Pro boots and skips while its stamp is current, so Pro keeps `yayloyalty_pro_db_version` and installs under the same mutex. Referral settings are a Pro option for the same reason.
+**Rejected:** a Lite `referrals` table; storing the settings in a Referral campaign (UX-2's first draft).
+**Evidence:** `includes/Pro/Database/ProInstaller.php`, `includes/Database/Installer.php` `install_locked()`, P-3.
+
 ### 2026-11-13 Conditions are one list matched by all or any, flat rows untouched
 **Why:** Merchants asked for the YayPricing model: one list of conditions and one Any/All switch, no groups. An `all` list keeps the 1.0.0 list envelope, so flat rows need no migration; an `any` list adds `"match":"any"` at `schema_version` 2 to the same envelope, so a 1.0.0 reader still sees its items and reads them as `all`, which fails closed. At most one entry per type under either match. New conditions start as `all`.
 **Rejected:** two levels of AND/OR groups (built first in P-1, then removed at review); a nested tree (BS-1 option B); a data migration.
