@@ -66,6 +66,13 @@ final class ReferralSettingsTest extends TestCase {
 				'discount_amount',
 			],
 			'zero discount'         => [ [ 'discount_amount' => 0 ], 'discount_amount' ],
+			'percentage under 1'    => [
+				[
+					'discount_type'   => 'percent',
+					'discount_amount' => '0.5',
+				],
+				'discount_amount',
+			],
 			'zero points'           => [ [ 'advocate_points' => 0 ], 'advocate_points' ],
 			'hold over 90 days'     => [ [ 'hold_days' => 91 ], 'hold_days' ],
 			'cookie of 0 days'      => [ [ 'cookie_days' => 0 ], 'cookie_days' ],

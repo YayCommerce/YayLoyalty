@@ -20,7 +20,7 @@ export function ReferralOfferPreview({ values }: { values: ReferralSettingsFormV
   const discount = discountText(values);
   const points = pointsPhrase(values.advocate_points);
   const minimum = values.min_order > 0 ? formatWPCurrency(values.min_order) : null;
-  const link = `${window.yayLoyaltyMeta.wpMeta.siteUrl.replace(/\/$/, '')}/?yl_ref=…`;
+  const link = `${window.yayLoyaltyMeta.wpMeta.homeUrl.replace(/\/$/, '')}/?yl_ref=…`;
 
   return (
     <Card>

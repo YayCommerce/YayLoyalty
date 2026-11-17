@@ -20,6 +20,9 @@ final class ReferralAttribution {
 
     public const COOKIE = 'yayloyalty_ref';
 
+    /** Separates the code from the visit's Unix time in the cookie, so the window is checked against today's setting. */
+    private const COOKIE_SEPARATOR = '.';
+
     /** The shape a customer's code may take; anything else is ignored before it reaches the database. */
     private const CODE_PATTERN = '/^[A-Za-z0-9-]{4,32}$/D';
 
@@ -59,7 +62,7 @@ final class ReferralAttribution {
                     return;
                 }
 
-                self::set_cookie( $code, time() + (int) $settings['cookie_days'] * DAY_IN_SECONDS );
+                self::set_cookie( $code . self::COOKIE_SEPARATOR . time(), time() + (int) $settings['cookie_days'] * DAY_IN_SECONDS );
             }
         );
     }
@@ -70,21 +73,23 @@ final class ReferralAttribution {
             return;
         }
 
-        $code = self::clean_code( wp_unslash( $_COOKIE[ self::COOKIE ] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- clean_code() sanitizes and validates it.
+        $raw                       = sanitize_text_field( wp_unslash( $_COOKIE[ self::COOKIE ] ) );
+        list( $code, $visited_at ) = array_pad( explode( self::COOKIE_SEPARATOR, $raw, 2 ), 2, '' );
 
         ListenerGuard::run(
             self::SOURCE,
             'attribution failed for user #' . $user_id,
-            function () use ( $user_id, $code ): void {
-                $this->attribute( $user_id, $code );
+            function () use ( $user_id, $code, $visited_at ): void {
+                $this->attribute( $user_id, self::clean_code( $code ), ctype_digit( $visited_at ) ? (int) $visited_at : 0 );
             }
         );
     }
 
-    private function attribute( int $friend_user_id, ?string $code ): void {
+    private function attribute( int $friend_user_id, ?string $code, int $visited_at ): void {
         try {
             $settings    = ReferralSettings::get();
-            $advocate_id = null === $code ? null : $this->customers->find_user_by_referral_code( $code );
+            $in_window   = time() - $visited_at <= (int) $settings['cookie_days'] * DAY_IN_SECONDS;
+            $advocate_id = null === $code || ! $in_window ? null : $this->customers->find_user_by_referral_code( $code );
 
             if ( null !== $advocate_id && $settings['enabled'] && $advocate_id !== $friend_user_id && null === $this->referrals->find_by_friend( $friend_user_id ) ) {
                 $this->referrals->insert_pending(

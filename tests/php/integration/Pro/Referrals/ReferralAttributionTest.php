@@ -36,7 +36,7 @@ final class ReferralAttributionTest extends WP_UnitTestCase {
 		$wpdb->update( Table::name( 'customers' ), [ 'referral_code' => self::CODE ], [ 'user_id' => $this->advocate_id ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$wpdb->query( 'DELETE FROM `' . esc_sql( Table::name( 'referrals' ) ) . '`' ); // phpcs:ignore WordPress.DB
 
-		$_COOKIE[ ReferralAttribution::COOKIE ] = self::CODE;
+		$_COOKIE[ ReferralAttribution::COOKIE ] = self::CODE . '.' . time();
 	}
 
 	public function tear_down() {
@@ -74,10 +74,10 @@ final class ReferralAttributionTest extends WP_UnitTestCase {
 	}
 
 	public function test_an_unknown_or_malformed_code_is_not_a_referral() {
-		$_COOKIE[ ReferralAttribution::COOKIE ] = 'NOSUCHCODE';
+		$_COOKIE[ ReferralAttribution::COOKIE ] = 'NOSUCHCODE.' . time();
 		self::factory()->user->create( [ 'role' => 'customer' ] );
 
-		$_COOKIE[ ReferralAttribution::COOKIE ] = "x' OR 1=1 --";
+		$_COOKIE[ ReferralAttribution::COOKIE ] = "x' OR 1=1 --." . time();
 		self::factory()->user->create( [ 'role' => 'customer' ] );
 
 		$this->assertSame( [], $this->referrals() );
@@ -92,10 +92,25 @@ final class ReferralAttributionTest extends WP_UnitTestCase {
 	}
 
 	public function test_a_code_in_another_case_is_stored_as_the_advocate_s_code() {
-		$_COOKIE[ ReferralAttribution::COOKIE ] = strtolower( self::CODE );
+		$_COOKIE[ ReferralAttribution::COOKIE ] = strtolower( self::CODE ) . '.' . time();
 		self::factory()->user->create( [ 'role' => 'customer' ] );
 
 		$this->assertSame( self::CODE, $this->referrals()[0]['referral_code'] );
+	}
+
+	public function test_a_visit_older_than_today_s_cookie_window_is_not_a_referral() {
+		update_option( ReferralSettings::OPTION, [ 'enabled' => true, 'cookie_days' => 7 ] );
+		$_COOKIE[ ReferralAttribution::COOKIE ] = self::CODE . '.' . ( time() - 20 * DAY_IN_SECONDS );
+		self::factory()->user->create( [ 'role' => 'customer' ] );
+
+		$this->assertSame( [], $this->referrals() );
+	}
+
+	public function test_a_cookie_without_a_visit_time_is_not_a_referral() {
+		$_COOKIE[ ReferralAttribution::COOKIE ] = self::CODE;
+		self::factory()->user->create( [ 'role' => 'customer' ] );
+
+		$this->assertSame( [], $this->referrals() );
 	}
 
 	public function test_nothing_is_attributed_while_the_program_is_off() {

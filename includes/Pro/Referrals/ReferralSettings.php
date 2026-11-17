@@ -17,7 +17,9 @@ final class ReferralSettings {
 
     public const DISCOUNT_PERCENT = 'percent';
 
-    /** A percentage discount can't take more than the whole order. */
+    /** A percentage discount is a whole-order share from 1 to 100. */
+    private const PERCENT_MIN = 1;
+
     private const PERCENT_MAX = 100;
 
     private const SPEC = [
@@ -135,7 +137,9 @@ final class ReferralSettings {
 
     /** @param array<string, mixed> $settings */
     private static function fits_percent( array $settings ): bool {
-        return self::DISCOUNT_PERCENT !== $settings['discount_type'] || (float) $settings['discount_amount'] <= self::PERCENT_MAX;
+        $amount = (float) $settings['discount_amount'];
+
+        return self::DISCOUNT_PERCENT !== $settings['discount_type'] || ( $amount >= self::PERCENT_MIN && $amount <= self::PERCENT_MAX );
     }
 
     /**
