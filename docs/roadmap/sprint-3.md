@@ -3,7 +3,7 @@
 Goal: The points widgets can be placed in Elementor, Bricks and Divi (1.1.0).
 
 ### R-3 Page builder widgets for Elementor, Bricks and Divi
-- status: in-progress
+- status: done
 - size: L
 - editions: pro, lite
 - why: requested 2026-11-13 for 1.1; the balance, ways to earn, ways to redeem and redeem card exist only as blocks and shortcodes today
@@ -11,3 +11,4 @@ Goal: The points widgets can be placed in Elementor, Bricks and Divi (1.1.0).
 - target: 1.1.0
 - started: 2026-11-16
 - built: 2026-11-16
+- merged: 2026-11-16
