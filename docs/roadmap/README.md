@@ -18,7 +18,7 @@ One file per sprint (`sprint-<n>.md`), `later.md` for unscheduled work, and a ge
 | [Sprint 3](sprint-3.md) | 2026-12-11 → 2026-12-24 | The points widgets can be placed in Elementor, Bricks and Divi (1.1.0). | 1 (1 done, 0 shipped) | 8 |
 | [Sprint 4](sprint-4.md) | 2026-12-25 → 2027-01-07 | Customers earn points for referring friends who order (1.1.0). | 1 (0 shipped) | 8 |
 | [Sprint 5](sprint-5.md) | 2027-01-08 → 2027-01-21 | Social and subscription-renewal earning, and a Tools page for CSV import/export and bulk points (1.1.0). | 2 (0 shipped) | 8 |
-| [Later](later.md) | - | - | 3 (0 shipped) | 9.5 |
+| [Later](later.md) | - | - | 8 (0 shipped) | 35 |
 
 **Versions**
 
