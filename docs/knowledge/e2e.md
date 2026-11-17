@@ -1,7 +1,7 @@
 ---
 area: e2e
-updated: 2026-11-13
-updated_ref: 6ec1e2d
+updated: 2026-11-16
+updated_ref: b89a5f8
 covers: [tests/e2e/]
 ---
 
@@ -20,7 +20,7 @@ covers: [tests/e2e/]
 | WP-CLI in the site | `yayh e2e cli wp …` |
 | Wipe and reseed | `yayh e2e env reset` |
 
-The site runs this checkout with `YAYLOYALTY_IS_DEVELOPMENT` false, so it serves `assets/dist/`: run `./scripts/run.sh build pro` first, and again after SPA or storefront CSS changes. WordPress 7.1.3, WooCommerce 11.2.1, PHP 8.2, block theme, block Cart and Checkout pages, HPOS **off** (orders at `post.php?post=<id>&action=edit`).
+The site runs this checkout with `YAYLOYALTY_IS_DEVELOPMENT` false, so it serves `assets/dist/`: run `./scripts/run.sh build pro` first, and again after SPA or storefront CSS changes. A Lite build left in `assets/dist/` (for example after `./scripts/run.sh release lite`) fails the Pro admin specs. WordPress 7.1.3, WooCommerce 11.2.1, PHP 8.2, block theme, block Cart and Checkout pages, HPOS **off** (orders at `post.php?post=<id>&action=edit`).
 
 ## Seed (`tests/e2e/bin/setup-env.sh`, after every start and reset)
 
@@ -55,6 +55,7 @@ The site runs this checkout with `YAYLOYALTY_IS_DEVELOPMENT` false, so it serves
 - On-hold orders from an aborted run keep counting in the customer's pending total; assert pending relative to `pendingOf()`.
 - Another plugin's wp-env running commands at the same time can stall `wp-env run` for minutes. Re-run once it's quiet.
 - `yayh` checks the site over localhost; inside a network sandbox it reports the site down.
+- Elementor 4.4.0 is installed in the dev site only (`env.development.plugins` in `.wp-env.json`), and the seed leaves it inactive. Its spec activates it, sets `elementor_onboarded` and deletes the `elementor_activation_redirect` transient (otherwise the next admin page is Elementor's onboarding wizard), and deactivates it after. The tests site has no builder, which the page builder integration tests rely on.
 - `sendmail: can't connect` on stderr is harmless: the site has no mailer, so emails can't be asserted here.
 
 ## Flows
@@ -88,6 +89,7 @@ The site runs this checkout with `YAYLOYALTY_IS_DEVELOPMENT` false, so it serves
 | Grant missing points from the order screen | admin | important | candidate (REST: `tests/integration/Earning/OrderPointsGrantTest.php`) | `includes/Engine/Admin/OrderMissingPoints.php` |
 | Orders list points column and Missing filter | admin | minor | candidate | `includes/Engine/Admin/OrderMissingPoints.php` |
 | Review reversal note in the Reviews table | admin | minor | candidate | `includes/Engine/Admin/ReviewPointsNote.php` |
+| Elementor widgets: editor panel and preview, live page matches the shortcodes | admin, customer | important | `specs/page-builder-elementor.spec.ts` @flow-page-builder-elementor | `includes/Integrations/PageBuilders/Elementor/` |
 | Shortcodes and blocks render | guest, customer | minor | unit: none yet | `includes/Engine/Storefront/Placements.php` |
 | Completing an order awards points | admin | critical | unit: `tests/integration/Earning/PurchaseLifecycleTest.php` | `includes/Engine/Earning/Listeners/OrderListener.php` |
 | Refund, cancel or trash reverses points | admin | critical | unit: `tests/integration/Earning/ReversalFlowTest.php` | `includes/Engine/Earning/Listeners/OrderReversalListener.php` |
