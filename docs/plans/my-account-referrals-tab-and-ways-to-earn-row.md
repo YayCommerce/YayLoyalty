@@ -63,7 +63,7 @@ That completes R-4's "A customer copies their referral link from My Account → 
   - The copy script uses `navigator.clipboard.writeText()` and falls back to selecting the text. "Copied" sits in an `aria-live="polite"` span for 2 seconds.
   - Below 600px, CSS gives the 2×2 counts and stacked rows.
   - Everything is escaped late (`esc_html`, `esc_attr`, `esc_url`).
-- **Ways to earn row (Pro, T3):** `ReferralEarnRow` on `yayloyalty_launcher_earn_rows` shows "Refer a friend · When a friend you referred completes their first order." with the advocate's points and a link to `AccountReferrals::url()`, only while the program is enabled. The "users" icon is added to `AccountMyPointsIcon`.
+- **Ways to earn row (Pro, T3):** `ReferralEarnRow` on `yayloyalty_launcher_earn_rows` shows "Refer a friend · When a friend you referred completes their first order." with the advocate's points and a link to `AccountReferrals::url()`, only while the program is enabled. The row's icon is `AccountMyPointsIcon`'s existing two-person `join` icon, mapped to `CampaignTrigger::REFERRAL` in `for_trigger()`.
 - **Editions:** everything is in `includes/Pro/`, except the Lite repository method and the icon.
 
 ## Tasks
@@ -73,9 +73,9 @@ That completes R-4's "A customer copies their referral link from My Account → 
 - [x] T2 My Account Referrals tab: endpoint, template, copy script and styles — `includes/Pro/Storefront/AccountReferrals.php` (new), `includes/Pro/Storefront/templates/account-referrals.php` (new), `includes/Pro/Storefront/assets/account-referrals.css` (new), `includes/Pro/Storefront/assets/referral-link.js` (new), `includes/Pro/Storefront/ReferralAccountText.php` (new, the tab's wording), `includes/Pro/YayLoyaltyPro.php`
   - Reuse: `AccountMyPoints` (endpoint, menu, title, flush pattern), `templates/points-history.php` and `points-card.css` (markup and look), the `.yayloyalty-account__section` classes in `assets/storefront/account/account-rewards.css`, `Launcher::asset_version()`, `CurrencyRate::from_base()`, `SettingsHelper::points_text()`, `Dates::to_site_date()`, `ReferralSettings::get()` (P-3), `ReferralStatus` (P-3); design UX-2 "My Account → Referrals"
   - Callers: `AccountReferrals::register()` → `YayLoyaltyPro::boot()`; `add_query_var()` → filter `woocommerce_get_query_vars`; `add_menu_item()` → filter `woocommerce_account_menu_items`; `render()` → action `woocommerce_account_referrals_endpoint`; `maybe_flush_rewrite_rules()` → action `init`; `enqueue()` → action `wp_enqueue_scripts`; `AccountReferrals::url()` → `ReferralEarnRow` (T3)
-- [ ] T3 "Refer a friend" row in Ways to earn — `includes/Pro/Referrals/ReferralEarnRow.php` (new), `includes/Engine/Storefront/AccountMyPointsIcon.php`, `includes/Pro/YayLoyaltyPro.php` [risk: 1]
+- [x] T3 "Refer a friend" row in Ways to earn — `includes/Pro/Referrals/ReferralEarnRow.php` (new), `includes/Engine/Storefront/AccountMyPointsIcon.php`, `includes/Pro/YayLoyaltyPro.php` [risk: 1]
   - Reuse: `BirthdayEarnRow` (`includes/Pro/Birthday/BirthdayEarnRow.php`), `LauncherEarnRules` row shape, `rule-list-item.php`, `ReferralSettings::get()` (P-3); design UX-2 "Ways to earn row"
-  - Callers: `ReferralEarnRow::register()` → `YayLoyaltyPro::boot()`; `add_row()` → filter `yayloyalty_launcher_earn_rows`; `AccountMyPointsIcon` "users" → `ReferralEarnRow`
+  - Callers: `ReferralEarnRow::register()` → `YayLoyaltyPro::boot()`; `add_row()` → filter `yayloyalty_launcher_earn_rows`; `AccountMyPointsIcon::for_trigger( REFERRAL )` → the row's icon
 - [ ] T4 Knowledge docs and readme feature line — `docs/knowledge/architecture.md`, `docs/knowledge/integrations.md`, `docs/knowledge/build-release.md`, `docs/knowledge/e2e.md`, `readme.txt` [risk: 1]
   - Reuse: n/a
 
@@ -99,6 +99,7 @@ That completes R-4's "A customer copies their referral link from My Account → 
 - At 375px (e2e for the scroll, manual for the look): the counts are two by two, the rows are stacked, Copy link is full width, and the link input stays LTR in an RTL locale.
 
 ## Risks
+- Decided (T3): no new "users" SVG: the existing `join` icon (two people) serves the referral row. A guest sees the row without a link; a customer who can use the tab gets the link.
 - Decided (T2): the tab shows only to a customer who can earn (`Launcher::viewer_can_earn()`: not opted out, not an excluded role), since their payouts would never pay; with the program off or for such a customer, `/my-account/referrals/` redirects to the account dashboard. The "worth" figures come from `LauncherPayload::worth()` with the live flexible discount, and are left out without one. The invitations pager is a short Previous/Next with the page number, since the history's pager builds My Points URLs. The offer and statuses are worded in `ReferralAccountText`, so the template stays markup.
 - Decided (T1 review): `counts_for_advocate()` also returns `ordered` (every referral with a first order, so a refund never lowers it), and `next_release` is the earliest hold end still ahead, null when every held referral is past due; such a row reads "On the way · arriving soon". "On the way" and "Points earned" sum the snapshots, which is what `award_flat()` pays, since it skips the earning-limit filter.
 - **The endpoint 404s until the rewrite rules flush:** the Pro stamp flushes once on `init`, and saving permalinks fixes any leftover. Rollback: delete `yayloyalty_pro_rewrite_version`.

@@ -2,6 +2,7 @@
 namespace YayTests\Integration\Pro\Storefront;
 
 use WP_UnitTestCase;
+use YayLoyalty\Pro\Referrals\ReferralEarnRow;
 use YayLoyalty\Pro\Referrals\ReferralSettings;
 use YayLoyalty\Pro\Repositories\ReferralRepository;
 use YayLoyalty\Pro\Storefront\AccountReferrals;
@@ -62,7 +63,15 @@ final class AccountReferralsTest extends WP_UnitTestCase {
 		update_option( ReferralSettings::OPTION, [ 'enabled' => false ] );
 
 		$this->assertArrayNotHasKey( AccountReferrals::ENDPOINT, AccountReferrals::add_menu_item( [ 'dashboard' => 'Dashboard' ] ) );
+		$this->assertSame( [], ( new ReferralEarnRow() )->add_row( [], [], $this->advocate_id ) );
 		$this->assertSame( '', $this->render() );
+	}
+
+	public function test_ways_to_earn_offers_the_referral_and_links_to_the_tab() {
+		$rows = ( new ReferralEarnRow() )->add_row( [], [], $this->advocate_id );
+
+		$this->assertSame( 'Refer a friend', $rows[0]['label'] );
+		$this->assertSame( AccountReferrals::url(), $rows[0]['url'] );
 	}
 
 	public function test_two_customers_never_share_a_code() {
