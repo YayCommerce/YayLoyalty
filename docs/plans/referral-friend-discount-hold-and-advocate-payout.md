@@ -1,7 +1,7 @@
 ---
 id: P-4
 title: Referral friend discount, hold and advocate payout
-status: in-progress
+status: done
 from: BS-3
 roadmap: R-4
 design: UX-2
