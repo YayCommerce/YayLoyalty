@@ -8,7 +8,7 @@ design: UX-2
 trello:
 type: feat
 branch: feat/p-3-referral-data-settings-and-link-attribution
-pr:
+pr: 197
 editions: [pro]
 created: 2026-11-17
 ---
