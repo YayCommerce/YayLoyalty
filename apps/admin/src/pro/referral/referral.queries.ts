@@ -1,7 +1,15 @@
 import { keepPreviousData, queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { ReferralSettingsUpdate } from './referral-settings.schema';
-import { getReferralSettings, getReferrals, postReferralSettings, type ReferralListParams } from './referral.api';
+import type { AdminRejectReason } from './approvals/approvals.copy';
+import {
+  approveReferral,
+  getReferralSettings,
+  getReferrals,
+  postReferralSettings,
+  rejectReferral,
+  type ReferralListParams,
+} from './referral.api';
 
 export const REFERRAL_QUERIES = {
   settings: queryOptions({
@@ -20,6 +28,25 @@ export const REFERRAL_QUERIES = {
 
 export function useReferralListQuery(params: ReferralListParams) {
   return useQuery(REFERRAL_QUERIES.list(params));
+}
+
+/** The held count for the Approvals badges: one row is enough, the store-wide `counts` come with it. */
+export function useHeldReferralCount(): number {
+  const query = useReferralListQuery({ perPage: 1, status: 'on_hold' });
+
+  return query.data?.counts.on_hold ?? 0;
+}
+
+/** Approve or reject one held referral; every referral list refetches once it settles. */
+export function useReferralDecisionMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ['referral', 'decide'],
+    mutationFn: ({ id, reason }: { id: number; reason?: AdminRejectReason }) =>
+      reason ? rejectReferral(id, reason) : approveReferral(id),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['referral', 'list'] }),
+  });
 }
 
 export function useReferralSettingsQuery() {

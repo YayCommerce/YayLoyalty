@@ -16,6 +16,7 @@ export const referralListItemSchema = z.object({
   reject_reason: z.string().nullable(),
   hold_until: z.string().nullable(),
   created_at: z.string(),
+  updated_at: z.string(),
   advocate: personSchema,
   friend: personSchema,
   advocate_points: z.number().int(),

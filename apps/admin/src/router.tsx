@@ -3,7 +3,7 @@ import { createHashRouter, redirect } from 'react-router';
 
 import { Can, CAP, Capability } from '@/lib/access';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
-import { ReferralSettingsPage, ReferralsTab } from '@/pro';
+import { ApprovalsTab, ReferralSettingsPage, ReferralsTab } from '@/pro';
 import AppLayout from './AppLayout';
 import NotFoundPage from './pages/404';
 import ErrorPage from './pages/500';
@@ -113,6 +113,11 @@ export function getManagerRouter() {
             {
               path: 'referrals',
               element: IS_PRO_BUILD ? <ReferralsTab /> : null,
+              children: [{ path: ':userId', element: <CustomerDrawer /> }],
+            },
+            {
+              path: 'approvals',
+              element: IS_PRO_BUILD ? <ApprovalsTab /> : null,
               children: [{ path: ':userId', element: <CustomerDrawer /> }],
             },
             {

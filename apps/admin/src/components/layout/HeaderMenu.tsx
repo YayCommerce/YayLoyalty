@@ -5,6 +5,7 @@ import { __ } from '@wordpress/i18n';
 
 import { Can, CAP, Capability } from '@/lib/access';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
+import { ReferralApprovalsBadge } from '@/pro';
 import { cn } from '@/lib/utils';
 import { HeaderNavMenuItem, HeaderNavMenuList } from '@/components/ui/navmenu-header';
 import DashboardIcon from '@/components/icons/DashboardIcon';
@@ -42,6 +43,7 @@ export function HeaderMenu() {
           <NavLink to="/referral">
             <UserPlus className="stroke-2" />
             <span>{__('Referral', 'yayloyalty')}</span>
+            <ReferralApprovalsBadge />
           </NavLink>
         </CustomMenuItem>
       ) : null}

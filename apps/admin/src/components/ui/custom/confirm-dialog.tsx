@@ -22,6 +22,8 @@ interface ConfirmDialogProps {
   cancelLabel?: string;
   variant?: 'primary' | 'destructive';
   isLoading?: boolean;
+  /** The confirm button's text while isLoading. */
+  loadingLabel?: string;
 }
 
 export function ConfirmDialog({
@@ -35,6 +37,7 @@ export function ConfirmDialog({
   cancelLabel = 'Cancel',
   variant = 'primary',
   isLoading,
+  loadingLabel = 'Deleting...',
 }: ConfirmDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -55,7 +58,7 @@ export function ConfirmDialog({
             }}
             disabled={isLoading}
           >
-            {isLoading ? 'Deleting...' : confirmLabel}
+            {isLoading ? loadingLabel : confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>
