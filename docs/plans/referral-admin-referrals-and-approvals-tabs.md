@@ -79,7 +79,7 @@ That completes R-4's "the merchant can pay early or reject from Approvals".
 - [x] T1 Referrals list REST with search, status filter and counts — `includes/Pro/Controllers/ReferralsRestController.php` (new), `includes/Pro/Repositories/ReferralListRepository.php` (new), `includes/Pro/YayLoyaltyPro.php`
   - Reuse: `StoreLedgerRestController` and `StoreLedgerRepository` (list shape, user search), `AbstractRestController::requires()` / `respond_paginated()`, `exec_read`, `Capabilities::VIEW`, `wc_get_order`, `Utils\Text::plain`
   - Callers: `ReferralsRestController` → filter `yayloyalty_rest_controllers` (`YayLoyaltyPro::add_controllers()`); `ReferralListRepository::paginate()`, `count_by_status()` → `GET referrals`; route → the Referrals tab (T3), the Approvals tab and badge (T4)
-- [ ] T2 Approve and reject routes for held referrals — `includes/Pro/Controllers/ReferralsRestController.php`, `includes/Pro/Enums/ReferralRejectReason.php` [risk: 3]
+- [x] T2 Approve and reject routes for held referrals — `includes/Pro/Controllers/ReferralsRestController.php`, `includes/Pro/Enums/ReferralRejectReason.php`, `includes/Pro/Repositories/ReferralRepository.php` (`find_for_update()`), `includes/Pro/YayLoyaltyPro.php` [risk: 3]
   - Reuse: `ReferralPayout::pay()` (P-4), `ReferralRepository::reject()` (P-4), `exec_write()`, `Capabilities::MANAGE_CAMPAIGNS`
   - Callers: `POST referrals/{id}/approve`, `POST referrals/{id}/reject` → the Approvals tab (T4); `ReferralRejectReason::admin_choices()` → the reject route's `enum` arg
 - [ ] T3 Referral → Referrals tab and default route — `apps/admin/src/pro/referral/referrals/ReferralsTab.tsx` (new), `apps/admin/src/pro/referral/referrals/ReferralsTable.tsx` (new), `apps/admin/src/pro/referral/referrals.schema.ts` (new), `apps/admin/src/pro/referral/referrals.copy.ts` (new), `apps/admin/src/pro/referral/referral.api.ts`, `apps/admin/src/pro/referral/referral.queries.ts`, `apps/admin/src/pro/referral/ReferralLayout.tsx`, `apps/admin/src/router.tsx`
@@ -119,6 +119,7 @@ That completes R-4's "the merchant can pay early or reject from Approvals".
 - Lite build: there's no Referral menu item, and `#/referral/referrals` shows the 404 page.
 
 ## Risks
+- Decided (T2 review): approve and reject read the referral with `ReferralRepository::find_for_update()` (`SELECT … FOR UPDATE`), so under `exec_write`'s transaction a referral the daily job just moved is seen as moved and answers 409 `yayloyalty_referral_changed`. An approve that can't pay (a gate skip, a deleted advocate, a first order no longer completed) answers 409 `yayloyalty_referral_not_payable`. Rejecting from the admin notifies no one, as UX-2 specifies no message.
 - Decided (T1): the list query lives in a new `ReferralListRepository`, as the store ledger's does in `StoreLedgerRepository`, because `ReferralRepository` is near the 200-line limit. `orderby=hold_until` serves the Approvals queue (oldest hold end first).
 - **Approve pays the wrong amount or twice:** it calls only P-4's `pay()`, which is keyed and conditional. Rollback: revert the routes. The ledger keeps what was paid, and it can be adjusted by hand.
 - **Slow list on a big store:** search joins `users` on both ids with `LIKE`, as the store ledger does. It's indexed on `(advocate_user_id, status)`. Accepted for 1.1.0.

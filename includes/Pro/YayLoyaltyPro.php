@@ -362,7 +362,7 @@ final class YayLoyaltyPro {
             new LedgerRepository()
         );
         $controllers[] = new ReferralSettingsRestController();
-        $controllers[] = new ReferralsRestController( new ReferralListRepository() );
+        $controllers[] = new ReferralsRestController( new ReferralListRepository(), new ReferralRepository(), new ReferralPayout( new ReferralRepository() ) );
         $controllers[] = new StoreLedgerRestController(
             new StoreLedgerRepository( new LedgerRepository() ),
             new LedgerRepository()

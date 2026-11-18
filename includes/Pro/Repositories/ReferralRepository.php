@@ -39,6 +39,16 @@ final class ReferralRepository extends AbstractRepository {
         return null !== $referral && ReferralStatus::PENDING === $referral->get_status() ? $referral : null;
     }
 
+    /** The referral, locked until the transaction ends, so a writer racing it waits and the read is current. */
+    public function find_for_update( int $id ): ?Referral {
+        global $wpdb;
+
+        $row   = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE id = %d FOR UPDATE', $id ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the plugin's own table; the identifier is escaped.
+        $found = is_array( $row ) ? $this->hydrate( $row ) : null;
+
+        return $found instanceof Referral ? $found : null;
+    }
+
     /** The referral whose first order is $order_id, or null. */
     public function find_by_first_order( int $order_id ): ?Referral {
         $found = $this->find_one_by( 'first_order_id', (string) $order_id );

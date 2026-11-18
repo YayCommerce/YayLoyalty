@@ -3,18 +3,28 @@ namespace YayLoyalty\Pro\Controllers;
 
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\AbstractRestController;
+use YayLoyalty\Pro\Enums\ReferralRejectReason;
 use YayLoyalty\Pro\Enums\ReferralStatus;
+use YayLoyalty\Pro\Models\Referral;
+use YayLoyalty\Pro\Referrals\ReferralPayout;
 use YayLoyalty\Pro\Repositories\ReferralListRepository;
+use YayLoyalty\Pro\Repositories\ReferralRepository;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Pro-only: GET /referrals, every referral with search, a status filter and the counts per status. */
+/** Pro-only: GET /referrals with search, a status filter and the counts per status; POST approve and reject for a held referral. */
 final class ReferralsRestController extends AbstractRestController {
 
     private ReferralListRepository $referral_list;
 
-    public function __construct( ReferralListRepository $referral_list ) {
+    private ReferralRepository $referrals;
+
+    private ReferralPayout $payout;
+
+    public function __construct( ReferralListRepository $referral_list, ReferralRepository $referrals, ReferralPayout $payout ) {
         $this->referral_list = $referral_list;
+        $this->referrals     = $referrals;
+        $this->payout        = $payout;
     }
 
     public function get_rest_base(): string {
@@ -49,6 +59,103 @@ final class ReferralsRestController extends AbstractRestController {
                 ],
             ]
         );
+
+        $id = [ 'id' => [ 'type' => 'integer', 'required' => true, 'minimum' => 1 ] ]; // phpcs:ignore WordPress.Arrays.ArrayDeclarationSpacing -- one short arg.
+
+        register_rest_route(
+            self::REST_NAMESPACE,
+            '/referrals/(?P<id>\\d+)/approve',
+            [
+                'methods'             => \WP_REST_Server::CREATABLE,
+                'callback'            => fn( $request ) => $this->exec_write( [ $this, 'approve' ], $request ),
+                'permission_callback' => $this->requires( Capabilities::MANAGE_CAMPAIGNS ),
+                'args'                => $id,
+            ]
+        );
+        register_rest_route(
+            self::REST_NAMESPACE,
+            '/referrals/(?P<id>\\d+)/reject',
+            [
+                'methods'             => \WP_REST_Server::CREATABLE,
+                'callback'            => fn( $request ) => $this->exec_write( [ $this, 'reject' ], $request ),
+                'permission_callback' => $this->requires( Capabilities::MANAGE_CAMPAIGNS ),
+                'args'                => $id + [
+                    'reason' => [
+                        'description' => __( 'Why the referral is rejected.', 'yayloyalty' ),
+                        'type'        => 'string',
+                        'required'    => true,
+                        'enum'        => ReferralRejectReason::admin_choices(),
+                    ],
+                ],
+            ]
+        );
+    }
+
+    /**
+     * Pays a held referral now.
+     *
+     * @return array{id: int, status: string}|\WP_Error 409 when it is no longer on hold, or the advocate can't be paid now.
+     */
+    public function approve( \WP_REST_Request $request ) {
+        $referral = $this->held( (int) $request['id'] );
+
+        if ( ! $referral instanceof Referral ) {
+            return $referral;
+        }
+
+        $status = $this->payout->pay( $referral );
+
+        if ( ReferralStatus::REWARDED !== $status ) {
+            return ReferralStatus::ON_HOLD === $status
+                ? new \WP_Error( 'yayloyalty_referral_not_payable', __( 'The advocate can\'t receive points right now: the program is paused, their account is excluded or gone, or the order is no longer completed.', 'yayloyalty' ), [ 'status' => 409 ] )
+                : self::changed();
+        }
+
+        return [
+            'id'     => (int) $referral->get_id(),
+            'status' => $status,
+        ];
+    }
+
+    /**
+     * Rejects a held referral with the admin's reason; nothing is paid.
+     *
+     * @return array{id: int, status: string}|\WP_Error 409 when it is no longer on hold.
+     */
+    public function reject( \WP_REST_Request $request ) {
+        $referral = $this->held( (int) $request['id'] );
+
+        if ( ! $referral instanceof Referral ) {
+            return $referral;
+        }
+
+        if ( ! $this->referrals->reject( (int) $referral->get_id(), (string) $request['reason'], ReferralStatus::ON_HOLD ) ) {
+            return self::changed();
+        }
+
+        return [
+            'id'     => (int) $referral->get_id(),
+            'status' => ReferralStatus::REJECTED,
+        ];
+    }
+
+    /**
+     * The referral while it is on hold, else 404 or 409.
+     *
+     * @return Referral|\WP_Error
+     */
+    private function held( int $id ) {
+        $referral = $this->referrals->find_for_update( $id );
+
+        if ( ! $referral instanceof Referral ) {
+            return $this->error_not_found( __( 'No such referral.', 'yayloyalty' ) );
+        }
+
+        return ReferralStatus::ON_HOLD === $referral->get_status() ? $referral : self::changed();
+    }
+
+    private static function changed(): \WP_Error {
+        return new \WP_Error( 'yayloyalty_referral_changed', __( 'This referral was already paid or rejected.', 'yayloyalty' ), [ 'status' => 409 ] );
     }
 
     /** The page, each row with its first order's number and total, and the store-wide `counts` per status. */
