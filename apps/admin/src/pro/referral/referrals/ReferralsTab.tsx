@@ -17,10 +17,7 @@ const PAGE_SIZE = 20;
 
 type StatusFilter = 'all' | ReferralStatus;
 
-/**
- * Referral → Referrals: every referral with search and status pills. The customer drawer opens over it
- * through the nested `referral/referrals/:userId` route, so the filters survive opening and closing it.
- */
+/** Referral → Referrals: every referral with search and status pills. */
 export function ReferralsTab() {
   const state = useDrawerTabQueryState<StatusFilter>('all');
   const query = useReferralListQuery({
@@ -78,7 +75,6 @@ export function ReferralsTab() {
                   items={query.data?.data ?? []}
                   isLoading={query.isPending}
                   isFiltered={state.isFiltered}
-                  skeletonRows={PAGE_SIZE / 2}
                 />
               </div>
               {totalPages > 1 && (

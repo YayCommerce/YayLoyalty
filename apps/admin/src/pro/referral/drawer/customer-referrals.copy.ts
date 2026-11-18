@@ -1,5 +1,6 @@
 import { __, sprintf } from '@wordpress/i18n';
 
+import { formatPercent } from '@/lib/helpers/format.helper';
 import { formatCount } from '@/lib/helpers/points.helper';
 
 /** The customer drawer's Referrals tab strings. Functions, not constants: `__()` must run after the locale loads. */
@@ -9,8 +10,8 @@ export const CUSTOMER_REFERRALS_COPY = {
   referredSub: (rewarded: number, waiting: number) =>
     sprintf(__('%1$s rewarded · %2$s pending', 'yayloyalty'), formatCount(rewarded), formatCount(waiting)),
   pointsEarned: () => __('Points earned', 'yayloyalty'),
-  /* translators: %s: a percentage, e.g. "7" */
-  pointsShare: (percent: number) => sprintf(__('%s%% of their lifetime total', 'yayloyalty'), formatCount(percent)),
+  /* translators: %s: a percentage, e.g. "7%" */
+  pointsShare: (percent: number) => sprintf(__('%s of their lifetime total', 'yayloyalty'), formatPercent(percent, 0)),
   revenue: () => __('Revenue referred', 'yayloyalty'),
   revenueSub: () => __('first orders only', 'yayloyalty'),
   link: () => __('Referral link', 'yayloyalty'),
@@ -34,8 +35,6 @@ export const CUSTOMER_REFERRALS_COPY = {
   /* translators: %s: the customer's first name */
   columnToAdvocate: (name: string) => sprintf(__('To %s', 'yayloyalty'), name),
   columnToFriend: () => __('To friend', 'yayloyalty'),
-  columnStatus: () => __('Status', 'yayloyalty'),
-  noQualifyingOrder: () => __('no qualifying order yet', 'yayloyalty'),
   /* translators: %s: points */
   onHoldPoints: (points: string) => sprintf(__('%s on hold', 'yayloyalty'), points),
   /* translators: %s: the friend's discount, e.g. "$10.00" */
@@ -52,5 +51,4 @@ export const CUSTOMER_REFERRALS_COPY = {
     sprintf(__('Waiting on a first order. The window closes %s, after which no points are paid.', 'yayloyalty'), date),
   emptyTitle: () => __('No referrals yet.', 'yayloyalty'),
   emptyBody: () => __('The link works from the day the account exists.', 'yayloyalty'),
-  loadError: () => __('Could not load referrals.', 'yayloyalty'),
 };

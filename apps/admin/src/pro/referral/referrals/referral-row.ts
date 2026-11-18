@@ -1,6 +1,7 @@
 import type { VariantProps } from 'class-variance-authority';
 
-import { formatStoreNumber, formatWPCurrency, formatWPDate } from '@/lib/helpers/format.helper';
+import { decimalsFor, formatStoreNumber, formatWPCurrency, formatWPDate, storeCurrency } from '@/lib/helpers/format.helper';
+import { shortPoints } from '@/lib/helpers/points.helper';
 import type { badgeVariants } from '@/components/ui/badge';
 import { REFERRAL_STATUS_LABEL, REFERRALS_COPY, REJECT_REASON_LABEL } from '../referrals.copy';
 import type { ReferralListItem, ReferralStatus } from '../referrals.schema';
@@ -14,7 +15,7 @@ const STATUS_VARIANT: Record<ReferralStatus, VariantProps<typeof badgeVariants>[
   reversed: 'destructive-soft',
 };
 
-/** `p•••@example.com`: the first character and the domain, as UX-2 masks a friend's email. */
+/** `p•••@example.com`: the first character and the domain. */
 export function maskEmail(email: string): string {
   const at = email.indexOf('@');
 
@@ -41,11 +42,9 @@ export function statusReason(item: ReferralListItem): string {
 
 /** The order total in the store's format, or with its currency code when the order was charged in another currency. */
 function orderValue(order: NonNullable<ReferralListItem['first_order']>): string {
-  const store = window.yayLoyaltyMeta.wcMeta.currency_data;
-
-  return order.currency === store.currency
+  return order.currency === storeCurrency()
     ? formatWPCurrency(order.total)
-    : `${formatStoreNumber(parseFloat(order.total), store.num_decimals)} ${order.currency}`;
+    : `${formatStoreNumber(parseFloat(order.total), decimalsFor(order.currency))} ${order.currency}`;
 }
 
 /** What a list row shows, so the Referrals and Approvals tables render it the same way. */
@@ -60,7 +59,7 @@ export function toReferralRow(item: ReferralListItem) {
     order: item.first_order ? `#${item.first_order.number}` : '—',
     orderUrl: item.first_order?.edit_url ?? '',
     value: item.first_order ? orderValue(item.first_order) : '—',
-    reward: paid ? REFERRALS_COPY.rewardPoints(item.advocate_points) : '—',
+    reward: paid ? shortPoints(item.advocate_points) : '—',
     date: formatWPDate(item.created_at),
   };
 }

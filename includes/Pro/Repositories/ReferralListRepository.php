@@ -15,8 +15,8 @@ final class ReferralListRepository {
 
     private CustomerMetaRepository $customer_meta;
 
-    public function __construct( ?CustomerMetaRepository $customer_meta = null ) {
-        $this->customer_meta = $customer_meta ?? new CustomerMetaRepository();
+    public function __construct() {
+        $this->customer_meta = new CustomerMetaRepository();
     }
 
     /**

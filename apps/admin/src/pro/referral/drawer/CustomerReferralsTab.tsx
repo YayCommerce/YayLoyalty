@@ -14,9 +14,11 @@ import { DRAWER_PAGE_SIZE, DrawerTabPager } from '@/pages/customers/drawer/tabs/
 import { useCustomerReferralsQuery } from '../referral.queries';
 import { toReferralRow } from '../referrals/referral-row';
 import { CUSTOMER_REFERRALS_COPY as COPY } from './customer-referrals.copy';
-import { friendDiscount, pointsShare, toAdvocateCell, toFriendCell } from './customer-referrals.rows';
+import { discountText } from '../referral-discount';
+import { REFERRALS_COPY } from '../referrals.copy';
+import { pointsShare, toAdvocateCell, toFriendCell } from './customer-referrals.rows';
 
-/** The drawer's Referrals tab (UX-2 "Customer drawer → Referrals"): one customer as advocate, with their link. */
+/** The drawer's Referrals tab: one customer as advocate, with their link. */
 export function CustomerReferralsTab({
   userId,
   customerFirstName,
@@ -33,7 +35,7 @@ export function CustomerReferralsTab({
   const data = query.data;
 
   if (query.isError) {
-    return <ErrorState message={COPY.loadError()} onRetry={() => query.refetch()} />;
+    return <ErrorState message={REFERRALS_COPY.loadError()} onRetry={() => query.refetch()} />;
   }
 
   async function copyLink() {
@@ -90,7 +92,7 @@ export function CustomerReferralsTab({
               ? COPY.termsLine(
                   pointsPhrase(data.terms.advocate_points),
                   customerFirstName,
-                  friendDiscount(data.terms),
+                  discountText(data.terms),
                   data.terms.coupon_days,
                 )
               : COPY.programOff()}{' '}
@@ -110,7 +112,7 @@ export function CustomerReferralsTab({
               <TableHead>{COPY.columnFirstOrder()}</TableHead>
               <TableHead>{COPY.columnToAdvocate(customerFirstName)}</TableHead>
               <TableHead>{COPY.columnToFriend()}</TableHead>
-              <TableHead>{COPY.columnStatus()}</TableHead>
+              <TableHead>{REFERRALS_COPY.columnStatus()}</TableHead>
             </TableRow>
           }
           columnCount={6}
@@ -138,7 +140,7 @@ export function CustomerReferralsTab({
                     </a>
                   ) : (
                     <span className="text-muted-foreground">
-                      {referral.status === 'pending' ? COPY.noQualifyingOrder() : '—'}
+                      {referral.status === 'pending' ? REFERRALS_COPY.noOrderYet() : '—'}
                     </span>
                   )}
                 </TableCell>

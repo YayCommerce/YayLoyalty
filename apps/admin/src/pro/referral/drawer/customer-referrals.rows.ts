@@ -1,14 +1,8 @@
-import { formatWPCurrency, formatWPDate } from '@/lib/helpers/format.helper';
+import { formatWPDate } from '@/lib/helpers/format.helper';
 import { formatCount } from '@/lib/helpers/points.helper';
+import { discountText } from '../referral-discount';
 import { CUSTOMER_REFERRALS_COPY } from './customer-referrals.copy';
 import type { CustomerReferral, CustomerReferrals } from './customer-referrals.schema';
-
-/** The friend's discount as the terms snapshot set it: "$10.00" or "10%". */
-export function friendDiscount(terms: { discount_type?: unknown; discount_amount?: unknown }): string {
-  const amount = typeof terms.discount_amount === 'string' ? terms.discount_amount : String(terms.discount_amount ?? '0');
-
-  return terms.discount_type === 'percent' ? `${formatCount(parseFloat(amount))}%` : formatWPCurrency(amount);
-}
 
 /** The "To {advocate}" cell: the points paid, the points waiting on the hold, or a dash. */
 export function toAdvocateCell(referral: CustomerReferral): string {
@@ -22,7 +16,7 @@ export function toAdvocateCell(referral: CustomerReferral): string {
 
 /** The "To friend" cell: the discount, and whether the first order used it, it is still available, or it lapsed. */
 export function toFriendCell(referral: CustomerReferral): string {
-  const discount = friendDiscount(referral.terms);
+  const discount = discountText(referral.terms);
 
   if (referral.first_order) {
     return referral.first_order.used_code

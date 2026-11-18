@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { paginatedSchema } from '@/lib/api/paginated';
+import { referralSettingsSchema } from '../referral-settings.schema';
 import { referralListItemSchema } from '../referrals.schema';
 
 /** Mirrors `CustomerReferralsRestController::get_referrals()`: a page of the advocate's referrals plus their link, totals and the program's terms. */
@@ -19,12 +20,12 @@ export const customerReferralsSchema = paginatedSchema(
     points_earned: z.number().int(),
     revenue_referred: z.string(),
   }),
-  terms: z.object({
-    enabled: z.boolean(),
-    discount_type: z.enum(['fixed', 'percent']),
-    discount_amount: z.string(),
-    advocate_points: z.number().int(),
-    coupon_days: z.number().int(),
+  terms: referralSettingsSchema.pick({
+    enabled: true,
+    discount_type: true,
+    discount_amount: true,
+    advocate_points: true,
+    coupon_days: true,
   }),
 });
 

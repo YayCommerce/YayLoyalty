@@ -22,7 +22,6 @@ interface ConfirmDialogProps {
   cancelLabel?: string;
   variant?: 'primary' | 'destructive';
   isLoading?: boolean;
-  /** The confirm button's text while isLoading. */
   loadingLabel?: string;
 }
 

@@ -11,17 +11,17 @@ import { toReferralRow } from './referral-row';
 
 const COLUMN_COUNT = 7;
 
+const SKELETON_ROWS = 10;
+
 /** The Referrals tab's table: a record of every referral, with no row actions. Headers stay through every state. */
 export function ReferralsTable({
   items,
   isLoading,
   isFiltered,
-  skeletonRows,
 }: {
   items: ReferralListItem[];
   isLoading: boolean;
   isFiltered: boolean;
-  skeletonRows: number;
 }) {
   return (
     <Table>
@@ -38,7 +38,7 @@ export function ReferralsTable({
       </TableHeader>
       <TableBody>
         {isLoading ? (
-          Array.from({ length: skeletonRows }).map((_, index) => (
+          Array.from({ length: SKELETON_ROWS }).map((_, index) => (
             <TableRow key={index}>
               {Array.from({ length: COLUMN_COUNT }).map((_cell, cell) => (
                 <TableCell key={cell}>

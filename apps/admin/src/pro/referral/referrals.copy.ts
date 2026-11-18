@@ -19,8 +19,6 @@ export const REFERRALS_COPY = {
   columnValue: () => __('Value', 'yayloyalty'),
   columnReward: () => __('Reward', 'yayloyalty'),
   columnDate: () => __('Date', 'yayloyalty'),
-  /* translators: %s: points, e.g. "1,000" */
-  rewardPoints: (points: number) => sprintf(__('%s pts', 'yayloyalty'), formatCount(points)),
   empty: () => __('No referrals yet. They appear here when someone signs up through a customer\'s link.', 'yayloyalty'),
   emptyFiltered: () => __('No referrals match these filters.', 'yayloyalty'),
   loadError: () => __('Could not load referrals.', 'yayloyalty'),

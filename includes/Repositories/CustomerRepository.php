@@ -64,7 +64,6 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
 
     /**
      * The member's referral code, created on first use: 8 characters with no look-alikes, never their name.
-     * A collision on the unique column, or another request assigning first, is retried by reading again.
      *
      * @throws QueryException When no code could be stored.
      */
