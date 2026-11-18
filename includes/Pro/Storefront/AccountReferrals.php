@@ -34,7 +34,8 @@ final class AccountReferrals {
     public static function register(): void {
         add_filter( 'woocommerce_get_query_vars', [ self::class, 'add_query_var' ] );
         add_action( 'init', [ self::class, 'maybe_flush_rewrite_rules' ], 99 );
-        add_filter( 'woocommerce_account_menu_items', [ self::class, 'add_menu_item' ] );
+        // After AccountMyPoints adds My Points, so the tab can follow it.
+        add_filter( 'woocommerce_account_menu_items', [ self::class, 'add_menu_item' ], 20 );
         add_filter( 'woocommerce_endpoint_' . self::ENDPOINT . '_title', [ self::class, 'title' ] );
         add_action( 'woocommerce_account_' . self::ENDPOINT . '_endpoint', [ self::class, 'render' ] );
         add_action( 'template_redirect', [ self::class, 'redirect_when_unavailable' ] );
