@@ -54,7 +54,7 @@ Done means R-4's "discount applied automatically on a qualifying first order; on
   - `do_action( 'yayloyalty_order_reversed', $order )` after each reversal path in `OrderReversalListener`.
   - All of them are documented as "Internal seam, not a public API".
 - **Friend coupon (Pro, T2):** `ReferralCoupon`.
-  - **Data:** on `woocommerce_get_shop_coupon_data` for `yl-referral-{id}`, it returns `fixed_cart` or `percent` with the converted amount and `minimum_amount` from the referral's terms snapshot. Because the coupon has data, WooCommerce enforces the minimum in both checkouts.
+  - **Data:** on `woocommerce_get_shop_coupon_data` for `yl-referral-{id}`, it returns `fixed_cart` or `percent` with the amount and `minimum_amount` from the referral's terms snapshot, in base currency like a merchant coupon, so YayCurrency converts them once (it skips only `yayloyalty-` codes). Because the coupon has data, WooCommerce enforces the minimum in both checkouts.
   - **Validity:** on `woocommerce_coupon_is_valid`, the coupon is valid only when all of these hold:
     - the current user is the referral's friend
     - the referral is `pending`

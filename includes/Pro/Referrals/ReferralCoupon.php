@@ -4,7 +4,6 @@ namespace YayLoyalty\Pro\Referrals;
 use YayLoyalty\Pro\Enums\ReferralStatus;
 use YayLoyalty\Pro\Models\Referral;
 use YayLoyalty\Pro\Repositories\ReferralRepository;
-use YayLoyalty\Utils\CurrencyRate;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
@@ -33,7 +32,7 @@ final class ReferralCoupon {
     }
 
     /**
-     * The coupon's terms from the referral's snapshot, converted from base currency.
+     * The coupon's terms from the referral's snapshot, in base currency like a merchant coupon, so a currency switcher converts them once.
      *
      * @param mixed $data False, or another provider's array.
      * @param mixed $code
@@ -53,8 +52,8 @@ final class ReferralCoupon {
 
         return [
             'discount_type'  => $percent ? 'percent' : 'fixed_cart',
-            'amount'         => $percent ? $amount : CurrencyRate::from_base( $amount ),
-            'minimum_amount' => $minimum > 0 ? CurrencyRate::from_base( $minimum ) : '',
+            'amount'         => $amount,
+            'minimum_amount' => $minimum > 0 ? $minimum : '',
             'individual_use' => false,
             'usage_limit'    => 0,
         ];
