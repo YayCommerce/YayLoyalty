@@ -101,8 +101,8 @@ That completes R-4's "the merchant can pay early or reject from Approvals".
 ## Verify
 - `yayh test run integration --id=P-5` → OK (integration)
 - `yayh e2e run --grep @P-5` → passed (e2e)
-- `wp eval 'wp_set_current_user(1); $r = rest_do_request( new WP_REST_Request( "GET", "/yayloyalty/v1/referrals" ) ); echo $r->get_status();'` → 200
-- `wp eval '$u = wp_insert_user( [ "user_login" => "p5viewer", "user_pass" => wp_generate_password(), "role" => "subscriber" ] ); get_userdata( $u )->add_cap( "yayloyalty_view" ); wp_set_current_user( $u ); $r = rest_do_request( new WP_REST_Request( "POST", "/yayloyalty/v1/referrals/1/approve" ) ); echo $r->get_status(); wp_delete_user( $u );'` → 403
+- `yayh e2e cli wp eval 'wp_set_current_user(1); $r = rest_do_request( new WP_REST_Request( "GET", "/yayloyalty/v1/referrals" ) ); echo $r->get_status();'` → 200
+- `yayh e2e cli wp eval '$u = wp_insert_user( [ "user_login" => "p5viewer", "user_pass" => wp_generate_password(), "role" => "subscriber" ] ); get_userdata( $u )->add_cap( "yayloyalty_view" ); wp_set_current_user( $u ); $r = rest_do_request( new WP_REST_Request( "POST", "/yayloyalty/v1/referrals/1/approve" ) ); echo $r->get_status(); wp_delete_user( $u );'` → 403
 - `vendor/bin/phpcs includes/Pro/Controllers/ReferralsRestController.php includes/Pro/Repositories/ReferralRepository.php includes/Pro/Enums/ReferralRejectReason.php` → exit 0
 - `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` → exit 0
 - `pnpm --filter @yayloyalty/admin-page lint` → exit 0
