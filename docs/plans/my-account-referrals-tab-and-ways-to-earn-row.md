@@ -8,7 +8,7 @@ design: UX-2
 trello:
 type: feat
 branch: feat/p-6-my-account-referrals-tab-and-ways-to-earn-row
-pr:
+pr: 200
 editions: [pro]
 created: 2026-11-17
 ---
