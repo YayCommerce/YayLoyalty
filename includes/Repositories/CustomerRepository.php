@@ -131,6 +131,16 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         if ( false === $result ) {
             throw new QueryException( 'insert', esc_html( $wpdb->last_error ), esc_html( $this->table() . ' (ensure_row)' ) );
         }
+
+        // 1 row affected is a new row; 0 is the no-op update of an existing one.
+        if ( 1 === $result ) {
+            /**
+             * Fires once, when the customer's row is first created.
+             *
+             * @param int $user_id The customer.
+             */
+            do_action( 'yayloyalty_customer_created', $user_id );
+        }
     }
 
     /**

@@ -26,6 +26,7 @@ use YayLoyalty\Pro\Integrations\YayMail\ProYayMail;
 use YayLoyalty\Pro\Referrals\ReferralAttribution;
 use YayLoyalty\Pro\Referrals\ReferralCartSync;
 use YayLoyalty\Pro\Referrals\ReferralCoupon;
+use YayLoyalty\Pro\Referrals\ReferralCodeAssigner;
 use YayLoyalty\Pro\Referrals\ReferralEarnRow;
 use YayLoyalty\Pro\Referrals\ReferralLifecycle;
 use YayLoyalty\Pro\Referrals\ReferralPayout;
@@ -127,6 +128,7 @@ final class YayLoyaltyPro {
         ( new BirthdayEarnRow() )->register();
         ( new ReferralAttribution( new CustomerRepository(), new ReferralRepository() ) )->register();
         AccountReferrals::register();
+        ( new ReferralCodeAssigner( new CustomerRepository() ) )->register();
         ( new ReferralEarnRow() )->register();
         $referrals       = new ReferralRepository();
         $referral_coupon = new ReferralCoupon( $referrals );
