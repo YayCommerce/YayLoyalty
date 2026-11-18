@@ -176,7 +176,7 @@ final class ReferralsRestController extends AbstractRestController {
     }
 
     /**
-     * Adds the first order's number, total and currency, read per row so it works under HPOS and never joins orders.
+     * Adds the first order's number, total, currency and admin link, read per row so it works under HPOS and never joins orders.
      *
      * @param array<string, mixed> $item
      * @return array<string, mixed>
@@ -190,6 +190,7 @@ final class ReferralsRestController extends AbstractRestController {
                 'number'   => (string) $order->get_order_number(),
                 'total'    => wc_format_decimal( $order->get_total() ),
                 'currency' => (string) $order->get_currency(),
+                'edit_url' => $order->get_edit_order_url(),
             ] : null,
             'advocate_points' => (int) ( $item['terms']['advocate_points'] ?? 0 ),
         ];

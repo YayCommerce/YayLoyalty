@@ -3,9 +3,13 @@ import { __ } from '@wordpress/i18n';
 
 import { SideNavMenuItem, SideNavMenuList } from '@/components/ui/navmenu-side';
 import PageLayout from '@/components/layout/PageLayout';
+import { REFERRALS_COPY } from './referrals.copy';
 
 /** The Referral tabs. */
-const REFERRAL_TABS = [{ to: '/referral/settings', label: __('Settings', 'yayloyalty') }];
+const REFERRAL_TABS = [
+  { to: '/referral/referrals', label: REFERRALS_COPY.tab() },
+  { to: '/referral/settings', label: __('Settings', 'yayloyalty') },
+];
 
 /** Referral shell: the header and tab links stay mounted while `<Outlet/>` swaps the active tab. */
 export function ReferralLayout() {
