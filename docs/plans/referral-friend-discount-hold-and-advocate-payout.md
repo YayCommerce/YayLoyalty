@@ -120,8 +120,8 @@ Done means R-4's "discount applied automatically on a qualifying first order; on
 - `yayh test run integration` → OK (the existing earning and reversal suites still pass with the T1 seams)
 - `yayh e2e run --grep @P-4` → passed (e2e)
 - `yayh e2e run --grep @flow-earn-on-completed-order` → passed (purchase earning unchanged)
-- `wp eval 'echo has_action( "yayloyalty_order_awarded" ) ? "hooked" : "none";'` → hooked
-- `wp action-scheduler action list --hook=yayloyalty_referral_run --status=pending --format=count` → 1
+- `yayh e2e cli wp eval 'echo has_action( "yayloyalty_order_awarded" ) ? "hooked" : "none";'` → hooked
+- `yayh e2e cli wp action-scheduler action list --hook=yayloyalty_referral_run --status=pending --format=count` → 1
 - `vendor/bin/phpcs includes/Pro/Referrals includes/Engine/Earning/EarningService.php includes/Engine/Points/ContextFactory.php includes/Engine/Earning/Listeners/OrderListener.php includes/Engine/Earning/Listeners/OrderReversalListener.php` → exit 0
 - `./scripts/run.sh release lite 1.0.0 --no-prompt` → passed (no `Referral` class named in the Lite zip)
 - `unzip -l release/yayloyalty-lite-1.0.0.zip | grep -i referral` → exit 1
