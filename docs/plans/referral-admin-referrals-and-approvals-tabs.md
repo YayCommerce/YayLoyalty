@@ -1,7 +1,7 @@
 ---
 id: P-5
 title: Referral admin: Referrals and Approvals tabs
-status: in-progress
+status: done
 from: BS-3
 roadmap: R-4
 design: UX-2
@@ -119,6 +119,7 @@ That completes R-4's "the merchant can pay early or reject from Approvals".
 - Lite build: there's no Referral menu item, and `#/referral/referrals` shows the 404 page.
 
 ## Risks
+- Decided (reuse review): the friend's discount text is one `pro/referral/referral-discount.ts` `discountText()`, shared by the settings preview and the drawer.
 - Decided (whole-branch review): `counts` is sent as an object even when no referral exists yet, so the tabs load on a new store; Approvals reads a missing `on_hold` count as 0 and clamps its page after the last rows of a page leave. A live user who isn't a loyalty member has no link, and the drawer says so. Answered: the full friend email on hover is UX-2's design ("the full email on hover in a `Tooltip` for users with `CAP.VIEW`"); the "Paid N points" toast uses the snapshot, which is what `award_flat()` writes, since it skips the earning-limit filter.
 - Decided (T5): `counts_for_advocate()` lives on `ReferralListRepository` (the size limit again), and returns `waiting` (pending or on hold) and the qualified first orders, whose totals the controller sums in base currency for "Revenue referred". `DrawerTab` moves to `tabs/DrawerTab.tsx`, so the Pro `CustomerReferralsTrigger` renders the tab with its own count from the tab's query without an import cycle; Lite shows the tab with `ProGate`. The row helpers are a plain `customer-referrals.rows.ts`, which the js test reads. List items carry `first_order.used_code`. From the T5 review: the drawer query is keyed `['customer', 'referrals', userId]` and an approve or reject invalidates it with the detail; `terms` is sent as an object even when empty; a code is created only for an existing member, so viewing an admin never adds a member row; a rejected or expired row shows "—" where the first order or the discount use isn't known. Answered: the code is created when the drawer opens (the tab count needs the same request), as the user chose "every customer has a link"; the drawer shows the friend's full email, as the design's artboard does, while the Referrals list masks it.
 - Decided (T4): the selection bar shows UX-2's two buttons ("Approve selected", "Reject selected") rather than the Customers list's Bulk Actions dropdown, as the wireframe draws it. `ConfirmDialog` gains `loadingLabel`, since its busy text was fixed to "Deleting...". The badge reads `counts.on_hold` from a one-row list request. "Held since" is the referral's `updated_at`, the moment it went on hold.
