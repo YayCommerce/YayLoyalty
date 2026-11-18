@@ -50,7 +50,7 @@ That completes R-4's "A customer copies their referral link from My Account → 
     - ordered (rows with a `first_order_id`)
     - points earned (the snapshot's `advocate_points` summed over `rewarded` rows)
     - on the way (summed over `on_hold` rows) with the earliest `hold_until`
-  - `ReferralRepository::page_for_advocate( $user_id, $page, 10 )` joins `users` for the friend's email.
+  - The invitations page is `ReferralListRepository::paginate( [ 'advocate' => $user_id, 'per_page' => 10 ] )` from P-5, which already joins `users` for the friend's email.
 - **Tab (Pro, T2):** `AccountReferrals` with endpoint `referrals`, modelled on `AccountMyPoints`:
   - The query var comes through `woocommerce_get_query_vars`, and the menu item goes after Rewards only while `ReferralSettings::get()['enabled']`.
   - It has its own title and render, and its own flush stamp.
@@ -67,9 +67,9 @@ That completes R-4's "A customer copies their referral link from My Account → 
 - **Editions:** everything is in `includes/Pro/`, except the Lite repository method and the icon.
 
 ## Tasks
-- [ ] T1 The advocate's invitations page (the code and counts come from P-5 T5) — `includes/Pro/Repositories/ReferralRepository.php` [risk: 3]
+- [x] T1 The advocate's figures for the tab: `ReferralListRepository::counts_for_advocate()` gains the points on hold and the next release, and the invitations page is P-5's `ReferralListRepository::paginate()` with the advocate filter (no new query) — `includes/Pro/Repositories/ReferralListRepository.php`, `includes/Pro/Models/Referral.php` [risk: 3]
   - Reuse: `AbstractRepository` query helpers, `Utils\Table::name()`; `CustomerRepository::assign_referral_code()` and `ReferralListRepository::counts_for_advocate()` (P-5 T5)
-  - Callers: `ReferralRepository::page_for_advocate()` → `AccountReferrals` (T2); `assign_referral_code()`, `counts_for_advocate()` → `AccountReferrals` (T2)
+  - Callers: `ReferralListRepository::paginate()`, `counts_for_advocate()`, `assign_referral_code()` → `AccountReferrals` (T2); `Referral::get_hold_until()` → `counts_for_advocate()`
 - [ ] T2 My Account Referrals tab: endpoint, template, copy script and styles — `includes/Pro/Storefront/AccountReferrals.php` (new), `includes/Pro/Storefront/templates/account-referrals.php` (new), `includes/Pro/Storefront/assets/account-referrals.css` (new), `includes/Pro/Storefront/assets/referral-link.js` (new), `includes/Pro/YayLoyaltyPro.php`
   - Reuse: `AccountMyPoints` (endpoint, menu, title, flush pattern), `templates/points-history.php` and `points-card.css` (markup and look), the `.yayloyalty-account__section` classes in `assets/storefront/account/account-rewards.css`, `Launcher::asset_version()`, `CurrencyRate::from_base()`, `SettingsHelper::points_text()`, `Dates::to_site_date()`, `ReferralSettings::get()` (P-3), `ReferralStatus` (P-3); design UX-2 "My Account → Referrals"
   - Callers: `AccountReferrals::register()` → `YayLoyaltyPro::boot()`; `add_query_var()` → filter `woocommerce_get_query_vars`; `add_menu_item()` → filter `woocommerce_account_menu_items`; `render()` → action `woocommerce_account_referrals_endpoint`; `maybe_flush_rewrite_rules()` → action `init`; `enqueue()` → action `wp_enqueue_scripts`; `AccountReferrals::url()` → `ReferralEarnRow` (T3)
@@ -99,6 +99,7 @@ That completes R-4's "A customer copies their referral link from My Account → 
 - At 375px (e2e for the scroll, manual for the look): the counts are two by two, the rows are stacked, Copy link is full width, and the link input stays LTR in an RTL locale.
 
 ## Risks
+- Decided (T1 review): `counts_for_advocate()` also returns `ordered` (every referral with a first order, so a refund never lowers it), and `next_release` is the earliest hold end still ahead, null when every held referral is past due; such a row reads "On the way · arriving soon". "On the way" and "Points earned" sum the snapshots, which is what `award_flat()` pays, since it skips the earning-limit filter.
 - **The endpoint 404s until the rewrite rules flush:** the Pro stamp flushes once on `init`, and saving permalinks fixes any leftover. Rollback: delete `yayloyalty_pro_rewrite_version`.
 - **A code collision under concurrency:** the unique index and a retry stop two customers sharing a code.
 - **Friends' emails shown to the advocate:** masked (`p•••@example.com`), as UX-2 and its privacy note say.
