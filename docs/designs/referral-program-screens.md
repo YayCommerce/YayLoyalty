@@ -160,6 +160,18 @@ Other paths:
 - **Who can act:** Approve and Reject need `CAP.MANAGE_CAMPAIGNS`. Without it the list is read-only with no checkboxes.
 - **Tab count:** the number of held referrals shows on the Approvals tab and the header item. It's hidden at 0.
 
+### Customer drawer → Referrals (Pro)
+
+From the "YayLoyalty Customer Drawer" design (artboard 3f "Customer drawer — Referrals (Pro)" and 3a's empty state), fitted to this program's statuses and link.
+
+- **Tab:** "Referrals" after Redemptions, with the advocate's referral count beside the label like the other tabs. Lite shows the tab with the Pro badge and the upgrade surface, as Redemptions does.
+- **Tiles (three, `CustomerDrawerStat` style):** "Referred" with "{n} rewarded · {n} pending" under it; "Points earned" with "{n}% of their lifetime total"; "Revenue referred" with "first orders only" (the friends' first orders that qualified, in base currency).
+- **Referral link card:** the customer's `?yl_ref=CODE` link, read-only, with **Copy** ("Copied" for 2 seconds). Under it, one line from the settings: "{points} to {first name} and {discount} off for the friend, when the friend's first order completes. {n}-day window." and a "Referral settings" link to `#/referral/settings`. Opening the tab creates the customer's code when they have none, so every Pro customer has a link (Decided).
+- **Table:** Referred (friend name and email), Signed up (date), First order ("#{number} · {total}", or "no qualifying order yet"), To {first name} ("+{points}" when rewarded, "+{points} on hold" while held, "—" otherwise), To friend ("{discount} · used" when the first order carried the code, "· available until {date}" while pending, "· expired"), Status (the same `Badge` and labels as Referral → Referrals).
+- **Pending note:** a muted line under a pending row: "Waiting on a first order. The window closes {date}, after which no points are paid."
+- **Empty state:** the link card still shows, then "No referrals yet. The link works from the day the account exists."
+- **Paging:** 10 rows with the drawer's pager.
+
 ### My Account → Referrals (1d, without code and share buttons)
 ```
  ┌───────────────────────────────────────────────────────────────────┐
@@ -296,6 +308,7 @@ Other paths:
 - Referral → Settings: set $10 fixed, $50 minimum, 30 days, 1,000 points, 14-day hold, then Save and reload. The values are kept and the preview card reads "Give $10.00, get 1,000 points" (money in the store's price format). Percentage 150 is blocked with "Percentage must be 1 to 100."
 - As a customer, My Account → Referrals shows the offer, a `?yl_ref=` link and Copy link → "Copied", and the clipboard holds the link. With the program off, the tab and the Ways to earn row are gone.
 - A new visitor opens the link and registers. With a $60 cart, checkout (classic and block) shows "Referral discount −$10.00". With a $40 cart it doesn't.
+- Customers → open the advocate → Referrals: the tiles count the referral, the link shows with Copy, and the row shows the friend, the first order and the status. A customer with no referrals sees the link and the empty line.
 - After that order completes, Referral → Referrals shows it On hold with "releases {date}". The customer's list shows "On the way · arrives {date}".
 - Referral → Approvals → Approve on that row: toast "Paid 1,000 points to {advocate}". The row shows Rewarded in Referrals, the customer's list shows "Completed +1,000", and their balance rose 1,000.
 - Reject a held referral with "Not a genuine referral": the Referrals list shows Rejected with that reason, the customer's list shows "Didn't qualify", and no points are paid.
