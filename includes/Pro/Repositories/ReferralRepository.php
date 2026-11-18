@@ -39,6 +39,55 @@ final class ReferralRepository extends AbstractRepository {
         return null !== $referral && ReferralStatus::PENDING === $referral->get_status() ? $referral : null;
     }
 
+    /** The referral whose first order is $order_id, or null. */
+    public function find_by_first_order( int $order_id ): ?Referral {
+        $found = $this->find_one_by( 'first_order_id', (string) $order_id );
+
+        return $found instanceof Referral ? $found : null;
+    }
+
+    /**
+     * Up to $limit referrals in $status whose $date_column has passed, after $after_id, by id.
+     *
+     * @param string $date_column `hold_until` or `coupon_expires_at`.
+     * @return Referral[]
+     */
+    public function due( string $status, string $date_column, int $after_id, int $limit ): array {
+        global $wpdb;
+
+        $column = 'hold_until' === $date_column ? 'hold_until' : 'coupon_expires_at';
+        $rows   = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT * FROM `' . esc_sql( $this->table() ) . "` WHERE status = %s AND `{$column}` <= %s AND id > %d ORDER BY id LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the table is escaped and the column is one of two fixed names.
+                $status,
+                Dates::now(),
+                $after_id,
+                $limit
+            ),
+            ARRAY_A
+        );
+
+        return array_values( array_filter( array_map( [ $this, 'hydrate' ], is_array( $rows ) ? $rows : [] ), static fn( $model ): bool => $model instanceof Referral ) );
+    }
+
+    /**
+     * Expires a pending referral.
+     *
+     * @throws QueryException When the write fails.
+     */
+    public function expire( int $id ): bool {
+        return $this->transition( $id, ReferralStatus::PENDING, [ 'status' => ReferralStatus::EXPIRED ] );
+    }
+
+    /**
+     * Marks a paid referral reversed once its points are clawed back in full.
+     *
+     * @throws QueryException When the write fails.
+     */
+    public function mark_reversed( int $id ): bool {
+        return $this->transition( $id, ReferralStatus::REWARDED, [ 'status' => ReferralStatus::REVERSED ] );
+    }
+
     /**
      * Starts the hold on a pending referral.
      *

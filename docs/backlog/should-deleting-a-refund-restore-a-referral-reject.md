@@ -5,7 +5,7 @@ kind: decision
 status: open
 from: P-4
 affects: []
-default: No: the referral stays rejected
+default: No: a referral's status only moves forward, so a rejected or reversed referral stays as it is
 decision:
 created: 2026-11-18
 ---

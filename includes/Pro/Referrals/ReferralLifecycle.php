@@ -3,14 +3,21 @@ namespace YayLoyalty\Pro\Referrals;
 
 use YayLoyalty\Engine\Earning\Listeners\ListenerGuard;
 use YayLoyalty\Engine\Points\ContextFactory;
+use YayLoyalty\Enums\LedgerSource;
+use YayLoyalty\Enums\LedgerType;
+use YayLoyalty\Models\LedgerEntry;
+use YayLoyalty\Pro\Enums\ReferralRejectReason;
+use YayLoyalty\Pro\Enums\ReferralStatus;
 use YayLoyalty\Pro\Models\Referral;
 use YayLoyalty\Pro\Repositories\ReferralRepository;
+use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Repositories\LotRepository;
 use YayLoyalty\Utils\CurrencyRate;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Moves a referral along as the friend's first order completes. */
+/** Moves a referral along as the friend's first order completes, is refunded during the hold, or is clawed back after payout. */
 final class ReferralLifecycle {
 
     private ReferralRepository $referrals;
@@ -25,6 +32,8 @@ final class ReferralLifecycle {
     /** Hooked on plugins_loaded. */
     public function register(): void {
         add_action( 'yayloyalty_order_awarded', [ $this, 'on_order_awarded' ] );
+        add_action( 'yayloyalty_order_reversed', [ $this, 'on_order_reversed' ] );
+        add_action( 'yayloyalty_ledger_recorded', [ $this, 'on_ledger_recorded' ] );
     }
 
     /** The friend's completed order either starts the hold or rejects the referral with the reason. */
@@ -34,6 +43,43 @@ final class ReferralLifecycle {
             'referral check failed for order #' . (int) $order->get_id(),
             function () use ( $order ): void {
                 $this->qualify( $order );
+            }
+        );
+    }
+
+    /** A refund, cancel or trash of a held referral's first order rejects it; nothing was paid, so nothing is clawed back. */
+    public function on_order_reversed( \WC_Order $order ): void {
+        ListenerGuard::run(
+            'ReferralLifecycle',
+            'referral reversal failed for order #' . (int) $order->get_id(),
+            function () use ( $order ): void {
+                $referral = $this->referrals->find_by_first_order( (int) $order->get_id() );
+
+                if ( null !== $referral && ReferralStatus::ON_HOLD === $referral->get_status() ) {
+                    $this->referrals->reject( (int) $referral->get_id(), ReferralRejectReason::REFUNDED_DURING_HOLD, ReferralStatus::ON_HOLD );
+                }
+            }
+        );
+    }
+
+    /** A clawback that leaves nothing of a referral row (clawed back or expired) marks the referral reversed; the ledger stays the truth. */
+    public function on_ledger_recorded( LedgerEntry $entry ): void {
+        if ( LedgerType::REFUND_EARN !== $entry->get_type() || LedgerSource::REFERRAL !== $entry->get_source() || null === $entry->get_order_id() ) {
+            return;
+        }
+
+        ListenerGuard::run(
+            'ReferralLifecycle',
+            'referral clawback check failed for ledger row #' . (int) $entry->get_id(),
+            function () use ( $entry ): void {
+                $ledger = new LedgerRepository();
+                $lots   = new LotRepository();
+
+                foreach ( $ledger->earn_rows_for_order( (int) $entry->get_order_id() ) as $earn ) {
+                    if ( LedgerSource::REFERRAL === $earn->get_source() && $earn->get_user_id() === $entry->get_user_id() && $ledger->sum_refunded_for( $earn, false ) + $lots->expired_from( (int) $earn->get_id() ) >= $earn->get_points() ) {
+                        $this->referrals->mark_reversed( (int) $earn->get_reference_id() );
+                    }
+                }
             }
         );
     }
