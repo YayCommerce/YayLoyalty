@@ -1,0 +1,114 @@
+/*
+ * templates/account-referrals.php: the offer heading's worth, the link field with Copy link, and the four counts.
+ * The section, table and empty state come from the account stylesheet it depends on.
+ */
+.yayloyalty-referrals .yayloyalty-referrals__worth {
+  color: var(--yayloyalty-account-muted);
+  font-size: 13px;
+}
+
+.yayloyalty-referrals .yayloyalty-referrals__label {
+  display: block;
+  margin-top: 12px;
+  color: var(--yayloyalty-account-text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.yayloyalty-referrals .yayloyalty-referrals__link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.yayloyalty-referrals .yayloyalty-referrals__input {
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--yayloyalty-account-border);
+  border-radius: var(--yayloyalty-account-radius-sm);
+  background: var(--yayloyalty-account-surface);
+  color: var(--yayloyalty-account-text);
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.yayloyalty-referrals .yayloyalty-referrals__copy {
+  margin-top: 0;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.yayloyalty-referrals .yayloyalty-referrals__status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.yayloyalty-referrals .yayloyalty-referrals__counts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 16px;
+  overflow: hidden;
+  border: 1px solid var(--yayloyalty-account-border);
+  border-radius: var(--yayloyalty-account-radius);
+  background: var(--yayloyalty-account-surface);
+}
+
+.yayloyalty-referrals .yayloyalty-referrals__count {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border-left: 1px solid var(--yayloyalty-account-divider);
+}
+
+.yayloyalty-referrals .yayloyalty-referrals__count:first-child {
+  border-left: 0;
+}
+
+.yayloyalty-referrals .yayloyalty-referrals__count-label {
+  color: var(--yayloyalty-account-muted);
+  font-size: 12px;
+}
+
+.yayloyalty-referrals .yayloyalty-referrals__count-value {
+  color: var(--yayloyalty-account-text);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.yayloyalty-referrals .yayloyalty-referrals__count-sub {
+  color: var(--yayloyalty-account-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+@media (max-width: 600px) {
+  .yayloyalty-referrals .yayloyalty-referrals__link {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .yayloyalty-referrals .yayloyalty-referrals__copy {
+    width: 100%;
+  }
+
+  .yayloyalty-referrals .yayloyalty-referrals__counts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .yayloyalty-referrals .yayloyalty-referrals__count:nth-child(odd) {
+    border-left: 0;
+  }
+
+  .yayloyalty-referrals .yayloyalty-referrals__count:nth-child(n + 3) {
+    border-top: 1px solid var(--yayloyalty-account-divider);
+  }
+}

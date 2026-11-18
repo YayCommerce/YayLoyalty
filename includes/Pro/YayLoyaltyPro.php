@@ -38,6 +38,7 @@ use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Pro\Services\DailyEarningLimit;
 use YayLoyalty\Pro\Services\DiscountRewardHandler;
 use YayLoyalty\Pro\Services\RewardConditionsEvaluator;
+use YayLoyalty\Pro\Storefront\AccountReferrals;
 use YayLoyalty\Pro\Storefront\RewardsPanel;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -124,6 +125,7 @@ final class YayLoyaltyPro {
         ( new BirthdayFields() )->register();
         ( new BirthdayEarnRow() )->register();
         ( new ReferralAttribution( new CustomerRepository(), new ReferralRepository() ) )->register();
+        AccountReferrals::register();
         $referrals       = new ReferralRepository();
         $referral_coupon = new ReferralCoupon( $referrals );
         $referral_coupon->register();
