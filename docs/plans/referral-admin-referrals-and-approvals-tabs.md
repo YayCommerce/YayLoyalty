@@ -1,13 +1,13 @@
 ---
 id: P-5
 title: Referral admin: Referrals and Approvals tabs
-status: ready
+status: in-progress
 from: BS-3
 roadmap: R-4
 design: UX-2
 trello:
 type: feat
-branch:
+branch: feat/p-5-referral-admin-referrals-and-approvals-tabs
 pr:
 editions: [pro]
 created: 2026-11-17
