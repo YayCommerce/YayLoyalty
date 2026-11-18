@@ -29,7 +29,8 @@ final class ReferralPayout {
 
     /**
      * Claims the held referral as rewarded and pays the advocate in one transaction, so a referral another writer
-     * already moved is never paid. A gate that blocks the advocate, or an advocate who no longer exists, leaves it on hold.
+     * already moved is never paid. A gate that blocks the advocate, an advocate who no longer exists, or a first order
+     * that is no longer completed leaves it on hold.
      *
      * @return string The referral's status afterwards.
      * @throws \YayLoyalty\Database\QueryException When a write fails (rolled back).
@@ -37,8 +38,10 @@ final class ReferralPayout {
     public function pay( Referral $referral ): string {
         $id = (int) $referral->get_id();
 
-        if ( ! get_userdata( $referral->get_advocate_user_id() ) ) {
-            Log::warning( 'ReferralPayout', sprintf( 'referral #%d stays on hold: advocate %d no longer exists', $id, $referral->get_advocate_user_id() ) );
+        $order = null === $referral->get_first_order_id() ? null : wc_get_order( $referral->get_first_order_id() );
+
+        if ( ! get_userdata( $referral->get_advocate_user_id() ) || ! $order instanceof \WC_Order || ! EarningService::is_awardable_order( $order ) ) {
+            Log::warning( 'ReferralPayout', sprintf( 'referral #%d stays on hold: the advocate or a completed first order is missing', $id ) );
 
             return $referral->get_status();
         }

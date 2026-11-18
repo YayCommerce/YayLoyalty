@@ -7,22 +7,21 @@ use YayLoyalty\Utils\CurrencyRate;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Whether a friend's first completed order earns the advocate their points, from facts read elsewhere. */
+/** Whether a friend's first order earns the advocate their points, from facts read elsewhere. */
 final class ReferralQualifier {
 
     /**
      * The reason the order doesn't qualify, or null when it does.
      *
      * @param array<string, mixed> $terms         The referral's terms snapshot.
-     * @param int                  $prior_orders  The friend's paid orders before this one.
      * @param float                $subtotal_base The order's subtotal as WooCommerce's minimum check reads it, in base currency.
      * @param string[]             $coupon_codes  The order's coupon codes.
      * @param string               $own_code      This referral's coupon code.
      */
-    public static function check( array $terms, int $prior_orders, float $subtotal_base, array $coupon_codes, string $own_code, string $billing_email, string $advocate_email ): ?string {
+    public static function check( array $terms, float $subtotal_base, array $coupon_codes, string $own_code, string $billing_email, string $advocate_email ): ?string {
         $decimals = CurrencyRate::base_decimals();
 
-        if ( $prior_orders > 0 || round( $subtotal_base, $decimals ) < round( (float) ( $terms['min_order'] ?? 0 ), $decimals ) ) {
+        if ( round( $subtotal_base, $decimals ) < round( (float) ( $terms['min_order'] ?? 0 ), $decimals ) ) {
             return ReferralRejectReason::NOT_QUALIFYING;
         }
 

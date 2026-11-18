@@ -129,4 +129,25 @@ final class ReferralPayoutTest extends ReferralTestCase {
 
 		$this->assertSame( ReferralStatus::EXPIRED, ( new ReferralRepository() )->find( $lapsed )->get_status() );
 	}
+
+	public function test_a_later_order_completing_first_leaves_the_referral_to_the_first_order() {
+		$first = $this->complete_order( 100.0, 'friend@example.test', 'processing', HOUR_IN_SECONDS );
+		$this->complete_order( 20.0, 'friend@example.test' );
+
+		$this->assertSame( ReferralStatus::PENDING, $this->referral()->get_status() );
+
+		wc_get_order( $first )->update_status( 'completed' );
+
+		$this->assertSame( ReferralStatus::ON_HOLD, $this->referral()->get_status() );
+		$this->assertSame( $first, $this->referral()->get_first_order_id() );
+	}
+
+	public function test_a_first_order_no_longer_completed_is_not_paid() {
+		$order_id = $this->complete_order( 60.0, 'friend@example.test' );
+		wc_get_order( $order_id )->update_status( 'processing' );
+		$before = $this->balance( $this->advocate_id );
+
+		$this->assertSame( ReferralStatus::ON_HOLD, ( new ReferralPayout( new ReferralRepository() ) )->pay( $this->referral() ) );
+		$this->assertSame( $before, $this->balance( $this->advocate_id ) );
+	}
 }

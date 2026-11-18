@@ -79,7 +79,7 @@ final class ReferralCoupon {
 
         if ( $order instanceof \WC_Order ) {
             $usable = $referral->get_friend_user_id() === (int) $order->get_customer_id()
-                && ( $referral->get_first_order_id() === (int) $order->get_id() || $this->is_usable( $referral, (int) $order->get_id() ) );
+                && ( self::already_granted( $order, $coupon ) || $this->is_usable( $referral, (int) $order->get_id() ) );
         } else {
             $usable = $referral->get_friend_user_id() === get_current_user_id() && $this->is_usable( $referral, null );
         }
@@ -89,6 +89,12 @@ final class ReferralCoupon {
         }
 
         return $valid;
+    }
+
+    /** An order past checkout that already carries the code keeps it when it is edited, whatever became of the referral. */
+    private static function already_granted( \WC_Order $order, \WC_Coupon $coupon ): bool {
+        return ! in_array( $order->get_status(), [ 'pending', 'checkout-draft', 'failed' ], true )
+            && in_array( wc_format_coupon_code( $coupon->get_code() ), array_map( 'wc_format_coupon_code', $order->get_coupon_codes() ), true );
     }
 
     public function label( string $label, \WC_Coupon $coupon ): string {

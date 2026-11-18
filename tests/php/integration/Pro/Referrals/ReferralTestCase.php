@@ -62,7 +62,7 @@ abstract class ReferralTestCase extends WP_UnitTestCase {
 		);
 	}
 
-	protected function complete_order( float $price, string $billing_email ): int {
+	protected function complete_order( float $price, string $billing_email, string $status = 'completed', int $created_ago = MINUTE_IN_SECONDS ): int {
 		$product = new \WC_Product_Simple();
 		$product->set_regular_price( (string) $price );
 		$product->save();
@@ -71,9 +71,9 @@ abstract class ReferralTestCase extends WP_UnitTestCase {
 		$order->add_product( $product, 1 );
 		$order->set_billing_email( $billing_email );
 		$order->calculate_totals();
-		$order->set_date_created( time() - MINUTE_IN_SECONDS );
+		$order->set_date_created( time() - $created_ago );
 		$order->save();
-		$order->update_status( 'completed' );
+		$order->update_status( $status );
 
 		return (int) $order->get_id();
 	}

@@ -2,7 +2,6 @@
 namespace YayLoyalty\Pro\Referrals;
 
 use YayLoyalty\Engine\Earning\Listeners\ListenerGuard;
-use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Models\LedgerEntry;
@@ -62,9 +61,13 @@ final class ReferralLifecycle {
         );
     }
 
-    /** A clawback that leaves nothing of a referral row (clawed back or expired) marks the referral reversed; the ledger stays the truth. */
-    public function on_ledger_recorded( LedgerEntry $entry ): void {
-        if ( LedgerType::REFUND_EARN !== $entry->get_type() || LedgerSource::REFERRAL !== $entry->get_source() || null === $entry->get_order_id() ) {
+    /**
+     * A clawback that leaves nothing of a referral row (clawed back or expired) marks the referral reversed; the ledger stays the truth.
+     *
+     * @param mixed $entry Untyped: a third party firing the action with anything else must not fatal.
+     */
+    public function on_ledger_recorded( $entry ): void {
+        if ( ! $entry instanceof LedgerEntry || LedgerType::REFUND_EARN !== $entry->get_type() || LedgerSource::REFERRAL !== $entry->get_source() || null === $entry->get_order_id() ) {
             return;
         }
 
@@ -93,12 +96,14 @@ final class ReferralLifecycle {
             return;
         }
 
+        if ( self::has_earlier_order( $order ) ) {
+            return;
+        }
+
         $terms    = $referral->get_terms();
-        $facts    = ContextFactory::customer_facts( $friend, Dates::now(), $order_id );
         $advocate = get_userdata( $referral->get_advocate_user_id() );
         $reason   = ReferralQualifier::check(
             $terms,
-            null === $facts ? 0 : $facts->get_order_count(),
             CurrencyRate::to_base( self::minimum_subtotal( $order ), (string) $order->get_currency(), $order ),
             (array) $order->get_coupon_codes(),
             ReferralCoupon::code_for( (int) $referral->get_id() ),
@@ -134,6 +139,26 @@ final class ReferralLifecycle {
         }
 
         return $subtotal;
+    }
+
+    /**
+     * Whether the friend placed a live order before this one: that order is the first one, and it decides the referral
+     * whenever it completes, so a later order that happens to complete first changes nothing.
+     */
+    private static function has_earlier_order( \WC_Order $order ): bool {
+        $created = $order->get_date_created();
+        $earlier = wc_get_orders(
+            [
+                'customer_id'  => (int) $order->get_customer_id(),
+                'status'       => [ 'processing', 'on-hold', 'completed' ],
+                'date_created' => '<' . ( null === $created ? time() : $created->getTimestamp() ),
+                'exclude'      => [ (int) $order->get_id() ], // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude -- one order id, the one being checked.
+                'limit'        => 1,
+                'return'       => 'ids',
+            ]
+        );
+
+        return [] !== $earlier;
     }
 
     /** Whether the order was placed before the coupon window closed; a later one leaves the referral to expire. */
