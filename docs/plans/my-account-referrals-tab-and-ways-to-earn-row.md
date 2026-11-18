@@ -76,7 +76,7 @@ That completes R-4's "A customer copies their referral link from My Account → 
 - [x] T3 "Refer a friend" row in Ways to earn — `includes/Pro/Referrals/ReferralEarnRow.php` (new), `includes/Engine/Storefront/AccountMyPointsIcon.php`, `includes/Pro/YayLoyaltyPro.php` [risk: 1]
   - Reuse: `BirthdayEarnRow` (`includes/Pro/Birthday/BirthdayEarnRow.php`), `LauncherEarnRules` row shape, `rule-list-item.php`, `ReferralSettings::get()` (P-3); design UX-2 "Ways to earn row"
   - Callers: `ReferralEarnRow::register()` → `YayLoyaltyPro::boot()`; `add_row()` → filter `yayloyalty_launcher_earn_rows`; `AccountMyPointsIcon::for_trigger( REFERRAL )` → the row's icon
-- [ ] T4 Knowledge docs and readme feature line — `docs/knowledge/architecture.md`, `docs/knowledge/integrations.md`, `docs/knowledge/build-release.md`, `docs/knowledge/e2e.md`, `readme.txt` [risk: 1]
+- [x] T4 Knowledge docs and readme feature line — `docs/knowledge/architecture.md`, `docs/knowledge/integrations.md`, `docs/knowledge/build-release.md`, `docs/knowledge/e2e.md`, `readme.txt` [risk: 1]
   - Reuse: n/a
 
 **Tests:** [integration] AccountReferralsTest (`tests/php/integration/Pro/Storefront/AccountReferralsTest.php`) — with the program live, the tab renders the offer from the settings, a `?yl_ref=` link with the customer's lazily assigned code (stable across renders), the counts and the customer-worded statuses, and with it off, the menu item and the Ways to earn row are absent; [integration] extend `CustomerRepository` coverage in the same class — two customers never get the same code

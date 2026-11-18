@@ -1,7 +1,7 @@
 ---
 area: architecture
 updated: 2026-11-18
-updated_ref: af585f6
+updated_ref: 8a91b12
 covers: [yayloyalty.php, YayLoyaltyPluginAdapter.php, includes/YayLoyalty.php, includes/Access/, includes/Database/, includes/Models/, includes/Repositories/, includes/Services/, includes/Controllers/, includes/Engine/, includes/Enums/, includes/Pro/YayLoyaltyPro.php, includes/Pro/Referrals/, includes/Pro/Repositories/ReferralRepository.php]
 ---
 
@@ -125,7 +125,7 @@ Daily Action Scheduler action `yayloyalty_expiry_run` (group `yayloyalty`, batch
 ## Storefront
 
 - Launcher (floating widget, front end only): `Storefront/Launcher.php`, plain `assets/storefront/launcher.js`, built `assets/dist/storefront/launcher.css`.
-- My Account endpoint `my-points` (`Storefront/AccountMyPoints.php`); rewrite rules flush once per `REWRITE_VERSION` bump.
+- My Account endpoint `my-points` (`Storefront/AccountMyPoints.php`); rewrite rules flush once per `REWRITE_VERSION` bump. Pro's `referrals` endpoint (`Pro/Storefront/AccountReferrals.php`, template and assets under `Pro/Storefront/`) keeps its own stamp, `yayloyalty_pro_rewrite_version`; it shows only to a customer who can earn while the referral program is live, creates their referral code on first view, and redirects to the dashboard otherwise. Pro's `ReferralEarnRow` adds "Refer a friend" to Ways to earn through `yayloyalty_launcher_earn_rows`.
 - Shortcodes `[yayloyalty_balance]`, `[yayloyalty_ways_to_earn]`, `[yayloyalty_ways_to_redeem]`, `[yayloyalty_redeem]`; blocks `yayloyalty/points-balance`, `ways-to-earn`, `ways-to-redeem` from `includes/Engine/Storefront/blocks/*/block.json`, editor script `assets/dist/blocks/editor.js`. The four shortcodes are also Elementor, Bricks and Divi 4 elements (`includes/Integrations/PageBuilders/`, see [integrations.md](integrations.md#partner-plugins)).
 - Thank-you page and product page earn messages: `ThankYouPoints`, `ProductEarnMessage`.
 

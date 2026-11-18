@@ -1,7 +1,7 @@
 ---
 area: build-release
-updated: 2026-11-12
-updated_ref: cc2a3e71
+updated: 2026-11-18
+updated_ref: 8a91b12
 covers: [scripts/, .github/workflows/, composer.json, package.json, pnpm-workspace.yaml, .nvmrc, phpcs.xml.dist, scoper.inc.php, readme.txt]
 ---
 
@@ -34,7 +34,7 @@ covers: [scripts/, .github/workflows/, composer.json, package.json, pnpm-workspa
 1. Stamp the version (`Version:` header and `YAYLOYALTY_VERSION` in `yayloyalty.php`, `Stable tag:` in `readme.txt`) in the **working tree**. Run Pro first, then Lite with `--no-prompt`, so both carry the same number.
 2. Build the SPA for the edition.
 3. Stage a copy in `release/<folder>`: `yayloyalty-pro/` for Pro, `yayloyalty/` for Lite. Flip `YAYLOYALTY_IS_DEVELOPMENT` to `false` in the staged main file. Copy only `vendor/autoload.php` and `vendor/composer`. Rescope the shell into the stage (`vendor/bin/yaycommerce-prerelease`).
-4. Lite only: delete `includes/Pro/`, drop " Pro" from the `Plugin Name:` header, apply `scripts/lite-admin-shell.patch` to the staged shell, delete the `LITE_SHELL_STRIP` paths (licensing, EDD updater, Recommended Plugins…), `php -l` the patched files. This is the WordPress.org-ready build (`40d6d9b1`).
+4. Lite only: delete `includes/Pro/` (Pro's storefront CSS and JS live under `includes/Pro/Storefront/assets/`, enqueued with `plugins_url()`, so they leave with it; anything in `assets/storefront/` ships in Lite), drop " Pro" from the `Plugin Name:` header, apply `scripts/lite-admin-shell.patch` to the staged shell, delete the `LITE_SHELL_STRIP` paths (licensing, EDD updater, Recommended Plugins…), `php -l` the patched files. This is the WordPress.org-ready build (`40d6d9b1`).
 5. `composer dump-autoload --no-dev --classmap-authoritative`; rewrite the shell's text domain to `yayloyalty`; delete `RegisterDev.php`, source maps, `.vite`, `.DS_Store`, `.gitkeep`.
 6. Write the release manifest (SHA-256 per file), zip to `release/yayloyalty-pro-<v>.zip` or `release/yayloyalty-lite-<v>.zip`, run `php scripts/validate-build.php <zip> <edition>`. A failed validation renames the zip `*.zip.invalid` and exits 1.
 

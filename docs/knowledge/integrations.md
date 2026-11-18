@@ -1,7 +1,7 @@
 ---
 area: integrations
 updated: 2026-11-18
-updated_ref: 91b4be1
+updated_ref: 8a91b12
 covers: [includes/Integrations/, includes/Pro/Integrations/, includes/Engine/ActDeact.php, includes/Engine/Redemption/Adapters/, includes/Utils/CurrencyRate.php, includes/Utils/WooOrders.php]
 ---
 
@@ -18,7 +18,7 @@ covers: [includes/Integrations/, includes/Pro/Integrations/, includes/Engine/Act
 | Classic checkout and cart | Card rendered as a `<tr>` before the order total; commit on `woocommerce_checkout_order_processed` | `includes/Engine/Redemption/Adapters/ClassicCheckoutAdapter.php` |
 | Coupons | Virtual loyalty coupons through `woocommerce_get_shop_coupon_data`; applied after every real coupon. Pro's referral coupon `yl-referral-{id}` is a merchant-style virtual coupon in base currency, applied just before the loyalty ones and never next to an individual-use coupon | `includes/Engine/Redemption/CouponProvider.php`, `includes/Pro/Referrals/ReferralCoupon.php`, `includes/Pro/Referrals/ReferralCartSync.php` |
 | Emails | `WC_Email` subclasses, `woocommerce_email_classes`, group `yayloyalty_points`, theme-overridable templates | `includes/Engine/Emails/` |
-| My Account | Endpoint `my-points` | `includes/Engine/Storefront/AccountMyPoints.php` |
+| My Account | Endpoint `my-points`, and Pro's `referrals` after it while the referral program is live | `includes/Engine/Storefront/AccountMyPoints.php`, `includes/Pro/Storefront/AccountReferrals.php` |
 | Admin order screen | Missing-points column and filter (HPOS and legacy hooks); loyalty coupon removal with optional points restore | `includes/Engine/Admin/OrderMissingPoints.php`, `includes/Engine/Admin/OrderCouponRemoval.php` |
 | Block themes | Product earn message also on `render_block_woocommerce/product-price` | `includes/Engine/Storefront/ProductEarnMessage.php` |
 | Action Scheduler | Daily jobs `yayloyalty_expiry_run` and Pro's `yayloyalty_birthday_run` and `yayloyalty_referral_run`. Nothing expires, and no held referral is paid, without Action Scheduler | `includes/Engine/Expiry/ExpiryRunner.php` |
