@@ -8,7 +8,7 @@ design: UX-2
 trello:
 type: feat
 branch: feat/p-4-referral-friend-discount-hold-and-advocate-pay
-pr:
+pr: 198
 editions: [pro, lite]
 created: 2026-11-17
 ---
