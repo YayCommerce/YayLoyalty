@@ -10,9 +10,7 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Credits a new account to the customer whose link brought the visitor: the link sets a cookie,
- * and a self-registration inside its window becomes a pending referral with the terms in force then.
- * Logged-in visitors and existing accounts are never attributed.
+ * Turns a referral-link visit followed by a self-registration into a pending referral.
  */
 final class ReferralAttribution {
 

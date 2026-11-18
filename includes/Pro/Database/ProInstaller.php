@@ -24,7 +24,7 @@ final class ProInstaller {
         add_action( 'yayloyalty_run_migrations', [ self::class, 'note_install' ] );
     }
 
-    /** Called inside Installer::install(), which runs with this class's schema filter attached. */
+    /** Records that this request already installed with Pro's schemas. */
     public static function note_install(): void {
         self::$installed_this_request = true;
     }

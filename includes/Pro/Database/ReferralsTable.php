@@ -6,8 +6,7 @@ use YayLoyalty\Database\Schema\AbstractTableSchema;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * yayloyalty_referrals: one row per friend an advocate brought in. Pro only: ProInstaller adds it through
- * `yayloyalty_table_schemas`, so a Lite site never has it. The unique friend means a friend is referred once.
+ * yayloyalty_referrals: one row per friend an advocate brought in. The unique friend means a friend is referred once.
  */
 final class ReferralsTable extends AbstractTableSchema {
 

@@ -58,7 +58,7 @@ R-4's acceptance (copy the link, discount on the first order, points after the h
   - Columns:
     - `id`, `advocate_user_id`, `friend_user_id`
     - `referral_code` (a snapshot of the code used), `status`, `reject_reason`
-    - `terms` (LONGTEXT JSON: discount type, amount and minimum in base currency, advocate points, hold days, exclude other coupons)
+    - `terms` (LONGTEXT JSON: discount type, amount and minimum in base currency, the base currency code, advocate points, hold days, exclude other coupons)
     - `coupon_expires_at`, `first_order_id`, `hold_until`, `created_at`, `updated_at`, all UTC
   - Indexes: `UNIQUE friend_user_id`, `KEY (advocate_user_id, status)`, `KEY first_order_id`, `KEY (status, hold_until)`, `KEY (status, coupon_expires_at)`.
   - A `Referral` model, a `ReferralRepository` (one table, SQL only), and a `ReferralStatus` constant class. The model has no getters yet: P-4 adds the ones its writers read, and P-4 adds `ReferralRejectReason` with the first writer of a reason.

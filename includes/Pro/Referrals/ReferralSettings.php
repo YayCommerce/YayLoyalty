@@ -17,7 +17,6 @@ final class ReferralSettings {
 
     public const DISCOUNT_PERCENT = 'percent';
 
-    /** A percentage discount is a whole-order share from 1 to 100. */
     private const PERCENT_MIN = 1;
 
     private const PERCENT_MAX = 100;
@@ -143,8 +142,7 @@ final class ReferralSettings {
     }
 
     /**
-     * $value as it is stored, or null when $key is unknown or the value doesn't fit its spec. Only plain
-     * decimals are accepted, so the value checked is the value stored: "1e3" never becomes "13".
+     * $value as it is stored, or null when $key is unknown or the value doesn't fit its spec.
      *
      * @param mixed $value
      * @return mixed
@@ -158,6 +156,7 @@ final class ReferralSettings {
 
         switch ( $spec['type'] ) {
             case 'number':
+                // Plain decimals only, so the value checked is the value stored: "1e3" never becomes "13".
                 $plain = is_int( $value ) || is_float( $value ) || ( is_string( $value ) && 1 === preg_match( '/^\d{1,12}(\.\d{1,4})?$/D', $value ) );
                 $value = $plain ? wc_format_decimal( $value ) : null;
                 break;
