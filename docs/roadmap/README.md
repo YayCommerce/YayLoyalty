@@ -2,7 +2,7 @@
 horizon: 2027-01-21
 capacity: 8
 sprint_length: 2w
-updated: 2026-11-17
+updated: 2026-11-18
 ---
 # Roadmap: YayLoyalty — Points,  Rewards,  Referral & VIP for WooCommerce
 

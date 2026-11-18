@@ -1,13 +1,13 @@
 ---
 id: P-4
 title: Referral friend discount, hold and advocate payout
-status: ready
+status: in-progress
 from: BS-3
 roadmap: R-4
 design: UX-2
 trello:
 type: feat
-branch:
+branch: feat/p-4-referral-friend-discount-hold-and-advocate-pay
 pr:
 editions: [pro, lite]
 created: 2026-11-17
