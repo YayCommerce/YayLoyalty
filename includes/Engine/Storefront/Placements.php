@@ -150,7 +150,7 @@ final class Placements {
      * @param callable $output Prints the partial.
      */
     private static function render( callable $output ): string {
-        if ( ! ProgramGate::program_enabled() ) {
+        if ( ! ProgramGate::storefront_enabled() ) {
             return '';
         }
 

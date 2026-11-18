@@ -1,7 +1,7 @@
 ---
 area: architecture
 updated: 2026-11-18
-updated_ref: 35e4537
+updated_ref: 418547d
 covers: [yayloyalty.php, YayLoyaltyPluginAdapter.php, includes/YayLoyalty.php, includes/Access/, includes/Database/, includes/Models/, includes/Repositories/, includes/Services/, includes/Controllers/, includes/Engine/, includes/Enums/, includes/Pro/YayLoyaltyPro.php, includes/Pro/Referrals/, includes/Pro/Repositories/ReferralRepository.php]
 ---
 
@@ -128,6 +128,7 @@ Daily Action Scheduler action `yayloyalty_expiry_run` (group `yayloyalty`, batch
 - My Account endpoint `my-points` (`Storefront/AccountMyPoints.php`); rewrite rules flush once per `REWRITE_VERSION` bump. Pro's `referrals` endpoint (`Pro/Storefront/AccountReferrals.php`, template and assets under `Pro/Storefront/`) keeps its own stamp, `yayloyalty_pro_rewrite_version`; it shows only to a customer who can earn while the referral program is live, creates their referral code on first view if it's still missing, and redirects to the dashboard otherwise. Pro's `ReferralEarnRow` adds "Refer a friend" to Ways to earn through `yayloyalty_launcher_earn_rows`.
 - Shortcodes `[yayloyalty_balance]`, `[yayloyalty_ways_to_earn]`, `[yayloyalty_ways_to_redeem]`, `[yayloyalty_redeem]`; blocks `yayloyalty/points-balance`, `ways-to-earn`, `ways-to-redeem` from `includes/Engine/Storefront/blocks/*/block.json`, editor script `assets/dist/blocks/editor.js`. The four shortcodes are also Elementor, Bricks and Divi 4 elements (`includes/Integrations/PageBuilders/`, see [integrations.md](integrations.md#partner-plugins)).
 - Thank-you page and product page earn messages: `ThankYouPoints`, `ProductEarnMessage`.
+- **What the storefront may show:** every surface asks `Earning\ProgramGate`: `storefront_enabled()` (the program is on and `storefront_allowed()`) for My Points, placements, the product and thank-you messages (`DesignHelper::surface_enabled()`), the history AJAX and the order claim; `storefront_allowed()` alone for the launcher and the redeem card (classic, blocks and their assets), which already handle a paused program themselves. `storefront_allowed()` is the `yayloyalty_storefront_allowed` filter, default true. Pro's `YayLoyaltyPro::storefront_allowed()` returns false until a license key is activated on the site and not revoked (AdminShell `LicenseState::allows_features('yayloyalty')`; an expired key keeps working), and Pro's own surfaces check the same gate: the Referrals tab, the friend's referral coupon (`ReferralCoupon::is_usable()`) and the birthday fields. Earning, emails, the admin and REST are not gated. Integration tests seed a placeholder key in `tests/php/integration/bootstrap.php`, e2e in `tests/e2e/bin/setup-env.sh`.
 
 ## Pro and Lite
 

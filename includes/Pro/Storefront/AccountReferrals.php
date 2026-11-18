@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Pro\Storefront;
 
+use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Register\ScriptName;
 use YayLoyalty\Engine\Storefront\AccountMyPoints;
 use YayLoyalty\Engine\Storefront\Launcher;
@@ -67,7 +68,7 @@ final class AccountReferrals {
 
     /** Whether the viewer gets the tab: the program is live and they can earn (not opted out, not an excluded role). */
     public static function is_available( int $user_id ): bool {
-        return $user_id > 0 && ReferralSettings::get()['enabled'] && Launcher::viewer_can_earn( $user_id );
+        return $user_id > 0 && ReferralSettings::get()['enabled'] && ProgramGate::storefront_allowed() && Launcher::viewer_can_earn( $user_id );
     }
 
     /**

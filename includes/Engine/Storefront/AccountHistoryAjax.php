@@ -27,7 +27,7 @@ final class AccountHistoryAjax {
     public static function respond(): void {
         $user_id = get_current_user_id();
 
-        if ( 0 === $user_id || ! ProgramGate::program_enabled() || ! Launcher::viewer_can_earn( $user_id ) ) {
+        if ( 0 === $user_id || ! ProgramGate::storefront_enabled() || ! Launcher::viewer_can_earn( $user_id ) ) {
             wp_send_json_error( null, 403 );
         }
 

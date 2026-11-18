@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Engine\Storefront;
 
+use YayLoyalty\Engine\Earning\ProgramGate as EarnProgramGate;
 use YayLoyalty\Engine\Redemption\Adapters\StoreApiAdapter;
 use YayLoyalty\Engine\Redemption\CouponProvider;
 use YayLoyalty\Engine\Redemption\ProgramGate;
@@ -100,7 +101,7 @@ final class RedeemCard {
      * Not on the checkout's order-pay and order-received endpoints, which never draw it.
      */
     public function enqueue_on_cart_pages(): void {
-        if ( ! function_exists( 'is_cart' ) ) {
+        if ( ! function_exists( 'is_cart' ) || ! EarnProgramGate::storefront_allowed() ) {
             return;
         }
 
@@ -117,6 +118,10 @@ final class RedeemCard {
      * @param Reward|null $reward The live flexible reward, whose code and name the totals row reads; null for the fallback.
      */
     public static function enqueue_block_assets( ?Reward $reward = null ): void {
+        if ( ! EarnProgramGate::storefront_allowed() ) {
+            return;
+        }
+
         self::enqueue_assets();
 
         wp_enqueue_script(
@@ -167,6 +172,10 @@ final class RedeemCard {
      * (a customer the gates refuse, a missing reward), or a failure.
      */
     public function markup(): string {
+        if ( ! EarnProgramGate::storefront_allowed() ) {
+            return '';
+        }
+
         $level = ob_get_level();
 
         try {

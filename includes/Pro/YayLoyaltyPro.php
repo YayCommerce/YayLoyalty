@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Pro;
 
+use YayLoyalty\Engine\Earning\ProgramGate;
+use YayLoyaltyScoped\YayCommerce\AdminShell\License\LicenseState;
 use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Points\Triggers\Registry as TriggerRegistry;
@@ -97,6 +99,8 @@ final class YayLoyaltyPro {
 
         ProInstaller::register();
 
+        add_filter( ProgramGate::STOREFRONT_FILTER, [ self::class, 'storefront_allowed' ] );
+
         add_filter( 'yayloyalty_campaign_triggers', [ self::class, 'add_triggers' ] );
         add_filter( 'yayloyalty_campaign_config_whitelist', [ self::class, 'add_config_keys' ] );
         add_filter( 'yayloyalty_campaign_config_schema', [ self::class, 'add_campaign_config_schema' ] );
@@ -151,6 +155,11 @@ final class YayLoyaltyPro {
      */
     public static function plugin_name( string $name ): string {
         return $name . ' Pro';
+    }
+
+    /** Unlicensed, the storefront shows nothing of YayLoyalty: a key activated on this site and not revoked. */
+    public static function storefront_allowed( bool $allowed ): bool {
+        return $allowed && LicenseState::allows_features( 'yayloyalty' );
     }
 
     /** Whether boot() has run; YayLoyalty::is_pro() only asks whether the code is present. */

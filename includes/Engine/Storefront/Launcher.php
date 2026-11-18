@@ -119,7 +119,7 @@ final class Launcher {
     }
 
     private function should_render( array $design ): bool {
-        if ( is_embed() || is_feed() || ! function_exists( 'wc_get_page_permalink' ) ) {
+        if ( is_embed() || is_feed() || ! function_exists( 'wc_get_page_permalink' ) || ! ProgramGate::storefront_allowed() ) {
             return false;
         }
 
