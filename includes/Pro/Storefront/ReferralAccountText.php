@@ -111,7 +111,8 @@ final class ReferralAccountText {
         $amount = (float) $settings['discount_amount'];
 
         return ReferralSettings::DISCOUNT_PERCENT === $settings['discount_type']
-            ? number_format_i18n( $amount, floor( $amount ) === $amount ? 0 : 2 ) . '%'
+            /* translators: %s: a percentage number, as "15". */
+            ? sprintf( __( '%s%%', 'yayloyalty' ), LauncherCopy::rate( $amount ) )
             : LauncherCopy::money( CurrencyRate::from_base( $amount ) );
     }
 }
