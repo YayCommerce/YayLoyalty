@@ -1,13 +1,13 @@
 ---
 id: P-6
 title: My Account Referrals tab and Ways to earn row
-status: ready
+status: in-progress
 from: BS-3
 roadmap: R-4
 design: UX-2
 trello:
 type: feat
-branch:
+branch: feat/p-6-my-account-referrals-tab-and-ways-to-earn-row
 pr:
 editions: [pro]
 created: 2026-11-17
