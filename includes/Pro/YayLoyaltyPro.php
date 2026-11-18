@@ -22,6 +22,8 @@ use YayLoyalty\Pro\Emails\ProEmails;
 use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
 use YayLoyalty\Pro\Integrations\YayMail\ProYayMail;
 use YayLoyalty\Pro\Referrals\ReferralAttribution;
+use YayLoyalty\Pro\Referrals\ReferralCartSync;
+use YayLoyalty\Pro\Referrals\ReferralCoupon;
 use YayLoyalty\Pro\Repositories\CampaignPerformanceRepository;
 use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
 use YayLoyalty\Pro\Repositories\ReferralRepository;
@@ -116,6 +118,10 @@ final class YayLoyaltyPro {
         ( new BirthdayFields() )->register();
         ( new BirthdayEarnRow() )->register();
         ( new ReferralAttribution( new CustomerRepository(), new ReferralRepository() ) )->register();
+        $referrals       = new ReferralRepository();
+        $referral_coupon = new ReferralCoupon( $referrals );
+        $referral_coupon->register();
+        ( new ReferralCartSync( $referrals, $referral_coupon ) )->register();
 
         /** Fires once Pro has attached its hooks. Pro-internal; absent from Lite. */
         do_action( 'yayloyalty_pro_booted' );

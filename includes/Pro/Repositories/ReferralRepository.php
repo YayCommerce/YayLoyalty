@@ -30,6 +30,13 @@ final class ReferralRepository extends AbstractRepository {
         return $found instanceof Referral ? $found : null;
     }
 
+    /** $friend_user_id's referral while it is still pending, or null. */
+    public function find_pending_for_friend( int $friend_user_id ): ?Referral {
+        $referral = $this->find_by_friend( $friend_user_id );
+
+        return null !== $referral && ReferralStatus::PENDING === $referral->get_status() ? $referral : null;
+    }
+
     /**
      * Records a new friend as a pending referral.
      *
