@@ -1,7 +1,7 @@
 ---
 area: helpers
 updated: 2026-11-18
-updated_ref: 91b4be1
+updated_ref: af585f6
 covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, includes/Access/, includes/Services/, includes/Controllers/AbstractRestController.php, includes/Engine/Earning/, includes/Engine/Expiry/ExpiryRunner.php, includes/Engine/Emails/Emails.php, includes/Engine/Storefront/, includes/Engine/Points/, apps/admin/src/lib/, apps/admin/src/hooks/, apps/admin/src/components/layout/]
 ---
 
@@ -21,6 +21,8 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 - `Repositories\CustomerReader` (`includes/Repositories/CustomerReader.php`): depend on this when code may read a customer but must never write one.
 - `Database\Installer::install_locked($still_needed)` (`includes/Database/Installer.php`): run the idempotent install under the upgrade mutex; Pro's `ProInstaller` uses it.
 - `Repositories\CustomerRepository::find_user_by_referral_code($code)`: the existing user who owns a referral code.
+- `Repositories\CustomerRepository::assign_referral_code($user_id)`: a member's referral code, created on first use (8 characters, no look-alikes, retried on a collision).
+- Pro `Repositories\ReferralListRepository::paginate|count_by_status|counts_for_advocate` (`includes/Pro/Repositories/ReferralListRepository.php`): the admin's referral list and one advocate's totals. `ReferralRepository::find_for_update()` locks a referral before an admin decision.
 
 ## Money, points and dates (PHP)
 
