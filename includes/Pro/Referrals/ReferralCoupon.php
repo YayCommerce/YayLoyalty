@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Pro\Referrals;
 
+use YayLoyalty\Engine\Redemption\RewardCoupons;
 use YayLoyalty\Pro\Enums\ReferralStatus;
 use YayLoyalty\Pro\Models\Referral;
 use YayLoyalty\Pro\Repositories\ReferralRepository;
@@ -50,13 +51,13 @@ final class ReferralCoupon {
         $amount  = (float) ( $terms['discount_amount'] ?? 0 );
         $minimum = (float) ( $terms['min_order'] ?? 0 );
 
-        return [
-            'discount_type'  => $percent ? 'percent' : 'fixed_cart',
-            'amount'         => $amount,
-            'minimum_amount' => $minimum > 0 ? $minimum : '',
-            'individual_use' => false,
-            'usage_limit'    => 0,
-        ];
+        return RewardCoupons::data(
+            [
+                'discount_type'  => $percent ? 'percent' : 'fixed_cart',
+                'amount'         => $amount,
+                'minimum_amount' => $minimum > 0 ? $minimum : null,
+            ]
+        );
     }
 
     /**

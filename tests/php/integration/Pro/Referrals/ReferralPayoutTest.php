@@ -1,18 +1,15 @@
 <?php
 namespace YayTests\Integration\Pro\Referrals;
 
-use WP_UnitTestCase;
 use YayLoyalty\Engine\Earning\PendingPoints;
 use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Pro\Enums\ReferralRejectReason;
 use YayLoyalty\Pro\Enums\ReferralStatus;
-use YayLoyalty\Pro\Models\Referral;
 use YayLoyalty\Pro\Referrals\ReferralPayout;
 use YayLoyalty\Pro\Referrals\ReferralRunner;
 use YayLoyalty\Pro\Referrals\ReferralSettings;
 use YayLoyalty\Pro\Repositories\ReferralRepository;
-use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Table;

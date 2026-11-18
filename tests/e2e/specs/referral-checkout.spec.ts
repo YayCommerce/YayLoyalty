@@ -1,16 +1,9 @@
 import { type Browser, type Page } from '@playwright/test';
 
-import { userId } from '../fixtures/loyalty';
+import { shortcodePage, userId } from '../fixtures/loyalty';
 import { expect, test, wp } from '../fixtures/test';
 
 const PASSWORD = 'password';
-
-/** A published page holding one shortcode, created once and reused on later runs. */
-function shortcodePage( slug: string, shortcode: string ): void {
-	if ( wp( 'post', 'list', '--post_type=page', `--name=${ slug }`, '--format=count' ) === '0' ) {
-		wp( 'post', 'create', '--post_type=page', '--post_status=publish', `--post_name=${ slug }`, `--post_title=${ slug }`, `--post_content=[${ shortcode }]` );
-	}
-}
 
 /** A new customer with a pending referral from the `customer` user: $10 off a $50 first order. Every test gets its own friend, so no earlier order counts. */
 function referredFriend( advocate: number ): string {

@@ -2,6 +2,8 @@
 namespace YayLoyalty\Pro\Referrals;
 
 use YayLoyalty\Engine\Earning\Listeners\ListenerGuard;
+use YayLoyalty\Engine\Redemption\RedemptionService;
+use YayLoyalty\Engine\Redemption\RewardCoupons;
 use YayLoyalty\Pro\Repositories\ReferralRepository;
 use YayLoyalty\Utils\CurrencyRate;
 
@@ -44,9 +46,9 @@ final class ReferralCartSync {
      * removed by WooCommerce with an error naming it. One totals run first lets sync_cart() take it off silently.
      */
     public function sync_before_check(): void {
-        $cart = function_exists( 'WC' ) ? WC()->cart : null;
+        $cart = RedemptionService::cart();
 
-        if ( $cart instanceof \WC_Cart && [] !== array_filter( $cart->get_applied_coupons(), [ ReferralCoupon::class, 'referral_id' ] ) ) {
+        if ( null !== $cart && [] !== array_filter( $cart->get_applied_coupons(), [ ReferralCoupon::class, 'referral_id' ] ) ) {
             $cart->calculate_totals();
         }
     }
@@ -95,7 +97,7 @@ final class ReferralCartSync {
         $minimum  = (float) ( $referral->get_terms()['min_order'] ?? 0 );
         $decimals = wc_get_price_decimals();
 
-        if ( $minimum > 0 && round( self::cart_subtotal( $cart ), $decimals ) < round( CurrencyRate::from_base( $minimum ), $decimals ) ) {
+        if ( $minimum > 0 && round( RewardCoupons::displayed_subtotal( $cart ), $decimals ) < round( CurrencyRate::from_base( $minimum ), $decimals ) ) {
             return null;
         }
 
@@ -111,22 +113,6 @@ final class ReferralCartSync {
         }
 
         return false;
-    }
-
-    /** The subtotal WooCommerce's minimum check reads, from the items: before_calculate_totals runs before the cart's totals are fresh. */
-    private static function cart_subtotal( \WC_Cart $cart ): float {
-        $subtotal = 0.0;
-
-        foreach ( $cart->get_cart() as $item ) {
-            $product = $item['data'] ?? null;
-
-            if ( $product instanceof \WC_Product ) {
-                $args      = [ 'qty' => (float) $item['quantity'] ];
-                $subtotal += (float) ( $cart->display_prices_including_tax() ? wc_get_price_including_tax( $product, $args ) : wc_get_price_excluding_tax( $product, $args ) );
-            }
-        }
-
-        return $subtotal;
     }
 
     private function is_declined( int $referral_id ): bool {
