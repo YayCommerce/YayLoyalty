@@ -77,6 +77,10 @@ final class Referral extends AbstractModel {
         return $this->id;
     }
 
+    public function get_advocate_user_id(): int {
+        return $this->advocate_user_id;
+    }
+
     public function get_friend_user_id(): int {
         return $this->friend_user_id;
     }

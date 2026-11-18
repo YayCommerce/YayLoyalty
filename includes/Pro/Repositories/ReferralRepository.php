@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Pro\Repositories;
 
+use YayLoyalty\Database\QueryException;
+use YayLoyalty\Pro\Enums\ReferralRejectReason;
 use YayLoyalty\Pro\Enums\ReferralStatus;
 use YayLoyalty\Pro\Models\Referral;
 use YayLoyalty\Repositories\AbstractRepository;
@@ -35,6 +37,69 @@ final class ReferralRepository extends AbstractRepository {
         $referral = $this->find_by_friend( $friend_user_id );
 
         return null !== $referral && ReferralStatus::PENDING === $referral->get_status() ? $referral : null;
+    }
+
+    /**
+     * Starts the hold on a pending referral.
+     *
+     * @return bool False when the referral was no longer pending.
+     * @throws QueryException When the write fails.
+     */
+    public function hold( int $id, int $first_order_id, string $hold_until ): bool {
+        return $this->transition(
+            $id,
+            ReferralStatus::PENDING,
+            [
+                'status'         => ReferralStatus::ON_HOLD,
+                'first_order_id' => $first_order_id,
+                'hold_until'     => $hold_until,
+            ]
+        );
+    }
+
+    /**
+     * Rejects a referral that is still in $from.
+     *
+     * @return bool False when the referral had already moved on.
+     * @throws QueryException When the write fails.
+     */
+    public function reject( int $id, string $reason, string $from = ReferralStatus::PENDING ): bool {
+        ReferralRejectReason::assert( $reason );
+
+        return $this->transition(
+            $id,
+            $from,
+            [
+                'status'        => ReferralStatus::REJECTED,
+                'reject_reason' => $reason,
+            ]
+        );
+    }
+
+    /**
+     * Writes $data only while the referral is in $from, so two writers can't both move it.
+     *
+     * @param array<string, mixed> $data
+     * @return bool Whether this call moved it.
+     * @throws QueryException When the write fails.
+     */
+    private function transition( int $id, string $from, array $data ): bool {
+        global $wpdb;
+
+        $result = $wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $this->table(),
+            $data + [ 'updated_at' => Dates::now() ],
+            [
+                'id'     => $id,
+                'status' => $from,
+            ]
+        );
+
+        if ( false === $result ) {
+            throw new QueryException( 'update', esc_html( $wpdb->last_error ), esc_html( $this->table() ) );
+        }
+
+        return 1 === $result;
     }
 
     /**
