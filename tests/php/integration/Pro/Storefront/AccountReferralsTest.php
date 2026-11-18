@@ -59,6 +59,17 @@ final class AccountReferralsTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'Signed up · waiting on a first order', $first );
 	}
 
+	public function test_a_page_past_the_end_shows_the_last_page() {
+		( new ReferralRepository() )->insert_pending( $this->advocate_id, $this->friend( 'only@example.test' ), 'X', [ 'advocate_points' => 1000 ], Dates::offset( DAY_IN_SECONDS ) );
+
+		ob_start();
+		AccountReferrals::render( '4' );
+		$html = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'o•••@example.test', $html );
+		$this->assertStringNotContainsString( 'No invitations yet', $html );
+	}
+
 	public function test_with_the_program_off_there_is_no_menu_item_and_no_tab() {
 		update_option( ReferralSettings::OPTION, [ 'enabled' => false ] );
 

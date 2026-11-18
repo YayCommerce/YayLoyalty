@@ -79,7 +79,7 @@ $yayloyalty_columns  = [
 
     <section class="yayloyalty-account__section">
         <h3 class="yayloyalty-account__title"><?php esc_html_e( 'Your invitations', 'yayloyalty' ); ?></h3>
-        <?php if ( [] === $yayloyalty_page['items'] ) : ?>
+        <?php if ( 0 === $yayloyalty_page['total'] ) : ?>
             <div class="yayloyalty-account__empty">
                 <p class="yayloyalty-account__empty-text"><?php esc_html_e( "No invitations yet. Share your link and they'll appear here.", 'yayloyalty' ); ?></p>
             </div>

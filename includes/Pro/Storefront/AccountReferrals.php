@@ -5,6 +5,7 @@ use YayLoyalty\Engine\Register\ScriptName;
 use YayLoyalty\Engine\Storefront\AccountMyPoints;
 use YayLoyalty\Engine\Storefront\Launcher;
 use YayLoyalty\Engine\Storefront\LauncherPayload;
+use YayLoyalty\Engine\Storefront\OutputCapture;
 use YayLoyalty\Pro\Referrals\ReferralAttribution;
 use YayLoyalty\Pro\Referrals\ReferralSettings;
 use YayLoyalty\Pro\Repositories\ReferralListRepository;
@@ -53,7 +54,10 @@ final class AccountReferrals {
     }
 
     public static function maybe_flush_rewrite_rules(): void {
-        if ( get_option( self::OPTION_REWRITE_VERSION ) === self::REWRITE_VERSION ) {
+        // A permalink save while Pro was off drops the endpoint's rule but keeps the stamp, so check the rule too.
+        $rules = implode( "\n", array_keys( (array) get_option( 'rewrite_rules', [] ) ) );
+
+        if ( get_option( self::OPTION_REWRITE_VERSION ) === self::REWRITE_VERSION && false !== strpos( $rules, '/' . self::ENDPOINT . '(/(.*))?/?$' ) ) {
             return;
         }
 
@@ -94,9 +98,9 @@ final class AccountReferrals {
         return wc_get_endpoint_url( self::ENDPOINT, $page > 1 ? (string) $page : '', wc_get_page_permalink( 'myaccount' ) );
     }
 
-    /** With the program off, or for a customer who can't earn, the tab's URL lands on the account dashboard. */
+    /** With the program off, or for a customer who can't earn, the tab's URL lands on the account dashboard. A guest gets the login form. */
     public static function redirect_when_unavailable(): void {
-        if ( is_wc_endpoint_url( self::ENDPOINT ) && ! self::is_available( get_current_user_id() ) ) {
+        if ( is_user_logged_in() && is_wc_endpoint_url( self::ENDPOINT ) && ! self::is_available( get_current_user_id() ) ) {
             wp_safe_redirect( wc_get_page_permalink( 'myaccount' ) );
             exit;
         }
@@ -132,9 +136,25 @@ final class AccountReferrals {
             return;
         }
 
-        $view = self::view( $user_id, max( 1, absint( $value ) ) );
+        $html = OutputCapture::capture(
+            static function () use ( $user_id, $value ): void {
+                $view = self::view( $user_id, max( 1, absint( $value ) ) );
 
-        include __DIR__ . '/templates/account-referrals.php';
+                include __DIR__ . '/templates/account-referrals.php';
+            },
+            'AccountReferrals'
+        );
+
+        if ( null === $html ) {
+            $title = __( 'Referrals are currently unavailable', 'yayloyalty' );
+            $text  = __( 'We couldn’t load your referrals. Please try again later.', 'yayloyalty' );
+
+            include YAYLOYALTY_PLUGIN_DIR . 'includes/Engine/Storefront/templates/account-rewards-state.php';
+
+            return;
+        }
+
+        echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the template escapes every value.
     }
 
     /**
@@ -144,13 +164,20 @@ final class AccountReferrals {
         $list   = new ReferralListRepository();
         $code   = ( new CustomerRepository() )->assign_referral_code( $user_id );
         $reward = ( new RewardRepository() )->find_live_flexible_discount( Dates::now() );
-        $rows   = $list->paginate(
-            [
-                'advocate' => $user_id,
-                'page'     => $page,
-                'per_page' => self::PER_PAGE,
-            ]
-        );
+        $args   = [
+            'advocate' => $user_id,
+            'page'     => $page,
+            'per_page' => self::PER_PAGE,
+        ];
+        $rows   = $list->paginate( $args );
+        $last   = max( 1, (int) ceil( $rows['total'] / self::PER_PAGE ) );
+
+        // A stale page link past the end shows the last page, not an empty list.
+        if ( $page > $last ) {
+            $page         = $last;
+            $args['page'] = $last;
+            $rows         = $list->paginate( $args );
+        }
 
         return [
             'settings'     => ReferralSettings::get(),
