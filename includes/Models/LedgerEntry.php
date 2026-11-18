@@ -223,6 +223,11 @@ final class LedgerEntry extends AbstractModel {
         return $this->order_id;
     }
 
+    /** The order this row is the customer's own earning for: null on a referral row, whose order is the friend's. */
+    public function get_own_order_id(): ?int {
+        return LedgerSource::REFERRAL === $this->source ? null : $this->order_id;
+    }
+
     public function get_note(): ?string {
         return $this->note;
     }

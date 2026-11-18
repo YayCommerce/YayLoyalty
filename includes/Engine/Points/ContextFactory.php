@@ -68,8 +68,9 @@ final class ContextFactory {
      *
      * @param string               $occurred_at The event's UTC MySQL datetime (wp_users.user_registered is already UTC).
      * @param array<string, mixed> $extra       Facts the trigger's handler reads, such as the birthday's year.
+     * @param int|null             $order_id    The order the event belongs to, so a refund of it finds the row.
      */
-    public static function from_user( int $user_id, string $occurred_at, array $extra = [] ): Context {
+    public static function from_user( int $user_id, string $occurred_at, array $extra = [], ?int $order_id = null ): Context {
         $currency = get_woocommerce_currency();
 
         return new Context(
@@ -82,7 +83,7 @@ final class ContextFactory {
             0.0,
             [],
             self::user_roles( $user_id ),
-            null,
+            $order_id,
             null,
             $extra,
             static fn() => self::customer_facts( $user_id, $occurred_at )
