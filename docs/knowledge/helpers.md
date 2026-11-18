@@ -1,7 +1,7 @@
 ---
 area: helpers
-updated: 2026-11-17
-updated_ref: e166d61
+updated: 2026-11-18
+updated_ref: 91b4be1
 covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, includes/Access/, includes/Services/, includes/Controllers/AbstractRestController.php, includes/Engine/Earning/, includes/Engine/Expiry/ExpiryRunner.php, includes/Engine/Emails/Emails.php, includes/Engine/Storefront/, includes/Engine/Points/, apps/admin/src/lib/, apps/admin/src/hooks/, apps/admin/src/components/layout/]
 ---
 
@@ -41,7 +41,9 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 
 - `Engine\Earning\ProgramGate::program_enabled()` / `member_denial()` (`includes/Engine/Earning/ProgramGate.php`): is the program on, may this member earn or redeem.
 - `Engine\Earning\EarningService::build|gate_reason|points_left_today|is_awardable_order|is_missing_points` (`includes/Engine/Earning/EarningService.php`): a wired earning service and eligibility questions without re-implementing them.
-- `Engine\Points\ContextFactory::from_order|from_user|from_comment|from_product|from_cart|for_advert` (`includes/Engine/Points/ContextFactory.php`): always build scoring context here, never from "now".
+- `Engine\Points\ContextFactory::from_order|from_user|from_comment|from_product|from_cart|for_advert` (`includes/Engine/Points/ContextFactory.php`): always build scoring context here, never from "now". `from_user()` takes an optional order id for a user event tied to an order (a referral payout).
+- `Engine\Earning\EarningService::award_flat($trigger, $ctx, $points, $source, $reference_type, $reference_id)`: one keyed campaign-less EARN row through the gates, with no award filter and no pending points; Pro's referral payout.
+- `Models\LedgerEntry::get_own_order_id()`: the order a row is the customer's own earning for; null on a referral row, which carries the friend's order only so a refund claws it back. Use it, not `get_order_id()`, wherever a row's order is shown to its customer.
 - `Engine\Earning\PendingPoints::unreleased($order)` (`includes/Engine/Earning/PendingPoints.php`): points staged on an order.
 - `Engine\Points\Context::is_loyalty_code|loyalty_codes` (`includes/Engine/Points/Context.php`): recognise our virtual coupon codes.
 - `Engine\Earning\Listeners\ListenerGuard::run|for_order` (`includes/Engine/Earning/Listeners/ListenerGuard.php`): wrap every new WooCommerce hook handler.
@@ -83,4 +85,4 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 
 Public: `yayloyalty_points_awarded` (after commit), `yayloyalty_points_redeemed`, `yayloyalty_ledger_recorded`, `yayloyalty_pro_booted`, `yayloyalty_redeem_card` (renders the card), `yayloyalty_yaymail_register_emails`, `yayloyalty_yaymail_register_shortcodes`.
 
-Seams Pro attaches through (documented "Internal seam, not a public API"): `yayloyalty_earning_gates`, `yayloyalty_redemption_gates`, `yayloyalty_register_trigger_handlers`, `yayloyalty_register_reward_handlers`, `yayloyalty_award_points` (can only lower), `yayloyalty_points_left_today`, `yayloyalty_order_award_triggers`, `yayloyalty_campaign_conditions_evaluator`, `yayloyalty_reward_conditions_match`, `yayloyalty_rest_controllers`, `yayloyalty_rest_item_schema`, `yayloyalty_campaign_config_schema`, `yayloyalty_reward_config_schema`, `yayloyalty_localize_admin_data`, `yayloyalty_plugin_name`. Others: `yayloyalty_table_schemas`, `yayloyalty_run_migrations`, `yayloyalty_currency_rate`, `yayloyalty_context_to_base_factor`.
+Seams Pro attaches through (documented "Internal seam, not a public API"): `yayloyalty_earning_gates`, `yayloyalty_redemption_gates`, `yayloyalty_register_trigger_handlers`, `yayloyalty_register_reward_handlers`, `yayloyalty_award_points` (can only lower), `yayloyalty_points_left_today`, `yayloyalty_order_award_triggers`, `yayloyalty_order_awarded` (after a completed order's awards, not for a claimed guest order), `yayloyalty_order_reversed` (after a refund, cancel, trash or refunded status is reversed), `yayloyalty_campaign_conditions_evaluator`, `yayloyalty_reward_conditions_match`, `yayloyalty_rest_controllers`, `yayloyalty_rest_item_schema`, `yayloyalty_campaign_config_schema`, `yayloyalty_reward_config_schema`, `yayloyalty_localize_admin_data`, `yayloyalty_plugin_name`. Others: `yayloyalty_table_schemas`, `yayloyalty_run_migrations`, `yayloyalty_currency_rate`, `yayloyalty_context_to_base_factor`.

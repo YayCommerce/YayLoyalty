@@ -1,8 +1,8 @@
 ---
 area: architecture
-updated: 2026-11-17
-updated_ref: 79b743c
-covers: [yayloyalty.php, YayLoyaltyPluginAdapter.php, includes/YayLoyalty.php, includes/Access/, includes/Database/, includes/Models/, includes/Repositories/, includes/Services/, includes/Controllers/, includes/Engine/, includes/Enums/, includes/Pro/YayLoyaltyPro.php]
+updated: 2026-11-18
+updated_ref: 91b4be1
+covers: [yayloyalty.php, YayLoyaltyPluginAdapter.php, includes/YayLoyalty.php, includes/Access/, includes/Database/, includes/Models/, includes/Repositories/, includes/Services/, includes/Controllers/, includes/Engine/, includes/Enums/, includes/Pro/YayLoyaltyPro.php, includes/Pro/Referrals/, includes/Pro/Repositories/ReferralRepository.php]
 ---
 
 # Architecture
@@ -116,7 +116,7 @@ Lite has one reward handler, `FlexibleDiscountHandler`; `Rewards/Clamp.php` is t
 
 ## Expiry
 
-Daily Action Scheduler action `yayloyalty_expiry_run` (group `yayloyalty`, batches of 100, async continuation when a batch is full): backfill lots, re-apply changed expiry settings, expire due customers through `LedgerService::expire`, send reminders (claim-then-send, so at most once). Modes: inactivity (`customers.expires_at`) or Pro's batch (per-lot dates). Scheduling is checked only on admin page loads and cron — `Engine/Expiry/ExpiryRunner.php`.
+Daily Action Scheduler action `yayloyalty_expiry_run` (group `yayloyalty`, batches of 100, async continuation when a batch is full): backfill lots, re-apply changed expiry settings, expire due customers through `LedgerService::expire`, send reminders (claim-then-send, so at most once). Modes: inactivity (`customers.expires_at`) or Pro's batch (per-lot dates). Scheduling is checked only on admin page loads and cron — `Engine/Expiry/ExpiryRunner.php`. Pro's `yayloyalty_birthday_run` and `yayloyalty_referral_run` reuse `ExpiryRunner::register_daily()` / `keep_daily()` and the same group.
 
 ## Emails
 
@@ -134,6 +134,7 @@ Daily Action Scheduler action `yayloyalty_expiry_run` (group `yayloyalty`, batch
 Lite is the Pro tree with `includes/Pro/` removed at release (see [build-release.md](build-release.md)). `YayLoyaltyPro::boot()` (`includes/Pro/YayLoyaltyPro.php`) attaches everything Pro does through filters and actions Lite exposes: extra triggers, reward types, the `batch` expiry mode, REST controllers, emails, the campaign and reward conditions evaluators, `DailyEarningLimit`, the Rewards panel, the birthday runner and fields. Its only table is `referrals`, installed by `ProInstaller` (see Storage).
 
 - **Referral attribution:** a `?yl_ref=CODE` link sets the `yayloyalty_ref` cookie on `template_redirect` at priority 0, before core's canonical and old-slug redirects drop the query string. A self-registration (`SignupListener::is_self_registration()`) on `user_register` at priority 20, after the member row exists, becomes a `pending` referral while the program is on and the code belongs to an existing user other than the new one. Codes are upper case; `CustomerRepository::find_user_by_referral_code()` joins `users`, because a deleted account's member row outlives it. A full-page cache that serves `?yl_ref=` URLs without running PHP never sets the cookie; exclude the argument from the cache.
+- **Referral lifecycle** (`Pro/Referrals/`): `ReferralCoupon` is the friend's virtual coupon `yl-referral-{id}` (terms from the snapshot, in base currency), valid only for the friend while the referral is pending, unexpired and live with no order already paid or on hold; `ReferralCartSync` adds it at `woocommerce_before_calculate_totals` `PHP_INT_MAX - 1` (before `CouponProvider`) when the cart meets the minimum, takes it off silently otherwise, and relabels the block checkout line. On Lite's `yayloyalty_order_awarded`, `ReferralLifecycle` qualifies the friend's first order (`ReferralQualifier`: first order, minimum, other coupons, the advocate's billing email) into `on_hold` or `rejected`. `ReferralPayout::pay()` claims `on_hold → rewarded` and writes the advocate's row through `EarningService::award_flat()` in one transaction; the daily `yayloyalty_referral_run` (`ReferralRunner`) pays released holds and expires lapsed pending referrals. `yayloyalty_order_reversed` rejects a held referral (`refunded_during_hold`), and a full clawback of a referral row (`yayloyalty_ledger_recorded`) marks it `reversed`. Every status write is conditional on the status it moves from (`ReferralRepository::transition()`).
 
 - **Add a seam, never a strip marker.** Pro widens Lite's lists through filters; Lite's `all_known()` lists stay unfiltered so a site downgraded to Lite still recognises stored Pro values (`Enums/CampaignTrigger.php`, `Enums/RewardType.php`).
 - Lite fails open without a conditions evaluator: a conditional campaign applies to everyone after a downgrade (`Engine/Points/PointsEngine.php`), and a conditional reward is redeemable by everyone (`yayloyalty_reward_conditions_match` defaults to true in `Engine/Redemption/RewardGate.php`; Pro answers it with `Pro/Services/RewardConditionsEvaluator.php`). A 1.0.0 reader reads a `schema_version` 2 tree as no conditions.
