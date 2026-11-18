@@ -16,7 +16,7 @@ export const CUSTOMER_REFERRALS_COPY = {
   link: () => __('Referral link', 'yayloyalty'),
   copy: () => __('Copy', 'yayloyalty'),
   copied: () => __('Copied', 'yayloyalty'),
-  noLink: () => __('This account was deleted, so it has no referral link.', 'yayloyalty'),
+  noLink: () => __('Only a loyalty member with an account has a referral link.', 'yayloyalty'),
   /* translators: 1: points with their label, 2: the customer's first name, 3: the friend's discount, 4: days */
   termsLine: (points: string, name: string, discount: string, days: number) =>
     sprintf(

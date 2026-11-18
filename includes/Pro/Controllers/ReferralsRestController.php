@@ -173,7 +173,7 @@ final class ReferralsRestController extends AbstractRestController {
 
         $result['items'] = array_map( [ self::class, 'with_order' ], $result['items'] );
 
-        return $this->respond_paginated( $result ) + [ 'counts' => $this->referral_list->count_by_status() ];
+        return $this->respond_paginated( $result ) + [ 'counts' => (object) $this->referral_list->count_by_status() ]; // An object even when empty, which PHP would otherwise encode as [].
     }
 
     /**

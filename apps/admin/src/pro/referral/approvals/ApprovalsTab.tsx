@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { HTTPError } from 'ky';
 import { Outlet } from 'react-router';
 import { toast } from 'sonner';
@@ -42,9 +42,14 @@ export function ApprovalsTab() {
   const decide = useReferralDecisionMutation();
   const query = useReferralListQuery({ page, perPage: PAGE_SIZE, status: 'on_hold', orderby: 'hold_until' });
   const items = query.data?.data ?? [];
-  const held = query.data?.counts.on_hold;
+  const held = query.data ? (query.data.counts.on_hold ?? 0) : undefined;
   const totalPages = Math.max(1, query.data?.totalPages ?? 1);
   const chosen = items.filter((item) => selected.has(item.id));
+
+  // Approving the last rows of a later page leaves it past the end, with the pager hidden and no way back.
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   async function run(targets: ReferralListItem[], reason?: AdminRejectReason) {
     const errors: unknown[] = [];

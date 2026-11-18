@@ -65,8 +65,16 @@ final class ReferralsRestControllerTest extends WP_UnitTestCase {
 				'pending' => 1,
 				'on_hold' => 1,
 			],
-			$data['counts']
+			(array) $data['counts']
 		);
+	}
+
+	public function test_no_referrals_still_sends_the_counts_as_an_object() {
+		global $wpdb;
+		$wpdb->query( 'DELETE FROM `' . esc_sql( Table::name( 'referrals' ) ) . '`' ); // phpcs:ignore WordPress.DB
+		wp_set_current_user( $this->user_with( 'yayloyalty_view' ) );
+
+		$this->assertSame( '{}', wp_json_encode( $this->get( [] )->get_data()['counts'] ) );
 	}
 
 	public function test_search_finds_the_friend_or_the_advocate_by_email() {
