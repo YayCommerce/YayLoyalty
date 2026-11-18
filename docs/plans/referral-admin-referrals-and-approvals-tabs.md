@@ -76,9 +76,9 @@ That completes R-4's "the merchant can pay early or reject from Approvals".
 - **Editions:** Pro only. Lite already 404s `#/referral` from P-3.
 
 ## Tasks
-- [ ] T1 Referrals list REST with search, status filter and counts — `includes/Pro/Controllers/ReferralsRestController.php` (new), `includes/Pro/Repositories/ReferralRepository.php`, `includes/Pro/YayLoyaltyPro.php`
+- [x] T1 Referrals list REST with search, status filter and counts — `includes/Pro/Controllers/ReferralsRestController.php` (new), `includes/Pro/Repositories/ReferralListRepository.php` (new), `includes/Pro/YayLoyaltyPro.php`
   - Reuse: `StoreLedgerRestController` and `StoreLedgerRepository` (list shape, user search), `AbstractRestController::requires()` / `respond_paginated()`, `exec_read`, `Capabilities::VIEW`, `wc_get_order`, `Utils\Text::plain`
-  - Callers: `ReferralsRestController` → filter `yayloyalty_rest_controllers` (`YayLoyaltyPro::add_controllers()`); `ReferralRepository::paginate_list()`, `count_by_status()` → `GET referrals`; route → the Referrals tab (T3), the Approvals tab and badge (T4)
+  - Callers: `ReferralsRestController` → filter `yayloyalty_rest_controllers` (`YayLoyaltyPro::add_controllers()`); `ReferralListRepository::paginate()`, `count_by_status()` → `GET referrals`; route → the Referrals tab (T3), the Approvals tab and badge (T4)
 - [ ] T2 Approve and reject routes for held referrals — `includes/Pro/Controllers/ReferralsRestController.php`, `includes/Pro/Enums/ReferralRejectReason.php` [risk: 3]
   - Reuse: `ReferralPayout::pay()` (P-4), `ReferralRepository::reject()` (P-4), `exec_write()`, `Capabilities::MANAGE_CAMPAIGNS`
   - Callers: `POST referrals/{id}/approve`, `POST referrals/{id}/reject` → the Approvals tab (T4); `ReferralRejectReason::admin_choices()` → the reject route's `enum` arg
@@ -90,7 +90,7 @@ That completes R-4's "the merchant can pay early or reject from Approvals".
   - Callers: `ApprovalsTab` → child route `referral/approvals`; `RejectReferralDialog` → `ApprovalsTable`; `ReferralApprovalsBadge` (pro export) → `HeaderMenu.tsx` behind `IS_PRO_BUILD`, `ReferralLayout`
 - [ ] T5 Customer drawer → Referrals tab, with the customer's referral code — `includes/Repositories/CustomerRepository.php`, `includes/Pro/Repositories/ReferralRepository.php`, `includes/Pro/Controllers/CustomerReferralsRestController.php` (new), `includes/Pro/YayLoyaltyPro.php`, `apps/admin/src/pro/referral/drawer/CustomerReferralsTab.tsx` (new), `apps/admin/src/pro/referral/drawer/CustomerReferralsRows.tsx` (new), `apps/admin/src/pro/referral/drawer/customer-referrals.copy.ts` (new), `apps/admin/src/pro/referral/drawer/customer-referrals.schema.ts` (new), `apps/admin/src/pro/referral/referral.api.ts`, `apps/admin/src/pro/referral/referral.queries.ts`, `apps/admin/src/pro/index.ts`, `apps/admin/src/pages/customers/drawer/CustomerDrawerTabs.tsx`, `apps/admin/src/pages/customers/drawer/customer-drawer.copy.ts` [risk: 3]
   - Reuse: `CustomerRepository::ensure_row()`, `QueryException` on a unique-key collision, `AbstractRestController::member_user_id_param()` and `exec_read`, `ReferralSettings::get()`, `CurrencyRate::from_base()` / `to_base()`, `wc_get_order`, `CustomerDrawerStat`, `DrawerTable` / `DrawerTabPager`, `RedemptionsTab.tsx` (tab shape), `ProGate`, `IS_PRO_BUILD`, `Badge` and the status labels from T3, `formatWPDate` / `formatWPCurrency` / `formatStoreNumber`, `copyToClipboard` if the SPA has one (else `navigator.clipboard`); design UX-2 "Customer drawer → Referrals"
-  - Callers: `CustomerRepository::assign_referral_code()` → `CustomerReferralsRestController`, P-6's `AccountReferrals`; `ReferralRepository::counts_for_advocate()` → `CustomerReferralsRestController`, P-6; `ReferralRepository::paginate_list()` (T1) with an `advocate` filter → `CustomerReferralsRestController`; `CustomerReferralsRestController` → filter `yayloyalty_rest_controllers`; `CustomerReferralsTab` (pro export) → `CustomerDrawerTabs.tsx` behind `IS_PRO_BUILD`
+  - Callers: `CustomerRepository::assign_referral_code()` → `CustomerReferralsRestController`, P-6's `AccountReferrals`; `ReferralRepository::counts_for_advocate()` → `CustomerReferralsRestController`, P-6; `ReferralListRepository::paginate()` (T1) with an `advocate` filter → `CustomerReferralsRestController`; `CustomerReferralsRestController` → filter `yayloyalty_rest_controllers`; `CustomerReferralsTab` (pro export) → `CustomerDrawerTabs.tsx` behind `IS_PRO_BUILD`
 - [ ] T6 Knowledge docs for the routes and tabs — `docs/knowledge/architecture.md`, `docs/knowledge/admin-spa.md`, `docs/knowledge/e2e.md` [risk: 1]
   - Reuse: n/a
 
@@ -119,6 +119,7 @@ That completes R-4's "the merchant can pay early or reject from Approvals".
 - Lite build: there's no Referral menu item, and `#/referral/referrals` shows the 404 page.
 
 ## Risks
+- Decided (T1): the list query lives in a new `ReferralListRepository`, as the store ledger's does in `StoreLedgerRepository`, because `ReferralRepository` is near the 200-line limit. `orderby=hold_until` serves the Approvals queue (oldest hold end first).
 - **Approve pays the wrong amount or twice:** it calls only P-4's `pay()`, which is keyed and conditional. Rollback: revert the routes. The ledger keeps what was paid, and it can be adjusted by hand.
 - **Slow list on a big store:** search joins `users` on both ids with `LIKE`, as the store ledger does. It's indexed on `(advocate_user_id, status)`. Accepted for 1.1.0.
 - **Emails in the list:** shown only to users with `yayloyalty_view`, masked by default (UX-2 Decisions).
