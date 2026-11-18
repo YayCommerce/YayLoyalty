@@ -45,7 +45,7 @@ That completes R-4's "A customer copies their referral link from My Account → 
 
 ## Approach
 - **Repository (T1):**
-  - `CustomerRepository::assign_referral_code()` and `ReferralRepository::counts_for_advocate()` come from P-5 T5. `counts_for_advocate()` returns what the tiles need:
+  - `CustomerRepository::assign_referral_code()` and `ReferralListRepository::counts_for_advocate()` come from P-5 T5. `counts_for_advocate()` returns what the tiles need:
     - invited (all rows)
     - ordered (rows with a `first_order_id`)
     - points earned (the snapshot's `advocate_points` summed over `rewarded` rows)
@@ -68,7 +68,7 @@ That completes R-4's "A customer copies their referral link from My Account → 
 
 ## Tasks
 - [ ] T1 The advocate's invitations page (the code and counts come from P-5 T5) — `includes/Pro/Repositories/ReferralRepository.php` [risk: 3]
-  - Reuse: `AbstractRepository` query helpers, `Utils\Table::name()`; `CustomerRepository::assign_referral_code()` and `ReferralRepository::counts_for_advocate()` (P-5 T5)
+  - Reuse: `AbstractRepository` query helpers, `Utils\Table::name()`; `CustomerRepository::assign_referral_code()` and `ReferralListRepository::counts_for_advocate()` (P-5 T5)
   - Callers: `ReferralRepository::page_for_advocate()` → `AccountReferrals` (T2); `assign_referral_code()`, `counts_for_advocate()` → `AccountReferrals` (T2)
 - [ ] T2 My Account Referrals tab: endpoint, template, copy script and styles — `includes/Pro/Storefront/AccountReferrals.php` (new), `includes/Pro/Storefront/templates/account-referrals.php` (new), `includes/Pro/Storefront/assets/account-referrals.css` (new), `includes/Pro/Storefront/assets/referral-link.js` (new), `includes/Pro/YayLoyaltyPro.php`
   - Reuse: `AccountMyPoints` (endpoint, menu, title, flush pattern), `templates/points-history.php` and `points-card.css` (markup and look), the `.yayloyalty-account__section` classes in `assets/storefront/account/account-rewards.css`, `Launcher::asset_version()`, `CurrencyRate::from_base()`, `SettingsHelper::points_text()`, `Dates::to_site_date()`, `ReferralSettings::get()` (P-3), `ReferralStatus` (P-3); design UX-2 "My Account → Referrals"

@@ -4,6 +4,7 @@ import type { ReferralSettingsUpdate } from './referral-settings.schema';
 import type { AdminRejectReason } from './approvals/approvals.copy';
 import {
   approveReferral,
+  getCustomerReferrals,
   getReferralSettings,
   getReferrals,
   postReferralSettings,
@@ -26,6 +27,15 @@ export const REFERRAL_QUERIES = {
     }),
 };
 
+/** Keyed `['customer', kind, userId]` like the drawer's other tabs, so a bare `['customer']` invalidation reaches it. */
+export function useCustomerReferralsQuery(userId: number, page: number) {
+  return useQuery({
+    queryKey: ['customer', 'referrals', userId, page],
+    queryFn: ({ signal }) => getCustomerReferrals(userId, page, signal),
+    placeholderData: keepPreviousData,
+  });
+}
+
 export function useReferralListQuery(params: ReferralListParams) {
   return useQuery(REFERRAL_QUERIES.list(params));
 }
@@ -37,7 +47,7 @@ export function useHeldReferralCount(): number {
   return query.data?.counts.on_hold ?? 0;
 }
 
-/** Approve or reject one held referral; every referral list refetches once it settles. */
+/** Approve or reject one held referral; the referral lists, the drawer's tab and its balance refetch once it settles. */
 export function useReferralDecisionMutation() {
   const queryClient = useQueryClient();
 
@@ -45,7 +55,12 @@ export function useReferralDecisionMutation() {
     mutationKey: ['referral', 'decide'],
     mutationFn: ({ id, reason }: { id: number; reason?: AdminRejectReason }) =>
       reason ? rejectReferral(id, reason) : approveReferral(id),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['referral', 'list'] }),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['referral', 'list'] }),
+        queryClient.invalidateQueries({ queryKey: ['customer', 'referrals'] }),
+        queryClient.invalidateQueries({ queryKey: ['customer', 'detail'] }),
+      ]),
   });
 }
 

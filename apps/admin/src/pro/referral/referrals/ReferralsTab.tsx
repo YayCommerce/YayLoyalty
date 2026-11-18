@@ -43,13 +43,13 @@ export function ReferralsTab() {
     <>
       <Card>
         <CardContent className="flex flex-col gap-4">
-          <p className="text-muted-foreground text-sm">
+          <div className="text-muted-foreground text-sm">
             {counts && total !== undefined ? (
               REFERRALS_COPY.description(total, counts.rewarded ?? 0)
             ) : (
               <Skeleton className="h-4 w-48" />
             )}
-          </p>
+          </div>
           <DrawerTabFilters<StatusFilter>
             options={[
               { value: 'all', label: REFERRALS_COPY.all(), count: total },

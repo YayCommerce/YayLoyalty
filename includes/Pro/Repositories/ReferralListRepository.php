@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Pro\Repositories;
 
+use YayLoyalty\Pro\Enums\ReferralStatus;
 use YayLoyalty\Pro\Models\Referral;
 use YayLoyalty\Repositories\CustomerMetaRepository;
 use YayLoyalty\Utils\Table;
@@ -21,7 +22,7 @@ final class ReferralListRepository {
     /**
      * Newest first, or by hold end (oldest first) for the Approvals queue.
      *
-     * @param array{page?: int, per_page?: int, status?: string, search?: string, orderby?: string} $args
+     * @param array{page?: int, per_page?: int, status?: string, search?: string, orderby?: string, advocate?: int} $args
      * @return array{items: array<int, array<string, mixed>>, total: int, page: int, per_page: int}
      */
     public function paginate( array $args ): array {
@@ -35,6 +36,10 @@ final class ReferralListRepository {
 
         if ( '' !== $status ) {
             $where[] = $wpdb->prepare( 'r.status = %s', $status );
+        }
+
+        if ( ! empty( $args['advocate'] ) ) {
+            $where[] = $wpdb->prepare( 'r.advocate_user_id = %d', (int) $args['advocate'] );
         }
 
         if ( '' !== $search ) {
@@ -85,6 +90,47 @@ final class ReferralListRepository {
 
         foreach ( is_array( $rows ) ? $rows : [] as $row ) {
             $counts[ (string) $row['status'] ] = (int) $row['row_count'];
+        }
+
+        return $counts;
+    }
+
+    /**
+     * One advocate's totals: everyone they referred, those rewarded, those still waiting (pending or on hold), the
+     * points paid (the snapshots of rewarded referrals), and the first orders that qualified (on hold or rewarded).
+     *
+     * @return array{referred: int, rewarded: int, waiting: int, points_earned: int, qualified_order_ids: int[]}
+     */
+    public function counts_for_advocate( int $advocate_user_id ): array {
+        global $wpdb;
+
+        $rows   = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare( 'SELECT * FROM `' . esc_sql( Table::name( 'referrals' ) ) . '` WHERE advocate_user_id = %d', $advocate_user_id ), // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the identifier is escaped.
+            ARRAY_A
+        );
+        $counts = [
+            'referred'            => 0,
+            'rewarded'            => 0,
+            'waiting'             => 0,
+            'points_earned'       => 0,
+            'qualified_order_ids' => [],
+        ];
+
+        foreach ( is_array( $rows ) ? $rows : [] as $row ) {
+            $referral = Referral::from_row( $row );
+            $status   = $referral->get_status();
+            ++$counts['referred'];
+
+            if ( ReferralStatus::REWARDED === $status ) {
+                ++$counts['rewarded'];
+                $counts['points_earned'] += (int) ( $referral->get_terms()['advocate_points'] ?? 0 );
+            } elseif ( ReferralStatus::PENDING === $status || ReferralStatus::ON_HOLD === $status ) {
+                ++$counts['waiting'];
+            }
+
+            if ( ( ReferralStatus::REWARDED === $status || ReferralStatus::ON_HOLD === $status ) && null !== $referral->get_first_order_id() ) {
+                $counts['qualified_order_ids'][] = $referral->get_first_order_id();
+            }
         }
 
         return $counts;

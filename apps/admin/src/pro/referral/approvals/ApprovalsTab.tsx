@@ -97,9 +97,9 @@ export function ApprovalsTab() {
     <>
       <Card>
         <CardContent className="flex flex-col gap-4">
-          <p className="text-muted-foreground text-sm">
+          <div className="text-muted-foreground text-sm">
             {held === undefined ? <Skeleton className="h-4 w-64" /> : APPROVALS_COPY.description(held)}
-          </p>
+          </div>
 
           {canAct && chosen.length > 0 && (
             <div className="flex items-center gap-2">

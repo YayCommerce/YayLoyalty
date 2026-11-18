@@ -63,6 +63,48 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
     }
 
     /**
+     * The member's referral code, created on first use: 8 characters with no look-alikes, never their name.
+     * A collision on the unique column, or another request assigning first, is retried by reading again.
+     *
+     * @throws QueryException When no code could be stored.
+     */
+    public function assign_referral_code( int $user_id ): string {
+        global $wpdb;
+
+        $this->ensure_row( $user_id );
+        $table = esc_sql( $this->table() );
+
+        for ( $attempt = 0; $attempt < 6; $attempt++ ) {
+            $code = $wpdb->get_var( $wpdb->prepare( "SELECT referral_code FROM `{$table}` WHERE user_id = %d", $user_id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the plugin's own table; the identifier is escaped.
+
+            if ( is_string( $code ) && '' !== $code ) {
+                return $code;
+            }
+
+            if ( 5 === $attempt ) {
+                break;
+            }
+
+            $suppressed = $wpdb->suppress_errors( true );
+            $wpdb->query( $wpdb->prepare( "UPDATE `{$table}` SET referral_code = %s WHERE user_id = %d AND referral_code IS NULL", self::random_referral_code(), $user_id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the plugin's own table; the identifier is escaped.
+            $wpdb->suppress_errors( $suppressed );
+        }
+
+        throw new QueryException( 'assign referral code', '', esc_html( $this->table() ) );
+    }
+
+    private static function random_referral_code(): string {
+        $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        $code     = '';
+
+        for ( $i = 0; $i < 8; $i++ ) {
+            $code .= $alphabet[ wp_rand( 0, strlen( $alphabet ) - 1 ) ];
+        }
+
+        return $code;
+    }
+
+    /**
      * Ensures a row exists without racing. Create-then-lock, never
      * check-then-create: FOR UPDATE on a missing row takes a gap lock, so two
      * first-touch requests would both insert. The `user_id = user_id`

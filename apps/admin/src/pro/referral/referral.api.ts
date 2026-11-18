@@ -2,6 +2,7 @@ import { api } from '@/lib/api/api';
 import { toDrawerSearchParams, type DrawerPageParams } from '@/lib/api/customer-drawer.api';
 import { ReferralSettings, referralSettingsSchema, ReferralSettingsUpdate } from './referral-settings.schema';
 import type { AdminRejectReason } from './approvals/approvals.copy';
+import { customerReferralsSchema } from './drawer/customer-referrals.schema';
 import { referralListEnvelopeSchema, type ReferralStatus } from './referrals.schema';
 
 export type ReferralListParams = Pick<DrawerPageParams, 'page' | 'perPage' | 'search'> & {
@@ -17,6 +18,13 @@ export async function approveReferral(id: number): Promise<void> {
 /** POST referrals/{id}/reject with one of the admin's reasons. A 409 means it was no longer on hold. */
 export async function rejectReferral(id: number, reason: AdminRejectReason): Promise<void> {
   await api.post(`referrals/${id}/reject`, { json: { reason } });
+}
+
+/** GET customers/{id}/referrals: one customer as advocate, for the drawer. Creates their referral code on first view. */
+export async function getCustomerReferrals(userId: number, page: number, signal?: AbortSignal) {
+  return customerReferralsSchema.parse(
+    await api.get(`customers/${userId}/referrals`, { searchParams: { page: String(page) }, signal }).json(),
+  );
 }
 
 /** GET referrals: a page of referrals plus the store-wide counts per status. */

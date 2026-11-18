@@ -31,6 +31,8 @@ export { ReferralLayout } from './referral/ReferralLayout';
 export { ReferralsTab } from './referral/referrals/ReferralsTab';
 export { ApprovalsTab } from './referral/approvals/ApprovalsTab';
 export { ReferralApprovalsBadge } from './referral/approvals/ReferralApprovalsBadge';
+export { CustomerReferralsTab } from './referral/drawer/CustomerReferralsTab';
+export { CustomerReferralsTrigger } from './referral/drawer/CustomerReferralsTrigger';
 export { ReferralSettingsPage } from './referral/settings/ReferralSettingsPage';
 export { RewardTemplatePicker } from './rewards/add/RewardTemplatePicker';
 export { RewardCreator, RewardEditor } from './rewards/editor/RewardEditor';

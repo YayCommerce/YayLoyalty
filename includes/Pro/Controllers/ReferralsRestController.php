@@ -6,6 +6,7 @@ use YayLoyalty\Controllers\AbstractRestController;
 use YayLoyalty\Pro\Enums\ReferralRejectReason;
 use YayLoyalty\Pro\Enums\ReferralStatus;
 use YayLoyalty\Pro\Models\Referral;
+use YayLoyalty\Pro\Referrals\ReferralCoupon;
 use YayLoyalty\Pro\Referrals\ReferralPayout;
 use YayLoyalty\Pro\Repositories\ReferralListRepository;
 use YayLoyalty\Pro\Repositories\ReferralRepository;
@@ -181,16 +182,17 @@ final class ReferralsRestController extends AbstractRestController {
      * @param array<string, mixed> $item
      * @return array<string, mixed>
      */
-    private static function with_order( array $item ): array {
+    public static function with_order( array $item ): array {
         $order = empty( $item['first_order_id'] ) ? null : wc_get_order( (int) $item['first_order_id'] );
 
         return $item + [
             'first_order'     => $order instanceof \WC_Order ? [
-                'id'       => (int) $order->get_id(),
-                'number'   => (string) $order->get_order_number(),
-                'total'    => wc_format_decimal( $order->get_total() ),
-                'currency' => (string) $order->get_currency(),
-                'edit_url' => $order->get_edit_order_url(),
+                'id'        => (int) $order->get_id(),
+                'number'    => (string) $order->get_order_number(),
+                'total'     => wc_format_decimal( $order->get_total() ),
+                'currency'  => (string) $order->get_currency(),
+                'edit_url'  => $order->get_edit_order_url(),
+                'used_code' => in_array( ReferralCoupon::code_for( (int) $item['id'] ), $order->get_coupon_codes(), true ),
             ] : null,
             'advocate_points' => (int) ( $item['terms']['advocate_points'] ?? 0 ),
         ];

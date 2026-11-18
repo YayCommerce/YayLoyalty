@@ -13,6 +13,7 @@ use YayLoyalty\Pro\Birthday\BirthdayHandler;
 use YayLoyalty\Pro\Birthday\BirthdayRunner;
 use YayLoyalty\Pro\Controllers\CampaignPerformanceRestController;
 use YayLoyalty\Pro\Controllers\CampaignPreviewRestController;
+use YayLoyalty\Pro\Controllers\CustomerReferralsRestController;
 use YayLoyalty\Pro\Controllers\CustomerSegmentsRestController;
 use YayLoyalty\Pro\Controllers\DashboardProRestController;
 use YayLoyalty\Pro\Controllers\ReferralSettingsRestController;
@@ -362,6 +363,7 @@ final class YayLoyaltyPro {
             new LedgerRepository()
         );
         $controllers[] = new ReferralSettingsRestController();
+        $controllers[] = new CustomerReferralsRestController( new ReferralListRepository(), new CustomerRepository() );
         $controllers[] = new ReferralsRestController( new ReferralListRepository(), new ReferralRepository(), new ReferralPayout( new ReferralRepository() ) );
         $controllers[] = new StoreLedgerRestController(
             new StoreLedgerRepository( new LedgerRepository() ),
