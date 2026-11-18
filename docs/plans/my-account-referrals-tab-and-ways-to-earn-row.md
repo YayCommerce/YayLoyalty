@@ -1,7 +1,7 @@
 ---
 id: P-6
 title: My Account Referrals tab and Ways to earn row
-status: in-progress
+status: done
 from: BS-3
 roadmap: R-4
 design: UX-2

@@ -11,3 +11,4 @@ Goal: Customers earn points for referring friends who order (1.1.0).
 - target: 1.1.0
 - note: Scope phased 2026-11-17 from the referral wireframe (1a-1g): 1.1.0 is the core slice in BS-3 'Revised' and UX-2; the report, landing page/sharing, fraud flags, emails and Lite upsell are R-10..R-14
 - started: 2026-11-17
+- built: 2026-11-18
