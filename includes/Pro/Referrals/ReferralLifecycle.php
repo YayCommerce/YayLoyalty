@@ -3,6 +3,7 @@ namespace YayLoyalty\Pro\Referrals;
 
 use YayLoyalty\Engine\Earning\Listeners\ListenerGuard;
 use YayLoyalty\Engine\Points\ContextFactory;
+use YayLoyalty\Pro\Models\Referral;
 use YayLoyalty\Pro\Repositories\ReferralRepository;
 use YayLoyalty\Utils\CurrencyRate;
 use YayLoyalty\Utils\Dates;
@@ -14,8 +15,11 @@ final class ReferralLifecycle {
 
     private ReferralRepository $referrals;
 
-    public function __construct( ReferralRepository $referrals ) {
+    private ReferralPayout $payout;
+
+    public function __construct( ReferralRepository $referrals, ReferralPayout $payout ) {
         $this->referrals = $referrals;
+        $this->payout    = $payout;
     }
 
     /** Hooked on plugins_loaded. */
@@ -62,7 +66,13 @@ final class ReferralLifecycle {
             return;
         }
 
-        $this->referrals->hold( (int) $referral->get_id(), $order_id, Dates::offset( (int) ( $terms['hold_days'] ?? 0 ) * DAY_IN_SECONDS ) );
+        $hold_days = (int) ( $terms['hold_days'] ?? 0 );
+        $held      = $this->referrals->hold( (int) $referral->get_id(), $order_id, Dates::offset( $hold_days * DAY_IN_SECONDS ) );
+        $referral  = $held && 0 === $hold_days ? $this->referrals->find( (int) $referral->get_id() ) : null;
+
+        if ( $referral instanceof Referral ) {
+            $this->payout->pay( $referral );
+        }
     }
 
     /** The order's subtotal as the cart showed it when the minimum was checked: with line tax when the cart displays prices with tax. */

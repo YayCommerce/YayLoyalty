@@ -58,6 +58,16 @@ final class ReferralRepository extends AbstractRepository {
     }
 
     /**
+     * Marks a held referral paid.
+     *
+     * @return bool False when it was no longer on hold.
+     * @throws QueryException When the write fails.
+     */
+    public function mark_rewarded( int $id ): bool {
+        return $this->transition( $id, ReferralStatus::ON_HOLD, [ 'status' => ReferralStatus::REWARDED ] );
+    }
+
+    /**
      * Rejects a referral that is still in $from.
      *
      * @return bool False when the referral had already moved on.

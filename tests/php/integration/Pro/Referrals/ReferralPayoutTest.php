@@ -2,11 +2,17 @@
 namespace YayTests\Integration\Pro\Referrals;
 
 use WP_UnitTestCase;
+use YayLoyalty\Engine\Earning\PendingPoints;
+use YayLoyalty\Engine\Earning\ProgramGate;
+use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Pro\Enums\ReferralRejectReason;
 use YayLoyalty\Pro\Enums\ReferralStatus;
 use YayLoyalty\Pro\Models\Referral;
+use YayLoyalty\Pro\Referrals\ReferralPayout;
 use YayLoyalty\Pro\Referrals\ReferralSettings;
 use YayLoyalty\Pro\Repositories\ReferralRepository;
+use YayLoyalty\Repositories\CustomerRepository;
+use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Table;
 
@@ -71,6 +77,58 @@ final class ReferralPayoutTest extends WP_UnitTestCase {
 		$this->complete_order( 60.0, 'friend@example.test' );
 
 		$this->assertSame( ReferralStatus::PENDING, $this->referral()->get_status() );
+	}
+
+	public function test_a_zero_day_hold_pays_at_once_without_touching_the_friends_order_points() {
+		global $wpdb;
+		$wpdb->query( 'DELETE FROM `' . esc_sql( Table::name( 'referrals' ) ) . '`' ); // phpcs:ignore WordPress.DB
+		$this->referral_id = $this->refer( 0 );
+		$before            = $this->balance( $this->advocate_id );
+
+		$order_id = $this->complete_order( 60.0, 'friend@example.test' );
+
+		$this->assertSame( ReferralStatus::REWARDED, $this->referral()->get_status() );
+		$this->assertSame( $before + 1000, $this->balance( $this->advocate_id ) );
+		$this->assertNotSame( '1000', (string) wc_get_order( $order_id )->get_meta( PendingPoints::META_EARNED ) );
+
+		$rows = ( new LedgerRepository() )->earn_rows_for_order( $order_id );
+		$ours = array_values( array_filter( $rows, static fn( $row ): bool => LedgerSource::REFERRAL === $row->get_source() ) );
+		$this->assertCount( 1, $ours );
+		$this->assertSame( $this->advocate_id, $ours[0]->get_user_id() );
+	}
+
+	public function test_paying_twice_pays_once() {
+		$this->complete_order( 60.0, 'friend@example.test' );
+		$payout = new ReferralPayout( new ReferralRepository() );
+		$before = $this->balance( $this->advocate_id );
+
+		$this->assertSame( ReferralStatus::REWARDED, $payout->pay( $this->referral() ) );
+		$this->assertSame( ReferralStatus::REWARDED, $payout->pay( $this->referral() ) );
+		$this->assertSame( $before + 1000, $this->balance( $this->advocate_id ) );
+	}
+
+	public function test_a_referral_rejected_after_it_was_loaded_is_not_paid() {
+		$this->complete_order( 60.0, 'friend@example.test' );
+		$stale  = $this->referral();
+		$before = $this->balance( $this->advocate_id );
+		( new ReferralRepository() )->reject( $this->referral_id, ReferralRejectReason::REFUNDED_DURING_HOLD, ReferralStatus::ON_HOLD );
+
+		$this->assertSame( ReferralStatus::REJECTED, ( new ReferralPayout( new ReferralRepository() ) )->pay( $stale ) );
+		$this->assertSame( $before, $this->balance( $this->advocate_id ) );
+	}
+
+	public function test_a_blocking_gate_leaves_the_referral_on_hold() {
+		$this->complete_order( 60.0, 'friend@example.test' );
+		update_user_meta( $this->advocate_id, ProgramGate::META_OPTED_OUT, 1 );
+
+		$this->assertSame( ReferralStatus::ON_HOLD, ( new ReferralPayout( new ReferralRepository() ) )->pay( $this->referral() ) );
+		$this->assertSame( ReferralStatus::ON_HOLD, $this->referral()->get_status() );
+	}
+
+	protected function balance( int $user_id ): int {
+		$customer = ( new CustomerRepository() )->find_by_user_id( $user_id );
+
+		return null === $customer ? 0 : $customer->get_balance();
 	}
 
 	protected function refer( int $hold_days ): int {
