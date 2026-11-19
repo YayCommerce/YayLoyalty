@@ -52,18 +52,18 @@ export function ToolsImportCard() {
             fileName={state.fileName}
             rows={state.rows}
             progress={state.step === 'applying' ? { done: state.done, total: state.total } : undefined}
-            onImport={() => void apply()}
+            onImport={(includeEarlier) => void apply(includeEarlier)}
             onCancel={reset}
           />
         ) : null}
 
         {state.step === 'applied' ? (
           <>
-            <Alert variant={state.failed > 0 ? 'warning' : 'outline'}>
-              <AlertDescription>
-                {state.failed > 0
-                  ? copy.importPartial(state.imported, state.failed)
-                  : copy.importDone(state.imported, state.points)}
+            <Alert variant={state.refused + state.failed + state.unconfirmed > 0 ? 'warning' : 'outline'}>
+              <AlertDescription className="flex flex-col gap-1">
+                {copy.appliedSummary(state).map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
               </AlertDescription>
             </Alert>
             <div>

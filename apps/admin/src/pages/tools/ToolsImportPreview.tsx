@@ -6,10 +6,11 @@ import { formatPoints } from '@/lib/helpers/points.helper';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { PreviewRow } from './tools-import.use-import';
+import { isToApply, type PreviewRow } from './tools-import.use-import';
 import * as copy from './tools-page.copy';
 
 type Filter = 'all' | PreviewRow['status'];
@@ -29,23 +30,23 @@ export function ToolsImportPreview({
   rows: PreviewRow[];
   /** Set while applying. */
   progress?: { done: number; total: number };
-  onImport: () => void;
+  onImport: (includeEarlier: boolean) => void;
   onCancel: () => void;
 }) {
   const [filter, setFilter] = useState<Filter>('all');
   const [confirming, setConfirming] = useState(false);
+  const [includeEarlier, setIncludeEarlier] = useState(false);
 
-  const { ready, errors, imported, readyPoints } = useMemo(() => {
-    const ready = rows.filter((row) => row.status === 'ready');
-    const errors = rows.filter((row) => row.status === 'error');
-
-    return {
-      ready,
-      errors,
-      imported: rows.length - ready.length - errors.length,
-      readyPoints: ready.reduce((sum, row) => sum + Number(row.points), 0),
-    };
-  }, [rows]);
+  const { errors, imported, earlier } = useMemo(
+    () => ({
+      errors: rows.filter((row) => row.status === 'error'),
+      imported: rows.filter((row) => row.status === 'already_imported').length,
+      earlier: rows.filter((row) => row.status === 'imported_before').length,
+    }),
+    [rows],
+  );
+  const ready = useMemo(() => rows.filter((row) => isToApply(row, includeEarlier)), [rows, includeEarlier]);
+  const readyPoints = useMemo(() => ready.reduce((sum, row) => sum + Number(row.points), 0), [ready]);
   const shown = useMemo(() => (filter === 'all' ? rows : rows.filter((row) => row.status === filter)), [rows, filter]);
 
   function downloadErrors() {
@@ -68,7 +69,7 @@ export function ToolsImportPreview({
       </div>
 
       <Alert variant="muted">
-        <AlertDescription>{copy.summary(ready.length, readyPoints, errors.length, imported)}</AlertDescription>
+        <AlertDescription>{copy.summary(ready.length, readyPoints, errors.length, imported, earlier)}</AlertDescription>
       </Alert>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -77,6 +78,7 @@ export function ToolsImportPreview({
           <SegmentedItem value="ready">{copy.filterReady()}</SegmentedItem>
           <SegmentedItem value="error">{copy.filterErrors()}</SegmentedItem>
           <SegmentedItem value="already_imported">{copy.filterImported()}</SegmentedItem>
+          {earlier > 0 ? <SegmentedItem value="imported_before">{copy.filterImportedBefore()}</SegmentedItem> : null}
         </Segmented>
         {errors.length > 0 ? (
           <Button variant="link" size="sm" onClick={downloadErrors}>
@@ -121,6 +123,20 @@ export function ToolsImportPreview({
         <p className="text-muted-foreground text-sm">{copy.showingFirst(MAX_SHOWN, shown.length)}</p>
       ) : null}
 
+      {earlier > 0 && !progress ? (
+        <label className="flex items-start gap-2 text-sm">
+          <Checkbox
+            className="mt-0.5"
+            checked={includeEarlier}
+            onCheckedChange={(checked) => setIncludeEarlier(checked === true)}
+          />
+          <span>
+            {copy.includeEarlier(earlier)}
+            <span className="text-muted-foreground block">{copy.includeEarlierHint()}</span>
+          </span>
+        </label>
+      ) : null}
+
       {progress ? (
         <div
           role="progressbar"
@@ -157,7 +173,7 @@ export function ToolsImportPreview({
         cancelLabel={copy.cancel()}
         onConfirm={() => {
           setConfirming(false);
-          onImport();
+          onImport(includeEarlier);
         }}
       />
     </div>
@@ -167,6 +183,9 @@ export function ToolsImportPreview({
 function StatusBadge({ row }: { row: PreviewRow }) {
   if (row.status === 'ready') return <Badge variant="success-soft">{copy.statusReady()}</Badge>;
   if (row.status === 'already_imported') return <Badge variant="dimmed">{copy.statusImported()}</Badge>;
+  if (row.status === 'imported_before') {
+    return <Badge variant="warning-soft">{copy.statusImportedBefore(row.imported_at)}</Badge>;
+  }
 
   return <Badge variant="destructive-soft">✕ {copy.rowError(row.reason)}</Badge>;
 }

@@ -42,7 +42,7 @@ Done means the R-6 acceptance: export all balances; import with preview and per-
 ## Approach
 - **Keys and ledger (Lite):** `IdempotencyKey::for_import( user, import_id )`. `LedgerService::import( user, points, import_id, note, actor_id ): Outcome` writes an `ADJUST` row (lifetime moves with the balance, BS-5 decision) with source `import`, reference `import:<id>`, under `write_keyed()`. Negative rows are allowed, but never past zero: the balance is checked under the lock, and the row is skipped with reason `would_go_negative`.
 - **REST (Lite), `ToolsImportRestController`, cap `run_tools`:**
-  - `POST tools/import/preview` takes `{ import_id, rows: [{ row, email, points, note? }] }` (≤ 500 rows). It returns per-row `{ row, status: ready|already_imported|error, reason?, user_id?, name?, balance?, balance_after? }`. Emails are matched exactly with `get_user_by( 'email' )`. Already imported means the import key exists (`LedgerRepository::find_by_idempotency_key()`). Duplicate emails in a file are caught client-side, across chunks.
+  - `POST tools/import/preview` takes `{ import_id, rows: [{ row, email, points, note? }] }` (≤ 500 rows). It returns per-row `{ row, status: ready|already_imported|imported_before|error, imported_at?, reason?, user_id?, name?, balance?, balance_after? }`. Emails are matched exactly with `get_user_by( 'email' )`. Already imported means the import key exists (`LedgerRepository::find_by_idempotency_key()`). Duplicate emails in a file are caught client-side, across chunks.
   - `POST tools/import/apply` takes the same body (≤ 100 rows, only rows the preview marked ready) and returns per-row outcome `{ row, status: imported|duplicate|skipped|error, reason? }`. One failing row never rolls back the others: apply runs through `exec_self_committing()` (no outer transaction), not `exec_write()`, so each row's `LedgerService::import()` is its own top-level transaction and commits by itself (no outer transaction holding every customer's lock, and no deadlock undoing rows already reported imported).
   - The default note is "Imported from {file name}" (the client sends `file_name`, ≤ 100 chars, sanitized).
 - **SPA (Lite), UX-3:** route `#/tools` guarded by `CAP.RUN_TOOLS`, and a `HeaderMenu` item. `pages/tools/` holds:
@@ -94,7 +94,7 @@ Done means the R-6 acceptance: export all balances; import with preview and per-
 - `yayh code unused dev` → exit 0
 
 ## Risks
-- Open: BL-19 Should Import balances warn about customers already imported from an earlier, different file? (default: no warning; only the same rows are recognised, an edited file is a new import)
+- Settles: BL-19 decided "Yes: preview flags a customer with a row from another import as imported_before, left out unless the merchant ticks them in"
 - **Wrong money applied in bulk:** the preview shows every row's balance before and after, a confirm dialog states the total, and the key makes retries and re-uploads safe. Rollback: an import's rows are findable by `source='import' AND reference_id=<id>`, and a counter-import CSV with negated points reverses them (a new file, so a new id).
 - **Hash collision between two different files:** 53 bits, and the key also holds the user id. A collision would show rows as "Already imported" in the preview, so it's visible, never silent.
 - **Long imports and timeouts:** 100 rows per apply request, each row in its own savepoint. A timed-out chunk is retried by re-uploading the file, and done rows return `duplicate`.

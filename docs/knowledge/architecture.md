@@ -1,7 +1,7 @@
 ---
 area: architecture
 updated: 2026-11-19
-updated_ref: 27cb60c
+updated_ref: b45b3f3
 covers: [yayloyalty.php, YayLoyaltyPluginAdapter.php, includes/YayLoyalty.php, includes/Access/, includes/Database/, includes/Models/, includes/Repositories/, includes/Services/, includes/Controllers/, includes/Engine/, includes/Enums/, includes/Pro/YayLoyaltyPro.php, includes/Pro/Referrals/, includes/Pro/Repositories/ReferralRepository.php]
 ---
 
@@ -86,7 +86,7 @@ Namespace `yayloyalty/v1`. Every route's `permission_callback` is `$this->requir
 | MANAGE_CAMPAIGNS | `campaigns`, `campaigns/reorder`, `campaigns/{id}` |
 | MANAGE_REWARDS | `rewards`, `rewards/reorder`, `rewards/{id}` |
 | MANAGE_SETTINGS | settings, design (`reset`, `preview`), emails writes; `setup`, `setup/dismiss` |
-| RUN_TOOLS | `tools/import/preview` (read only), `tools/import/apply` (`ToolsImportRestController`; each row its own transaction, through `BaseRestController::exec_self_committing()`, so one row never undoes another; args in `Controllers/Schemas/ToolsImportRouteArgs.php`) |
+| RUN_TOOLS | `tools/import/preview` (read only; statuses ready, already_imported, imported_before, error), `tools/import/apply` (`ToolsImportRestController`; each row its own transaction, through `BaseRestController::exec_self_committing()`, so one row never undoes another; args in `Controllers/Schemas/ToolsImportRouteArgs.php`) |
 | signed-in shopper | `StorefrontActivityRestController` |
 
 Pro adds controllers through `yayloyalty_rest_controllers` (campaign preview and performance, segments, Pro dashboard, store ledger, `referral/settings`: GET under VIEW, POST under MANAGE_CAMPAIGNS; `referrals` list with search, status and `counts` under VIEW, and `referrals/{id}/approve|reject` under MANAGE_CAMPAIGNS, 409 `yayloyalty_referral_changed` once the referral left `on_hold`; `customers/{id}/referrals` for the drawer under VIEW, which creates a member's missing referral code).

@@ -1,5 +1,5 @@
 import { balanceOf, emailOf, setBalance, userId } from '../fixtures/loyalty';
-import { expect, test } from '../fixtures/test';
+import { expect, test, wp } from '../fixtures/test';
 
 test.describe( 'Tools import', { tag: [ '@flow-tools-import', '@P-8' ] }, () => {
 	let customer: number;
@@ -11,6 +11,8 @@ test.describe( 'Tools import', { tag: [ '@flow-tools-import', '@P-8' ] }, () => 
 	} );
 
 	test.beforeEach( () => {
+		// Earlier runs' import rows would flag these customers as imported from an earlier file.
+		wp( 'db', 'query', `DELETE FROM wp_yayloyalty_ledger WHERE source = 'import' AND user_id IN (${ customer }, ${ admin })` );
 		setBalance( customer, 0 );
 		setBalance( admin, 0 );
 	} );
@@ -49,6 +51,16 @@ test.describe( 'Tools import', { tag: [ '@flow-tools-import', '@P-8' ] }, () => 
 		await expect( page.getByText( '0 ready · 0 points' ) ).toBeVisible();
 		await expect( page.getByText( '2 already imported' ) ).toBeVisible();
 		await expect( page.getByRole( 'button', { name: 'Import 0 rows' } ) ).toBeDisabled();
+		expect( balanceOf( customer ) ).toBe( 100 );
+
+		// An edited copy is a new import: both customers are flagged, and only a tick sends them again.
+		await page.getByRole( 'button', { name: 'Choose another file' } ).click();
+		await page.getByLabel( 'Choose CSV file' ).setInputFiles( { ...file, buffer: Buffer.from( csv.replace( ',40,', ',45,' ) ) } );
+
+		await expect( page.getByText( '2 imported from an earlier file' ) ).toBeVisible();
+		await expect( page.getByRole( 'button', { name: 'Import 0 rows' } ) ).toBeDisabled();
+		await page.getByRole( 'checkbox' ).check();
+		await expect( page.getByRole( 'button', { name: 'Import 2 rows' } ) ).toBeEnabled();
 		expect( balanceOf( customer ) ).toBe( 100 );
 	} );
 } );

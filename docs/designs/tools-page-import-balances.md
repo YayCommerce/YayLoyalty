@@ -66,7 +66,8 @@ Reuses: `Table`, `Badge`, `Segmented` (filter), `Alert`, `downloadCsv` / `toCsv`
 - **Reading/previewing:** the button disabled, "Checking rows… 1,500 of 4,000".
 - **Applying:** a progress bar, "Importing… 600 of 1,204". Leaving the page asks first (`beforeunload`).
 - **Success:** "Imported 1,204 rows (+86,400 points)", and the summary stays with a *Done* button.
-- **Partial failure:** "1,100 imported, 104 failed. Upload the same file again, unchanged, to retry the failed rows."
+- **Imported before:** a customer with a row from another import file shows "Imported before, on {date}" (filter "Imported before"), and is left out unless the merchant ticks "Also import the {n} customers already imported from an earlier file" (hint: leave it off for an edited copy of a file already imported).
+- **Partial failure:** one line per outcome under "Imported {n} rows": rows skipped because the balance changed since the preview and would go below zero; rows that failed ("Upload the same file again, unchanged, to retry them"); and, when the connection drops, rows not confirmed ("Upload the same file again, unchanged: rows that did import are skipped").
 - **Error:** a bad header, or more than 50,000 rows, as an inline `Alert`. A server error goes through `toastApiError`.
 - **No permission:** no menu item, and the route is guarded (404 page as other guarded routes).
 - **Pro in Free:** the same page in both editions. Nothing is Pro.
@@ -85,7 +86,7 @@ The file input is a real `<input type="file" accept=".csv,text/csv">` behind the
 - Unknown emails are errors, and no accounts are created.
 - No customer emails.
 - Imported points follow the store's current expiry rules from the import date.
-- Retry-safe: the import id is a hash of the file's parsed rows, so the same file, even re-saved by a spreadsheet, never applies a row twice. A file whose rows were edited is a new import.
+- Retry-safe: the import id is a hash of the file's parsed rows, so the same file, even re-saved by a spreadsheet, never applies a row twice. A file whose rows were edited is a new import: its customers already imported from another file are flagged and left out unless the merchant ticks them in (BL-19).
 
 ## Acceptance
 - Tools appears for an administrator and not for a shop manager.

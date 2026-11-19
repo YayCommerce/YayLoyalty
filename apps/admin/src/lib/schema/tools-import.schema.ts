@@ -3,8 +3,10 @@ import { z } from 'zod';
 /** Mirrors ToolsImportRestController::preview(), the source of truth. */
 export const importPreviewRowSchema = z.object({
   row: z.number().int(),
-  status: z.enum(['ready', 'already_imported', 'error']),
+  status: z.enum(['ready', 'already_imported', 'imported_before', 'error']),
   reason: z.string().nullable().optional(),
+  /** UTC; when this customer's row from another import was written. */
+  imported_at: z.string().nullable().optional(),
   balance: z.number().int().optional(),
   balance_after: z.number().int().optional(),
 });

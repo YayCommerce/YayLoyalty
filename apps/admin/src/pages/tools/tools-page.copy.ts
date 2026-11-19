@@ -1,5 +1,6 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
+import { formatWPDate } from '@/lib/helpers/format.helper';
 import { formatSignedPoints } from '@/lib/helpers/ledger.helper';
 import { formatCount } from '@/lib/helpers/points.helper';
 import { MAX_IMPORT_ROWS, type ImportCsvError } from './tools-import.csv';
@@ -55,6 +56,11 @@ export const importing = (done: number, total: number) =>
 
 export const statusReady = () => __('Ready', 'yayloyalty');
 export const statusImported = () => __('Already imported', 'yayloyalty');
+export const statusImportedBefore = (importedAt: string | null | undefined) =>
+  importedAt
+    ? /* translators: %s: the date of the earlier import. */
+      sprintf(__('Imported before, on %s', 'yayloyalty'), formatWPDate(importedAt))
+    : __('Imported before', 'yayloyalty');
 
 export function rowError(reason: string | null | undefined): string {
   switch (reason) {
@@ -75,6 +81,7 @@ export const filterAll = () => __('All', 'yayloyalty');
 export const filterReady = () => __('Ready', 'yayloyalty');
 export const filterErrors = () => __('Errors', 'yayloyalty');
 export const filterImported = () => __('Already imported', 'yayloyalty');
+export const filterImportedBefore = () => __('Imported before', 'yayloyalty');
 export const downloadErrors = () => __('Download errors CSV', 'yayloyalty');
 
 export const columnRow = () => __('Row', 'yayloyalty');
@@ -88,7 +95,7 @@ export const columnReason = () => __('Reason', 'yayloyalty');
 export const showingFirst = (shown: number, total: number) =>
   sprintf(__('Showing the first %1$d of %2$d rows.', 'yayloyalty'), shown, total);
 
-export function summary(ready: number, points: number, errors: number, imported: number): string {
+export function summary(ready: number, points: number, errors: number, imported: number, earlier: number): string {
   return [
     /* translators: 1: rows ready to import, 2: their points in total, signed. */
     sprintf(
@@ -100,7 +107,83 @@ export function summary(ready: number, points: number, errors: number, imported:
     sprintf(_n('%d error', '%d errors', errors, 'yayloyalty'), errors),
     /* translators: %d: rows already imported. */
     sprintf(__('%d already imported', 'yayloyalty'), imported),
+    /* translators: %d: rows whose customer was imported from another file. */
+    sprintf(__('%d imported from an earlier file', 'yayloyalty'), earlier),
   ].join('   ');
+}
+
+export const includeEarlier = (count: number) =>
+  sprintf(
+    /* translators: %d: customers already imported from another file. */
+    _n(
+      'Also import the %d customer already imported from an earlier file',
+      'Also import the %d customers already imported from an earlier file',
+      count,
+      'yayloyalty',
+    ),
+    count,
+  );
+export const includeEarlierHint = () =>
+  __(
+    'Leave this off when you upload an edited copy of a file you already imported, or those customers get their points twice.',
+    'yayloyalty',
+  );
+
+export function appliedSummary(outcome: {
+  imported: number;
+  points: number;
+  refused: number;
+  failed: number;
+  unconfirmed: number;
+}): string[] {
+  const lines: string[] = [importDone(outcome.imported, outcome.points)];
+
+  if (outcome.refused > 0) {
+    lines.push(
+      sprintf(
+        /* translators: %d: rows skipped at import. */
+        _n(
+          "%d row skipped: the customer's balance changed since the preview and would go below zero.",
+          "%d rows skipped: the customers' balances changed since the preview and would go below zero.",
+          outcome.refused,
+          'yayloyalty',
+        ),
+        outcome.refused,
+      ),
+    );
+  }
+
+  if (outcome.failed > 0) {
+    lines.push(
+      sprintf(
+        /* translators: %d: rows that failed. */
+        _n(
+          '%d row failed. Upload the same file again, unchanged, to retry it.',
+          '%d rows failed. Upload the same file again, unchanged, to retry them.',
+          outcome.failed,
+          'yayloyalty',
+        ),
+        outcome.failed,
+      ),
+    );
+  }
+
+  if (outcome.unconfirmed > 0) {
+    lines.push(
+      sprintf(
+        /* translators: %d: rows whose result never came back. */
+        _n(
+          "The connection dropped, so %d row wasn't confirmed. Upload the same file again, unchanged: rows that did import are skipped.",
+          "The connection dropped, so %d rows weren't confirmed. Upload the same file again, unchanged: rows that did import are skipped.",
+          outcome.unconfirmed,
+          'yayloyalty',
+        ),
+        outcome.unconfirmed,
+      ),
+    );
+  }
+
+  return lines;
 }
 
 export const cancel = () => __('Cancel', 'yayloyalty');
@@ -123,17 +206,10 @@ export const confirmDescription = (count: number, points: number) =>
   );
 
 /* translators: 1: rows imported, 2: their points in total, signed. */
-export const importDone = (count: number, points: number) =>
+const importDone = (count: number, points: number) =>
   sprintf(
     _n('Imported %1$d row (%2$s points).', 'Imported %1$d rows (%2$s points).', count, 'yayloyalty'),
     count,
     formatSignedPoints(points),
-  );
-export const importPartial = (imported: number, failed: number) =>
-  sprintf(
-    /* translators: 1: rows imported, 2: rows that failed. */
-    __('%1$d imported, %2$d failed. Upload the same file again, unchanged, to retry the failed rows.', 'yayloyalty'),
-    imported,
-    failed,
   );
 export const done = () => __('Done', 'yayloyalty');

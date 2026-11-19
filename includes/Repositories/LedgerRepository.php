@@ -38,6 +38,16 @@ class LedgerRepository extends AbstractRepository {
         return $this->select_entries( '`idempotency_key` = %s', [ $key ], 1 )[0] ?? null;
     }
 
+    /** The user's newest CSV-import row from an import other than $import_id, or null. */
+    public function latest_other_import( int $user_id, int $import_id ): ?LedgerEntry {
+        return $this->select_entries(
+            '`user_id` = %d AND `source` = %s AND `reference_type` = %s AND `reference_id` <> %d',
+            [ $user_id, LedgerSource::IMPORT, ReferenceType::IMPORT, $import_id ],
+            1,
+            true
+        )[0] ?? null;
+    }
+
     /**
      * The guarded insert. A UNIQUE `idempotency_key` collision is an answer
      * here, not a fault, so it comes back as null instead of an exception.

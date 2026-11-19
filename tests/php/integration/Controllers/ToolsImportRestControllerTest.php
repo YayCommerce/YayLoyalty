@@ -73,6 +73,16 @@ final class ToolsImportRestControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 100, $this->balance() );
 	}
 
+	public function test_preview_flags_a_customer_imported_from_another_file() {
+		$this->post( 'apply', [ $this->row( 2, 'ann@example.com', '100' ) ] );
+
+		$preview = $this->post( 'preview', [ $this->row( 2, 'ann@example.com', '100' ) ], self::IMPORT_ID + 1 )->get_data()['rows'][0];
+
+		$this->assertSame( 'imported_before', $preview['status'] );
+		$this->assertNotEmpty( $preview['imported_at'] );
+		$this->assertSame( 200, $preview['balance_after'] );
+	}
+
 	public function test_a_row_refused_inside_the_ledger_does_not_undo_the_row_before_it() {
 		self::factory()->user->create( [ 'user_email' => 'bob@example.com' ] );
 
@@ -84,13 +94,13 @@ final class ToolsImportRestControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 100, $this->balance() );
 	}
 
-	private function post( string $action, array $rows ): \WP_REST_Response {
+	private function post( string $action, array $rows, int $import_id = self::IMPORT_ID ): \WP_REST_Response {
 		$request = new WP_REST_Request( 'POST', '/yayloyalty/v1/tools/import/' . $action );
 		$request->set_header( 'content-type', 'application/json' );
 		$request->set_body(
 			(string) wp_json_encode(
 				[
-					'import_id' => self::IMPORT_ID,
+					'import_id' => $import_id,
 					'file_name' => 'old-plugin.csv',
 					'rows'      => $rows,
 				]

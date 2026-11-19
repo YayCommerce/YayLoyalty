@@ -24,7 +24,7 @@ export type ImportState =
   | { step: 'previewing'; done: number; total: number }
   | ({ step: 'previewed' } & Previewed)
   | ({ step: 'applying'; done: number; total: number } & Previewed)
-  | { step: 'applied'; imported: number; points: number; failed: number }
+  | { step: 'applied'; imported: number; points: number; refused: number; failed: number; unconfirmed: number }
   | { step: 'failed'; message: string };
 
 /** Read → chunked preview → chunked apply, for Tools → Import balances. */
@@ -92,14 +92,17 @@ export function useToolsImport() {
     });
   }
 
-  async function apply() {
+  /** `includeEarlier` also imports the customers already imported from another file. */
+  async function apply(includeEarlier: boolean) {
     if (state.step !== 'previewed') return;
 
     const { importId, fileName, rows } = state;
-    const ready = rows.filter((row) => row.status === 'ready');
+    const ready = rows.filter((row) => isToApply(row, includeEarlier));
     let imported = 0;
     let points = 0;
+    let refused = 0;
     let failed = 0;
+    let unconfirmed = 0;
 
     for (let i = 0; i < ready.length; i += APPLY_CHUNK) {
       const chunk = ready.slice(i, i + APPLY_CHUNK);
@@ -113,13 +116,15 @@ export function useToolsImport() {
           if (result.status === 'imported') {
             imported++;
             points += Number(byRow.get(result.row)?.points ?? 0);
+          } else if (result.reason === 'would_go_negative') {
+            refused++;
           } else if (result.status !== 'duplicate') {
             failed++;
           }
         });
       } catch {
-        // The rest are counted failed: re-uploading the same file retries exactly them, the key skips the rest.
-        failed += ready.length - i;
+        // The server may have written some of this chunk before the reply was lost; re-uploading the same file sorts it out.
+        unconfirmed = ready.length - i;
         break;
       }
     }
@@ -127,10 +132,15 @@ export function useToolsImport() {
     // Even a partly failed import moved real balances.
     void queryClient.invalidateQueries({ queryKey: ['customer'] });
     void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-    setState({ step: 'applied', imported, points, failed });
+    setState({ step: 'applied', imported, points, refused, failed, unconfirmed });
   }
 
   return { state, choose, apply, reset: () => setState({ step: 'idle' }) };
+}
+
+/** Whether apply() sends this row: a ready row, or one imported before from another file when the merchant asked. */
+export function isToApply(row: PreviewRow, includeEarlier: boolean): boolean {
+  return row.status === 'ready' || (includeEarlier && row.status === 'imported_before');
 }
 
 function toInput(rows: readonly ImportRowInput[]): ImportRowInput[] {

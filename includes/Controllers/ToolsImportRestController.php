@@ -66,7 +66,7 @@ final class ToolsImportRestController extends AbstractRestController {
         );
     }
 
-    /** @return array{rows: array[]} One result per row: ready, already_imported or error, with the balance before and after. */
+    /** @return array{rows: array[]} One result per row: ready, already_imported, imported_before (this customer has a row from another import) or error, with the balance before and after. */
     public function preview( \WP_REST_Request $request ): array {
         $import_id = (int) $request['import_id'];
         $results   = [];
@@ -88,9 +88,12 @@ final class ToolsImportRestController extends AbstractRestController {
                 continue;
             }
 
+            $earlier = $imported ? null : $this->ledger->latest_other_import( $checked['user_id'], $import_id );
+
             $results[] = [
                 'row'           => $checked['row'],
-                'status'        => $imported ? 'already_imported' : 'ready',
+                'status'        => $imported ? 'already_imported' : ( null !== $earlier ? 'imported_before' : 'ready' ),
+                'imported_at'   => null !== $earlier ? $earlier->get_created_at() : null,
                 'balance'       => $balance,
                 'balance_after' => $imported ? $balance : $balance + $checked['points'],
             ];
