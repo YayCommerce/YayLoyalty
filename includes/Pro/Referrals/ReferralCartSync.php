@@ -19,6 +19,9 @@ final class ReferralCartSync {
 
     private ReferralCoupon $coupon;
 
+    /** True while WooCommerce applies an individual-use coupon and removes the others. */
+    private bool $replacing = false;
+
     public function __construct( ReferralRepository $referrals, ReferralCoupon $coupon ) {
         $this->referrals = $referrals;
         $this->coupon    = $coupon;
@@ -29,6 +32,24 @@ final class ReferralCartSync {
         add_action( 'woocommerce_before_calculate_totals', [ $this, 'sync_cart' ], PHP_INT_MAX - 1 );
         add_action( 'woocommerce_check_cart_items', [ $this, 'sync_before_check' ], 0 );
         add_action( 'woocommerce_removed_coupon', [ $this, 'on_removed' ] );
+        add_filter( 'woocommerce_apply_individual_use_coupon', [ $this, 'on_individual_use_apply' ] );
+        add_action( 'woocommerce_applied_coupon', [ $this, 'on_applied' ] );
+    }
+
+    /**
+     * WooCommerce is about to remove every other coupon for an individual-use one; that removal is not the friend's.
+     *
+     * @param mixed $coupons_to_keep
+     * @return mixed
+     */
+    public function on_individual_use_apply( $coupons_to_keep ) {
+        $this->replacing = true;
+
+        return $coupons_to_keep;
+    }
+
+    public function on_applied(): void {
+        $this->replacing = false;
     }
 
     public function sync_cart( \WC_Cart $cart ): void {
@@ -61,7 +82,7 @@ final class ReferralCartSync {
     public function on_removed( $code ): void {
         $id = ReferralCoupon::referral_id( $code );
 
-        if ( null !== $id && function_exists( 'WC' ) && WC()->session ) {
+        if ( null !== $id && ! $this->replacing && function_exists( 'WC' ) && WC()->session ) {
             WC()->session->set( self::DECLINED_SESSION_KEY, $id );
         }
     }
