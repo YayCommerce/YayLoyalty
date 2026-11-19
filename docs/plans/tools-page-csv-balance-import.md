@@ -26,12 +26,13 @@ Done means the R-6 acceptance: export all balances; import with preview and per-
 - Rebuilding bulk adjust or export. They exist on Customers (`apps/admin/src/pages/customers/customers-page.bulk-actions.ts`, `customers-page.export.ts`), and Tools links to or reuses them.
 - "Set balance to" mode, creating accounts for unknown emails, emailing customers, carrying old expiry dates (BS-5 decisions; UX-3 Decisions).
 - Background processing, or files over 50,000 rows (BS-5 option C).
+- Exporting more than 50,000 customers from Tools (BL-20; the Customers export has the same cap).
 - Letting shop managers import. `run_tools` stays administrator-only (`includes/Access/Capabilities.php:43-51`).
 
 ## Findings
 1. **An import key can't be composed today.** `IdempotencyKey::compose()` accepts a non-redeem, non-expire key only with a `CampaignTrigger` qualifier (`includes/Engine/Earning/IdempotencyKey.php:47-53`), and `LedgerService::adjust()` writes no key at all (`includes/Services/LedgerService.php:80-104`). T1 adds `IdempotencyKey::for_import()` (`adjust:<user>:import:<import id>:import`), and T2 adds `LedgerService::import()` on the existing private `write_keyed()` (`:302-334`), which already does the duplicate check under the customer lock.
 2. **`ReferenceType::IMPORT` and `LedgerSource::IMPORT` exist and are unused** (`includes/Enums/ReferenceType.php:38`, `LedgerSource.php:20`). The admin ledger already labels source `import` (`apps/admin/src/lib/helpers/ledger.helper.ts:65`). No enum or schema change is needed.
-3. **The import id must be a positive integer** (`IdempotencyKey.php:45`, `ledger.reference_id bigint unsigned`). A 53-bit hash of the file's text, made in the browser, gives one id per file. That makes a retry or a re-upload of the same file `DUPLICATE` per row with no stored import record. This replaces BS-5's "uuid at preview", with the same behaviour plus re-upload safety.
+3. **The import id must be a positive integer** (`IdempotencyKey.php:45`, `ledger.reference_id bigint unsigned`). A 53-bit hash of the file's parsed rows, made in the browser, gives one id per file that survives a spreadsheet re-save. That makes a retry or a re-upload of the same file `DUPLICATE` per row with no stored import record. This replaces BS-5's "uuid at preview", with the same behaviour plus re-upload safety.
 4. **No new `LedgerService` construction site.** `Engine/RestAPI.php:58` builds the one REST instance and hands it to controllers (`:82`). The new controller takes it the same way, so hard rule 3's list of five holds.
 5. **Adjust ignores earning gates** (no `ProgramGate` in `adjust()`). Import does the same, so opted-out or excluded-role customers are imported like any other. This differs from BS-5's proposed "opted out" error: merchant intent wins, as with a manual adjustment.
 6. **`run_tools` is declared and granted to administrators, but no route uses it** (`includes/Access/Capabilities.php:18,44`; `apps/admin/src/lib/access.tsx:23`). Tools uses it for the route, the menu item and both REST routes.
@@ -49,7 +50,7 @@ Done means the R-6 acceptance: export all balances; import with preview and per-
   - the import flow: parse → chunked preview → table and filters → confirm → chunked apply
   - a small RFC 4180 CSV parser and the file-hash helper, both pure and js-tested
   - Export reuses the Customers export functions; *Go to Customers* is a link.
-- **Compatibility:** PHP 7.4 (the 53-bit id fits a 64-bit PHP int; on 32-bit PHP the REST arg validation rejects the id above `PHP_INT_MAX`, and the page says the import can't run). No storage, option or migration. Downgrade-safe: rows are ordinary ledger rows.
+- **Compatibility:** PHP 7.4 (the 53-bit id fits a 64-bit PHP int; 32-bit PHP isn't supported). No storage, option or migration. Downgrade-safe: rows are ordinary ledger rows.
 
 ## Tasks
 - [x] T1 Import idempotency key — `includes/Engine/Earning/IdempotencyKey.php`, `tests/php/unit/Engine/Earning/IdempotencyKeyTest.php` [risk: 3]
@@ -63,7 +64,7 @@ Done means the R-6 acceptance: export all balances; import with preview and per-
   - Callers: `ToolsImportRestController` → `RestAPI::controllers()`; `preview()` → route `POST tools/import/preview`; `apply()` → route `POST tools/import/apply`
 - [x] T4 SPA import plumbing: CSV parsing, file hash, API calls and zod schemas — `apps/admin/src/pages/tools/tools-import.csv.ts` (new), `apps/admin/src/lib/api/tools.api.ts` (new), `apps/admin/src/lib/schema/tools-import.schema.ts` (new), `tests/js/lib/tools-import.csv.test.ts` (new)
   - Reuse: `api` (ky client, `lib/api/api.ts`), zod `.parse` pattern of `customer.api.ts`, `settleInChunks()` shape for sequential chunks (`lib/helpers/settle-in-chunks.helper.ts`); none for parsing, new `parseImportCsv()` because the SPA only writes CSV (`csv.helper.ts`) and a parser dependency is heavier than ~60 lines
-  - Callers: `parseImportCsv()`, `importIdForFile()`, `previewImport()`, `applyImport()` → `useToolsImport()` (T5)
+  - Callers: `parseImportCsv()`, `importIdForRows()`, `previewImport()`, `applyImport()` → `useToolsImport()` (T5)
 - [x] T5 Tools page UI: the three cards, import preview table with filters and errors CSV, confirm and progress (UX-3 "Tools page", "Import preview") — `apps/admin/src/pages/tools/ToolsPage.tsx` (new), `apps/admin/src/pages/tools/ToolsImportCard.tsx` (new), `apps/admin/src/pages/tools/ToolsImportPreview.tsx` (new), `apps/admin/src/pages/tools/tools-import.use-import.ts` (new), `apps/admin/src/pages/tools/tools-page.copy.ts` (new), `apps/admin/src/router.tsx`, `apps/admin/src/components/layout/HeaderMenu.tsx`
   - Reuse: `PageLayout`, `Card`, `Table`, `Badge`, `Segmented`, `Alert`, `Dialog`, `Button` (`components/ui/`); `guarded(CAP.RUN_TOOLS, …)` and `CustomMenuItem`; `useCsvExport` + `fetchAllMatchingCustomers` + `exportCustomersToCsv`; `toCsv` / `downloadCsv`; `toastApiError`
   - Callers: `ToolsPage` → route `tools`; `ToolsImportCard`, `ToolsImportPreview` → `ToolsPage`; `useToolsImport()` → `ToolsImportCard`
@@ -73,7 +74,7 @@ Done means the R-6 acceptance: export all balances; import with preview and per-
   - Reuse: admin login and SPA helpers of `tests/e2e/specs/customer-adjust-points.spec.ts`
   - Callers: n/a (test)
 
-**Tests:** [unit] IdempotencyKeyTest::for_import_composes_adjust_import_key (tests/php/unit/Engine/Earning/IdempotencyKeyTest.php) — the key's shape, rejecting a zero id, and that other adjust qualifiers stay rejected; [integration] LedgerServiceTest::import_* (tests/php/integration/Services/LedgerServiceTest.php) — writes one ADJUST/import row, moves balance and lifetime, opens a lot, the same key twice is DUPLICATE, a debit past zero is skipped; [integration] ToolsImportRestControllerTest (tests/php/integration/Controllers/ToolsImportRestControllerTest.php) — 403 without `run_tools`, preview statuses (ready, unknown email, zero or non-integer points, already imported), apply writes only valid rows and one bad row doesn't undo the rest; [js] tools-import.csv (tests/js/lib/tools-import.csv.test.ts) — quoted fields, BOM, CRLF, missing columns, duplicate emails, the same text gives the same import id
+**Tests:** [unit] IdempotencyKeyTest::for_import_composes_adjust_import_key (tests/php/unit/Engine/Earning/IdempotencyKeyTest.php) — the key's shape, rejecting a zero id, and that other adjust qualifiers stay rejected; [integration] LedgerServiceTest::import_* (tests/php/integration/Services/LedgerServiceTest.php) — writes one ADJUST/import row, moves balance and lifetime, opens a lot, the same key twice is DUPLICATE, a debit past zero is skipped; [integration] ToolsImportRestControllerTest (tests/php/integration/Controllers/ToolsImportRestControllerTest.php) — 403 without `run_tools`, preview statuses (ready, unknown email, zero or non-integer points, already imported), apply writes only valid rows and one bad row doesn't undo the rest; [js] tools-import.csv (tests/js/lib/tools-import.csv.test.ts) — quoted fields, BOM, CRLF, missing columns, duplicate emails, the same rows give the same import id, a re-saved file keeps it
 
 **E2E:** Tools import: a 3-row CSV previews 2 ready and 1 error, applying shows 2 imported, re-uploading the same file shows 2 already imported and applies nothing
 
@@ -93,6 +94,7 @@ Done means the R-6 acceptance: export all balances; import with preview and per-
 - `yayh code unused dev` → exit 0
 
 ## Risks
+- Open: BL-19 Should Import balances warn about customers already imported from an earlier, different file? (default: no warning; only the same rows are recognised, an edited file is a new import)
 - **Wrong money applied in bulk:** the preview shows every row's balance before and after, a confirm dialog states the total, and the key makes retries and re-uploads safe. Rollback: an import's rows are findable by `source='import' AND reference_id=<id>`, and a counter-import CSV with negated points reverses them (a new file, so a new id).
 - **Hash collision between two different files:** 53 bits, and the key also holds the user id. A collision would show rows as "Already imported" in the preview, so it's visible, never silent.
 - **Long imports and timeouts:** 100 rows per apply request, each row in its own savepoint. A timed-out chunk is retried by re-uploading the file, and done rows return `duplicate`.

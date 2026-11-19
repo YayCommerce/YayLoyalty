@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { isAbortError } from '@/lib/api/api';
 import { APPLY_CHUNK, applyImport, ImportRowInput, PREVIEW_CHUNK, previewImport } from '@/lib/api/tools.api';
-import { ImportCsvRow, importIdForFile, parseImportCsv } from './tools-import.csv';
+import { ImportCsvRow, importIdForRows, parseImportCsv } from './tools-import.csv';
 import { csvError, previewFailed, readFailed } from './tools-page.copy';
 
 /** One file row as the preview table shows it: the CSV's values with the server's verdict. */
@@ -62,7 +62,7 @@ export function useToolsImport() {
       return;
     }
 
-    importIdRef.current = importIdForFile(text);
+    importIdRef.current = importIdForRows(parsed.rows);
     const toCheck = parsed.rows.filter((row) => !row.duplicate);
     const verdicts = new Map<number, Omit<PreviewRow, 'email' | 'points' | 'note'>>();
 

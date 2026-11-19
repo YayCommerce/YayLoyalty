@@ -109,6 +109,7 @@ final class LedgerServiceTest extends WP_UnitTestCase {
 		$this->assertSame( 20, $this->balance() );
 		$this->assertSame( Outcome::AWARDED, $this->ledger->import( $this->user_id, -20, 987654322, 'debit to zero', 1 )->get_status() );
 		$this->assertSame( 0, $this->balance() );
+		$this->assertSame( 0, $this->open_lot_points() );
 	}
 
 	private function balance(): int {

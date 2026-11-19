@@ -70,6 +70,7 @@ final class ToolsImportRestController extends AbstractRestController {
                         'type'              => 'string',
                         'maxLength'         => 100,
                         'default'           => '',
+                        'validate_callback' => 'rest_validate_request_arg',
                         'sanitize_callback' => 'sanitize_file_name',
                     ],
                 ],
@@ -102,9 +103,6 @@ final class ToolsImportRestController extends AbstractRestController {
             $results[] = [
                 'row'           => $checked['row'],
                 'status'        => $imported ? 'already_imported' : 'ready',
-                'user_id'       => $checked['user_id'],
-                'name'          => $checked['name'],
-                'points'        => $checked['points'],
                 'balance'       => $balance,
                 'balance_after' => $balance + $checked['points'],
             ];
@@ -131,7 +129,7 @@ final class ToolsImportRestController extends AbstractRestController {
             $note = mb_substr( sanitize_text_field( (string) ( $row['note'] ?? '' ) ), 0, self::NOTE_MAX_LENGTH );
 
             try {
-                $outcome = $this->ledger_service->import( $checked['user_id'], $checked['points'], $import_id, '' !== $note ? $note : $default_note, get_current_user_id() );
+                $outcome = $this->ledger_service->import( $checked['user_id'], $checked['points'], $import_id, '' !== $note ? $note : mb_substr( $default_note, 0, self::NOTE_MAX_LENGTH ), get_current_user_id() );
             } catch ( \Throwable $e ) {
                 Log::error( 'ToolsImport', sprintf( 'import %d row %d failed: %s', $import_id, $checked['row'], $e->getMessage() ) );
                 $results[] = self::error( $checked['row'], 'failed' );
@@ -152,7 +150,7 @@ final class ToolsImportRestController extends AbstractRestController {
      * The row's customer and points, or an error row.
      *
      * @param mixed $row One `rows` item.
-     * @return array{row: int, user_id: int, name: string, points: int}|array{row: int, status: string, reason: string}
+     * @return array{row: int, user_id: int, points: int}|array{row: int, status: string, reason: string}
      */
     private function check( $row ): array {
         $row    = (array) $row;
@@ -171,7 +169,6 @@ final class ToolsImportRestController extends AbstractRestController {
         return [
             'row'     => $number,
             'user_id' => (int) $user->ID,
-            'name'    => (string) $user->display_name,
             'points'  => (int) $points,
         ];
     }

@@ -1,5 +1,4 @@
-/** The most rows one import may hold; Customers' bulk actions stop at the same size. */
-export const MAX_IMPORT_ROWS = 50_000;
+import { MAX_MATCHING_ROWS } from '../customers/customers-page.matching-customers';
 
 export interface ImportCsvRow {
   /** The row's line in the file, the header being 1, so errors point at what the merchant sees. */
@@ -90,16 +89,17 @@ export function parseImportCsv(text: string): ImportCsvResult {
   });
 
   if (rows.length === 0) return { rows: [], error: 'empty' };
-  if (rows.length > MAX_IMPORT_ROWS) return { rows: [], error: 'too_many_rows' };
+  if (rows.length > MAX_MATCHING_ROWS) return { rows: [], error: 'too_many_rows' };
 
   return { rows, error: null };
 }
 
 /**
- * The import's id: a 53-bit hash (cyrb53) of the file's text, never 0. The server keys every row on it,
- * so the same file uploaded again previews as already imported and applies nothing.
+ * The import's id: a 53-bit hash (cyrb53) of the parsed rows, never 0. Rows, not the file's text,
+ * so a file re-saved by a spreadsheet (line endings, quoting, a BOM) keeps its id.
  */
-export function importIdForFile(text: string): number {
+export function importIdForRows(rows: ImportCsvRow[]): number {
+  const text = rows.map((row) => [row.email.toLowerCase(), row.points, row.note].join('\u0000')).join('\n');
   let h1 = 0xdeadbeef;
   let h2 = 0x41c6ce57;
 
