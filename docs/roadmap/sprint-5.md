@@ -1,20 +1,19 @@
 ## Sprint 5 (2027-01-08 → 2027-01-21)
 
-Goal: Social and subscription-renewal earning, and a Tools page for CSV import/export and bulk points (1.1.0).
+Goal: Referral growth: the landing page, sharing and code at checkout, then the overview report with its click funnel.
 
-### R-5 More ways to earn: social shares and subscription renewals
+### R-10 Referral overview report with click funnel
 - status: todo
-- size: M
+- size: L
 - editions: pro
-- why: requested 2026-11-13 for 1.1; the social and renewal triggers are reserved but not offered (CampaignTrigger::SOCIAL, ::RENEWAL)
-- acceptance: A merchant turns on campaigns for following/sharing on social networks and for WooCommerce Subscriptions renewals; customers earn once per action, and a renewal that is refunded takes its points back
-- target: 1.1.0
-- note: reading unconfirmed: could also mean other actions (newsletter sign-up, account anniversary, product purchase of a set category); built from the reserved social and renewal triggers
+- depends: R-4
+- why: requested 2026-11-17 in the referral wireframe (1b): merchants judge the programme by clicks → signups → orders and its revenue against its cost; needs click tracking (BL-5)
+- acceptance: Referral → Overview shows clicks, signups, qualifying and completed orders with conversion rates, referral revenue, programme cost, points paid and cost per customer for a date range, and exports CSV; clicks count once per visitor per day
 
-### R-6 Tools: CSV import/export and bulk point adjustments
+### R-11 Referral landing page, sharing and code at checkout
 - status: todo
-- size: M
-- editions: pro, lite
-- why: requested 2026-11-13 for 1.1; merchants moving from another loyalty plugin need to bring balances in, and adjustments today are one customer at a time
-- acceptance: On a Tools page a merchant exports all balances to CSV, imports a CSV of email and points (with a preview and per-row errors before applying), and adds or removes points for selected customers or a segment with a note, each change landing in the ledger
-- target: 1.1.0
+- size: L
+- editions: pro
+- depends: R-4
+- why: requested 2026-11-17 in the referral wireframe (1e, 1g): a friend should land on a page that explains the offer, advocates share from their phone, and a friend who lost the link can type the code
+- acceptance: A /r/CODE link opens a landing page with the advocate's offer and signup; My Account and the launcher show a referral card with share buttons and the native share sheet; a friend can enter the code at checkout (classic and block) and it overrides the cookie
