@@ -295,10 +295,8 @@ final class YayLoyaltyPro {
     public static function register_trigger_handlers( TriggerRegistry $registry ): void {
         $registry->register( new BirthdayHandler() );
         $registry->register( new SocialHandler() );
-
-        if ( self::has_subscriptions() ) {
-            $registry->register( new RenewalHandler() );
-        }
+        // Unconditional: the registry is built at boot, and the handler checks for WooCommerce Subscriptions itself.
+        $registry->register( new RenewalHandler() );
     }
 
     /** The handlers that spend `fixed_coupon` and `percent_coupon` rewards as virtual coupons on the cart. */

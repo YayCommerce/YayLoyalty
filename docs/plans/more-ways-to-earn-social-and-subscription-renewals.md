@@ -43,7 +43,7 @@ A Pro merchant can create two new campaign kinds. **Social** is "Follow us on In
 - **Renewal (Pro, `includes/Pro/Renewals/`):**
   - `RenewalHandler` is a TriggerHandler: flat `points`, reference `order:<id>`, source `renewal`. It's eligible only when the context's order is a renewal (`wcs_order_contains_renewal()`).
   - `RenewalTriggers` filters `yayloyalty_order_award_triggers`: for a renewal order it appends `renewal`, and drops `purchase` when the campaign that would pay has `replace_purchase: true`.
-  - The trigger, config and handler are registered only when `function_exists( 'wcs_order_contains_renewal' )`. With WCS deactivated, stored renewal campaigns sit inert, like Pro values on Lite.
+  - The trigger is offered and added to an order's award triggers only when `function_exists( 'wcs_order_contains_renewal' )`. The config schema and the handler are always registered (the handler registry is built at boot, possibly before WooCommerce Subscriptions loads; the handler checks for it itself). With WCS deactivated, stored renewal campaigns sit inert, like Pro values on Lite.
   - Config: `points` (int ≥ 0), `replace_purchase` (bool, default false: on top of order points).
 - **Social (Pro, `includes/Pro/Social/`):**
   - `SocialHandler` is a TriggerHandler: flat `points`, reference `social:<campaign id>`. It's eligible only for the campaign named in the context extra `social_campaign_id`.
@@ -63,7 +63,7 @@ A Pro merchant can create two new campaign kinds. **Social** is "Follow us on In
 - [x] T2 Renewal handler and award triggers — `includes/Pro/Renewals/RenewalHandler.php` (new), `includes/Pro/Renewals/RenewalTriggers.php` (new)
   - Reuse: `TriggerHandler` (`includes/Engine/Points/Triggers/TriggerHandler.php`), `Breakdown::flat()` and `Campaign::flat_points()` as in `Pro/Birthday/BirthdayHandler.php`; `PointsEngine::build()->evaluate()` as `BirthdayEarnRow` does; `ContextFactory::from_order()`; filter `yayloyalty_order_award_triggers`
   - Callers: `RenewalHandler` → `YayLoyaltyPro::register_trigger_handlers()` (T5); `RenewalTriggers::filter()` → filter `yayloyalty_order_award_triggers` via `RenewalTriggers::register()` (T5) [risk: 3]
-- [ ] T3 Renewal tests: earns once per renewal order, on top of or instead of purchase, full and partial refund claw back, non-renewal order untouched — `tests/php/integration/Pro/Renewals/RenewalEarningTest.php` (new)
+- [x] T3 Renewal tests: earns once per renewal order, on top of or instead of purchase, full and partial refund claw back, non-renewal order untouched — `tests/php/integration/Pro/Renewals/RenewalEarningTest.php` (new), `tests/php/integration/Pro/Renewals/wcs-renewal-stub.php` (new: the tests site has no WooCommerce Subscriptions)
   - Reuse: order and campaign setup as in `tests/php/integration/Engine/Earning/AwardFlatTest.php`; `CampaignRepository`, `LedgerRepository::earn_rows_for_order()`; `wc_create_refund()`
   - Callers: n/a (test)
 - [x] T4 Social handler, claim link and Ways to earn row — `includes/Pro/Social/SocialHandler.php` (new), `includes/Pro/Social/SocialClaim.php` (new), `includes/Pro/Social/SocialEarnRow.php` (new), `tests/php/integration/Pro/Social/SocialClaimTest.php` (new)
