@@ -72,7 +72,7 @@ export function CampaignEditorEarnSocial() {
             type="url"
             placeholder="https://"
             value={url}
-            aria-invalid={url !== '' && !isHttpUrl(url)}
+            aria-invalid={!isHttpUrl(url)}
             onChange={(event) => patchConfig({ url: event.target.value.trim() })}
           />
           {shareUrl && (
@@ -86,7 +86,7 @@ export function CampaignEditorEarnSocial() {
               {__('Use a share link for my store', 'yayloyalty')}
             </Button>
           )}
-          {url !== '' && !isHttpUrl(url) ? (
+          {!isHttpUrl(url) ? (
             <FieldError>{__('Enter a full link that starts with https://', 'yayloyalty')}</FieldError>
           ) : (
             <FieldDescription>
