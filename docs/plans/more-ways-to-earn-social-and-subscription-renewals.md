@@ -57,7 +57,7 @@ A Pro merchant can create two new campaign kinds. **Social** is "Follow us on In
 - **Compatibility:** PHP 7.4. HPOS-safe (orders through `wc_get_order`). No storage change. Lite builds ship no Pro strings (templates stay behind `getCampaignTemplates()`, Rollup note there).
 
 ## Tasks
-- [ ] T1 Lite seams: `ReferenceType::SOCIAL` and the `url` config spec type — `includes/Enums/ReferenceType.php`, `includes/Utils/ConfigSpec.php`, `tests/php/unit/Utils/ConfigSpecTest.php` (new)
+- [x] T1 Lite seams: `ReferenceType::SOCIAL` and the `url` config spec type — `includes/Enums/ReferenceType.php`, `includes/Utils/ConfigSpec.php`, `tests/php/unit/Utils/ConfigSpecTest.php` (new)
   - Reuse: `StringEnumMethods` list in `ReferenceType::all()`; `ConfigSpec::matches()` switch; `wp_http_validate_url()`-free check (`filter_var` + `^https?://`) since ConfigSpec runs in unit tests without WordPress
   - Callers: `ReferenceType::SOCIAL` → `SocialHandler::reference_type()` (T4); `url` spec → `YayLoyaltyPro::add_campaign_config_schema()` (T5)
 - [ ] T2 Renewal handler and award triggers — `includes/Pro/Renewals/RenewalHandler.php` (new), `includes/Pro/Renewals/RenewalTriggers.php` (new)
