@@ -68,6 +68,49 @@ final class LedgerServiceTest extends WP_UnitTestCase {
 		$this->assertSame( 100, $customer->get_lifetime_earned() );
 	}
 
+	/**
+	 * @group P-8
+	 */
+	public function test_import_writes_one_keyed_adjust_row_that_moves_balance_lifetime_and_lots() {
+		$outcome = $this->ledger->import( $this->user_id, 250, 987654321, 'Imported from old.csv', 1 );
+		$entry   = $outcome->get_entry();
+
+		$this->assertSame( Outcome::AWARDED, $outcome->get_status() );
+		$this->assertSame( LedgerType::ADJUST, $entry->get_type() );
+		$this->assertSame( LedgerSource::IMPORT, $entry->get_source() );
+		$this->assertSame( ReferenceType::IMPORT, $entry->get_reference_type() );
+		$this->assertSame( 987654321, $entry->get_reference_id() );
+		$this->assertSame( 250, $this->balance() );
+		$this->assertSame( 250, ( new CustomerRepository() )->find_by_user_id( $this->user_id )->get_lifetime_earned() );
+		$this->assertSame( 250, $this->open_lot_points() );
+	}
+
+	/**
+	 * @group P-8
+	 */
+	public function test_importing_the_same_file_twice_writes_nothing_the_second_time() {
+		$this->ledger->import( $this->user_id, 250, 987654321, 'first', 1 );
+		$second = $this->ledger->import( $this->user_id, 250, 987654321, 'again', 1 );
+
+		$this->assertSame( Outcome::DUPLICATE, $second->get_status() );
+		$this->assertSame( 250, $this->balance() );
+	}
+
+	/**
+	 * @group P-8
+	 */
+	public function test_an_imported_debit_past_zero_is_skipped() {
+		$this->ledger->adjust( $this->user_id, 20, 'grant', 1 );
+
+		$outcome = $this->ledger->import( $this->user_id, -50, 987654321, 'debit', 1 );
+
+		$this->assertSame( Outcome::SKIPPED, $outcome->get_status() );
+		$this->assertSame( LedgerService::REASON_WOULD_GO_NEGATIVE, $outcome->get_reason() );
+		$this->assertSame( 20, $this->balance() );
+		$this->assertSame( Outcome::AWARDED, $this->ledger->import( $this->user_id, -20, 987654322, 'debit to zero', 1 )->get_status() );
+		$this->assertSame( 0, $this->balance() );
+	}
+
 	private function balance(): int {
 		return ( new CustomerRepository() )->find_by_user_id( $this->user_id )->get_balance();
 	}

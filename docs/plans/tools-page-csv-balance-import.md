@@ -55,7 +55,7 @@ Done means the R-6 acceptance: export all balances; import with preview and per-
 - [x] T1 Import idempotency key — `includes/Engine/Earning/IdempotencyKey.php`, `tests/php/unit/Engine/Earning/IdempotencyKeyTest.php` [risk: 3]
   - Reuse: `IdempotencyKey::compose()` with a new `adjust` + `import` qualifier branch next to the expire branch; `ReferenceType::IMPORT`
   - Callers: `IdempotencyKey::for_import()` → `LedgerService::import()` (T2), `ToolsImportRestController::preview()` (T3)
-- [ ] T2 `LedgerService::import()`: keyed ADJUST row with source and reference import, no negative balance — `includes/Services/LedgerService.php`, `tests/php/integration/Services/LedgerServiceTest.php` [risk: 3]
+- [x] T2 `LedgerService::import()`: keyed ADJUST row with source and reference import, no negative balance — `includes/Services/LedgerService.php`, `tests/php/integration/Services/LedgerServiceTest.php` [risk: 3]
   - Reuse: `write_keyed()` with `$points_under_lock` returning 0 to skip (as `earn()` does), `LedgerEntry`, `Dates::now()`, `LedgerSource::IMPORT`
   - Callers: `LedgerService::import()` → `ToolsImportRestController::apply()` (T3)
 - [ ] T3 Tools import REST routes: preview and apply, `run_tools`, per-row results — `includes/Controllers/ToolsImportRestController.php` (new), `includes/Engine/RestAPI.php`, `tests/php/integration/Controllers/ToolsImportRestControllerTest.php` (new) [risk: 3]

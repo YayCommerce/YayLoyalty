@@ -46,6 +46,9 @@ final class LedgerService {
     /** Outcome::skipped reason: under the lock the customer is no longer due to expire (expiry off, or activity moved the date). */
     public const REASON_NOT_DUE = 'not_due';
 
+    /** Outcome::skipped reason: an imported debit would take the balance below zero. */
+    public const REASON_WOULD_GO_NEGATIVE = 'would_go_negative';
+
     /** @var LedgerRepository */
     private $ledger;
 
@@ -102,6 +105,47 @@ final class LedgerService {
         );
 
         return $this->record( $draft );
+    }
+
+    /**
+     * One row of a CSV import: an ADJUST row (lifetime moves with the balance) keyed on the import,
+     * so a retried or re-uploaded file writes each customer's row once. A debit that would take the
+     * balance below zero is skipped under the lock.
+     *
+     * @param int $import_id Positive id of the import file (a hash of its text).
+     * @return Outcome awarded, duplicate, or skipped( REASON_WOULD_GO_NEGATIVE ).
+     * @throws \InvalidArgumentException When points is zero or the import id is not positive.
+     */
+    public function import( int $user_id, int $points, int $import_id, string $note, int $actor_id ): Outcome {
+        if ( 0 === $points ) {
+            throw new \InvalidArgumentException( 'YayLoyalty: an imported row of zero points is meaningless.' );
+        }
+
+        $draft = new LedgerEntry(
+            null,
+            $user_id,
+            $points,
+            0,
+            LedgerType::ADJUST,
+            LedgerSource::IMPORT,
+            ReferenceType::IMPORT,
+            $import_id,
+            null,
+            null,
+            null,
+            $note,
+            $actor_id > 0 ? $actor_id : null,
+            Dates::now(),
+            IdempotencyKey::for_import( $user_id, $import_id )
+        );
+
+        return $this->write_keyed(
+            $draft,
+            static function ( Customer $customer ) use ( $points ): int {
+                return $customer->get_balance() + $points < 0 ? 0 : $points;
+            },
+            self::REASON_WOULD_GO_NEGATIVE
+        );
     }
 
     /**
