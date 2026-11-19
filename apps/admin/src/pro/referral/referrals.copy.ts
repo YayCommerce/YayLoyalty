@@ -47,4 +47,5 @@ export const REJECT_REASON_LABEL: Record<string, () => string> = {
   self_referral: () => __('self-referral', 'yayloyalty'),
   not_qualifying: () => __("first order didn't qualify", 'yayloyalty'),
   refunded_during_hold: () => __('Order refunded during the hold', 'yayloyalty'),
+  advocate_cannot_earn: () => __("advocate can't earn points", 'yayloyalty'),
 };

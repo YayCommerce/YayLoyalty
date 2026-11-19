@@ -195,6 +195,7 @@ final class ReferralsRestController extends AbstractRestController {
                 'used_code' => in_array( ReferralCoupon::code_for( (int) $item['id'] ), $order->get_coupon_codes(), true ),
             ] : null,
             'advocate_points' => (int) ( $item['terms']['advocate_points'] ?? 0 ),
+            'rejects_at'      => ReferralStatus::ON_HOLD === ( $item['status'] ?? '' ) && ! empty( $item['hold_until'] ) ? ReferralPayout::rejects_at( (int) ( $item['advocate']['id'] ?? 0 ), (string) $item['hold_until'] ) : null,
         ];
     }
 }

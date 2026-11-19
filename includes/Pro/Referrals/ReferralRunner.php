@@ -2,9 +2,11 @@
 namespace YayLoyalty\Pro\Referrals;
 
 use YayLoyalty\Engine\Expiry\ExpiryRunner;
+use YayLoyalty\Pro\Enums\ReferralRejectReason;
 use YayLoyalty\Pro\Enums\ReferralStatus;
 use YayLoyalty\Pro\Models\Referral;
 use YayLoyalty\Pro\Repositories\ReferralRepository;
+use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
@@ -86,8 +88,8 @@ final class ReferralRunner {
                     $this->lifecycle->settle( $referral );
                 } elseif ( self::PHASE_EXPIRE === $phase ) {
                     $this->expire( $referral );
-                } else {
-                    $this->payout->pay( $referral );
+                } elseif ( ReferralStatus::ON_HOLD === $this->payout->pay( $referral ) ) {
+                    $this->reject_when_unpayable( $referral );
                 }
             } catch ( \Throwable $e ) {
                 Log::error( 'ReferralRunner', sprintf( 'referral #%d %s failed: %s', (int) $referral->get_id(), $phase, $e->getMessage() ) );
@@ -98,6 +100,15 @@ final class ReferralRunner {
             as_enqueue_async_action( self::RUN_ACTION, [ $phase, (int) end( $due )->get_id() ], ExpiryRunner::GROUP );
         } elseif ( self::PHASE_RELEASE === $phase ) {
             $this->run( self::PHASE_EXPIRE, 0 );
+        }
+    }
+
+    /** Rejects a held referral whose advocate can't be paid once ReferralPayout::rejects_at() has passed. */
+    private function reject_when_unpayable( Referral $referral ): void {
+        $at = ReferralPayout::rejects_at( $referral->get_advocate_user_id(), (string) $referral->get_hold_until() );
+
+        if ( null !== $at && $at <= Dates::now() ) {
+            $this->referrals->reject( (int) $referral->get_id(), ReferralRejectReason::ADVOCATE_CANNOT_EARN, ReferralStatus::ON_HOLD );
         }
     }
 
