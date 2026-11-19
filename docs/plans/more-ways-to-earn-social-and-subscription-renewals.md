@@ -77,7 +77,7 @@ A Pro merchant can create two new campaign kinds. **Social** is "Follow us on In
   - Callers: `CampaignEditorEarnSocial`, `CampaignEditorEarnRenewal` → `CampaignEditorEarn` switch; `socialShareUrl()` → `CampaignEditorEarnSocial`; `has_subscriptions` → `getCampaignTemplates()`
 - [x] T7 Knowledge: Pro triggers and the social claim link in architecture, WooCommerce Subscriptions in integrations — `docs/knowledge/architecture.md`, `docs/knowledge/integrations.md` [risk: 1]
   - Reuse: n/a
-- [ ] T8 E2E: create a social campaign, save, reload, the fields persist — `tests/e2e/specs/campaign-social.spec.ts` (new), `docs/knowledge/e2e.md` (Flows row)
+- [x] T8 E2E: create a social campaign, save, reload, the fields persist — `tests/e2e/specs/campaign-social.spec.ts` (new), `docs/knowledge/e2e.md` (Flows row)
   - Reuse: admin login and SPA navigation helpers of `tests/e2e/specs/referral-settings.spec.ts`
   - Callers: n/a (test)
 
