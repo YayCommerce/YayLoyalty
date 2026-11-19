@@ -1,7 +1,7 @@
 ---
 id: P-7
 title: More ways to earn: social and subscription renewals
-status: in-progress
+status: done
 from: BS-4
 roadmap: R-5
 design:

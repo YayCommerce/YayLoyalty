@@ -20,6 +20,7 @@ Goal: Finish 1.1.0: VIP tiers, social and renewal earning, and the Tools page, s
 - target: 1.1.0
 - note: reading unconfirmed: could also mean other actions (newsletter sign-up, account anniversary, product purchase of a set category); built from the reserved social and renewal triggers
 - started: 2026-11-19
+- built: 2026-11-19
 
 ### R-6 Tools: CSV import/export and bulk point adjustments
 - status: todo
