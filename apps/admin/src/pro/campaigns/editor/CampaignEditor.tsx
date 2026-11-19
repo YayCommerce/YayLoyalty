@@ -87,7 +87,7 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
       }
     },
     // Save keeps the editor open; the reset above makes the saved values the new baseline.
-    { listPath: null, onInvalid: toastInvalidConditions },
+    { listPath: null, onInvalid: toastInvalidFields },
   );
 
   // The header renders from the loaded campaign, never form state; "Unsaved changes" says when the two differ.
@@ -220,7 +220,7 @@ function CampaignCreatorForm({ template }: { template: CampaignTemplate }) {
         return false;
       }
     },
-    { listPath: '/campaigns', onInvalid: toastInvalidConditions },
+    { listPath: '/campaigns', onInvalid: toastInvalidFields },
   );
 
   return (
@@ -255,8 +255,12 @@ function CampaignCreatorForm({ template }: { template: CampaignTemplate }) {
 }
 
 /** ConditionRow shows each error inline; the toast makes a blocked save impossible to miss. */
-function toastInvalidConditions(errors: FieldErrors<CampaignFormValues>) {
+function toastInvalidFields(errors: FieldErrors<CampaignFormValues>) {
   if (errors.conditions) {
     toast.error(__('Please fix the highlighted conditions before saving.', 'yayloyalty'));
+  }
+
+  if (errors.config) {
+    toast.error(__('Please fix the highlighted link before saving.', 'yayloyalty'));
   }
 }

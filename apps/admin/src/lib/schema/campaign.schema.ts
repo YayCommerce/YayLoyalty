@@ -372,9 +372,12 @@ export interface RenewalConfig {
   replace_purchase?: boolean;
 }
 
-/** The form's side of ConfigSpec's `url` type: an absolute http or https link. */
+/** PHP's FILTER_VALIDATE_URL host rule: ASCII labels of letters, digits and inner hyphens. */
+const HTTP_URL_START = /^https?:\/\/[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:\d+)?([/?#]|$)/i;
+
+/** The form's side of ConfigSpec's `url` type: an absolute http or https link the server will accept. */
 export function isHttpUrl(value: unknown): boolean {
-  if (typeof value !== 'string' || !/^https?:\/\//i.test(value)) {
+  if (typeof value !== 'string' || /\s/.test(value) || !HTTP_URL_START.test(value)) {
     return false;
   }
 

@@ -12,6 +12,11 @@ test.describe( 'Social campaign', { tag: [ '@P-7', '@flow-campaign-social' ] }, 
 	test( 'network, action, link and points survive a reload', async ( { page } ) => {
 		await page.goto( '/wp-admin/admin.php?page=yayloyalty#/campaigns/new/social' );
 
+		await page.getByLabel( 'Link' ).fill( 'https://facebook,com' );
+		await page.getByRole( 'button', { name: 'Save as draft' } ).click();
+		await expect( page.getByText( 'Please fix the highlighted link before saving.' ) ).toBeVisible();
+		await expect( page.getByText( 'Enter a full link that starts with https://' ) ).toBeVisible();
+
 		await page.getByRole( 'combobox', { name: 'Network' } ).click();
 		await page.getByRole( 'option', { name: 'Facebook' } ).click();
 		await page.getByRole( 'radio', { name: 'Share' } ).click();
