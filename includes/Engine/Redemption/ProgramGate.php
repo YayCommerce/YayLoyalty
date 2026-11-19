@@ -43,7 +43,7 @@ final class ProgramGate implements Gate {
      * storefront never promises a discount checkout would refuse.
      */
     public static function shopper_denial( int $user_id ): ?string {
-        if ( ! EarnProgramGate::program_enabled() ) {
+        if ( ! EarnProgramGate::storefront_enabled() ) {
             return self::REASON_PROGRAM_PAUSED;
         }
 

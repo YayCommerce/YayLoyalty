@@ -8,6 +8,7 @@
     var button = box.querySelector('button');
     var status = box.querySelector('[aria-live]');
     var label = button.textContent;
+    var copied = button.getAttribute('data-copied');
     var timer = 0;
 
     input.addEventListener('focus', function () {
@@ -16,8 +17,8 @@
 
     button.addEventListener('click', function () {
       var done = function () {
-        button.textContent = button.getAttribute('data-copied');
-        status.textContent = button.getAttribute('data-copied');
+        button.textContent = copied;
+        status.textContent = copied;
         window.clearTimeout(timer);
         timer = window.setTimeout(function () {
           button.textContent = label;

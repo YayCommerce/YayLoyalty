@@ -32,7 +32,6 @@ final class ProgramGate implements Gate {
         return self::program_enabled() && self::storefront_allowed();
     }
 
-    /** Whether the storefront may show YayLoyalty at all, whatever the program setting. Earning runs either way. */
     public static function storefront_allowed(): bool {
         /**
          * Filters whether the storefront shows YayLoyalty: the launcher, My Account tabs, placements, product and

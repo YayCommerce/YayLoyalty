@@ -32,6 +32,10 @@ final class AccountReferrals {
 
     private const SCRIPT_HANDLE = 'yayloyalty/script/referral-link';
 
+    private const STYLE_PATH = 'includes/Pro/Storefront/assets/account-referrals.css';
+
+    private const SCRIPT_PATH = 'includes/Pro/Storefront/assets/referral-link.js';
+
     /** Hooked on every request: a permalink save in wp-admin rebuilds the rules and must still see the endpoint. */
     public static function register(): void {
         add_filter( 'woocommerce_get_query_vars', [ self::class, 'add_query_var' ] );
@@ -55,11 +59,18 @@ final class AccountReferrals {
     }
 
     public static function maybe_flush_rewrite_rules(): void {
-        // A permalink save while Pro was off drops the endpoint's rule but keeps the stamp, so check the rule too.
-        $rules = implode( "\n", array_keys( (array) get_option( 'rewrite_rules', [] ) ) );
-
-        if ( get_option( self::OPTION_REWRITE_VERSION ) === self::REWRITE_VERSION && false !== strpos( $rules, '/' . self::ENDPOINT . '(/(.*))?/?$' ) ) {
+        // Plain permalinks have no rules to check.
+        if ( '' === (string) get_option( 'permalink_structure' ) ) {
             return;
+        }
+
+        // A permalink save while Pro was off drops the endpoint's rule but keeps the stamp, so check the rule too.
+        if ( get_option( self::OPTION_REWRITE_VERSION ) === self::REWRITE_VERSION ) {
+            foreach ( array_keys( (array) get_option( 'rewrite_rules', [] ) ) as $rule ) {
+                if ( false !== strpos( (string) $rule, '/' . self::ENDPOINT . '(/(.*))?/?$' ) ) {
+                    return;
+                }
+            }
         }
 
         flush_rewrite_rules( false );
@@ -112,16 +123,13 @@ final class AccountReferrals {
             return;
         }
 
-        $css = 'includes/Pro/Storefront/assets/account-referrals.css';
-        $js  = 'includes/Pro/Storefront/assets/referral-link.js';
-
         wp_enqueue_style( ScriptName::ACCOUNT_STYLE );
-        wp_enqueue_style( self::STYLE_HANDLE, plugins_url( 'assets/account-referrals.css', __FILE__ ), [ ScriptName::ACCOUNT_STYLE ], Launcher::asset_version( $css ) );
+        wp_enqueue_style( self::STYLE_HANDLE, YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH, [ ScriptName::ACCOUNT_STYLE ], Launcher::asset_version( self::STYLE_PATH ) );
         wp_enqueue_script(
             self::SCRIPT_HANDLE,
-            plugins_url( 'assets/referral-link.js', __FILE__ ),
+            YAYLOYALTY_PLUGIN_URL . self::SCRIPT_PATH,
             [],
-            Launcher::asset_version( $js ),
+            Launcher::asset_version( self::SCRIPT_PATH ),
             [
                 'in_footer' => true,
                 'strategy'  => 'defer',
@@ -159,36 +167,35 @@ final class AccountReferrals {
     }
 
     /**
-     * @return array{settings: array<string, mixed>, link: string, counts: array<string, mixed>, worth_points: callable, page: array{items: array, total: int, page: int}}
+     * @return array{settings: array<string, mixed>, link: string, counts: array<string, mixed>, worth: ?float, earned_worth: ?float, page: array{items: array, total: int, page: int, pages: int}}
      */
     private static function view( int $user_id, int $page ): array {
-        $list   = new ReferralListRepository();
-        $code   = ( new CustomerRepository() )->assign_referral_code( $user_id );
-        $reward = ( new RewardRepository() )->find_live_flexible_discount( Dates::now() );
-        $args   = [
-            'advocate' => $user_id,
-            'page'     => $page,
-            'per_page' => self::PER_PAGE,
-        ];
-        $rows   = $list->paginate( $args );
-        $last   = max( 1, (int) ceil( $rows['total'] / self::PER_PAGE ) );
-
+        $settings = ReferralSettings::get();
+        $counts   = ( new ReferralListRepository() )->counts_for_advocate( $user_id );
+        $reward   = ( new RewardRepository() )->find_live_flexible_discount( Dates::now() );
+        $worth    = static fn( int $points ): ?float => null === $reward || $points < 1 ? null : LauncherPayload::worth( $reward, $points );
+        $pages    = max( 1, (int) ceil( $counts['referred'] / self::PER_PAGE ) );
         // A stale page link past the end shows the last page, not an empty list.
-        if ( $page > $last ) {
-            $page         = $last;
-            $args['page'] = $last;
-            $rows         = $list->paginate( $args );
-        }
+        $page = min( $page, $pages );
+        $rows = ( new ReferralListRepository() )->paginate(
+            [
+                'advocate' => $user_id,
+                'page'     => $page,
+                'per_page' => self::PER_PAGE,
+            ]
+        );
 
         return [
-            'settings'     => ReferralSettings::get(),
-            'link'         => add_query_arg( ReferralAttribution::QUERY_ARG, rawurlencode( $code ), home_url( '/' ) ),
-            'counts'       => $list->counts_for_advocate( $user_id ),
-            'worth_points' => static fn( int $points ): ?float => null === $reward || $points < 1 ? null : LauncherPayload::worth( $reward, $points ),
+            'settings'     => $settings,
+            'link'         => ReferralAttribution::link_for( ( new CustomerRepository() )->assign_referral_code( $user_id ) ),
+            'counts'       => $counts,
+            'worth'        => $worth( (int) $settings['advocate_points'] ),
+            'earned_worth' => $worth( (int) $counts['points_earned'] ),
             'page'         => [
                 'items' => $rows['items'],
                 'total' => (int) $rows['total'],
                 'page'  => $page,
+                'pages' => $pages,
             ],
         ];
     }

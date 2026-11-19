@@ -2,11 +2,11 @@
 namespace YayLoyalty\Pro\Referrals;
 
 use YayLoyalty\Engine\Earning\Listeners\ListenerGuard;
+use YayLoyalty\Engine\Points\Context;
 use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Redemption\RewardCoupons;
 use YayLoyalty\Pro\Repositories\ReferralRepository;
 use YayLoyalty\Utils\CurrencyRate;
-use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -20,8 +20,11 @@ final class ReferralCartSync {
 
     private ReferralCoupon $coupon;
 
-    /** True while WooCommerce applies an individual-use coupon and removes the others. */
-    private bool $replacing = false;
+    /** @var string[] Codes WooCommerce removes for an individual-use coupon; their removal is not the friend's. */
+    private array $displaced = [];
+
+    /** @var array<int, int> Referral ids this request created, by friend user id. */
+    private array $created = [];
 
     public function __construct( ReferralRepository $referrals, ReferralCoupon $coupon ) {
         $this->referrals = $referrals;
@@ -33,9 +36,13 @@ final class ReferralCartSync {
         add_action( 'woocommerce_before_calculate_totals', [ $this, 'sync_cart' ], PHP_INT_MAX - 1 );
         add_action( 'woocommerce_check_cart_items', [ $this, 'sync_before_check' ], 0 );
         add_action( 'woocommerce_removed_coupon', [ $this, 'on_removed' ] );
-        add_filter( 'woocommerce_apply_individual_use_coupon', [ $this, 'on_individual_use_apply' ] );
-        add_action( 'woocommerce_applied_coupon', [ $this, 'on_applied' ] );
+        add_filter( 'woocommerce_apply_individual_use_coupon', [ $this, 'on_individual_use_apply' ], 10, 3 );
+        add_action( ReferralAttribution::CREATED_ACTION, [ $this, 'on_referral_created' ], 10, 2 );
         add_action( 'woocommerce_store_api_checkout_order_processed', [ $this, 'apply_to_signup_order' ] );
+    }
+
+    public function on_referral_created( int $referral_id, int $friend_user_id ): void {
+        $this->created[ $friend_user_id ] = $referral_id;
     }
 
     /**
@@ -47,19 +54,18 @@ final class ReferralCartSync {
             'ReferralCartSync',
             'referral discount for order #' . (int) $order->get_id() . ' failed',
             function () use ( $order ): void {
-                $friend   = (int) $order->get_customer_id();
-                $referral = $friend > 0 ? $this->referrals->find_pending_for_friend( $friend ) : null;
-                $started  = isset( $_SERVER['REQUEST_TIME'] ) ? absint( $_SERVER['REQUEST_TIME'] ) : time();
+                $referral_id = $this->created[ (int) $order->get_customer_id() ] ?? null;
 
                 // Only a referral this request created: a returning friend's cart already decided, declined included.
-                if ( null === $referral || Dates::to_timestamp( (string) ( $referral->to_array()['created_at'] ?? '' ) ) < $started ) {
+                if ( null === $referral_id ) {
                     return;
                 }
 
                 $codes = $order->get_coupon_codes();
-                $code  = ReferralCoupon::code_for( (int) $referral->get_id() );
+                $code  = ReferralCoupon::code_for( $referral_id );
 
-                if ( in_array( $code, $codes, true ) || self::has_individual_use_coupon( $codes ) ) {
+                // A points discount was already settled against the undiscounted total.
+                if ( in_array( $code, $codes, true ) || [] !== Context::loyalty_codes( $codes ) || self::has_individual_use_coupon( $codes ) ) {
                     return;
                 }
 
@@ -74,16 +80,14 @@ final class ReferralCartSync {
      * WooCommerce is about to remove every other coupon for an individual-use one; that removal is not the friend's.
      *
      * @param mixed $coupons_to_keep
+     * @param mixed $coupon
+     * @param mixed $applied
      * @return mixed
      */
-    public function on_individual_use_apply( $coupons_to_keep ) {
-        $this->replacing = true;
+    public function on_individual_use_apply( $coupons_to_keep, $coupon, $applied ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- WooCommerce passes the coupon before the applied codes.
+        $this->displaced = array_values( array_diff( (array) $applied, (array) $coupons_to_keep ) );
 
         return $coupons_to_keep;
-    }
-
-    public function on_applied(): void {
-        $this->replacing = false;
     }
 
     public function sync_cart( \WC_Cart $cart ): void {
@@ -114,9 +118,16 @@ final class ReferralCartSync {
      * @param mixed $code
      */
     public function on_removed( $code ): void {
-        $id = ReferralCoupon::referral_id( $code );
+        $id        = ReferralCoupon::referral_id( $code );
+        $displaced = array_search( $code, $this->displaced, true );
 
-        if ( null !== $id && ! $this->replacing && function_exists( 'WC' ) && WC()->session ) {
+        if ( false !== $displaced ) {
+            unset( $this->displaced[ $displaced ] );
+
+            return;
+        }
+
+        if ( null !== $id && function_exists( 'WC' ) && WC()->session ) {
             WC()->session->set( self::DECLINED_SESSION_KEY, $id );
         }
     }

@@ -130,11 +130,12 @@ final class YayLoyaltyPro {
         ( new BirthdayRunner() )->register();
         ( new BirthdayFields() )->register();
         ( new BirthdayEarnRow() )->register();
-        ( new ReferralAttribution( new CustomerRepository(), new ReferralRepository() ) )->register();
+        $customers = new CustomerRepository();
+        $referrals = new ReferralRepository();
+        ( new ReferralAttribution( $customers, $referrals ) )->register();
         AccountReferrals::register();
-        ( new ReferralCodeAssigner( new CustomerRepository() ) )->register();
+        ( new ReferralCodeAssigner( $customers ) )->register();
         ( new ReferralEarnRow() )->register();
-        $referrals       = new ReferralRepository();
         $referral_coupon = new ReferralCoupon( $referrals );
         $referral_coupon->register();
         ( new ReferralCartSync( $referrals, $referral_coupon ) )->register();

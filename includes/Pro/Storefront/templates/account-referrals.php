@@ -16,10 +16,9 @@ defined( 'ABSPATH' ) || exit;
 $yayloyalty_settings = $view['settings'];
 $yayloyalty_counts   = $view['counts'];
 $yayloyalty_page     = $view['page'];
-$yayloyalty_points   = (int) $yayloyalty_settings['advocate_points'];
-$yayloyalty_worth    = ( $view['worth_points'] )( $yayloyalty_points );
-$yayloyalty_earned   = ( $view['worth_points'] )( (int) $yayloyalty_counts['points_earned'] );
-$yayloyalty_pages    = (int) ceil( $yayloyalty_page['total'] / AccountReferrals::PER_PAGE );
+$yayloyalty_worth    = $view['worth'];
+$yayloyalty_earned   = $view['earned_worth'];
+$yayloyalty_pages    = $yayloyalty_page['pages'];
 $yayloyalty_columns  = [
     'friend' => __( 'Friend', 'yayloyalty' ),
     'status' => __( 'Status', 'yayloyalty' ),

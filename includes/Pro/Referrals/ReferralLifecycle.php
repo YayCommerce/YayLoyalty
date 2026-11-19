@@ -89,8 +89,7 @@ final class ReferralLifecycle {
     }
 
     /**
-     * Decides a pending referral from the friend's first live order placed in its window, when that order already completed.
-     * Covers an order that completed while the program was off.
+     * Decides a pending referral from the friend's first live order in its window once that order completed (also one that completed while the program was off).
      *
      * @return bool Whether the friend has a live order in the window, so the referral must not expire.
      */
@@ -110,9 +109,7 @@ final class ReferralLifecycle {
 
         if ( ! $first instanceof \WC_Order ) {
             return false;
-        }
-
-        if ( EarningService::is_awardable_order( $first ) ) {
+        } elseif ( EarningService::is_awardable_order( $first ) ) {
             $this->qualify( $first );
         }
 

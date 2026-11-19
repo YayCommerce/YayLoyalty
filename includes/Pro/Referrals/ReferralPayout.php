@@ -46,7 +46,7 @@ final class ReferralPayout {
             return null;
         }
 
-        return gmdate( 'Y-m-d H:i:s', Dates::to_timestamp( $hold_until ) + self::GRACE_DAYS * DAY_IN_SECONDS );
+        return Dates::offset( self::GRACE_DAYS * DAY_IN_SECONDS, $hold_until );
     }
 
     /**

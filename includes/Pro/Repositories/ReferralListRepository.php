@@ -126,30 +126,31 @@ final class ReferralListRepository {
         foreach ( is_array( $rows ) ? $rows : [] as $row ) {
             $referral = Referral::from_row( $row );
             $status   = $referral->get_status();
+            $points   = (int) ( $referral->get_terms()['advocate_points'] ?? 0 );
+            $order_id = $referral->get_first_order_id();
             ++$counts['referred'];
 
-            if ( ReferralStatus::REWARDED === $status ) {
-                ++$counts['rewarded'];
-                $counts['points_earned'] += (int) ( $referral->get_terms()['advocate_points'] ?? 0 );
-            } elseif ( ReferralStatus::PENDING === $status || ReferralStatus::ON_HOLD === $status ) {
-                ++$counts['waiting'];
-            }
-
-            if ( null !== $referral->get_first_order_id() ) {
+            if ( null !== $order_id ) {
                 ++$counts['ordered'];
             }
 
-            if ( ReferralStatus::ON_HOLD === $status ) {
-                $counts['on_the_way'] += (int) ( $referral->get_terms()['advocate_points'] ?? 0 );
+            if ( ReferralStatus::REWARDED === $status ) {
+                ++$counts['rewarded'];
+                $counts['points_earned'] += $points;
+            } elseif ( ReferralStatus::ON_HOLD === $status ) {
+                ++$counts['waiting'];
+                $counts['on_the_way'] += $points;
                 $release               = $referral->get_hold_until();
 
                 if ( null !== $release && $release >= $now && ( null === $counts['next_release'] || $release < $counts['next_release'] ) ) {
                     $counts['next_release'] = $release;
                 }
+            } elseif ( ReferralStatus::PENDING === $status ) {
+                ++$counts['waiting'];
             }
 
-            if ( ( ReferralStatus::REWARDED === $status || ReferralStatus::ON_HOLD === $status ) && null !== $referral->get_first_order_id() ) {
-                $counts['qualified_order_ids'][] = $referral->get_first_order_id();
+            if ( null !== $order_id && ( ReferralStatus::REWARDED === $status || ReferralStatus::ON_HOLD === $status ) ) {
+                $counts['qualified_order_ids'][] = $order_id;
             }
         }
 

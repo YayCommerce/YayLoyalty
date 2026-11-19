@@ -60,7 +60,7 @@ final class ReferralRunner {
         $was_on = is_array( $old_value ) && ! empty( $old_value['enabled'] );
         $is_on  = is_array( $value ) && ! empty( $value['enabled'] );
 
-        if ( ! $was_on && $is_on && function_exists( 'as_enqueue_async_action' ) ) {
+        if ( ! $was_on && $is_on && function_exists( 'as_enqueue_async_action' ) && ! as_has_scheduled_action( self::RUN_ACTION, [ self::PHASE_RECHECK, 0 ] ) ) {
             as_enqueue_async_action( self::RUN_ACTION, [ self::PHASE_RECHECK, 0 ], ExpiryRunner::GROUP );
         }
     }
@@ -72,25 +72,21 @@ final class ReferralRunner {
      * @param int|string $after_id
      */
     public function run( $phase = self::PHASE_RELEASE, $after_id = 0 ): void {
-        $phase = in_array( $phase, [ self::PHASE_EXPIRE, self::PHASE_RECHECK ], true ) ? $phase : self::PHASE_RELEASE;
-
         if ( self::PHASE_RECHECK === $phase ) {
-            $due = $this->referrals->pending_after( (int) $after_id, self::BATCH_SIZE );
+            $due = $this->referrals->due( ReferralStatus::PENDING, null, (int) $after_id, self::BATCH_SIZE );
+            $act = [ $this->lifecycle, 'settle' ];
         } elseif ( self::PHASE_EXPIRE === $phase ) {
             $due = $this->referrals->due( ReferralStatus::PENDING, 'coupon_expires_at', (int) $after_id, self::BATCH_SIZE );
+            $act = [ $this, 'expire' ];
         } else {
-            $due = $this->referrals->due( ReferralStatus::ON_HOLD, 'hold_until', (int) $after_id, self::BATCH_SIZE );
+            $phase = self::PHASE_RELEASE;
+            $due   = $this->referrals->due( ReferralStatus::ON_HOLD, 'hold_until', (int) $after_id, self::BATCH_SIZE );
+            $act   = [ $this, 'release' ];
         }
 
         foreach ( $due as $referral ) {
             try {
-                if ( self::PHASE_RECHECK === $phase ) {
-                    $this->lifecycle->settle( $referral );
-                } elseif ( self::PHASE_EXPIRE === $phase ) {
-                    $this->expire( $referral );
-                } elseif ( ReferralStatus::ON_HOLD === $this->payout->pay( $referral ) ) {
-                    $this->reject_when_unpayable( $referral );
-                }
+                $act( $referral );
             } catch ( \Throwable $e ) {
                 Log::error( 'ReferralRunner', sprintf( 'referral #%d %s failed: %s', (int) $referral->get_id(), $phase, $e->getMessage() ) );
             }
@@ -103,8 +99,12 @@ final class ReferralRunner {
         }
     }
 
-    /** Rejects a held referral whose advocate can't be paid once ReferralPayout::rejects_at() has passed. */
-    private function reject_when_unpayable( Referral $referral ): void {
+    /** Pays a held referral, or rejects it once ReferralPayout::rejects_at() has passed for an advocate who can't be paid. */
+    private function release( Referral $referral ): void {
+        if ( ReferralStatus::ON_HOLD !== $this->payout->pay( $referral ) ) {
+            return;
+        }
+
         $at = ReferralPayout::rejects_at( $referral->get_advocate_user_id(), (string) $referral->get_hold_until() );
 
         if ( null !== $at && $at <= Dates::now() ) {

@@ -57,39 +57,23 @@ final class ReferralRepository extends AbstractRepository {
     }
 
     /**
-     * Up to $limit referrals in $status whose $date_column has passed, after $after_id, by id.
+     * Up to $limit referrals in $status after $after_id, by id; with $date_column, only those whose date has passed.
      *
-     * @param string $date_column `hold_until` or `coupon_expires_at`.
+     * @param string|null $date_column `hold_until`, `coupon_expires_at`, or null for no date condition.
      * @return Referral[]
      */
-    public function due( string $status, string $date_column, int $after_id, int $limit ): array {
+    public function due( string $status, ?string $date_column, int $after_id, int $limit ): array {
         global $wpdb;
 
         $column = 'hold_until' === $date_column ? 'hold_until' : 'coupon_expires_at';
+        $passed = null === $date_column ? '' : $wpdb->prepare( " AND `{$column}` <= %s", Dates::now() ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the column is one of two fixed names.
         $rows   = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
-                'SELECT * FROM `' . esc_sql( $this->table() ) . "` WHERE status = %s AND `{$column}` <= %s AND id > %d ORDER BY id LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the table is escaped and the column is one of two fixed names.
+                'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE status = %s' . $passed . ' AND id > %d ORDER BY id LIMIT %d', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $passed is prepared above.
                 $status,
-                Dates::now(),
                 $after_id,
                 $limit
             ),
-            ARRAY_A
-        );
-
-        return array_values( array_filter( array_map( [ $this, 'hydrate' ], is_array( $rows ) ? $rows : [] ), static fn( $model ): bool => $model instanceof Referral ) );
-    }
-
-    /**
-     * Up to $limit pending referrals after $after_id, by id.
-     *
-     * @return Referral[]
-     */
-    public function pending_after( int $after_id, int $limit ): array {
-        global $wpdb;
-
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
-            $wpdb->prepare( 'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE status = %s AND id > %d ORDER BY id LIMIT %d', ReferralStatus::PENDING, $after_id, $limit ), // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the table is escaped.
             ARRAY_A
         );
 

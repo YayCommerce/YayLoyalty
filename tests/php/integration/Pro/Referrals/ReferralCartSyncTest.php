@@ -2,6 +2,7 @@
 namespace YayTests\Integration\Pro\Referrals;
 
 use WP_UnitTestCase;
+use YayLoyalty\Pro\Referrals\ReferralAttribution;
 use YayLoyalty\Pro\Referrals\ReferralCoupon;
 use YayLoyalty\Pro\Referrals\ReferralSettings;
 use YayLoyalty\Pro\Repositories\ReferralRepository;
@@ -20,6 +21,9 @@ final class ReferralCartSyncTest extends WP_UnitTestCase {
 
 	/** @var string */
 	private $solo;
+
+	/** @var int */
+	private $referral_id;
 
 	public function set_up() {
 		parent::set_up();
@@ -40,7 +44,8 @@ final class ReferralCartSyncTest extends WP_UnitTestCase {
 			],
 			Dates::offset( 30 * DAY_IN_SECONDS )
 		);
-		$this->code = ReferralCoupon::code_for( $id );
+		$this->code        = ReferralCoupon::code_for( $id );
+		$this->referral_id = $id;
 
 		wp_set_current_user( $friend );
 		wc_load_cart();
@@ -83,6 +88,7 @@ final class ReferralCartSyncTest extends WP_UnitTestCase {
 	}
 
 	public function test_block_checkout_gives_a_friend_who_signed_up_in_it_the_discount_before_payment() {
+		do_action( ReferralAttribution::CREATED_ACTION, $this->referral_id, get_current_user_id() );
 		$order = $this->signup_order();
 
 		do_action( 'woocommerce_store_api_checkout_order_processed', $order );
@@ -92,8 +98,6 @@ final class ReferralCartSyncTest extends WP_UnitTestCase {
 	}
 
 	public function test_block_checkout_leaves_a_returning_friends_order_alone() {
-		global $wpdb;
-		$wpdb->update( Table::name( 'referrals' ), [ 'created_at' => Dates::offset( -DAY_IN_SECONDS ) ], [ 'friend_user_id' => get_current_user_id() ] ); // phpcs:ignore WordPress.DB
 		$order = $this->signup_order();
 
 		do_action( 'woocommerce_store_api_checkout_order_processed', $order );
