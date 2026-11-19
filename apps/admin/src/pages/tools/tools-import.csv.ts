@@ -1,19 +1,16 @@
-import { MAX_MATCHING_ROWS } from '../customers/customers-page.matching-customers';
+import type { ImportRowInput } from '@/lib/api/tools.api';
 
-export interface ImportCsvRow {
-  /** The row's line in the file, the header being 1, so errors point at what the merchant sees. */
-  row: number;
-  email: string;
-  /** As written; the server decides whether it is a whole number. */
-  points: string;
-  note: string;
+/** The most rows one import file may hold. */
+export const MAX_IMPORT_ROWS = 50_000;
+
+export interface ImportCsvRow extends ImportRowInput {
   /** The email appears on an earlier row too; only the first is imported. */
   duplicate: boolean;
 }
 
 export type ImportCsvError = 'empty' | 'missing_columns' | 'too_many_rows';
 
-export type ImportCsvResult = { rows: ImportCsvRow[]; error: null } | { rows: []; error: ImportCsvError };
+export type ImportCsvResult = { rows: ImportCsvRow[]; error: null } | { error: ImportCsvError };
 
 /** Splits RFC 4180 text into records: quoted fields may hold commas, doubled quotes and line breaks. */
 function records(text: string): string[][] {
@@ -66,8 +63,8 @@ export function parseImportCsv(text: string): ImportCsvResult {
   const pointsAt = header.indexOf('points');
   const noteAt = header.indexOf('note');
 
-  if (all.length === 0) return { rows: [], error: 'empty' };
-  if (emailAt < 0 || pointsAt < 0) return { rows: [], error: 'missing_columns' };
+  if (all.length === 0) return { error: 'empty' };
+  if (emailAt < 0 || pointsAt < 0) return { error: 'missing_columns' };
 
   const seen = new Set<string>();
   const rows: ImportCsvRow[] = [];
@@ -88,8 +85,8 @@ export function parseImportCsv(text: string): ImportCsvResult {
     seen.add(key);
   });
 
-  if (rows.length === 0) return { rows: [], error: 'empty' };
-  if (rows.length > MAX_MATCHING_ROWS) return { rows: [], error: 'too_many_rows' };
+  if (rows.length === 0) return { error: 'empty' };
+  if (rows.length > MAX_IMPORT_ROWS) return { error: 'too_many_rows' };
 
   return { rows, error: null };
 }

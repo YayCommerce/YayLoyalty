@@ -8,13 +8,15 @@ import {
 
 /** One CSV row as the import routes take it. */
 export interface ImportRowInput {
+  /** The row's line in the file, the header being 1, so errors point at what the merchant sees. */
   row: number;
   email: string;
+  /** As written; the server decides whether it is a whole number. */
   points: string;
   note: string;
 }
 
-/** Mirrors ToolsImportRestController::PREVIEW_MAX_ROWS and APPLY_MAX_ROWS, the source of truth. */
+/** Mirrors ToolsImportRouteArgs::PREVIEW_MAX_ROWS and APPLY_MAX_ROWS, the source of truth. */
 export const PREVIEW_CHUNK = 500;
 export const APPLY_CHUNK = 100;
 

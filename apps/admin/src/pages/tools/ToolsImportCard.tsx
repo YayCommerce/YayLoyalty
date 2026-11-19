@@ -21,8 +21,11 @@ export function ToolsImportCard() {
   }
 
   function pick() {
-    if (inputRef.current) inputRef.current.value = '';
-    inputRef.current?.click();
+    const input = inputRef.current;
+    if (!input) return;
+
+    input.value = '';
+    input.click();
   }
 
   return (

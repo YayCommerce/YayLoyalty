@@ -1,7 +1,7 @@
 ---
 area: decisions
 updated: 2026-11-19
-updated_ref: 17197c9
+updated_ref: 27cb60c
 covers: [includes/YayLoyalty.php, includes/Services/LedgerService.php, includes/Database/, includes/Engine/Redemption/, includes/Engine/Earning/, apps/admin/src/main.tsx, apps/admin/src/pro/index.ts, scripts/run.sh]
 ---
 
@@ -71,6 +71,6 @@ The advocate's referral row keeps the friend's `order_id` so `Reversal` claws it
 **Evidence:** `includes/Utils/ConditionMatch.php`, P-1.
 
 ### 2026-11-19 A CSV import is keyed on a hash of the file, not stored as a job
-**Why:** a migration's worst failure is applying a row twice. Each imported row is an `adjust` row keyed `adjust:{user}:import:{import id}:import`, the import id being a 53-bit hash of the file's parsed rows (email, points, note) made in the SPA, so a retried chunk or the same file uploaded again, even re-saved by a spreadsheet, is `Outcome::DUPLICATE` per row, with nothing stored about the import. Apply runs each row in its own transaction (`exec_read()`, not `exec_write()`), so no outer transaction holds every customer's lock or lets a deadlock undo rows already reported imported. Manual adjustments stay unkeyed on purpose.
+**Why:** a migration's worst failure is applying a row twice. Each imported row is an `adjust` row keyed `adjust:{user}:import:{import id}:import`, the import id being a 53-bit hash of the file's parsed rows (email, points, note) made in the SPA, so a retried chunk or the same file uploaded again, even re-saved by a spreadsheet, is `Outcome::DUPLICATE` per row, with nothing stored about the import. Apply runs each row in its own transaction (`exec_self_committing()`, not `exec_write()`), so no outer transaction holds every customer's lock or lets a deadlock undo rows already reported imported. Manual adjustments stay unkeyed on purpose.
 **Rejected:** the client-only per-customer adjust loop (not retry-safe); an Action Scheduler job with stored files (a sixth `LedgerService` site, BS-5 option C).
 **Evidence:** `includes/Engine/Earning/IdempotencyKey.php`, `LedgerService::import()`, `includes/Controllers/ToolsImportRestController.php`, P-8.

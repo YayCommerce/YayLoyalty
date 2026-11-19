@@ -2,6 +2,7 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
+use YayLoyalty\Controllers\Schemas\ToolsImportRouteArgs;
 use YayLoyalty\Engine\Earning\IdempotencyKey;
 use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -16,10 +17,6 @@ defined( 'ABSPATH' ) || exit;
  * Each row is keyed on the import id, so a retried chunk or a re-uploaded file writes nothing twice.
  */
 final class ToolsImportRestController extends AbstractRestController {
-
-    private const PREVIEW_MAX_ROWS = 500;
-
-    private const APPLY_MAX_ROWS = 100;
 
     /** Up to 9 digits, so a typo can't overflow the balance column. */
     private const POINTS_PATTERN = '/^[+-]?\d{1,9}$/D';
@@ -53,7 +50,7 @@ final class ToolsImportRestController extends AbstractRestController {
                 'methods'             => \WP_REST_Server::CREATABLE,
                 'callback'            => fn( $request ) => $this->exec_read( [ $this, 'preview' ], $request ),
                 'permission_callback' => $this->requires( Capabilities::RUN_TOOLS ),
-                'args'                => self::rows_args( self::PREVIEW_MAX_ROWS ),
+                'args'                => ToolsImportRouteArgs::preview(),
             ]
         );
 
@@ -62,18 +59,9 @@ final class ToolsImportRestController extends AbstractRestController {
             '/tools/import/apply',
             [
                 'methods'             => \WP_REST_Server::CREATABLE,
-                // Not exec_write(): one outer transaction would hold every row's customer lock to the end, and a deadlock on one row would undo the rows already reported imported. Each import() commits on its own.
-                'callback'            => fn( $request ) => $this->exec_read( [ $this, 'apply' ], $request ),
+                'callback'            => fn( $request ) => $this->exec_self_committing( [ $this, 'apply' ], $request ),
                 'permission_callback' => $this->requires( Capabilities::RUN_TOOLS ),
-                'args'                => self::rows_args( self::APPLY_MAX_ROWS ) + [
-                    'file_name' => [
-                        'type'              => 'string',
-                        'maxLength'         => 100,
-                        'default'           => '',
-                        'validate_callback' => 'rest_validate_request_arg',
-                        'sanitize_callback' => 'sanitize_file_name',
-                    ],
-                ],
+                'args'                => ToolsImportRouteArgs::apply(),
             ]
         );
     }
@@ -95,7 +83,7 @@ final class ToolsImportRestController extends AbstractRestController {
             $balance  = null !== $customer ? $customer->get_balance() : 0;
             $imported = null !== $this->ledger->find_by_idempotency_key( IdempotencyKey::for_import( $checked['user_id'], $import_id ) );
 
-            if ( ! $imported && $balance + $checked['points'] < 0 ) {
+            if ( ! $imported && LedgerService::import_would_go_negative( $balance, $checked['points'] ) ) {
                 $results[] = self::error( $checked['row'], LedgerService::REASON_WOULD_GO_NEGATIVE );
                 continue;
             }
@@ -104,7 +92,7 @@ final class ToolsImportRestController extends AbstractRestController {
                 'row'           => $checked['row'],
                 'status'        => $imported ? 'already_imported' : 'ready',
                 'balance'       => $balance,
-                'balance_after' => $balance + $checked['points'],
+                'balance_after' => $imported ? $balance : $balance + $checked['points'],
             ];
         }
 
@@ -129,7 +117,7 @@ final class ToolsImportRestController extends AbstractRestController {
             $note = mb_substr( sanitize_text_field( (string) ( $row['note'] ?? '' ) ), 0, self::NOTE_MAX_LENGTH );
 
             try {
-                $outcome = $this->ledger_service->import( $checked['user_id'], $checked['points'], $import_id, '' !== $note ? $note : mb_substr( $default_note, 0, self::NOTE_MAX_LENGTH ), get_current_user_id() );
+                $outcome = $this->ledger_service->import( $checked['user_id'], $checked['points'], $import_id, '' !== $note ? $note : $default_note, get_current_user_id() );
             } catch ( \Throwable $e ) {
                 Log::error( 'ToolsImport', sprintf( 'import %d row %d failed: %s', $import_id, $checked['row'], $e->getMessage() ) );
                 $results[] = self::error( $checked['row'], 'failed' );
@@ -191,47 +179,5 @@ final class ToolsImportRestController extends AbstractRestController {
             default:
                 return 'skipped';
         }
-    }
-
-    /** @return array<string, array<string, mixed>> */
-    private static function rows_args( int $max_rows ): array {
-        return [
-            'import_id' => [
-                'type'     => 'integer',
-                'minimum'  => 1,
-                'required' => true,
-            ],
-            'rows'      => [
-                'type'     => 'array',
-                'required' => true,
-                'maxItems' => $max_rows,
-                'items'    => [
-                    'type'       => 'object',
-                    'properties' => [
-                        'row'    => [
-                            'type'    => 'integer',
-                            'minimum' => 1,
-                        ],
-                        'email'  => [ 'type' => 'string' ],
-                        'points' => [ 'type' => 'string' ],
-                        'note'   => [ 'type' => 'string' ],
-                    ],
-                ],
-            ],
-        ];
-    }
-
-    /**
-     * An empty item schema: these routes return reports, not a resource.
-     *
-     * @return array<string, mixed>
-     */
-    protected function define_item_schema(): array {
-        return [
-            '$schema'    => 'http://json-schema.org/draft-04/schema#',
-            'title'      => 'yayloyalty_tools_import',
-            'type'       => 'object',
-            'properties' => [],
-        ];
     }
 }

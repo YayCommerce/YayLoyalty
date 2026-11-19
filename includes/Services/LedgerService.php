@@ -26,7 +26,7 @@ defined( 'ABSPATH' ) || exit;
  * Engine\Expiry\ExpiryRunner::run() and Engine\Redemption\RedemptionService::build().
  * Name a sixth here before adding it.
  * Manual rows enter through adjust() and record(). System rows enter through earn(),
- * refund_earn(), restore_refund(), expire() and redeem(), which add the idempotency-key duplicate branch.
+ * refund_earn(), restore_refund(), expire(), redeem() and import(), which add the idempotency-key duplicate branch.
  * Lock order: the customer row, then, for an earn row, its campaign row shared, which
  * CampaignRestController::delete_item() locks exclusively before deleting.
  * It also keeps `lots` and `lot_allocations` in step with every row, through LotService, which
@@ -142,10 +142,15 @@ final class LedgerService {
         return $this->write_keyed(
             $draft,
             static function ( Customer $customer ) use ( $points ): int {
-                return $customer->get_balance() + $points < 0 ? 0 : $points;
+                return self::import_would_go_negative( $customer->get_balance(), $points ) ? 0 : $points;
             },
             self::REASON_WOULD_GO_NEGATIVE
         );
+    }
+
+    /** Whether an imported row of $points would take $balance below zero; the Tools preview asks it too. */
+    public static function import_would_go_negative( int $balance, int $points ): bool {
+        return $balance + $points < 0;
     }
 
     /**

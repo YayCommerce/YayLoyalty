@@ -2,8 +2,7 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { formatSignedPoints } from '@/lib/helpers/ledger.helper';
 import { formatCount } from '@/lib/helpers/points.helper';
-import { MAX_MATCHING_ROWS } from '../customers/customers-page.matching-customers';
-import type { ImportCsvError } from './tools-import.csv';
+import { MAX_IMPORT_ROWS, type ImportCsvError } from './tools-import.csv';
 
 /** Tools page copy, as functions so each string is translated at render time. */
 
@@ -23,9 +22,6 @@ export const sampleNote = () => __('Balance from our previous program', 'yayloya
 
 export const exportTitle = () => __('Export balances', 'yayloyalty');
 export const exportDescription = () => __("Every customer's balance as CSV.", 'yayloyalty');
-export const exportButton = () => __('Export CSV', 'yayloyalty');
-export const exportEmpty = () => __('There are no customers to export yet.', 'yayloyalty');
-export const exportFailed = () => __('Could not export the customers.', 'yayloyalty');
 
 export const adjustTitle = () => __('Adjust points in bulk', 'yayloyalty');
 export const adjustDescription = () =>
@@ -40,7 +36,7 @@ export function csvError(error: ImportCsvError): string {
       return sprintf(
         /* translators: %s: the most rows one file may hold. */
         __('This file has more than %s rows. Split it into smaller files.', 'yayloyalty'),
-        formatCount(MAX_MATCHING_ROWS),
+        formatCount(MAX_IMPORT_ROWS),
       );
     default:
       return __('This file has no rows to import.', 'yayloyalty');

@@ -1,10 +1,6 @@
-import { describe, expect, test, vi } from 'vitest';
+import { describe, expect, test } from 'vitest';
 
-import { MAX_MATCHING_ROWS } from '@/pages/customers/customers-page.matching-customers';
-import { importIdForRows, parseImportCsv } from '@/pages/tools/tools-import.csv';
-
-// The row cap comes from the Customers module, which imports the API client; the client reads `window` at import.
-vi.mock('@/lib/api/api', () => ({ api: {}, isAbortError: () => false, toastApiError: () => undefined }));
+import { importIdForRows, MAX_IMPORT_ROWS, parseImportCsv } from '@/pages/tools/tools-import.csv';
 
 describe('parseImportCsv @P-8', () => {
   test('reads email, points and note in any order and case, with a BOM and CRLF', () => {
@@ -42,7 +38,7 @@ describe('parseImportCsv @P-8', () => {
     expect(parseImportCsv('mail,amount\nann@example.com,10').error).toBe('missing_columns');
     expect(parseImportCsv('').error).toBe('empty');
     expect(parseImportCsv('email,points\n').error).toBe('empty');
-    expect(parseImportCsv('email,points\n' + 'a@b.co,1\n'.repeat(MAX_MATCHING_ROWS + 1)).error).toBe('too_many_rows');
+    expect(parseImportCsv('email,points\n' + 'a@b.co,1\n'.repeat(MAX_IMPORT_ROWS + 1)).error).toBe('too_many_rows');
   });
 });
 

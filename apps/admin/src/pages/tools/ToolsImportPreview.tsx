@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import { downloadCsv, toCsv } from '@/lib/helpers/csv.helper';
+import { formatSignedPoints } from '@/lib/helpers/ledger.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import type { PreviewRow } from './tools-import.use-import';
 import * as copy from './tools-page.copy';
 
-type Filter = 'all' | 'ready' | 'error' | 'already_imported';
+type Filter = 'all' | PreviewRow['status'];
 
 /** Rendering every row of a 50,000-row file would freeze the tab; the errors CSV holds them all. */
 const MAX_SHOWN = 500;
@@ -34,10 +35,17 @@ export function ToolsImportPreview({
   const [filter, setFilter] = useState<Filter>('all');
   const [confirming, setConfirming] = useState(false);
 
-  const ready = rows.filter((row) => row.status === 'ready');
-  const errors = rows.filter((row) => row.status === 'error');
-  const imported = rows.length - ready.length - errors.length;
-  const readyPoints = ready.reduce((sum, row) => sum + Number(row.points), 0);
+  const { ready, errors, imported, readyPoints } = useMemo(() => {
+    const ready = rows.filter((row) => row.status === 'ready');
+    const errors = rows.filter((row) => row.status === 'error');
+
+    return {
+      ready,
+      errors,
+      imported: rows.length - ready.length - errors.length,
+      readyPoints: ready.reduce((sum, row) => sum + Number(row.points), 0),
+    };
+  }, [rows]);
   const shown = useMemo(() => (filter === 'all' ? rows : rows.filter((row) => row.status === filter)), [rows, filter]);
 
   function downloadErrors() {
@@ -93,10 +101,12 @@ export function ToolsImportPreview({
               <TableRow key={row.row}>
                 <TableCell>{row.row}</TableCell>
                 <TableCell className="break-all">{row.email}</TableCell>
-                <TableCell className="text-right tabular-nums">{row.status === 'error' ? '—' : row.points}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {row.status === 'error' ? '—' : formatSignedPoints(Number(row.points))}
+                </TableCell>
                 <TableCell className="tabular-nums">
-                  {row.balance !== undefined && row.balanceAfter !== undefined
-                    ? `${formatPoints(row.balance)} → ${formatPoints(row.balanceAfter)}`
+                  {row.balance !== undefined && row.balance_after !== undefined
+                    ? `${formatPoints(row.balance)} → ${formatPoints(row.balance_after)}`
                     : '—'}
                 </TableCell>
                 <TableCell>

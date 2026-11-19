@@ -1,25 +1,15 @@
 import { Link } from 'react-router';
 
-import { useCsvExport } from '@/hooks/useCsvExport';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import PageLayout from '@/components/layout/PageLayout';
-import { exportCustomersToCsv } from '../customers/customers-page.export';
+import { CustomersExportButton } from '../customers/components/CustomersExportButton';
 import { DEFAULT_CUSTOMER_LIST_FILTERS } from '../customers/customers-page.filters';
-import { fetchAllMatchingCustomers } from '../customers/customers-page.matching-customers';
 import * as copy from './tools-page.copy';
 import { ToolsImportCard } from './ToolsImportCard';
 
 /** Tools: Import balances, plus the Customers page's export and bulk adjust, reached from here. */
 export default function ToolsPage() {
-  const { isExporting, start: handleExport } = useCsvExport({
-    fetchRows: (signal) =>
-      fetchAllMatchingCustomers(DEFAULT_CUSTOMER_LIST_FILTERS, { by: 'balance', dir: 'desc' }, signal),
-    download: exportCustomersToCsv,
-    emptyMessage: copy.exportEmpty,
-    errorFallback: copy.exportFailed,
-  });
-
   return (
     <PageLayout title={copy.toolsTitle()} description={copy.toolsDescription()}>
       <ToolsImportCard />
@@ -30,9 +20,11 @@ export default function ToolsPage() {
             <CardDescription>{copy.exportDescription()}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="outline" onClick={() => void handleExport()} disabled={isExporting}>
-              {copy.exportButton()}
-            </Button>
+            <CustomersExportButton
+              disabled={false}
+              queryFilters={DEFAULT_CUSTOMER_LIST_FILTERS}
+              sort={{ by: 'balance', dir: 'desc' }}
+            />
           </CardContent>
         </Card>
         <Card>

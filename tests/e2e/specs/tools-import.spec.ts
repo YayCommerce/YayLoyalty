@@ -1,9 +1,5 @@
-import { balanceOf, setBalance, userId } from '../fixtures/loyalty';
-import { expect, test, wp } from '../fixtures/test';
-
-function emailOf( login: string ): string {
-	return wp( 'user', 'get', login, '--field=user_email' );
-}
+import { balanceOf, emailOf, setBalance, userId } from '../fixtures/loyalty';
+import { expect, test } from '../fixtures/test';
 
 test.describe( 'Tools import', { tag: [ '@flow-tools-import', '@P-8' ] }, () => {
 	let customer: number;
