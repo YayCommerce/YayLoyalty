@@ -8,7 +8,7 @@ design:
 trello:
 type: feat
 branch: feat/p-7-more-ways-to-earn-social-and-subscription-rene
-pr:
+pr: 203
 editions: [pro, lite]
 created: 2026-11-19
 ---
