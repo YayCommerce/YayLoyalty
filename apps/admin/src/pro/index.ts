@@ -27,6 +27,8 @@ export { DesignCustomCssSection } from './design/DesignCustomCssSection';
 export { BatchExpirySection, ExpiryModeSection } from './settings/ExpirySections';
 export { FraudLimitsSection } from './settings/FraudLimitsSection';
 export { StoreLedger } from './ledger/StoreLedger';
+export { ReferralLayout } from './referral/ReferralLayout';
+export { ReferralSettingsPage } from './referral/settings/ReferralSettingsPage';
 export { RewardTemplatePicker } from './rewards/add/RewardTemplatePicker';
 export { RewardCreator, RewardEditor } from './rewards/editor/RewardEditor';
 export { RewardTable } from './rewards/RewardTable';

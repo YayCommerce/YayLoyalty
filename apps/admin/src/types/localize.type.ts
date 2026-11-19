@@ -6,6 +6,8 @@ import { Settings } from '@/lib/schema/settings.schema';
 export type Meta = {
   wpMeta: {
     siteUrl: string;
+    /** home_url(): where shoppers' links point; differs from siteUrl when WordPress lives in a subdirectory. */
+    homeUrl: string;
     adminUrl: string;
     ajaxUrl: string;
 

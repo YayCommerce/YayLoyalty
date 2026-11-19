@@ -1,9 +1,10 @@
 import { ComponentProps } from 'react';
-import { Coins, Gift, Megaphone } from 'lucide-react';
+import { Coins, Gift, Megaphone, UserPlus } from 'lucide-react';
 import { NavLink } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
 import { Can, CAP, Capability } from '@/lib/access';
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { cn } from '@/lib/utils';
 import { HeaderNavMenuItem, HeaderNavMenuList } from '@/components/ui/navmenu-header';
 import DashboardIcon from '@/components/icons/DashboardIcon';
@@ -36,6 +37,14 @@ export function HeaderMenu() {
           <span>{__('Rewards', 'yayloyalty')}</span>
         </NavLink>
       </CustomMenuItem>
+      {IS_PRO_BUILD ? (
+        <CustomMenuItem asChild key="referral" cap={CAP.VIEW}>
+          <NavLink to="/referral">
+            <UserPlus className="stroke-2" />
+            <span>{__('Referral', 'yayloyalty')}</span>
+          </NavLink>
+        </CustomMenuItem>
+      ) : null}
       <CustomMenuItem asChild key="settings" cap={CAP.VIEW}>
         <NavLink to="/settings">
           <SettingsIcon className="stroke-2" />

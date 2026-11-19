@@ -48,6 +48,20 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         return $model instanceof Customer ? $model : null;
     }
 
+    /** The existing user whose member row holds $code, or null. A deleted account's row outlives it, so users is joined. */
+    public function find_user_by_referral_code( string $code ): ?int {
+        global $wpdb;
+
+        $user_id = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT c.user_id FROM `' . esc_sql( $this->table() ) . '` c INNER JOIN `' . esc_sql( $wpdb->users ) . '` u ON u.ID = c.user_id WHERE c.referral_code = %s LIMIT 1', // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the tables are escaped identifiers.
+                $code
+            )
+        );
+
+        return null === $user_id ? null : (int) $user_id;
+    }
+
     /**
      * Ensures a row exists without racing. Create-then-lock, never
      * check-then-create: FOR UPDATE on a missing row takes a gap lock, so two
