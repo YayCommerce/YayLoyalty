@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Pro\Referrals;
 
+use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\Listeners\ListenerGuard;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
@@ -85,6 +86,37 @@ final class ReferralLifecycle {
                 }
             }
         );
+    }
+
+    /**
+     * Decides a pending referral from the friend's first live order placed in its window, when that order already completed.
+     * Covers an order that completed while the program was off.
+     *
+     * @return bool Whether the friend has a live order in the window, so the referral must not expire.
+     */
+    public function settle( Referral $referral ): bool {
+        $expires = $referral->get_coupon_expires_at();
+        $orders  = null === $expires ? [] : wc_get_orders(
+            [
+                'customer_id'  => $referral->get_friend_user_id(),
+                'status'       => [ 'processing', 'on-hold', 'completed' ],
+                'date_created' => '<=' . Dates::to_timestamp( $expires ),
+                'orderby'      => 'date',
+                'order'        => 'ASC',
+                'limit'        => 1,
+            ]
+        );
+        $first   = $orders[0] ?? null;
+
+        if ( ! $first instanceof \WC_Order ) {
+            return false;
+        }
+
+        if ( EarningService::is_awardable_order( $first ) ) {
+            $this->qualify( $first );
+        }
+
+        return true;
     }
 
     private function qualify( \WC_Order $order ): void {

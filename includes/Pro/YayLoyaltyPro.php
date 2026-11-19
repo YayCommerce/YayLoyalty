@@ -138,9 +138,10 @@ final class YayLoyaltyPro {
         $referral_coupon = new ReferralCoupon( $referrals );
         $referral_coupon->register();
         ( new ReferralCartSync( $referrals, $referral_coupon ) )->register();
-        $referral_payout = new ReferralPayout( $referrals );
-        ( new ReferralLifecycle( $referrals, $referral_payout ) )->register();
-        ( new ReferralRunner( $referrals, $referral_payout ) )->register();
+        $referral_payout    = new ReferralPayout( $referrals );
+        $referral_lifecycle = new ReferralLifecycle( $referrals, $referral_payout );
+        $referral_lifecycle->register();
+        ( new ReferralRunner( $referrals, $referral_payout, $referral_lifecycle ) )->register();
 
         /** Fires once Pro has attached its hooks. Pro-internal; absent from Lite. */
         do_action( 'yayloyalty_pro_booted' );

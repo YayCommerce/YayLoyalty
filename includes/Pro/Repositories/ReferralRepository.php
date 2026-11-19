@@ -81,6 +81,22 @@ final class ReferralRepository extends AbstractRepository {
     }
 
     /**
+     * Up to $limit pending referrals after $after_id, by id.
+     *
+     * @return Referral[]
+     */
+    public function pending_after( int $after_id, int $limit ): array {
+        global $wpdb;
+
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare( 'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE status = %s AND id > %d ORDER BY id LIMIT %d', ReferralStatus::PENDING, $after_id, $limit ), // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the table is escaped.
+            ARRAY_A
+        );
+
+        return array_values( array_filter( array_map( [ $this, 'hydrate' ], is_array( $rows ) ? $rows : [] ), static fn( $model ): bool => $model instanceof Referral ) );
+    }
+
+    /**
      * Expires a pending referral.
      *
      * @throws QueryException When the write fails.
