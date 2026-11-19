@@ -1,0 +1,19 @@
+import { formatCount } from '@/lib/helpers/points.helper';
+import { useHeldReferralCount } from '../referral.queries';
+import { APPROVALS_COPY } from './approvals.copy';
+
+/** The number of held referrals beside the Approvals tab and the Referral header item. Hidden at 0. */
+export function ReferralApprovalsBadge() {
+  const count = useHeldReferralCount();
+
+  if (count < 1) return null;
+
+  return (
+    <span
+      aria-label={APPROVALS_COPY.tabWaiting(count)}
+      className="bg-primary text-primary-foreground rounded-full px-1.5 text-[11px]/4 tabular-nums"
+    >
+      {formatCount(count)}
+    </span>
+  );
+}

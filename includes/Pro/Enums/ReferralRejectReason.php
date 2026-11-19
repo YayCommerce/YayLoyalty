@@ -31,6 +31,15 @@ final class ReferralRejectReason {
         return [ self::DUPLICATE_ACCOUNT, self::ORDER_REFUNDED, self::NOT_GENUINE, self::OTHER, self::SELF_REFERRAL, self::NOT_QUALIFYING, self::REFUNDED_DURING_HOLD ];
     }
 
+    /**
+     * The reasons an admin picks from in the reject dialog.
+     *
+     * @return string[]
+     */
+    public static function admin_choices(): array {
+        return [ self::DUPLICATE_ACCOUNT, self::ORDER_REFUNDED, self::NOT_GENUINE, self::OTHER ];
+    }
+
     protected static function noun(): string {
         return 'referral reject reason';
     }

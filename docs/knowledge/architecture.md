@@ -1,7 +1,7 @@
 ---
 area: architecture
 updated: 2026-11-18
-updated_ref: 91b4be1
+updated_ref: af585f6
 covers: [yayloyalty.php, YayLoyaltyPluginAdapter.php, includes/YayLoyalty.php, includes/Access/, includes/Database/, includes/Models/, includes/Repositories/, includes/Services/, includes/Controllers/, includes/Engine/, includes/Enums/, includes/Pro/YayLoyaltyPro.php, includes/Pro/Referrals/, includes/Pro/Repositories/ReferralRepository.php]
 ---
 
@@ -88,7 +88,7 @@ Namespace `yayloyalty/v1`. Every route's `permission_callback` is `$this->requir
 | MANAGE_SETTINGS | settings, design (`reset`, `preview`), emails writes; `setup`, `setup/dismiss` |
 | signed-in shopper | `StorefrontActivityRestController` |
 
-Pro adds controllers through `yayloyalty_rest_controllers` (campaign preview and performance, segments, Pro dashboard, store ledger, `referral/settings`: GET under VIEW, POST under MANAGE_CAMPAIGNS).
+Pro adds controllers through `yayloyalty_rest_controllers` (campaign preview and performance, segments, Pro dashboard, store ledger, `referral/settings`: GET under VIEW, POST under MANAGE_CAMPAIGNS; `referrals` list with search, status and `counts` under VIEW, and `referrals/{id}/approve|reject` under MANAGE_CAMPAIGNS, 409 `yayloyalty_referral_changed` once the referral left `on_hold`; `customers/{id}/referrals` for the drawer under VIEW, which creates a member's missing referral code).
 
 - Writes go through `exec_write()` (inside `Transaction::run`; a returned `WP_Error` rolls back). Any `Throwable` becomes a generic 500 with a 12-char correlation id; the real message goes only to `Log::error` (`BaseRestController.php`).
 - Write args come from the item schema minus read-only props; `ALWAYS_READONLY` (id, timestamps, `is_builtin`, `balance_after`, `actor_id`) can't be mass-assigned, even through `yayloyalty_rest_item_schema`.
