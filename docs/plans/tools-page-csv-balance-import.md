@@ -8,7 +8,7 @@ design: UX-3
 trello:
 type: feat
 branch: feat/p-8-tools-page-csv-balance-import
-pr:
+pr: 202
 editions: [pro, lite]
 created: 2026-11-19
 ---
