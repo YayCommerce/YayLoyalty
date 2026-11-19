@@ -8,7 +8,7 @@ import { useToolsImport } from './tools-import.use-import';
 import * as copy from './tools-page.copy';
 import { ToolsImportPreview } from './ToolsImportPreview';
 
-/** UX-3 "Tools page": the Import balances card, which grows into the preview once a file is chosen. */
+/** The Import balances card, which grows into the preview once a file is chosen. */
 export function ToolsImportCard() {
   const { state, choose, apply, reset } = useToolsImport();
   const inputRef = useRef<HTMLInputElement>(null);

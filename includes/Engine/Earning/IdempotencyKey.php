@@ -23,7 +23,6 @@ final class IdempotencyKey {
 
     private const SEPARATOR = ':';
 
-    /** The qualifier of an imported row's key. */
     private const IMPORT_QUALIFIER = 'import';
 
     /**

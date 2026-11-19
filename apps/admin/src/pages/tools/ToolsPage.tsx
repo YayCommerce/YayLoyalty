@@ -10,7 +10,7 @@ import { fetchAllMatchingCustomers } from '../customers/customers-page.matching-
 import * as copy from './tools-page.copy';
 import { ToolsImportCard } from './ToolsImportCard';
 
-/** UX-3 "Tools page": Import balances, plus the Customers page's export and bulk adjust, reached from here. */
+/** Tools: Import balances, plus the Customers page's export and bulk adjust, reached from here. */
 export default function ToolsPage() {
   const { isExporting, start: handleExport } = useCsvExport({
     fetchRows: (signal) =>

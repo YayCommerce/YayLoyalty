@@ -1,5 +1,8 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
+import { formatSignedPoints } from '@/lib/helpers/ledger.helper';
+import { formatCount } from '@/lib/helpers/points.helper';
+import { MAX_MATCHING_ROWS } from '../customers/customers-page.matching-customers';
 import type { ImportCsvError } from './tools-import.csv';
 
 /** Tools page copy, as functions so each string is translated at render time. */
@@ -34,7 +37,11 @@ export function csvError(error: ImportCsvError): string {
     case 'missing_columns':
       return __('The first row must name the columns email and points.', 'yayloyalty');
     case 'too_many_rows':
-      return __('This file has more than 50,000 rows. Split it into smaller files.', 'yayloyalty');
+      return sprintf(
+        /* translators: %s: the most rows one file may hold. */
+        __('This file has more than %s rows. Split it into smaller files.', 'yayloyalty'),
+        formatCount(MAX_MATCHING_ROWS),
+      );
     default:
       return __('This file has no rows to import.', 'yayloyalty');
   }
@@ -88,7 +95,11 @@ export const showingFirst = (shown: number, total: number) =>
 export function summary(ready: number, points: number, errors: number, imported: number): string {
   return [
     /* translators: 1: rows ready to import, 2: their points in total, signed. */
-    sprintf(_n('%1$d ready · %2$s points', '%1$d ready · %2$s points', ready, 'yayloyalty'), ready, signed(points)),
+    sprintf(
+      _n('%1$d ready · %2$s points', '%1$d ready · %2$s points', ready, 'yayloyalty'),
+      ready,
+      formatSignedPoints(points),
+    ),
     /* translators: %d: rows with an error. */
     sprintf(_n('%d error', '%d errors', errors, 'yayloyalty'), errors),
     /* translators: %d: rows already imported. */
@@ -111,7 +122,7 @@ export const confirmDescription = (count: number, points: number) =>
       count,
       'yayloyalty',
     ),
-    signed(points),
+    formatSignedPoints(points),
     count,
   );
 
@@ -120,17 +131,13 @@ export const importDone = (count: number, points: number) =>
   sprintf(
     _n('Imported %1$d row (%2$s points).', 'Imported %1$d rows (%2$s points).', count, 'yayloyalty'),
     count,
-    signed(points),
+    formatSignedPoints(points),
   );
 export const importPartial = (imported: number, failed: number) =>
   sprintf(
     /* translators: 1: rows imported, 2: rows that failed. */
-    __('%1$d imported, %2$d failed. Upload the same file again to retry the failed rows.', 'yayloyalty'),
+    __('%1$d imported, %2$d failed. Upload the same file again, unchanged, to retry the failed rows.', 'yayloyalty'),
     imported,
     failed,
   );
 export const done = () => __('Done', 'yayloyalty');
-
-function signed(points: number): string {
-  return (points > 0 ? '+' : '') + points.toLocaleString();
-}

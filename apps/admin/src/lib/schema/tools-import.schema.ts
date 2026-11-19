@@ -5,9 +5,6 @@ export const importPreviewRowSchema = z.object({
   row: z.number().int(),
   status: z.enum(['ready', 'already_imported', 'error']),
   reason: z.string().nullable().optional(),
-  user_id: z.number().int().optional(),
-  name: z.string().optional(),
-  points: z.number().int().optional(),
   balance: z.number().int().optional(),
   balance_after: z.number().int().optional(),
 });

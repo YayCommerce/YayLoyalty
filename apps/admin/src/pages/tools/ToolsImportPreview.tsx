@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import { downloadCsv, toCsv } from '@/lib/helpers/csv.helper';
+import { formatPoints } from '@/lib/helpers/points.helper';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,7 @@ type Filter = 'all' | 'ready' | 'error' | 'already_imported';
 /** Rendering every row of a 50,000-row file would freeze the tab; the errors CSV holds them all. */
 const MAX_SHOWN = 500;
 
-/** UX-3 "Import preview": the summary, the filtered rows, the errors CSV, and Import behind a confirm. */
+/** The import preview: the summary, the filtered rows, the errors CSV, and Import behind a confirm. */
 export function ToolsImportPreview({
   fileName,
   rows,
@@ -95,7 +96,7 @@ export function ToolsImportPreview({
                 <TableCell className="text-right tabular-nums">{row.status === 'error' ? '—' : row.points}</TableCell>
                 <TableCell className="tabular-nums">
                   {row.balance !== undefined && row.balanceAfter !== undefined
-                    ? `${row.balance} → ${row.balanceAfter}`
+                    ? `${formatPoints(row.balance)} → ${formatPoints(row.balanceAfter)}`
                     : '—'}
                 </TableCell>
                 <TableCell>

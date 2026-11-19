@@ -112,7 +112,7 @@ final class LedgerService {
      * so a retried or re-uploaded file writes each customer's row once. A debit that would take the
      * balance below zero is skipped under the lock.
      *
-     * @param int $import_id Positive id of the import file (a hash of its text).
+     * @param int $import_id Positive id of the import file.
      * @return Outcome awarded, duplicate, or skipped( REASON_WOULD_GO_NEGATIVE ).
      * @throws \InvalidArgumentException When points is zero or the import id is not positive.
      */
