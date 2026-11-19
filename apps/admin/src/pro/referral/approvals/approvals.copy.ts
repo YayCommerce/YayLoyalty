@@ -29,6 +29,9 @@ export const APPROVALS_COPY = {
   columnWhy: () => __('Why it is here', 'yayloyalty'),
   columnHeldSince: () => __('Held since', 'yayloyalty'),
   holdEnding: () => __('Hold ending', 'yayloyalty'),
+  advocateCannotEarn: () => __("Advocate can't earn", 'yayloyalty'),
+  /* translators: %s: the date the referral is rejected */
+  rejectsOn: (date: string) => sprintf(__('rejected automatically %s', 'yayloyalty'), date),
   /* translators: %s: the date the hold ends */
   holdEnds: (date: string) => sprintf(__('hold ends %s', 'yayloyalty'), date),
   footer: () =>

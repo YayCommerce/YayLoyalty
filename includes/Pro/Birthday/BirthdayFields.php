@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Pro\Birthday;
 
+use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -39,7 +40,7 @@ final class BirthdayFields {
 
     /** Whether customers are asked for a birthday: a birthday campaign is live. */
     public static function is_offered(): bool {
-        return [] !== ( new CampaignRepository() )->live_for_trigger( CampaignTrigger::BIRTHDAY, Dates::now() );
+        return ProgramGate::storefront_allowed() && [] !== ( new CampaignRepository() )->live_for_trigger( CampaignTrigger::BIRTHDAY, Dates::now() );
     }
 
     public function render_register(): void {

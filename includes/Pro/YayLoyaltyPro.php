@@ -2,6 +2,7 @@
 namespace YayLoyalty\Pro;
 
 use YayLoyalty\Engine\Earning\EarningService;
+use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Points\Triggers\Registry as TriggerRegistry;
 use YayLoyalty\Engine\Rewards\Handlers\Registry;
@@ -25,7 +26,9 @@ use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
 use YayLoyalty\Pro\Integrations\YayMail\ProYayMail;
 use YayLoyalty\Pro\Referrals\ReferralAttribution;
 use YayLoyalty\Pro\Referrals\ReferralCartSync;
+use YayLoyalty\Pro\Referrals\ReferralCodeAssigner;
 use YayLoyalty\Pro\Referrals\ReferralCoupon;
+use YayLoyalty\Pro\Referrals\ReferralEarnRow;
 use YayLoyalty\Pro\Referrals\ReferralLifecycle;
 use YayLoyalty\Pro\Referrals\ReferralPayout;
 use YayLoyalty\Pro\Referrals\ReferralRunner;
@@ -38,12 +41,14 @@ use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Pro\Services\DailyEarningLimit;
 use YayLoyalty\Pro\Services\DiscountRewardHandler;
 use YayLoyalty\Pro\Services\RewardConditionsEvaluator;
+use YayLoyalty\Pro\Storefront\AccountReferrals;
 use YayLoyalty\Pro\Storefront\RewardsPanel;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\DashboardRepository;
 use YayLoyalty\Services\Dashboard\DashboardCache;
+use YayLoyaltyScoped\YayCommerce\AdminShell\License\LicenseState;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -94,6 +99,8 @@ final class YayLoyaltyPro {
 
         ProInstaller::register();
 
+        add_filter( ProgramGate::STOREFRONT_FILTER, [ self::class, 'storefront_allowed' ] );
+
         add_filter( 'yayloyalty_campaign_triggers', [ self::class, 'add_triggers' ] );
         add_filter( 'yayloyalty_campaign_config_whitelist', [ self::class, 'add_config_keys' ] );
         add_filter( 'yayloyalty_campaign_config_schema', [ self::class, 'add_campaign_config_schema' ] );
@@ -123,14 +130,19 @@ final class YayLoyaltyPro {
         ( new BirthdayRunner() )->register();
         ( new BirthdayFields() )->register();
         ( new BirthdayEarnRow() )->register();
-        ( new ReferralAttribution( new CustomerRepository(), new ReferralRepository() ) )->register();
-        $referrals       = new ReferralRepository();
+        $customers = new CustomerRepository();
+        $referrals = new ReferralRepository();
+        ( new ReferralAttribution( $customers, $referrals ) )->register();
+        AccountReferrals::register();
+        ( new ReferralCodeAssigner( $customers ) )->register();
+        ( new ReferralEarnRow() )->register();
         $referral_coupon = new ReferralCoupon( $referrals );
         $referral_coupon->register();
         ( new ReferralCartSync( $referrals, $referral_coupon ) )->register();
-        $referral_payout = new ReferralPayout( $referrals );
-        ( new ReferralLifecycle( $referrals, $referral_payout ) )->register();
-        ( new ReferralRunner( $referrals, $referral_payout ) )->register();
+        $referral_payout    = new ReferralPayout( $referrals );
+        $referral_lifecycle = new ReferralLifecycle( $referrals, $referral_payout );
+        $referral_lifecycle->register();
+        ( new ReferralRunner( $referrals, $referral_payout, $referral_lifecycle ) )->register();
 
         /** Fires once Pro has attached its hooks. Pro-internal; absent from Lite. */
         do_action( 'yayloyalty_pro_booted' );
@@ -145,6 +157,11 @@ final class YayLoyaltyPro {
      */
     public static function plugin_name( string $name ): string {
         return $name . ' Pro';
+    }
+
+    /** Unlicensed, the storefront shows nothing of YayLoyalty: a key activated on this site and not revoked. */
+    public static function storefront_allowed( bool $allowed ): bool {
+        return $allowed && LicenseState::allows_features( 'yayloyalty' );
     }
 
     /** Whether boot() has run; YayLoyalty::is_pro() only asks whether the code is present. */

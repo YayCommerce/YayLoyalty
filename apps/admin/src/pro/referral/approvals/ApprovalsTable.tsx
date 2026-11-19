@@ -103,11 +103,22 @@ export function ApprovalsTable({
                 </TableCell>
                 <TableCell>
                   <span className="flex flex-col gap-0.5">
-                    <Badge variant="warning-soft">{APPROVALS_COPY.holdEnding()}</Badge>
-                    {item.hold_until && (
-                      <span className="text-muted-foreground text-xs">
-                        {APPROVALS_COPY.holdEnds(formatWPDate(item.hold_until))}
-                      </span>
+                    {item.rejects_at ? (
+                      <>
+                        <Badge variant="destructive-soft">{APPROVALS_COPY.advocateCannotEarn()}</Badge>
+                        <span className="text-muted-foreground text-xs">
+                          {APPROVALS_COPY.rejectsOn(formatWPDate(item.rejects_at))}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Badge variant="warning-soft">{APPROVALS_COPY.holdEnding()}</Badge>
+                        {item.hold_until && (
+                          <span className="text-muted-foreground text-xs">
+                            {APPROVALS_COPY.holdEnds(formatWPDate(item.hold_until))}
+                          </span>
+                        )}
+                      </>
                     )}
                   </span>
                 </TableCell>

@@ -171,6 +171,7 @@ final class ReferralsRestController extends AbstractRestController {
             ]
         );
 
+        cache_users( array_map( static fn( array $item ): int => (int) ( $item['advocate']['id'] ?? 0 ), $result['items'] ) );
         $result['items'] = array_map( [ self::class, 'with_order' ], $result['items'] );
 
         return $this->respond_paginated( $result ) + [ 'counts' => (object) $this->referral_list->count_by_status() ]; // An object even when empty, which PHP would otherwise encode as [].
@@ -195,6 +196,7 @@ final class ReferralsRestController extends AbstractRestController {
                 'used_code' => in_array( ReferralCoupon::code_for( (int) $item['id'] ), $order->get_coupon_codes(), true ),
             ] : null,
             'advocate_points' => (int) ( $item['terms']['advocate_points'] ?? 0 ),
+            'rejects_at'      => ReferralStatus::ON_HOLD === ( $item['status'] ?? '' ) && ! empty( $item['hold_until'] ) ? ReferralPayout::rejects_at( (int) ( $item['advocate']['id'] ?? 0 ), (string) $item['hold_until'] ) : null,
         ];
     }
 }

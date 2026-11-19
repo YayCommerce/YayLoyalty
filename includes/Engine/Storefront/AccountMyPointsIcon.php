@@ -102,6 +102,7 @@ final class AccountMyPointsIcon {
             CampaignTrigger::REVIEW   => 'review',
             CampaignTrigger::SIGNUP   => 'join',
             CampaignTrigger::BIRTHDAY => 'birthday',
+            CampaignTrigger::REFERRAL => 'join',
         ];
 
         return isset( $names[ $trigger ] ) ? self::design( $names[ $trigger ] ) : self::get( 'gift' );

@@ -2,6 +2,7 @@
 namespace YayLoyalty\Pro\Referrals;
 
 use YayLoyalty\Engine\Earning\Listeners\ListenerGuard;
+use YayLoyalty\Engine\Points\Context;
 use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Redemption\RewardCoupons;
 use YayLoyalty\Pro\Repositories\ReferralRepository;
@@ -19,6 +20,12 @@ final class ReferralCartSync {
 
     private ReferralCoupon $coupon;
 
+    /** @var string[] Codes WooCommerce removes for an individual-use coupon; their removal is not the friend's. */
+    private array $displaced = [];
+
+    /** @var array<int, int> Referral ids this request created, by friend user id. */
+    private array $created = [];
+
     public function __construct( ReferralRepository $referrals, ReferralCoupon $coupon ) {
         $this->referrals = $referrals;
         $this->coupon    = $coupon;
@@ -29,6 +36,55 @@ final class ReferralCartSync {
         add_action( 'woocommerce_before_calculate_totals', [ $this, 'sync_cart' ], PHP_INT_MAX - 1 );
         add_action( 'woocommerce_check_cart_items', [ $this, 'sync_before_check' ], 0 );
         add_action( 'woocommerce_removed_coupon', [ $this, 'on_removed' ] );
+        add_filter( 'woocommerce_apply_individual_use_coupon', [ $this, 'on_individual_use_apply' ], PHP_INT_MAX, 3 );
+        add_action( ReferralAttribution::CREATED_ACTION, [ $this, 'on_referral_created' ], 10, 2 );
+        add_action( 'woocommerce_store_api_checkout_order_processed', [ $this, 'apply_to_signup_order' ] );
+    }
+
+    public function on_referral_created( int $referral_id, int $friend_user_id ): void {
+        $this->created[ $friend_user_id ] = $referral_id;
+    }
+
+    /**
+     * Block checkout creates the account after the order, so a friend who signs up while checking out gets the
+     * discount here, before payment, as classic checkout gives it when it recalculates the cart for the new customer.
+     */
+    public function apply_to_signup_order( \WC_Order $order ): void {
+        ListenerGuard::run(
+            'ReferralCartSync',
+            'referral discount for order #' . (int) $order->get_id() . ' failed',
+            function () use ( $order ): void {
+                $referral_id = $this->created[ (int) $order->get_customer_id() ] ?? null;
+
+                // Only a referral this request created: a returning friend's cart already decided, declined included.
+                if ( null === $referral_id ) {
+                    return;
+                }
+
+                $codes = $order->get_coupon_codes();
+
+                // A points discount was already settled against the undiscounted total.
+                if ( [] !== Context::loyalty_codes( $codes ) || self::has_individual_use_coupon( $codes ) ) {
+                    return;
+                }
+
+                $order->apply_coupon( ReferralCoupon::code_for( $referral_id ) );
+            }
+        );
+    }
+
+    /**
+     * WooCommerce is about to remove every other coupon for an individual-use one; that removal is not the friend's.
+     *
+     * @param mixed $coupons_to_keep
+     * @param mixed $coupon
+     * @param mixed $applied
+     * @return mixed
+     */
+    public function on_individual_use_apply( $coupons_to_keep, $coupon, $applied ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- WooCommerce passes the coupon before the applied codes.
+        $this->displaced = array_values( array_diff( (array) $applied, (array) $coupons_to_keep ) );
+
+        return $coupons_to_keep;
     }
 
     public function sync_cart( \WC_Cart $cart ): void {
@@ -59,6 +115,14 @@ final class ReferralCartSync {
      * @param mixed $code
      */
     public function on_removed( $code ): void {
+        $displaced = array_search( $code, $this->displaced, true );
+
+        if ( false !== $displaced ) {
+            unset( $this->displaced[ $displaced ] );
+
+            return;
+        }
+
         $id = ReferralCoupon::referral_id( $code );
 
         if ( null !== $id && function_exists( 'WC' ) && WC()->session ) {
@@ -101,12 +165,16 @@ final class ReferralCartSync {
             return null;
         }
 
-        return self::has_individual_use_coupon( $cart ) ? null : ReferralCoupon::code_for( (int) $referral->get_id() );
+        return self::has_individual_use_coupon( $cart->get_applied_coupons() ) ? null : ReferralCoupon::code_for( (int) $referral->get_id() );
     }
 
-    /** Whether a merchant coupon on the cart is individual use, which another coupon must never join. */
-    private static function has_individual_use_coupon( \WC_Cart $cart ): bool {
-        foreach ( $cart->get_applied_coupons() as $code ) {
+    /**
+     * Whether a merchant coupon among $codes is individual use, which another coupon must never join.
+     *
+     * @param string[] $codes
+     */
+    private static function has_individual_use_coupon( array $codes ): bool {
+        foreach ( $codes as $code ) {
             if ( null === ReferralCoupon::referral_id( $code ) && ( new \WC_Coupon( $code ) )->get_individual_use() ) {
                 return true;
             }

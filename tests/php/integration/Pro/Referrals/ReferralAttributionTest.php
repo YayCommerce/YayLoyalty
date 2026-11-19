@@ -45,7 +45,18 @@ final class ReferralAttributionTest extends WP_UnitTestCase {
 	}
 
 	public function test_a_self_registration_through_a_live_link_is_one_pending_referral_with_its_terms() {
+		$created = [];
+		add_action(
+			\YayLoyalty\Pro\Referrals\ReferralAttribution::CREATED_ACTION,
+			static function ( int $referral_id, int $friend ) use ( &$created ): void {
+				$created[] = $friend;
+			},
+			10,
+			2
+		);
 		$friend_id = self::factory()->user->create( [ 'role' => 'customer' ] );
+
+		$this->assertSame( [ $friend_id ], $created );
 
 		$rows = $this->referrals();
 

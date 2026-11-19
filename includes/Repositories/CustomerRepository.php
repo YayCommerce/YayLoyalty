@@ -2,6 +2,7 @@
 namespace YayLoyalty\Repositories;
 
 use YayLoyalty\Database\QueryException;
+use YayLoyalty\Database\Transaction;
 use YayLoyalty\Enums\LotStatus;
 use YayLoyalty\Models\Customer;
 use YayLoyalty\Utils\Dates;
@@ -70,7 +71,6 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
     public function assign_referral_code( int $user_id ): string {
         global $wpdb;
 
-        $this->ensure_row( $user_id );
         $table = esc_sql( $this->table() );
 
         for ( $attempt = 0; $attempt < 6; $attempt++ ) {
@@ -82,6 +82,11 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
 
             if ( 5 === $attempt ) {
                 break;
+            }
+
+            // Read first: most customers already have a row and a code, so the upsert is skipped.
+            if ( 0 === $attempt ) {
+                $this->ensure_row( $user_id );
             }
 
             $suppressed = $wpdb->suppress_errors( true );
@@ -130,6 +135,20 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
 
         if ( false === $result ) {
             throw new QueryException( 'insert', esc_html( $wpdb->last_error ), esc_html( $this->table() . ' (ensure_row)' ) );
+        }
+
+        // 1 row affected is a new row; 0 is the no-op update of an existing one.
+        if ( 1 === $result ) {
+            /**
+             * Fires once, when the customer's row is first created.
+             *
+             * @param int $user_id The customer.
+             */
+            Transaction::after_commit(
+                static function () use ( $user_id ): void {
+                    do_action( 'yayloyalty_customer_created', $user_id );
+                }
+            );
         }
     }
 

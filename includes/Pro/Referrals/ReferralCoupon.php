@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Pro\Referrals;
 
+use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Redemption\RewardCoupons;
 use YayLoyalty\Pro\Enums\ReferralStatus;
 use YayLoyalty\Pro\Models\Referral;
@@ -125,7 +126,7 @@ final class ReferralCoupon {
      * Pending, unexpired, the program live, and no paid order besides $exclude_order_id.
      */
     public function is_usable( Referral $referral, ?int $exclude_order_id ): bool {
-        if ( ReferralStatus::PENDING !== $referral->get_status() || ! ReferralSettings::get()['enabled'] ) {
+        if ( ReferralStatus::PENDING !== $referral->get_status() || ! ReferralSettings::get()['enabled'] || ! ProgramGate::storefront_allowed() ) {
             return false;
         }
 

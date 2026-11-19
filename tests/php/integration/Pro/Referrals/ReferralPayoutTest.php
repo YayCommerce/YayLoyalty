@@ -6,6 +6,7 @@ use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Pro\Enums\ReferralRejectReason;
 use YayLoyalty\Pro\Enums\ReferralStatus;
+use YayLoyalty\Pro\Referrals\ReferralLifecycle;
 use YayLoyalty\Pro\Referrals\ReferralPayout;
 use YayLoyalty\Pro\Referrals\ReferralRunner;
 use YayLoyalty\Pro\Referrals\ReferralSettings;
@@ -107,7 +108,7 @@ final class ReferralPayoutTest extends ReferralTestCase {
 		$lapsed_friend = self::factory()->user->create( [ 'role' => 'customer' ] );
 		$lapsed        = ( new ReferralRepository() )->insert_pending( $this->advocate_id, $lapsed_friend, 'TESTREF1', [ 'advocate_points' => 1000 ], Dates::offset( -60 ) );
 		$before        = $this->balance( $this->advocate_id );
-		$runner        = new ReferralRunner( new ReferralRepository(), new ReferralPayout( new ReferralRepository() ) );
+		$runner        = new ReferralRunner( new ReferralRepository(), new ReferralPayout( new ReferralRepository() ), new ReferralLifecycle( new ReferralRepository(), new ReferralPayout( new ReferralRepository() ) ) );
 
 		$runner->run();
 		$runner->run();

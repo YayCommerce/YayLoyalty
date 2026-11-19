@@ -4,6 +4,7 @@ namespace YayLoyalty\Pro\Repositories;
 use YayLoyalty\Pro\Enums\ReferralStatus;
 use YayLoyalty\Pro\Models\Referral;
 use YayLoyalty\Repositories\CustomerMetaRepository;
+use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Table;
 
 defined( 'ABSPATH' ) || exit;
@@ -97,9 +98,10 @@ final class ReferralListRepository {
 
     /**
      * One advocate's totals: everyone they referred, those rewarded, those still waiting (pending or on hold), the
-     * points paid (the snapshots of rewarded referrals), and the first orders that qualified (on hold or rewarded).
+     * points paid (the snapshots of rewarded referrals), those whose friend placed a first order, the points still on
+     * hold and their next release still ahead, and the first orders that qualified (on hold or rewarded).
      *
-     * @return array{referred: int, rewarded: int, waiting: int, points_earned: int, qualified_order_ids: int[]}
+     * @return array{referred: int, rewarded: int, waiting: int, points_earned: int, ordered: int, on_the_way: int, next_release: ?string, qualified_order_ids: int[]}
      */
     public function counts_for_advocate( int $advocate_user_id ): array {
         global $wpdb;
@@ -113,23 +115,42 @@ final class ReferralListRepository {
             'rewarded'            => 0,
             'waiting'             => 0,
             'points_earned'       => 0,
+            'ordered'             => 0,
+            'on_the_way'          => 0,
+            'next_release'        => null,
             'qualified_order_ids' => [],
         ];
+
+        $now = Dates::now();
 
         foreach ( is_array( $rows ) ? $rows : [] as $row ) {
             $referral = Referral::from_row( $row );
             $status   = $referral->get_status();
+            $points   = (int) ( $referral->get_terms()['advocate_points'] ?? 0 );
+            $order_id = $referral->get_first_order_id();
             ++$counts['referred'];
+
+            if ( null !== $order_id ) {
+                ++$counts['ordered'];
+            }
 
             if ( ReferralStatus::REWARDED === $status ) {
                 ++$counts['rewarded'];
-                $counts['points_earned'] += (int) ( $referral->get_terms()['advocate_points'] ?? 0 );
-            } elseif ( ReferralStatus::PENDING === $status || ReferralStatus::ON_HOLD === $status ) {
+                $counts['points_earned'] += $points;
+            } elseif ( ReferralStatus::ON_HOLD === $status ) {
+                ++$counts['waiting'];
+                $counts['on_the_way'] += $points;
+                $release               = $referral->get_hold_until();
+
+                if ( null !== $release && $release >= $now && ( null === $counts['next_release'] || $release < $counts['next_release'] ) ) {
+                    $counts['next_release'] = $release;
+                }
+            } elseif ( ReferralStatus::PENDING === $status ) {
                 ++$counts['waiting'];
             }
 
-            if ( ( ReferralStatus::REWARDED === $status || ReferralStatus::ON_HOLD === $status ) && null !== $referral->get_first_order_id() ) {
-                $counts['qualified_order_ids'][] = $referral->get_first_order_id();
+            if ( null !== $order_id && ( ReferralStatus::REWARDED === $status || ReferralStatus::ON_HOLD === $status ) ) {
+                $counts['qualified_order_ids'][] = $order_id;
             }
         }
 

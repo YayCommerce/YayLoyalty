@@ -26,9 +26,12 @@ final class ReferralRejectReason {
 
     public const REFUNDED_DURING_HOLD = 'refunded_during_hold';
 
+    /** The advocate's account is gone, or they stayed opted out or in an excluded role past the grace period. */
+    public const ADVOCATE_CANNOT_EARN = 'advocate_cannot_earn';
+
     /** @return string[] */
     public static function all(): array {
-        return [ self::DUPLICATE_ACCOUNT, self::ORDER_REFUNDED, self::NOT_GENUINE, self::OTHER, self::SELF_REFERRAL, self::NOT_QUALIFYING, self::REFUNDED_DURING_HOLD ];
+        return [ self::DUPLICATE_ACCOUNT, self::ORDER_REFUNDED, self::NOT_GENUINE, self::OTHER, self::SELF_REFERRAL, self::NOT_QUALIFYING, self::REFUNDED_DURING_HOLD, self::ADVOCATE_CANNOT_EARN ];
     }
 
     /**

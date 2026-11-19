@@ -98,6 +98,10 @@ final class Referral extends AbstractModel {
         return $this->coupon_expires_at;
     }
 
+    public function get_hold_until(): ?string {
+        return $this->hold_until;
+    }
+
     public function get_first_order_id(): ?int {
         return $this->first_order_id;
     }

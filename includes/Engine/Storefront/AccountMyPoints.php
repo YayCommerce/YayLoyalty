@@ -74,7 +74,7 @@ final class AccountMyPoints {
      * @return array<string, string>
      */
     public static function add_menu_item( array $items ): array {
-        if ( ! ProgramGate::program_enabled() ) {
+        if ( ! ProgramGate::storefront_enabled() ) {
             return $items;
         }
 
@@ -165,7 +165,7 @@ final class AccountMyPoints {
 
     /** @param string $value The endpoint value: the history page number. */
     public static function render( $value = '' ): void {
-        if ( ! ProgramGate::program_enabled() ) {
+        if ( ! ProgramGate::storefront_enabled() ) {
             self::print_state( __( 'Rewards are currently unavailable', 'yayloyalty' ), __( 'The rewards program is currently paused. Please check back later.', 'yayloyalty' ) );
 
             return;
@@ -250,7 +250,7 @@ final class AccountMyPoints {
     }
 
     /** The tab's whole body when it has nothing to show: a heading and one line in a card. */
-    private static function print_state( string $title, string $text ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the template reads both.
+    public static function print_state( string $title, string $text ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the template reads both.
         include __DIR__ . '/templates/account-rewards-state.php';
     }
 

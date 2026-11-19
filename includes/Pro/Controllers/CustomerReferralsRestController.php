@@ -77,7 +77,7 @@ final class CustomerReferralsRestController extends AbstractRestController {
         $settings      = ReferralSettings::get();
 
         return $this->respond_paginated( $page ) + [
-            'link'   => null === $code ? null : add_query_arg( ReferralAttribution::QUERY_ARG, rawurlencode( $code ), home_url( '/' ) ),
+            'link'   => null === $code ? null : ReferralAttribution::link_for( $code ),
             'counts' => [
                 'referred'         => $counts['referred'],
                 'rewarded'         => $counts['rewarded'],

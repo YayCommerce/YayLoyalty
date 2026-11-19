@@ -18,6 +18,9 @@ final class ReferralAttribution {
 
     public const COOKIE = 'yayloyalty_ref';
 
+    /** Fires with ( int $referral_id, int $friend_user_id ) once a pending referral is created. Pro-internal. */
+    public const CREATED_ACTION = 'yayloyalty_referral_created';
+
     /** Separates the code from the visit's Unix time in the cookie, so the window is checked against today's setting. */
     private const COOKIE_SEPARATOR = '.';
 
@@ -90,13 +93,21 @@ final class ReferralAttribution {
             $advocate_id = null === $code || ! $in_window ? null : $this->customers->find_user_by_referral_code( $code );
 
             if ( null !== $advocate_id && $settings['enabled'] && $advocate_id !== $friend_user_id && null === $this->referrals->find_by_friend( $friend_user_id ) ) {
-                $this->referrals->insert_pending(
+                $referral_id = $this->referrals->insert_pending(
                     $advocate_id,
                     $friend_user_id,
                     (string) $code,
                     self::terms( $settings ),
                     Dates::offset( (int) $settings['coupon_days'] * DAY_IN_SECONDS )
                 );
+
+                /**
+                 * Fires once a self-registered friend's pending referral is created.
+                 *
+                 * @param int $referral_id
+                 * @param int $friend_user_id
+                 */
+                do_action( self::CREATED_ACTION, $referral_id, $friend_user_id ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
             }
         } finally {
             // Spent whatever happened: a second account from this browser is not a second referral.
@@ -131,6 +142,11 @@ final class ReferralAttribution {
             'hold_days'             => $settings['hold_days'],
             'exclude_other_coupons' => $settings['exclude_other_coupons'],
         ];
+    }
+
+    /** The share link for a customer's referral code. */
+    public static function link_for( string $code ): string {
+        return add_query_arg( self::QUERY_ARG, rawurlencode( $code ), home_url( '/' ) );
     }
 
     /** @param mixed $raw */

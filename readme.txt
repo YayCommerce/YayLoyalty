@@ -43,7 +43,7 @@ YayLoyalty adds a points and rewards program to your WooCommerce store. Customer
 
 = YayLoyalty Pro =
 
-YayLoyalty Pro is a separate plugin that replaces this one and keeps all of its data. It adds birthday, first-order, order-count and spend-milestone campaigns, campaign conditions, coupon, free-shipping and free-product rewards, batch expiry, daily earning limits, customer segments and more emails. Everything in this plugin works without it.
+YayLoyalty Pro is a separate plugin that replaces this one and keeps all of its data. It adds a referral program (a friend's first-order discount, points for the referrer after a hold, approvals, and a Referrals tab in My Account with each customer's link), birthday, first-order, order-count and spend-milestone campaigns, campaign conditions, coupon, free-shipping and free-product rewards, batch expiry, daily earning limits, customer segments and more emails. Everything in this plugin works without it.
 
 == Installation ==
 

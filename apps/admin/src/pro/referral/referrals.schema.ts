@@ -20,6 +20,7 @@ export const referralListItemSchema = z.object({
   advocate: personSchema,
   friend: personSchema,
   advocate_points: z.number().int(),
+  rejects_at: z.string().nullable(),
   first_order: z
     .object({
       id: z.number().int(),

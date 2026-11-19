@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Pro\Referrals;
 
+use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\Listeners\ListenerGuard;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
@@ -18,6 +19,9 @@ defined( 'ABSPATH' ) || exit;
 
 /** Moves a referral along as the friend's first order completes, is refunded during the hold, or is clawed back after payout. */
 final class ReferralLifecycle {
+
+    /** The statuses of an order that can still be the friend's first one. */
+    private const LIVE_STATUSES = [ 'processing', 'on-hold', 'completed' ];
 
     private ReferralRepository $referrals;
 
@@ -87,16 +91,51 @@ final class ReferralLifecycle {
         );
     }
 
+    /**
+     * Decides a pending referral from the friend's first live order in its window once that order completed (also one that completed while the program was off).
+     *
+     * @return bool Whether the friend has a live order in the window, so the referral must not expire.
+     */
+    public function settle( Referral $referral ): bool {
+        $expires = $referral->get_coupon_expires_at();
+        $orders  = null === $expires ? [] : wc_get_orders(
+            [
+                'customer_id'  => $referral->get_friend_user_id(),
+                'status'       => self::LIVE_STATUSES,
+                'date_created' => '<=' . Dates::to_timestamp( $expires ),
+                'orderby'      => 'date',
+                'order'        => 'ASC',
+                'limit'        => 1,
+            ]
+        );
+        $first   = $orders[0] ?? null;
+
+        if ( ! $first instanceof \WC_Order ) {
+            return false;
+        }
+
+        // The query already made it the first order in the window.
+        if ( EarningService::is_awardable_order( $first ) ) {
+            $this->decide( $first, $referral );
+        }
+
+        return true;
+    }
+
     private function qualify( \WC_Order $order ): void {
-        $order_id = (int) $order->get_id();
         $friend   = (int) $order->get_customer_id();
         $referral = $friend > 0 ? $this->referrals->find_pending_for_friend( $friend ) : null;
 
-        if ( null === $referral || ! ReferralSettings::get()['enabled'] || ! self::placed_in_window( $order, $referral->get_coupon_expires_at() ) ) {
+        if ( null === $referral || ! self::placed_in_window( $order, $referral->get_coupon_expires_at() ) || self::has_earlier_order( $order ) ) {
             return;
         }
 
-        if ( self::has_earlier_order( $order ) ) {
+        $this->decide( $order, $referral );
+    }
+
+    /** Holds the referral on its first order, or rejects it with the reason the order doesn't qualify. */
+    private function decide( \WC_Order $order, Referral $referral ): void {
+        if ( ! ReferralSettings::get()['enabled'] ) {
             return;
         }
 
@@ -104,7 +143,7 @@ final class ReferralLifecycle {
         $advocate = get_userdata( $referral->get_advocate_user_id() );
         $reason   = ReferralQualifier::check(
             $terms,
-            CurrencyRate::to_base( self::minimum_subtotal( $order ), (string) $order->get_currency(), $order ),
+            CurrencyRate::to_base( ReferralQualifier::minimum_subtotal( $order ), (string) $order->get_currency(), $order ),
             (array) $order->get_coupon_codes(),
             ReferralCoupon::code_for( (int) $referral->get_id() ),
             (string) $order->get_billing_email(),
@@ -118,27 +157,12 @@ final class ReferralLifecycle {
         }
 
         $hold_days = (int) ( $terms['hold_days'] ?? 0 );
-        $held      = $this->referrals->hold( (int) $referral->get_id(), $order_id, Dates::offset( $hold_days * DAY_IN_SECONDS ) );
+        $held      = $this->referrals->hold( (int) $referral->get_id(), (int) $order->get_id(), Dates::offset( $hold_days * DAY_IN_SECONDS ) );
         $referral  = $held && 0 === $hold_days ? $this->referrals->find( (int) $referral->get_id() ) : null;
 
         if ( $referral instanceof Referral ) {
             $this->payout->pay( $referral );
         }
-    }
-
-    /** The order's subtotal as the cart showed it when the minimum was checked: with line tax when the cart displays prices with tax. */
-    private static function minimum_subtotal( \WC_Order $order ): float {
-        $subtotal = (float) $order->get_subtotal();
-
-        if ( 'incl' !== get_option( 'woocommerce_tax_display_cart' ) ) {
-            return $subtotal;
-        }
-
-        foreach ( $order->get_items( 'line_item' ) as $item ) {
-            $subtotal += (float) $item->get_subtotal_tax();
-        }
-
-        return $subtotal;
     }
 
     /**
@@ -150,7 +174,7 @@ final class ReferralLifecycle {
         $earlier = wc_get_orders(
             [
                 'customer_id'  => (int) $order->get_customer_id(),
-                'status'       => [ 'processing', 'on-hold', 'completed' ],
+                'status'       => self::LIVE_STATUSES,
                 'date_created' => '<' . ( null === $created ? time() : $created->getTimestamp() ),
                 'exclude'      => [ (int) $order->get_id() ], // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude -- one order id, the one being checked.
                 'limit'        => 1,

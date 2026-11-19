@@ -5,6 +5,7 @@ use YayLoyalty\Database\Transaction;
 use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\Listeners\PreviewLog;
 use YayLoyalty\Engine\Earning\Outcome;
+use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Emails\Emails;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Enums\CampaignTrigger;
@@ -21,10 +22,31 @@ defined( 'ABSPATH' ) || exit;
 /** Pays the advocate a held referral's points, once, whoever asks first: the daily job, a 0-day hold or the admin's Approve. */
 final class ReferralPayout {
 
+    /** Days a held referral waits past its hold for an advocate who can't earn before it is rejected. */
+    public const GRACE_DAYS = 30;
+
     private ReferralRepository $referrals;
 
     public function __construct( ReferralRepository $referrals ) {
         $this->referrals = $referrals;
+    }
+
+    /**
+     * When a held referral is rejected because its advocate can't be paid, or null while they can.
+     * A deleted advocate's referral goes when its hold ends; an opted-out or excluded one gets GRACE_DAYS more.
+     */
+    public static function rejects_at( int $advocate_user_id, string $hold_until ): ?string {
+        if ( ! get_userdata( $advocate_user_id ) ) {
+            return $hold_until;
+        }
+
+        $reason = EarningService::gate_reason( CampaignTrigger::REFERRAL, ContextFactory::from_user( $advocate_user_id, Dates::now() ) );
+
+        if ( ! in_array( $reason, [ ProgramGate::REASON_OPTED_OUT, ProgramGate::REASON_EXCLUDED_ROLE ], true ) ) {
+            return null;
+        }
+
+        return Dates::offset( self::GRACE_DAYS * DAY_IN_SECONDS, $hold_until );
     }
 
     /**
