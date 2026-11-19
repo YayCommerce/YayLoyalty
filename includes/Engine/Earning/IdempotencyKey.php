@@ -23,6 +23,9 @@ final class IdempotencyKey {
 
     private const SEPARATOR = ':';
 
+    /** The qualifier of an imported row's key. */
+    private const IMPORT_QUALIFIER = 'import';
+
     /**
      * @param string $type           A LedgerType constant.
      * @param int    $user_id        Whose balance moves.
@@ -48,7 +51,11 @@ final class IdempotencyKey {
 
         $is_redeem = in_array( $type, [ LedgerType::REDEEM, LedgerType::REFUND_REDEEM ], true );
 
-        if ( LedgerType::EXPIRE === $type ) {
+        if ( LedgerType::ADJUST === $type && ReferenceType::IMPORT === $reference_type ) {
+            if ( self::IMPORT_QUALIFIER !== $qualifier ) {
+                throw new \InvalidArgumentException( esc_html( sprintf( 'YayLoyalty: an import key needs the "%s" qualifier, not "%s".', self::IMPORT_QUALIFIER, $qualifier ) ) );
+            }
+        } elseif ( LedgerType::EXPIRE === $type ) {
             if ( 1 !== preg_match( '/^\d{8}$/', $qualifier ) ) {
                 throw new \InvalidArgumentException( esc_html( sprintf( 'YayLoyalty: an expire key needs a Ymd day, not "%s".', $qualifier ) ) );
             }
@@ -77,6 +84,15 @@ final class IdempotencyKey {
      */
     public static function for_earn( int $user_id, string $reference_type, int $reference_id, string $trigger ): string {
         return self::compose( LedgerType::EARN, $user_id, $reference_type, $reference_id, $trigger );
+    }
+
+    /**
+     * An imported row's key: one per user per import file.
+     *
+     * @throws \InvalidArgumentException As compose().
+     */
+    public static function for_import( int $user_id, int $import_id ): string {
+        return self::compose( LedgerType::ADJUST, $user_id, ReferenceType::IMPORT, $import_id, self::IMPORT_QUALIFIER );
     }
 
     /**

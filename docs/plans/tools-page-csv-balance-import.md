@@ -52,15 +52,15 @@ Done means the R-6 acceptance: export all balances; import with preview and per-
 - **Compatibility:** PHP 7.4 (the 53-bit id fits a 64-bit PHP int; on 32-bit PHP the REST arg validation rejects the id above `PHP_INT_MAX`, and the page says the import can't run). No storage, option or migration. Downgrade-safe: rows are ordinary ledger rows.
 
 ## Tasks
-- [ ] T1 Import idempotency key — `includes/Engine/Earning/IdempotencyKey.php`, `tests/php/unit/Engine/Earning/IdempotencyKeyTest.php`
+- [x] T1 Import idempotency key — `includes/Engine/Earning/IdempotencyKey.php`, `tests/php/unit/Engine/Earning/IdempotencyKeyTest.php` [risk: 3]
   - Reuse: `IdempotencyKey::compose()` with a new `adjust` + `import` qualifier branch next to the expire branch; `ReferenceType::IMPORT`
-  - Callers: `IdempotencyKey::for_import()` → `LedgerService::import()` (T2), `ToolsImportRestController::preview()` (T3) [risk: 3]
-- [ ] T2 `LedgerService::import()`: keyed ADJUST row with source and reference import, no negative balance — `includes/Services/LedgerService.php`, `tests/php/integration/Services/LedgerServiceTest.php`
+  - Callers: `IdempotencyKey::for_import()` → `LedgerService::import()` (T2), `ToolsImportRestController::preview()` (T3)
+- [ ] T2 `LedgerService::import()`: keyed ADJUST row with source and reference import, no negative balance — `includes/Services/LedgerService.php`, `tests/php/integration/Services/LedgerServiceTest.php` [risk: 3]
   - Reuse: `write_keyed()` with `$points_under_lock` returning 0 to skip (as `earn()` does), `LedgerEntry`, `Dates::now()`, `LedgerSource::IMPORT`
-  - Callers: `LedgerService::import()` → `ToolsImportRestController::apply()` (T3) [risk: 3]
-- [ ] T3 Tools import REST routes: preview and apply, `run_tools`, per-row results — `includes/Controllers/ToolsImportRestController.php` (new), `includes/Engine/RestAPI.php`, `tests/php/integration/Controllers/ToolsImportRestControllerTest.php` (new)
+  - Callers: `LedgerService::import()` → `ToolsImportRestController::apply()` (T3)
+- [ ] T3 Tools import REST routes: preview and apply, `run_tools`, per-row results — `includes/Controllers/ToolsImportRestController.php` (new), `includes/Engine/RestAPI.php`, `tests/php/integration/Controllers/ToolsImportRestControllerTest.php` (new) [risk: 3]
   - Reuse: `AbstractRestController::requires()`, `exec_read()` / `exec_write()` (`BaseRestController.php:40,58`), `error_invalid_arguments()`, the RestAPI `$ledger_service` and `$customers` instances, `CustomerRepository::find_by_user_id()`, `LedgerRepository::find_by_idempotency_key()`, core `get_user_by()`, `sanitize_text_field()`
-  - Callers: `ToolsImportRestController` → `RestAPI::controllers()`; `preview()` → route `POST tools/import/preview`; `apply()` → route `POST tools/import/apply` [risk: 3]
+  - Callers: `ToolsImportRestController` → `RestAPI::controllers()`; `preview()` → route `POST tools/import/preview`; `apply()` → route `POST tools/import/apply`
 - [ ] T4 SPA import plumbing: CSV parsing, file hash, API calls and zod schemas — `apps/admin/src/pages/tools/tools-import.csv.ts` (new), `apps/admin/src/lib/api/tools.api.ts` (new), `apps/admin/src/lib/schema/tools-import.schema.ts` (new), `tests/js/lib/tools-import.csv.test.ts` (new)
   - Reuse: `api` (ky client, `lib/api/api.ts`), zod `.parse` pattern of `customer.api.ts`, `settleInChunks()` shape for sequential chunks (`lib/helpers/settle-in-chunks.helper.ts`); none for parsing, new `parseImportCsv()` because the SPA only writes CSV (`csv.helper.ts`) and a parser dependency is heavier than ~60 lines
   - Callers: `parseImportCsv()`, `importIdForFile()`, `previewImport()`, `applyImport()` → `useToolsImport()` (T5)
