@@ -60,7 +60,7 @@ A Pro merchant can create two new campaign kinds. **Social** is "Follow us on In
 - [x] T1 Lite seams: `ReferenceType::SOCIAL` and the `url` config spec type — `includes/Enums/ReferenceType.php`, `includes/Utils/ConfigSpec.php`, `tests/php/unit/Utils/ConfigSpecTest.php` (new)
   - Reuse: `StringEnumMethods` list in `ReferenceType::all()`; `ConfigSpec::matches()` switch; `wp_http_validate_url()`-free check (`filter_var` + `^https?://`) since ConfigSpec runs in unit tests without WordPress
   - Callers: `ReferenceType::SOCIAL` → `SocialHandler::reference_type()` (T4); `url` spec → `YayLoyaltyPro::add_campaign_config_schema()` (T5)
-- [ ] T2 Renewal handler and award triggers — `includes/Pro/Renewals/RenewalHandler.php` (new), `includes/Pro/Renewals/RenewalTriggers.php` (new)
+- [x] T2 Renewal handler and award triggers — `includes/Pro/Renewals/RenewalHandler.php` (new), `includes/Pro/Renewals/RenewalTriggers.php` (new)
   - Reuse: `TriggerHandler` (`includes/Engine/Points/Triggers/TriggerHandler.php`), `Breakdown::flat()` and `Campaign::flat_points()` as in `Pro/Birthday/BirthdayHandler.php`; `PointsEngine::build()->evaluate()` as `BirthdayEarnRow` does; `ContextFactory::from_order()`; filter `yayloyalty_order_award_triggers`
   - Callers: `RenewalHandler` → `YayLoyaltyPro::register_trigger_handlers()` (T5); `RenewalTriggers::filter()` → filter `yayloyalty_order_award_triggers` via `RenewalTriggers::register()` (T5) [risk: 3]
 - [ ] T3 Renewal tests: earns once per renewal order, on top of or instead of purchase, full and partial refund claw back, non-renewal order untouched — `tests/php/integration/Pro/Renewals/RenewalEarningTest.php` (new)
