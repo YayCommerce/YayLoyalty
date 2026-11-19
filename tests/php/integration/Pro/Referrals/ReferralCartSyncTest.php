@@ -81,4 +81,37 @@ final class ReferralCartSyncTest extends WP_UnitTestCase {
 
 		$this->assertNotContains( $this->code, WC()->cart->get_applied_coupons() );
 	}
+
+	public function test_block_checkout_gives_a_friend_who_signed_up_in_it_the_discount_before_payment() {
+		$order = $this->signup_order();
+
+		do_action( 'woocommerce_store_api_checkout_order_processed', $order );
+
+		$this->assertContains( $this->code, $order->get_coupon_codes() );
+		$this->assertEquals( 50, (float) wc_get_order( $order->get_id() )->get_total() );
+	}
+
+	public function test_block_checkout_leaves_a_returning_friends_order_alone() {
+		global $wpdb;
+		$wpdb->update( Table::name( 'referrals' ), [ 'created_at' => Dates::offset( -DAY_IN_SECONDS ) ], [ 'friend_user_id' => get_current_user_id() ] ); // phpcs:ignore WordPress.DB
+		$order = $this->signup_order();
+
+		do_action( 'woocommerce_store_api_checkout_order_processed', $order );
+
+		$this->assertNotContains( $this->code, $order->get_coupon_codes() );
+	}
+
+	private function signup_order(): \WC_Order {
+		$product = new \WC_Product_Simple();
+		$product->set_regular_price( '60' );
+		$product->save();
+
+		$order = wc_create_order( [ 'customer_id' => get_current_user_id() ] );
+		$order->add_product( $product, 1 );
+		$order->calculate_totals();
+		$order->set_status( 'pending' );
+		$order->save();
+
+		return $order;
+	}
 }

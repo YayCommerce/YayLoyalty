@@ -6,6 +6,7 @@ use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Redemption\RewardCoupons;
 use YayLoyalty\Pro\Repositories\ReferralRepository;
 use YayLoyalty\Utils\CurrencyRate;
+use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -34,6 +35,39 @@ final class ReferralCartSync {
         add_action( 'woocommerce_removed_coupon', [ $this, 'on_removed' ] );
         add_filter( 'woocommerce_apply_individual_use_coupon', [ $this, 'on_individual_use_apply' ] );
         add_action( 'woocommerce_applied_coupon', [ $this, 'on_applied' ] );
+        add_action( 'woocommerce_store_api_checkout_order_processed', [ $this, 'apply_to_signup_order' ] );
+    }
+
+    /**
+     * Block checkout creates the account after the order, so a friend who signs up while checking out gets the
+     * discount here, before payment, as classic checkout gives it when it recalculates the cart for the new customer.
+     */
+    public function apply_to_signup_order( \WC_Order $order ): void {
+        ListenerGuard::run(
+            'ReferralCartSync',
+            'referral discount for order #' . (int) $order->get_id() . ' failed',
+            function () use ( $order ): void {
+                $friend   = (int) $order->get_customer_id();
+                $referral = $friend > 0 ? $this->referrals->find_pending_for_friend( $friend ) : null;
+                $started  = isset( $_SERVER['REQUEST_TIME'] ) ? absint( $_SERVER['REQUEST_TIME'] ) : time();
+
+                // Only a referral this request created: a returning friend's cart already decided, declined included.
+                if ( null === $referral || Dates::to_timestamp( (string) ( $referral->to_array()['created_at'] ?? '' ) ) < $started ) {
+                    return;
+                }
+
+                $codes = $order->get_coupon_codes();
+                $code  = ReferralCoupon::code_for( (int) $referral->get_id() );
+
+                if ( in_array( $code, $codes, true ) || self::has_individual_use_coupon( $codes ) ) {
+                    return;
+                }
+
+                if ( true === $order->apply_coupon( $code ) ) {
+                    $order->save();
+                }
+            }
+        );
     }
 
     /**
@@ -122,12 +156,16 @@ final class ReferralCartSync {
             return null;
         }
 
-        return self::has_individual_use_coupon( $cart ) ? null : ReferralCoupon::code_for( (int) $referral->get_id() );
+        return self::has_individual_use_coupon( $cart->get_applied_coupons() ) ? null : ReferralCoupon::code_for( (int) $referral->get_id() );
     }
 
-    /** Whether a merchant coupon on the cart is individual use, which another coupon must never join. */
-    private static function has_individual_use_coupon( \WC_Cart $cart ): bool {
-        foreach ( $cart->get_applied_coupons() as $code ) {
+    /**
+     * Whether a merchant coupon among $codes is individual use, which another coupon must never join.
+     *
+     * @param string[] $codes
+     */
+    private static function has_individual_use_coupon( array $codes ): bool {
+        foreach ( $codes as $code ) {
             if ( null === ReferralCoupon::referral_id( $code ) && ( new \WC_Coupon( $code ) )->get_individual_use() ) {
                 return true;
             }
