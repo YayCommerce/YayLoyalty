@@ -45,4 +45,4 @@
 | 1 | Are VIP tiers and referrals Pro only? | Yes: tiers, referrals, condition groups and new earning actions are Pro; widgets and Tools ship in both editions | |
 | 2 | What does "more ways to earn" cover? | Social follow/share and WooCommerce Subscriptions renewals (the triggers the code already reserves) | |
 | 3 | Do tiers count lifetime spend, lifetime points, or both? | Merchant picks one per program; lifetime spend is the default | |
-| 4 | Should 1.1.0 avoid shipping across BFCM (late November)? | No freeze: work continues and nothing ships until sprint 5 ends | |
+| 4 | Should 1.1.0 avoid shipping across BFCM (late November)? | No freeze: work continues through BFCM and 1.1.0 ships after sprint 2 ends (2026-12-10) | |

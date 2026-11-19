@@ -4,7 +4,7 @@ title: Pro triggers first_order, order_count and spend_milestone are offered but
 kind: deferred
 status: open
 from: P-3
-affects: []
+affects: [R-15]
 default: 
 decision:
 created: 2026-11-17
