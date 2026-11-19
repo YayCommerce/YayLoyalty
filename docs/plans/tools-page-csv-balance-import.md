@@ -1,7 +1,7 @@
 ---
 id: P-8
 title: Tools page: CSV balance import
-status: in-progress
+status: done
 from: BS-5
 roadmap: R-6
 design: UX-3

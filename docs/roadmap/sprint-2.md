@@ -28,3 +28,4 @@ Goal: Finish 1.1.0: VIP tiers, social and renewal earning, and the Tools page, s
 - acceptance: On a Tools page a merchant exports all balances to CSV, imports a CSV of email and points (with a preview and per-row errors before applying), and adds or removes points for selected customers or a segment with a note, each change landing in the ledger
 - target: 1.1.0
 - started: 2026-11-19
+- built: 2026-11-19
