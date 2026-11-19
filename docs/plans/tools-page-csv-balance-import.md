@@ -85,12 +85,12 @@ Done means the R-6 acceptance: export all balances; import with preview and per-
 - `pnpm --filter @yayloyalty/admin-page lint` → exit 0
 - `./scripts/run.sh build lite` → exit 0
 - `./scripts/run.sh build pro` → exit 0
-- `wp eval 'wp_set_current_user(1); $r = rest_do_request(new WP_REST_Request("POST","/yayloyalty/v1/tools/import/preview")); echo $r->get_status();'` → 400
-- `wp eval '$u = get_users(["role"=>"shop_manager","number"=>1]); wp_set_current_user($u ? $u[0]->ID : 0); $q = new WP_REST_Request("POST","/yayloyalty/v1/tools/import/preview"); $q->set_body_params(["import_id"=>1,"rows"=>[]]); echo rest_do_request($q)->get_status();'` → 403
+- `cd tests/e2e && ./node_modules/.bin/wp-env run cli wp eval 'wp_set_current_user(1); echo rest_do_request(new WP_REST_Request("POST","/yayloyalty/v1/tools/import/preview"))->get_status();'` → 400
+- `cd tests/e2e && ./node_modules/.bin/wp-env run cli wp eval '$id = wp_insert_user(["user_login"=>"p8_manager","user_pass"=>wp_generate_password(),"role"=>"shop_manager"]); wp_set_current_user($id); $q = new WP_REST_Request("POST","/yayloyalty/v1/tools/import/preview"); $q->set_body_params(["import_id"=>1,"rows"=>[]]); echo rest_do_request($q)->get_status(); require_once ABSPATH . "wp-admin/includes/user.php"; wp_delete_user($id);'` → 403
 - Lite and Pro: YayLoyalty → Tools shows Import balances, Export balances and Adjust points in bulk. *Export CSV* downloads every customer with their balance. *Go to Customers* opens Customers.
 - Import `email,points,note` with 2 known emails (+100, -10) and 1 unknown: the preview shows 2 Ready with balances before and after, and 1 error "No customer with this email". Import, and `wp db query "SELECT user_id,type,source,reference_type,points,note FROM wp_yayloyalty_ledger WHERE source='import' ORDER BY id DESC LIMIT 2"` shows 2 `adjust`/`import` rows. Upload the same file again: 2 Already imported, and nothing applies (e2e).
 - Signed in as a shop manager: no Tools menu item, and `#/tools` shows the not-found page.
-- `yayh code unused` → reports none of the symbols this plan adds
+- `yayh code unused dev` → exit 0
 
 ## Risks
 - **Wrong money applied in bulk:** the preview shows every row's balance before and after, a confirm dialog states the total, and the key makes retries and re-uploads safe. Rollback: an import's rows are findable by `source='import' AND reference_id=<id>`, and a counter-import CSV with negated points reverses them (a new file, so a new id).
