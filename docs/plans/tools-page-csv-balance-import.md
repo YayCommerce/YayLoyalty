@@ -69,7 +69,7 @@ Done means the R-6 acceptance: export all balances; import with preview and per-
   - Callers: `ToolsPage` → route `tools`; `ToolsImportCard`, `ToolsImportPreview` → `ToolsPage`; `useToolsImport()` → `ToolsImportCard`
 - [x] T6 Knowledge: `run_tools` routes and the import key in architecture, the Tools route in admin-spa — `docs/knowledge/architecture.md`, `docs/knowledge/admin-spa.md` [risk: 1]
   - Reuse: n/a
-- [ ] T7 E2E: import a 3-row CSV, preview errors, apply, re-upload shows already imported — `tests/e2e/specs/tools-import.spec.ts` (new), `docs/knowledge/e2e.md` (Flows row)
+- [x] T7 E2E: import a 3-row CSV, preview errors, apply, re-upload shows already imported — `tests/e2e/specs/tools-import.spec.ts` (new), `docs/knowledge/e2e.md` (Flows row)
   - Reuse: admin login and SPA helpers of `tests/e2e/specs/customer-adjust-points.spec.ts`
   - Callers: n/a (test)
 

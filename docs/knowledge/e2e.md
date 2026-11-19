@@ -80,6 +80,7 @@ The site runs this checkout with `YAYLOYALTY_IS_DEVELOPMENT` false, so it serves
 | My Account → Referrals: the offer, Copy link puts the link on the clipboard, no horizontal scroll at 375px | customer | important | `specs/referral-account.spec.ts` @flow-referral-account | `includes/Pro/Storefront/AccountReferrals.php` |
 | Referral approvals: approve pays, reject with a reason, the advocate's drawer shows their link | admin | important | `specs/referral-approvals.spec.ts` @flow-referral-approvals | `apps/admin/src/pro/referral/approvals/ApprovalsTab.tsx` |
 | Referred friend's discount in classic and block totals, not under the minimum | customer (a fresh friend per test, logged in by form) | critical | `specs/referral-checkout.spec.ts` @flow-referral-checkout | `includes/Pro/Referrals/ReferralCartSync.php` |
+| Tools import: preview errors, apply, re-upload applies nothing | admin | critical | `specs/tools-import.spec.ts` @flow-tools-import | `apps/admin/src/pages/tools/ToolsImportCard.tsx` |
 | Campaign create, edit, pause | admin | important | candidate | `apps/admin/src/pro/campaigns/editor/CampaignEditor.tsx` |
 | Reward create and edit | admin | important | candidate | `apps/admin/src/pro/rewards/editor/RewardEditor.tsx` |
 | Customer drawer, ledger and activity tabs | admin | important | candidate | `apps/admin/src/pages/customers/drawer/CustomerDrawer.tsx` |
