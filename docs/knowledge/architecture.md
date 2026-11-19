@@ -1,7 +1,7 @@
 ---
 area: architecture
 updated: 2026-11-19
-updated_ref: 2bfee02
+updated_ref: 17197c9
 covers: [yayloyalty.php, YayLoyaltyPluginAdapter.php, includes/YayLoyalty.php, includes/Access/, includes/Database/, includes/Models/, includes/Repositories/, includes/Services/, includes/Controllers/, includes/Engine/, includes/Enums/, includes/Pro/YayLoyaltyPro.php, includes/Pro/Referrals/, includes/Pro/Repositories/ReferralRepository.php]
 ---
 
@@ -43,7 +43,7 @@ A second copy of the plugin (both editions active) defines `plugin_init` first; 
 - Other `customers` columns are written outside it on purpose: pending points (`PendingPoints` → `CustomerRepository::apply_pending_delta`), expiry clearing (`ExpiryRunner` → `clear_expiry`), birthdays (Pro `BirthdayFields` → `set_birthday`), and row creation on `user_register` (`CustomerActivityListener`). Never the balance.
 - `CustomerReader` is the read-only interface handed to code that must not write (the redemption quote path).
 - `Database\Transaction::run()` is the only place that opens, commits or rolls back a transaction; it nests with savepoints, detects a foreign (WooCommerce) transaction and offers `after_commit()`. Emails and `yayloyalty_points_awarded` fire after commit.
-- Ledger idempotency: every system row carries an `idempotency_key` built by `Engine\Earning\IdempotencyKey` (`{type}:{user}:{reftype}:{refid}:{qualifier}`, max 96 chars) behind a UNIQUE index. A repeat is `Outcome::DUPLICATE`: nothing written, nothing thrown. Manual adjustments carry no key on purpose; an imported CSV row does: `IdempotencyKey::for_import()` (`adjust:{user}:import:{import id}:import`, the import id being a 53-bit hash of the file's text made in the SPA), written by `LedgerService::import()`, so a retried chunk or a re-uploaded file writes each customer's row once.
+- Ledger idempotency: every system row carries an `idempotency_key` built by `Engine\Earning\IdempotencyKey` (`{type}:{user}:{reftype}:{refid}:{qualifier}`, max 96 chars) behind a UNIQUE index. A repeat is `Outcome::DUPLICATE`: nothing written, nothing thrown. Manual adjustments carry no key on purpose; an imported CSV row does: `IdempotencyKey::for_import()` (`adjust:{user}:import:{import id}:import`, the import id being a 53-bit hash of the file's parsed rows made in the SPA), written by `LedgerService::import()`, so a retried chunk or a re-uploaded file writes each customer's row once.
 
 ## Storage
 

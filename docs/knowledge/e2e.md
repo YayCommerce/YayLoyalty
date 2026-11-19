@@ -1,7 +1,7 @@
 ---
 area: e2e
-updated: 2026-11-18
-updated_ref: 8a91b12
+updated: 2026-11-19
+updated_ref: 17197c9
 covers: [tests/e2e/]
 ---
 

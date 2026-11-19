@@ -1,7 +1,7 @@
 ---
 area: helpers
-updated: 2026-11-18
-updated_ref: 35e4537
+updated: 2026-11-19
+updated_ref: 17197c9
 covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, includes/Access/, includes/Services/, includes/Controllers/AbstractRestController.php, includes/Engine/Earning/, includes/Engine/Expiry/ExpiryRunner.php, includes/Engine/Emails/Emails.php, includes/Engine/Storefront/, includes/Engine/Points/, apps/admin/src/lib/, apps/admin/src/hooks/, apps/admin/src/components/layout/]
 ---
 
@@ -16,8 +16,8 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 - `Database\Transaction::run($fn)` / `after_commit($fn)` (`includes/Database/Transaction.php`): the only way to open a transaction; defer emails and actions until commit.
 - `Utils\Json::encode|decode|encode_list|decode_list` (`includes/Utils/Json.php`): versioned JSON columns; never throws on read.
 - `Utils\ConditionMatch::parse|decode|encode|assert_structure|fold` (`includes/Utils/ConditionMatch.php`): a campaign's or reward's `conditions` as `{ match, conditions }`; reads a flat list as `all`. `Campaign|Reward::has_conditions()` asks whether there is a condition.
-- `Services\LedgerService` (`includes/Services/LedgerService.php`): every points change. `adjust()` / `record()` for manual rows; `earn()`, `refund_earn()`, `restore_refund()`, `expire()`, `redeem()` for keyed system rows. Get an instance from an existing composition root, don't construct a new one.
-- `Engine\Earning\IdempotencyKey::compose|for_earn` (`includes/Engine/Earning/IdempotencyKey.php`): the key for any new ledger write.
+- `Services\LedgerService` (`includes/Services/LedgerService.php`): every points change. `adjust()` / `record()` for manual rows; `earn()`, `refund_earn()`, `restore_refund()`, `expire()`, `redeem()` for keyed system rows; `import()` for a CSV import row (keyed, so a re-upload is a duplicate). Get an instance from an existing composition root, don't construct a new one.
+- `Engine\Earning\IdempotencyKey::compose|for_earn|for_import` (`includes/Engine/Earning/IdempotencyKey.php`): the key for any new ledger write.
 - `Repositories\CustomerReader` (`includes/Repositories/CustomerReader.php`): depend on this when code may read a customer but must never write one.
 - `Database\Installer::install_locked($still_needed)` (`includes/Database/Installer.php`): run the idempotent install under the upgrade mutex; Pro's `ProInstaller` uses it.
 - `Repositories\CustomerRepository::find_user_by_referral_code($code)`: the existing user who owns a referral code.
@@ -81,7 +81,7 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 - `useDebouncedSearchCommit` (`hooks/useDebouncedSearchCommit.ts`): search inputs.
 - `formatWPDate`, `formatStoredDate`, `utcToDate`, `dateToStored`, `formatWPCurrency`, `formatStoreNumber` (`lib/helpers/format.helper.ts`): every date and money display.
 - `lib/points-math/points-math.ts`: client copy of `PointsMath`.
-- `settleInChunks` (`lib/helpers/settle-in-chunks.helper.ts`), `setPaginatedRow` (`lib/helpers/paginated-row.helper.ts`), `useCsvExport` (`hooks/`): bulk writes, cache patching, CSV.
+- `settleInChunks` (`lib/helpers/settle-in-chunks.helper.ts`), `setPaginatedRow` (`lib/helpers/paginated-row.helper.ts`), `useCsvExport` (`hooks/`): bulk writes, cache patching, CSV. Reading a CSV: `parseImportCsv`, `importIdForRows` (`pages/tools/tools-import.csv.ts`).
 
 ## Hooks the plugin exposes
 
