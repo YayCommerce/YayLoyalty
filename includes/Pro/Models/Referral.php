@@ -73,6 +73,35 @@ final class Referral extends AbstractModel {
         $this->updated_at        = $updated_at;
     }
 
+    public function get_id(): ?int {
+        return $this->id;
+    }
+
+    public function get_advocate_user_id(): int {
+        return $this->advocate_user_id;
+    }
+
+    public function get_friend_user_id(): int {
+        return $this->friend_user_id;
+    }
+
+    public function get_status(): string {
+        return $this->status;
+    }
+
+    /** @return array<string, mixed> */
+    public function get_terms(): array {
+        return $this->terms;
+    }
+
+    public function get_coupon_expires_at(): ?string {
+        return $this->coupon_expires_at;
+    }
+
+    public function get_first_order_id(): ?int {
+        return $this->first_order_id;
+    }
+
     public static function from_row( array $row ): self {
         return new self(
             self::cast_int( $row['id'] ?? null ),

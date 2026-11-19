@@ -52,3 +52,10 @@ export function emptyCart( user: number ): void {
 	wp( 'user', 'meta', 'delete', String( user ), '_woocommerce_persistent_cart_1' );
 	wp( 'db', 'query', `DELETE FROM wp_woocommerce_sessions WHERE session_key = '${ user }'` );
 }
+
+/** A published page holding one shortcode, created once and reused on later runs. */
+export function shortcodePage( slug: string, shortcode: string ): void {
+	if ( wp( 'post', 'list', '--post_type=page', `--name=${ slug }`, '--format=count' ) === '0' ) {
+		wp( 'post', 'create', '--post_type=page', '--post_status=publish', `--post_name=${ slug }`, `--post_title=${ slug }`, `--post_content=[${ shortcode }]` );
+	}
+}

@@ -1,7 +1,7 @@
 ---
 area: integrations
-updated: 2026-11-16
-updated_ref: c3809e9
+updated: 2026-11-18
+updated_ref: 91b4be1
 covers: [includes/Integrations/, includes/Pro/Integrations/, includes/Engine/ActDeact.php, includes/Engine/Redemption/Adapters/, includes/Utils/CurrencyRate.php, includes/Utils/WooOrders.php]
 ---
 
@@ -16,12 +16,12 @@ covers: [includes/Integrations/, includes/Pro/Integrations/, includes/Engine/Act
 | HPOS | Declared compatible (`custom_order_tables`) on `before_woocommerce_init`. Orders go through `wc_get_order` and the order API. `WooOrders::is_hpos()` only picks admin link shapes. HPOS trashing doesn't fire `status_changed`, so reversal also hooks `woocommerce_trash_order` | `includes/Engine/ActDeact.php`, `includes/Utils/WooOrders.php` |
 | Block checkout | Supported through the Store API (`StoreApiAdapter`: cart extension data under namespace `yayloyalty`, update callback `yayloyalty-redeem`, slot fill in `assets/storefront/redeem-blocks.js`). **Not declared** as `cart_checkout_blocks` compatible (see [known-issues.md](known-issues.md)) | `includes/Engine/Redemption/Adapters/StoreApiAdapter.php` |
 | Classic checkout and cart | Card rendered as a `<tr>` before the order total; commit on `woocommerce_checkout_order_processed` | `includes/Engine/Redemption/Adapters/ClassicCheckoutAdapter.php` |
-| Coupons | Virtual loyalty coupons through `woocommerce_get_shop_coupon_data`; applied after every real coupon | `includes/Engine/Redemption/CouponProvider.php` |
+| Coupons | Virtual loyalty coupons through `woocommerce_get_shop_coupon_data`; applied after every real coupon. Pro's referral coupon `yl-referral-{id}` is a merchant-style virtual coupon in base currency, applied just before the loyalty ones and never next to an individual-use coupon | `includes/Engine/Redemption/CouponProvider.php`, `includes/Pro/Referrals/ReferralCoupon.php`, `includes/Pro/Referrals/ReferralCartSync.php` |
 | Emails | `WC_Email` subclasses, `woocommerce_email_classes`, group `yayloyalty_points`, theme-overridable templates | `includes/Engine/Emails/` |
 | My Account | Endpoint `my-points` | `includes/Engine/Storefront/AccountMyPoints.php` |
 | Admin order screen | Missing-points column and filter (HPOS and legacy hooks); loyalty coupon removal with optional points restore | `includes/Engine/Admin/OrderMissingPoints.php`, `includes/Engine/Admin/OrderCouponRemoval.php` |
 | Block themes | Product earn message also on `render_block_woocommerce/product-price` | `includes/Engine/Storefront/ProductEarnMessage.php` |
-| Action Scheduler | Daily jobs `yayloyalty_expiry_run` and Pro's `yayloyalty_birthday_run`. Nothing expires without Action Scheduler | `includes/Engine/Expiry/ExpiryRunner.php` |
+| Action Scheduler | Daily jobs `yayloyalty_expiry_run` and Pro's `yayloyalty_birthday_run` and `yayloyalty_referral_run`. Nothing expires, and no held referral is paid, without Action Scheduler | `includes/Engine/Expiry/ExpiryRunner.php` |
 
 Meta saves under HPOS: `PendingPoints::save_meta` turns off `woocommerce_orders_table_datastore_should_save_after_meta_change` for the save, so a meta write doesn't re-run a full order save and re-fire status hooks.
 

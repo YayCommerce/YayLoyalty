@@ -34,7 +34,7 @@ final class ShopperActivityRow {
         foreach ( $entries as $entry ) {
             $items[] = [
                 'label' => self::label( $entry, $store, $label ),
-                'meta'  => self::meta_line( $entry->get_created_at(), $entry->get_order_id() ),
+                'meta'  => self::meta_line( $entry->get_created_at(), $entry->get_own_order_id() ),
                 'delta' => LauncherCopy::signed_points( $entry->get_points() ),
                 'tone'  => self::tone( $entry->get_type(), $entry->get_points() ),
             ];
@@ -67,7 +67,7 @@ final class ShopperActivityRow {
         $rows   = [];
 
         foreach ( $entries as $entry ) {
-            $order_id = $entry->get_order_id();
+            $order_id = $entry->get_own_order_id();
 
             if ( null !== $order_id && ! isset( $orders[ $order_id ] ) ) {
                 // An earn row and its refund share an order: load it once.
