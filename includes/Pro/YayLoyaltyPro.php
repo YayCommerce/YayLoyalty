@@ -1,9 +1,8 @@
 <?php
 namespace YayLoyalty\Pro;
 
-use YayLoyalty\Engine\Earning\ProgramGate;
-use YayLoyaltyScoped\YayCommerce\AdminShell\License\LicenseState;
 use YayLoyalty\Engine\Earning\EarningService;
+use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Points\Triggers\Registry as TriggerRegistry;
 use YayLoyalty\Engine\Rewards\Handlers\Registry;
@@ -27,8 +26,8 @@ use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
 use YayLoyalty\Pro\Integrations\YayMail\ProYayMail;
 use YayLoyalty\Pro\Referrals\ReferralAttribution;
 use YayLoyalty\Pro\Referrals\ReferralCartSync;
-use YayLoyalty\Pro\Referrals\ReferralCoupon;
 use YayLoyalty\Pro\Referrals\ReferralCodeAssigner;
+use YayLoyalty\Pro\Referrals\ReferralCoupon;
 use YayLoyalty\Pro\Referrals\ReferralEarnRow;
 use YayLoyalty\Pro\Referrals\ReferralLifecycle;
 use YayLoyalty\Pro\Referrals\ReferralPayout;
@@ -49,6 +48,7 @@ use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\DashboardRepository;
 use YayLoyalty\Services\Dashboard\DashboardCache;
+use YayLoyaltyScoped\YayCommerce\AdminShell\License\LicenseState;
 
 defined( 'ABSPATH' ) || exit;
 

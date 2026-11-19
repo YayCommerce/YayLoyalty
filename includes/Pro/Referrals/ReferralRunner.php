@@ -99,15 +99,13 @@ final class ReferralRunner {
         }
     }
 
-    /** Pays a held referral, or rejects it once ReferralPayout::rejects_at() has passed for an advocate who can't be paid. */
+    /** Pays a held referral, or, for an advocate who can't be paid, rejects it once ReferralPayout::rejects_at() has passed. */
     private function release( Referral $referral ): void {
-        if ( ReferralStatus::ON_HOLD !== $this->payout->pay( $referral ) ) {
-            return;
-        }
-
         $at = ReferralPayout::rejects_at( $referral->get_advocate_user_id(), (string) $referral->get_hold_until() );
 
-        if ( null !== $at && $at <= Dates::now() ) {
+        if ( null === $at ) {
+            $this->payout->pay( $referral );
+        } elseif ( $at <= Dates::now() ) {
             $this->referrals->reject( (int) $referral->get_id(), ReferralRejectReason::ADVOCATE_CANNOT_EARN, ReferralStatus::ON_HOLD );
         }
     }

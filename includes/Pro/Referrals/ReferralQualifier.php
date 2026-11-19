@@ -7,7 +7,7 @@ use YayLoyalty\Utils\CurrencyRate;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Whether a friend's first order earns the advocate their points, from facts read elsewhere. */
+/** Whether a friend's first order earns the advocate their points, and the subtotal its minimum is checked against. */
 final class ReferralQualifier {
 
     /**
@@ -38,5 +38,20 @@ final class ReferralQualifier {
         }
 
         return null;
+    }
+
+    /** The order's subtotal as the cart showed it when the minimum was checked: with line tax when the cart displays prices with tax. */
+    public static function minimum_subtotal( \WC_Order $order ): float {
+        $subtotal = (float) $order->get_subtotal();
+
+        if ( 'incl' !== get_option( 'woocommerce_tax_display_cart' ) ) {
+            return $subtotal;
+        }
+
+        foreach ( $order->get_items( 'line_item' ) as $item ) {
+            $subtotal += (float) $item->get_subtotal_tax();
+        }
+
+        return $subtotal;
     }
 }

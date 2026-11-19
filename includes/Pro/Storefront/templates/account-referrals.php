@@ -41,7 +41,7 @@ $yayloyalty_columns  = [
         <div class="yayloyalty-referrals__link" data-yl-referral-link>
             <input id="yayloyalty-referral-link" class="yayloyalty-referrals__input" type="text" dir="ltr" readonly value="<?php echo esc_attr( $view['link'] ); ?>">
             <button type="button" class="yayloyalty-account__button yayloyalty-referrals__copy" data-copied="<?php esc_attr_e( 'Copied', 'yayloyalty' ); ?>"><?php esc_html_e( 'Copy link', 'yayloyalty' ); ?></button>
-            <span class="yayloyalty-referrals__status" aria-live="polite"></span>
+            <span class="screen-reader-text" aria-live="polite"></span>
         </div>
 
         <div class="yayloyalty-referrals__counts">
@@ -78,7 +78,7 @@ $yayloyalty_columns  = [
 
     <section class="yayloyalty-account__section">
         <h3 class="yayloyalty-account__title"><?php esc_html_e( 'Your invitations', 'yayloyalty' ); ?></h3>
-        <?php if ( 0 === $yayloyalty_page['total'] ) : ?>
+        <?php if ( 0 === (int) $yayloyalty_counts['referred'] ) : ?>
             <div class="yayloyalty-account__empty">
                 <p class="yayloyalty-account__empty-text"><?php esc_html_e( "No invitations yet. Share your link and they'll appear here.", 'yayloyalty' ); ?></p>
             </div>

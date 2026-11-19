@@ -59,17 +59,16 @@ final class AccountReferrals {
     }
 
     public static function maybe_flush_rewrite_rules(): void {
-        // Plain permalinks have no rules to check.
-        if ( '' === (string) get_option( 'permalink_structure' ) ) {
+        $stamped = get_option( self::OPTION_REWRITE_VERSION ) === self::REWRITE_VERSION;
+
+        // Plain permalinks have no rules. A permalink save while Pro was off drops the rule but keeps the stamp; that save is in wp-admin.
+        if ( '' === (string) get_option( 'permalink_structure' ) || ( $stamped && ! is_admin() ) ) {
             return;
         }
 
-        // A permalink save while Pro was off drops the endpoint's rule but keeps the stamp, so check the rule too.
-        if ( get_option( self::OPTION_REWRITE_VERSION ) === self::REWRITE_VERSION ) {
-            foreach ( array_keys( (array) get_option( 'rewrite_rules', [] ) ) as $rule ) {
-                if ( false !== strpos( (string) $rule, '/' . self::ENDPOINT . '(/(.*))?/?$' ) ) {
-                    return;
-                }
+        foreach ( $stamped ? array_keys( (array) get_option( 'rewrite_rules', [] ) ) : [] as $rule ) {
+            if ( false !== strpos( (string) $rule, '/' . self::ENDPOINT . '(/(.*))?/?$' ) ) {
+                return;
             }
         }
 
@@ -155,10 +154,7 @@ final class AccountReferrals {
         );
 
         if ( null === $html ) {
-            $title = __( 'Referrals are currently unavailable', 'yayloyalty' );
-            $text  = __( 'We couldn’t load your referrals. Please try again later.', 'yayloyalty' );
-
-            include YAYLOYALTY_PLUGIN_DIR . 'includes/Engine/Storefront/templates/account-rewards-state.php';
+            AccountMyPoints::print_state( __( 'Referrals are currently unavailable', 'yayloyalty' ), __( 'We couldn’t load your referrals. Please try again later.', 'yayloyalty' ) );
 
             return;
         }
@@ -167,17 +163,18 @@ final class AccountReferrals {
     }
 
     /**
-     * @return array{settings: array<string, mixed>, link: string, counts: array<string, mixed>, worth: ?float, earned_worth: ?float, page: array{items: array, total: int, page: int, pages: int}}
+     * @return array{settings: array<string, mixed>, link: string, counts: array<string, mixed>, worth: ?float, earned_worth: ?float, page: array{items: array, page: int, pages: int}}
      */
     private static function view( int $user_id, int $page ): array {
         $settings = ReferralSettings::get();
-        $counts   = ( new ReferralListRepository() )->counts_for_advocate( $user_id );
+        $list     = new ReferralListRepository();
+        $counts   = $list->counts_for_advocate( $user_id );
         $reward   = ( new RewardRepository() )->find_live_flexible_discount( Dates::now() );
         $worth    = static fn( int $points ): ?float => null === $reward || $points < 1 ? null : LauncherPayload::worth( $reward, $points );
         $pages    = max( 1, (int) ceil( $counts['referred'] / self::PER_PAGE ) );
         // A stale page link past the end shows the last page, not an empty list.
         $page = min( $page, $pages );
-        $rows = ( new ReferralListRepository() )->paginate(
+        $rows = $list->paginate(
             [
                 'advocate' => $user_id,
                 'page'     => $page,
@@ -193,7 +190,6 @@ final class AccountReferrals {
             'earned_worth' => $worth( (int) $counts['points_earned'] ),
             'page'         => [
                 'items' => $rows['items'],
-                'total' => (int) $rows['total'],
                 'page'  => $page,
                 'pages' => $pages,
             ],

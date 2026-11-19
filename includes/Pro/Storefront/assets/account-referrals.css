@@ -43,14 +43,6 @@
   cursor: pointer;
 }
 
-.yayloyalty-referrals .yayloyalty-referrals__status {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-}
-
 .yayloyalty-referrals .yayloyalty-referrals__counts {
   display: grid;
   grid-auto-columns: minmax(0, 1fr);

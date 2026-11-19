@@ -5,7 +5,6 @@ use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Pro\Enums\ReferralStatus;
 use YayLoyalty\Pro\Referrals\ReferralSettings;
-use YayLoyalty\Utils\CurrencyRate;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
@@ -36,7 +35,7 @@ final class ReferralAccountText {
 
         $friend = $minimum > 0
             /* translators: 1: the friend's discount, 2: the minimum order */
-            ? sprintf( __( 'Your friend gets %1$s off their first order over %2$s.', 'yayloyalty' ), $discount, LauncherCopy::money( CurrencyRate::from_base( $minimum ) ) )
+            ? sprintf( __( 'Your friend gets %1$s off their first order over %2$s.', 'yayloyalty' ), $discount, LauncherCopy::money( LauncherCopy::from_base( $minimum ) ) )
             /* translators: %s: the friend's discount */
             : sprintf( __( 'Your friend gets %s off their first order.', 'yayloyalty' ), $discount );
 
@@ -46,7 +45,8 @@ final class ReferralAccountText {
             /* translators: %s: points with their label */
             : sprintf( __( 'You get %s once their order completes.', 'yayloyalty' ), $points );
 
-        return $friend . ' ' . $you;
+        /* translators: 1: what the friend gets, 2: what the customer gets */
+        return sprintf( __( '%1$s %2$s', 'yayloyalty' ), $friend, $you );
     }
 
     /** `p•••@example.com`: the first character and the domain. */
@@ -113,6 +113,6 @@ final class ReferralAccountText {
         return ReferralSettings::DISCOUNT_PERCENT === $settings['discount_type']
             /* translators: %s: a percentage number, as "15". */
             ? sprintf( __( '%s%%', 'yayloyalty' ), LauncherCopy::rate( $amount ) )
-            : LauncherCopy::money( CurrencyRate::from_base( $amount ) );
+            : LauncherCopy::money( LauncherCopy::from_base( $amount ) );
     }
 }

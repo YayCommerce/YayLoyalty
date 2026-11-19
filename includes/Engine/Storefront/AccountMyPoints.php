@@ -250,7 +250,7 @@ final class AccountMyPoints {
     }
 
     /** The tab's whole body when it has nothing to show: a heading and one line in a card. */
-    private static function print_state( string $title, string $text ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the template reads both.
+    public static function print_state( string $title, string $text ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the template reads both.
         include __DIR__ . '/templates/account-rewards-state.php';
     }
 

@@ -36,7 +36,7 @@ final class ReferralCartSync {
         add_action( 'woocommerce_before_calculate_totals', [ $this, 'sync_cart' ], PHP_INT_MAX - 1 );
         add_action( 'woocommerce_check_cart_items', [ $this, 'sync_before_check' ], 0 );
         add_action( 'woocommerce_removed_coupon', [ $this, 'on_removed' ] );
-        add_filter( 'woocommerce_apply_individual_use_coupon', [ $this, 'on_individual_use_apply' ], 10, 3 );
+        add_filter( 'woocommerce_apply_individual_use_coupon', [ $this, 'on_individual_use_apply' ], PHP_INT_MAX, 3 );
         add_action( ReferralAttribution::CREATED_ACTION, [ $this, 'on_referral_created' ], 10, 2 );
         add_action( 'woocommerce_store_api_checkout_order_processed', [ $this, 'apply_to_signup_order' ] );
     }
@@ -62,16 +62,13 @@ final class ReferralCartSync {
                 }
 
                 $codes = $order->get_coupon_codes();
-                $code  = ReferralCoupon::code_for( $referral_id );
 
                 // A points discount was already settled against the undiscounted total.
-                if ( in_array( $code, $codes, true ) || [] !== Context::loyalty_codes( $codes ) || self::has_individual_use_coupon( $codes ) ) {
+                if ( [] !== Context::loyalty_codes( $codes ) || self::has_individual_use_coupon( $codes ) ) {
                     return;
                 }
 
-                if ( true === $order->apply_coupon( $code ) ) {
-                    $order->save();
-                }
+                $order->apply_coupon( ReferralCoupon::code_for( $referral_id ) );
             }
         );
     }
@@ -118,7 +115,6 @@ final class ReferralCartSync {
      * @param mixed $code
      */
     public function on_removed( $code ): void {
-        $id        = ReferralCoupon::referral_id( $code );
         $displaced = array_search( $code, $this->displaced, true );
 
         if ( false !== $displaced ) {
@@ -126,6 +122,8 @@ final class ReferralCartSync {
 
             return;
         }
+
+        $id = ReferralCoupon::referral_id( $code );
 
         if ( null !== $id && function_exists( 'WC' ) && WC()->session ) {
             WC()->session->set( self::DECLINED_SESSION_KEY, $id );

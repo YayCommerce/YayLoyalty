@@ -22,14 +22,14 @@ defined( 'ABSPATH' ) || exit;
 /** Pays the advocate a held referral's points, once, whoever asks first: the daily job, a 0-day hold or the admin's Approve. */
 final class ReferralPayout {
 
+    /** Days a held referral waits past its hold for an advocate who can't earn before it is rejected. */
+    public const GRACE_DAYS = 30;
+
     private ReferralRepository $referrals;
 
     public function __construct( ReferralRepository $referrals ) {
         $this->referrals = $referrals;
     }
-
-    /** Days a held referral waits past its hold for an advocate who can't earn before it is rejected. */
-    public const GRACE_DAYS = 30;
 
     /**
      * When a held referral is rejected because its advocate can't be paid, or null while they can.
