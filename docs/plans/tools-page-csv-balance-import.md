@@ -67,7 +67,7 @@ Done means the R-6 acceptance: export all balances; import with preview and per-
 - [x] T5 Tools page UI: the three cards, import preview table with filters and errors CSV, confirm and progress (UX-3 "Tools page", "Import preview") — `apps/admin/src/pages/tools/ToolsPage.tsx` (new), `apps/admin/src/pages/tools/ToolsImportCard.tsx` (new), `apps/admin/src/pages/tools/ToolsImportPreview.tsx` (new), `apps/admin/src/pages/tools/tools-import.use-import.ts` (new), `apps/admin/src/pages/tools/tools-page.copy.ts` (new), `apps/admin/src/router.tsx`, `apps/admin/src/components/layout/HeaderMenu.tsx`
   - Reuse: `PageLayout`, `Card`, `Table`, `Badge`, `Segmented`, `Alert`, `Dialog`, `Button` (`components/ui/`); `guarded(CAP.RUN_TOOLS, …)` and `CustomMenuItem`; `useCsvExport` + `fetchAllMatchingCustomers` + `exportCustomersToCsv`; `toCsv` / `downloadCsv`; `toastApiError`
   - Callers: `ToolsPage` → route `tools`; `ToolsImportCard`, `ToolsImportPreview` → `ToolsPage`; `useToolsImport()` → `ToolsImportCard`
-- [ ] T6 Knowledge: `run_tools` routes and the import key in architecture, the Tools route in admin-spa — `docs/knowledge/architecture.md`, `docs/knowledge/admin-spa.md` [risk: 1]
+- [x] T6 Knowledge: `run_tools` routes and the import key in architecture, the Tools route in admin-spa — `docs/knowledge/architecture.md`, `docs/knowledge/admin-spa.md` [risk: 1]
   - Reuse: n/a
 - [ ] T7 E2E: import a 3-row CSV, preview errors, apply, re-upload shows already imported — `tests/e2e/specs/tools-import.spec.ts` (new), `docs/knowledge/e2e.md` (Flows row)
   - Reuse: admin login and SPA helpers of `tests/e2e/specs/customer-adjust-points.spec.ts`

@@ -43,7 +43,7 @@ A second copy of the plugin (both editions active) defines `plugin_init` first; 
 - Other `customers` columns are written outside it on purpose: pending points (`PendingPoints` → `CustomerRepository::apply_pending_delta`), expiry clearing (`ExpiryRunner` → `clear_expiry`), birthdays (Pro `BirthdayFields` → `set_birthday`), and row creation on `user_register` (`CustomerActivityListener`). Never the balance.
 - `CustomerReader` is the read-only interface handed to code that must not write (the redemption quote path).
 - `Database\Transaction::run()` is the only place that opens, commits or rolls back a transaction; it nests with savepoints, detects a foreign (WooCommerce) transaction and offers `after_commit()`. Emails and `yayloyalty_points_awarded` fire after commit.
-- Ledger idempotency: every system row carries an `idempotency_key` built by `Engine\Earning\IdempotencyKey` (`{type}:{user}:{reftype}:{refid}:{qualifier}`, max 96 chars) behind a UNIQUE index. A repeat is `Outcome::DUPLICATE`: nothing written, nothing thrown.
+- Ledger idempotency: every system row carries an `idempotency_key` built by `Engine\Earning\IdempotencyKey` (`{type}:{user}:{reftype}:{refid}:{qualifier}`, max 96 chars) behind a UNIQUE index. A repeat is `Outcome::DUPLICATE`: nothing written, nothing thrown. Manual adjustments carry no key on purpose; an imported CSV row does: `IdempotencyKey::for_import()` (`adjust:{user}:import:{import id}:import`, the import id being a 53-bit hash of the file's text made in the SPA), written by `LedgerService::import()`, so a retried chunk or a re-uploaded file writes each customer's row once.
 
 ## Storage
 
@@ -86,6 +86,7 @@ Namespace `yayloyalty/v1`. Every route's `permission_callback` is `$this->requir
 | MANAGE_CAMPAIGNS | `campaigns`, `campaigns/reorder`, `campaigns/{id}` |
 | MANAGE_REWARDS | `rewards`, `rewards/reorder`, `rewards/{id}` |
 | MANAGE_SETTINGS | settings, design (`reset`, `preview`), emails writes; `setup`, `setup/dismiss` |
+| RUN_TOOLS | `tools/import/preview` (read only), `tools/import/apply` (`ToolsImportRestController`; each row its own transaction, through `exec_read()`, so one row never undoes another) |
 | signed-in shopper | `StorefrontActivityRestController` |
 
 Pro adds controllers through `yayloyalty_rest_controllers` (campaign preview and performance, segments, Pro dashboard, store ledger, `referral/settings`: GET under VIEW, POST under MANAGE_CAMPAIGNS; `referrals` list with search, status and `counts` under VIEW, and `referrals/{id}/approve|reject` under MANAGE_CAMPAIGNS, 409 `yayloyalty_referral_changed` once the referral left `on_hold`; `customers/{id}/referrals` for the drawer under VIEW, which creates a member's missing referral code).
