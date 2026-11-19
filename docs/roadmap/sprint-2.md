@@ -21,9 +21,10 @@ Goal: Finish 1.1.0: VIP tiers, social and renewal earning, and the Tools page, s
 - note: reading unconfirmed: could also mean other actions (newsletter sign-up, account anniversary, product purchase of a set category); built from the reserved social and renewal triggers
 
 ### R-6 Tools: CSV import/export and bulk point adjustments
-- status: todo
+- status: in-progress
 - size: M
 - editions: pro, lite
 - why: requested 2026-11-13 for 1.1; merchants moving from another loyalty plugin need to bring balances in, and adjustments today are one customer at a time
 - acceptance: On a Tools page a merchant exports all balances to CSV, imports a CSV of email and points (with a preview and per-row errors before applying), and adds or removes points for selected customers or a segment with a note, each change landing in the ledger
 - target: 1.1.0
+- started: 2026-11-19
