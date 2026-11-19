@@ -100,6 +100,15 @@ final class SocialClaimTest extends WP_UnitTestCase {
 		$this->assertSame( self::URL, $this->own_row( $row->add_row( [], [], 0 ) )['url'] );
 	}
 
+	public function test_no_row_promises_points_the_conditions_withhold() {
+		( new CampaignRepository() )->update(
+			$this->campaign_id,
+			[ 'conditions' => wp_json_encode( [ [ 'type' => 'user_role', 'operator' => 'in', 'value' => [ 'wholesale' ] ] ] ) ]
+		);
+
+		$this->assertSame( [], ( new SocialEarnRow() )->add_row( [], [], $this->user_id ) );
+	}
+
 	private function claim(): string {
 		return SocialClaim::claim( $this->campaign_id, wp_create_nonce( 'yayloyalty_social_' . $this->campaign_id ), $this->user_id );
 	}

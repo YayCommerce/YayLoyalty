@@ -2,17 +2,21 @@
 namespace YayLoyalty\Pro\Social;
 
 use YayLoyalty\Engine\Earning\IdempotencyKey;
+use YayLoyalty\Engine\Points\ContextFactory;
+use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Models\Campaign;
+use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * One "Ways to earn" row per live social campaign. A customer who hasn't earned it gets the claim link;
- * one who has, and a guest, get a plain link to the network.
+ * One "Ways to earn" row per live social campaign. A customer who hasn't earned it gets the claim link, and
+ * no row when the campaign's conditions leave them out; one who has, and a guest, get a plain link to the network.
  */
 final class SocialEarnRow {
 
@@ -27,6 +31,8 @@ final class SocialEarnRow {
      * @return array[]
      */
     public function add_row( array $rows, array $earn, int $viewer_id ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the filter passes $earn; these rows don't read it.
+        $engine = null;
+
         foreach ( SocialClaim::live_campaigns() as $campaign ) {
             $points = $campaign->flat_points();
 
@@ -42,6 +48,12 @@ final class SocialEarnRow {
             } elseif ( self::has_earned( $viewer_id, $campaign ) ) {
                 $description = __( 'Earned', 'yayloyalty' );
             } else {
+                $engine = $engine ?? PointsEngine::build( new CampaignRepository() );
+
+                if ( ! self::pays( $engine, $viewer_id, $campaign ) ) {
+                    continue;
+                }
+
                 $description = __( 'Earn once, the first time you click.', 'yayloyalty' );
                 $url         = SocialClaim::url( (int) $campaign->get_id() );
             }
@@ -64,6 +76,13 @@ final class SocialEarnRow {
 
         /* translators: %s: a social network's name, as "Instagram". */
         return 'share' === ( $config['action'] ?? '' ) ? sprintf( __( 'Share on %s', 'yayloyalty' ), $network ) : sprintf( __( 'Follow us on %s', 'yayloyalty' ), $network );
+    }
+
+    /** Whether a claim by $user_id now would pay: the same evaluation SocialClaim::claim() runs, without the gates. */
+    private static function pays( PointsEngine $engine, int $user_id, Campaign $campaign ): bool {
+        $ctx = ContextFactory::from_user( $user_id, Dates::now(), [ SocialHandler::EXTRA_CAMPAIGN_ID => (int) $campaign->get_id() ] );
+
+        return $engine->evaluate( CampaignTrigger::SOCIAL, $ctx )->is_awarded();
     }
 
     private static function has_earned( int $user_id, Campaign $campaign ): bool {
