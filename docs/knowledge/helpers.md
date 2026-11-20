@@ -60,7 +60,7 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 
 ## Escaping, text, capabilities, REST (PHP)
 
-- `Utils\Kses::svg|inline` (`includes/Utils/Kses.php`): allowlists for printed icons and number-wrapped sentences.
+- `Utils\Kses::svg|inline|storefront` (`includes/Utils/Kses.php`): allowlists for printed icons, number-wrapped sentences and whole storefront templates; every storefront echo or returned callback goes through `wp_kses( $html, Kses::storefront() )`, and the launcher adds `Kses::allow_color_mix` around its echo.
 - `Utils\Text::plain|store_name` (`includes/Utils/Text.php`): plain text for the SPA and shopper copy.
 - `Utils\IsoCodes::is_currency|is_country` (`includes/Utils/IsoCodes.php`).
 - `Utils\Log::error|warning|debug` (`includes/Utils/Log.php`).

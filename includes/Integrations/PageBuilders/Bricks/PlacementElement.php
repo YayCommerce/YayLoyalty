@@ -4,6 +4,7 @@ namespace YayLoyalty\Integrations\PageBuilders\Bricks;
 use Bricks\Element;
 use YayLoyalty\Engine\Storefront\Placements;
 use YayLoyalty\Integrations\PageBuilders\PlacementWidgets;
+use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -34,6 +35,6 @@ abstract class PlacementElement extends Element {
             return;
         }
 
-        echo "<div {$this->render_attributes( '_root' )}>" . $html . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Bricks escapes its attributes and the placements' templates escape every value.
+        echo "<div {$this->render_attributes( '_root' )}>" . wp_kses( $html, Kses::storefront() ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Bricks escapes its own attributes.
     }
 }

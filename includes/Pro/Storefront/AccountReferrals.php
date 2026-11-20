@@ -13,6 +13,7 @@ use YayLoyalty\Pro\Repositories\ReferralListRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Utils\Dates;
+use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -159,7 +160,7 @@ final class AccountReferrals {
             return;
         }
 
-        echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the template escapes every value.
+        echo wp_kses( $html, Kses::storefront() );
     }
 
     /**

@@ -10,7 +10,7 @@
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       yayloyalty
  * Domain Path:       /languages
- * Requires at least: 6.5
+ * Requires at least: 6.6
  * Requires PHP: 7.4
  * WC requires at least: 10.0
  * WC tested up to: 11.2
@@ -98,6 +98,11 @@ add_action(
 
 if ( ! function_exists( 'YayLoyalty\\plugin_init' ) ) {
     function plugin_init() {
+        if ( ! \YayLoyalty\Engine\ActDeact::wordpress_supported() ) {
+            add_action( 'admin_notices', [ \YayLoyalty\Engine\ActDeact::class, 'wordpress_version_admin_notice' ] );
+            return;
+        }
+
         if ( ! function_exists( 'WC' ) ) {
             add_action( 'admin_notices', [ \YayLoyalty\Engine\ActDeact::class, 'install_woocommerce_admin_notice' ] );
             return;
@@ -106,7 +111,7 @@ if ( ! function_exists( 'YayLoyalty\\plugin_init' ) ) {
         add_action( 'before_woocommerce_init', [ \YayLoyalty\Engine\ActDeact::class, 'before_woocommerce_init' ] );
 
         YayLoyalty::initialize();
-        I18n::load_plugin_textdomain();
+        I18n::load_translations();
     }
 }
 

@@ -8,6 +8,7 @@ use YayLoyalty\Helpers\DesignHelper;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Utils\Log;
+use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -43,7 +44,7 @@ final class ThankYouPoints {
         $order = wc_get_order( (int) $order_id );
 
         if ( $order instanceof \WC_Order ) {
-            echo self::markup( $order ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup() escapes every part.
+            echo wp_kses( self::markup( $order ), Kses::storefront() );
         }
     }
 

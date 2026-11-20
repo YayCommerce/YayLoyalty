@@ -45,6 +45,23 @@
   color: inherit;
 }
 
+/*
+ * Copy that opens with the merchant's points label, which may be lowercase ("points history"). ::first-letter
+ * needs a block box, so an inline span becomes inline-block. A mobile table cell is a flex box, which
+ * ::first-letter skips, so its ::before column title (the bare label) is capitalized instead.
+ */
+.yayloyalty-account .yayloyalty-account__cap-first::first-letter {
+  text-transform: uppercase;
+}
+
+.yayloyalty-account span.yayloyalty-account__cap-first {
+  display: inline-block;
+}
+
+.yayloyalty-account td.yayloyalty-account__cap-first::before {
+  text-transform: capitalize;
+}
+
 /* A placement prints one partial in the wrapper, so it drops the tab's intro spacing. */
 .yayloyalty-account.yayloyalty-placement {
   gap: 12px;
