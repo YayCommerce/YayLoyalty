@@ -1,7 +1,7 @@
 ---
 area: admin-spa
-updated: 2026-11-18
-updated_ref: af585f6
+updated: 2026-11-19
+updated_ref: a5d0a81
 covers: [apps/admin/, includes/Engine/Admin/Settings.php, includes/Engine/Register/, includes/Helpers/LocalizeHelper.php]
 ---
 
@@ -17,7 +17,7 @@ React 18, TypeScript, Vite, react-router (hash router), TanStack Query, react-ho
 - `Engine/Admin/Settings.php` enqueues only on hook suffix `yaycommerce_page_yayloyalty` and adds body class `yay-ui` on that screen only.
 - `Engine/Register/RegisterFacade.php` picks `RegisterDev` (`http://localhost:3030/main.tsx` + React refresh preamble) when `YAYLOYALTY_IS_DEVELOPMENT === true`, else `RegisterProd` (`assets/dist/admin/js/main.js`). The dev port lives in both `RegisterDev.php` and `apps/admin/vite.config.ts`. Release builds delete `RegisterDev.php`.
 - Handles are in `Engine/Register/ScriptName.php`. Any handle containing `yayloyalty/module/` gets `type="module"`; rename it and the bundle stops loading.
-- PHP localizes `window.yayLoyaltyMeta` (WP URLs, REST root and nonce, plugin meta, WooCommerce currency/countries) and `window.yayLoyaltyAdmin` (settings, design, the user's capabilities) — `Helpers/LocalizeHelper.php`, typed in `src/types/localize.type.ts`. Both are filterable; Pro adds `segments`. **There is no Pro flag in localized data.**
+- PHP localizes `window.yayLoyaltyMeta` (WP URLs, REST root and nonce, plugin meta, WooCommerce currency/countries) and `window.yayLoyaltyAdmin` (settings, design, the user's capabilities) — `Helpers/LocalizeHelper.php`, typed in `src/types/localize.type.ts`. Both are filterable; Pro adds `segments` and `has_subscriptions` (WooCommerce Subscriptions is active). **There is no Pro flag in localized data.**
 - Script translations are served from the plugin's MO file (`pre_load_script_translations` in `RegisterFacade.php`).
 
 ## API bridge

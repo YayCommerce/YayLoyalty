@@ -42,6 +42,10 @@ export function triggerLabel(trigger: CampaignTrigger): string {
       return __('Order count reached', 'yayloyalty');
     case 'spend_milestone':
       return __('Spend milestone reached', 'yayloyalty');
+    case 'social':
+      return __('Social follow or share', 'yayloyalty');
+    case 'renewal':
+      return __('Subscription renewal', 'yayloyalty');
     default:
       return trigger;
   }

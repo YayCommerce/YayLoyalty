@@ -12,13 +12,15 @@ Goal: Finish 1.1.0: VIP tiers, social and renewal earning, and the Tools page, s
 - note: Jason's open PR #184 (jason/feat/tiers) already builds tiers; review it against this acceptance before brainstorming
 
 ### R-5 More ways to earn: social shares and subscription renewals
-- status: todo
+- status: in-progress
 - size: M
 - editions: pro
 - why: requested 2026-11-13 for 1.1; the social and renewal triggers are reserved but not offered (CampaignTrigger::SOCIAL, ::RENEWAL)
 - acceptance: A merchant turns on campaigns for following/sharing on social networks and for WooCommerce Subscriptions renewals; customers earn once per action, and a renewal that is refunded takes its points back
 - target: 1.1.0
 - note: reading unconfirmed: could also mean other actions (newsletter sign-up, account anniversary, product purchase of a set category); built from the reserved social and renewal triggers
+- started: 2026-11-19
+- built: 2026-11-19
 
 ### R-6 Tools: CSV import/export and bulk point adjustments
 - status: todo

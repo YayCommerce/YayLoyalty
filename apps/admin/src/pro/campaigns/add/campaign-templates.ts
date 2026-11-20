@@ -1,6 +1,12 @@
 import { __ } from '@wordpress/i18n';
 
-import { BirthdayConfig, CreatableCampaignTrigger, DEFAULT_CAMPAIGN_CONFIG } from '@/lib/schema/campaign.schema';
+import {
+  BirthdayConfig,
+  CreatableCampaignTrigger,
+  DEFAULT_CAMPAIGN_CONFIG,
+  RenewalConfig,
+  SocialConfig,
+} from '@/lib/schema/campaign.schema';
 import { emptyConditionList } from '@/lib/schema/condition-match.schema';
 import { CampaignFormValues } from '../editor/campaign-editor.form';
 
@@ -24,7 +30,7 @@ export interface CampaignTemplate {
  * result is unused, which would ship this Pro-only copy in the Lite bundle.
  */
 export function getCampaignTemplates(): CampaignTemplate[] {
-  return [
+  const templates: CampaignTemplate[] = [
     {
       id: 'purchase',
       title: __('Order placed', 'yayloyalty'),
@@ -57,13 +63,39 @@ export function getCampaignTemplates(): CampaignTemplate[] {
       trigger: 'birthday',
       seed: () => emptySeed('birthday', __('Birthday bonus', 'yayloyalty')),
     },
+    {
+      id: 'social',
+      title: __('Social follow or share', 'yayloyalty'),
+      description: __(
+        'Points once per customer for following you or sharing your store on a social network.',
+        'yayloyalty',
+      ),
+      example: __('e.g. 20 points to follow you on Instagram', 'yayloyalty'),
+      trigger: 'social',
+      seed: () => emptySeed('social', __('Follow us', 'yayloyalty')),
+    },
   ];
+
+  if (window.yayLoyaltyAdmin?.has_subscriptions) {
+    templates.push({
+      id: 'renewal',
+      title: __('Subscription renewal', 'yayloyalty'),
+      description: __('Flat points for each completed WooCommerce Subscriptions renewal order.', 'yayloyalty'),
+      example: __('e.g. 50 points per renewal, on top of order points', 'yayloyalty'),
+      trigger: 'renewal',
+      seed: () => emptySeed('renewal', __('Renewal bonus', 'yayloyalty')),
+    });
+  }
+
+  return templates;
 }
 
-/** Config a new campaign starts from. Birthday has no built-in campaign, so no Campaign::default_config() entry. */
+/** Config a new campaign starts from. Birthday, social and renewal have no built-in campaign, so no Campaign::default_config() entry. */
 const SEED_CONFIG: Record<CreatableCampaignTrigger, Record<string, unknown>> = {
   ...DEFAULT_CAMPAIGN_CONFIG,
   birthday: { points: 100, days_before: 0 } satisfies BirthdayConfig,
+  social: { network: 'instagram', action: 'follow', url: '', points: 20 } satisfies SocialConfig,
+  renewal: { points: 50, replace_purchase: false } satisfies RenewalConfig,
 };
 
 function emptySeed(trigger: CreatableCampaignTrigger, name: string): CampaignFormValues {

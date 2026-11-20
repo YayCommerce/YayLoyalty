@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { Resolver } from 'react-hook-form';
+import type { FieldErrors, Resolver, ResolverResult } from 'react-hook-form';
+import { __ } from '@wordpress/i18n';
 
 import { dateToStored } from '@/lib/helpers/format.helper';
 import {
@@ -11,6 +12,7 @@ import {
   CampaignUpdateInput,
   campaignUpdateInputSchema,
   CreatableCampaignTrigger,
+  isHttpUrl,
 } from '@/lib/schema/campaign.schema';
 import { toConditionList } from '@/lib/schema/condition-match.schema';
 import { mergeConditionErrors } from '../../conditions/condition-form';
@@ -90,8 +92,30 @@ export function synthesizeDraftCampaign(): Campaign {
 /** One resolver for both editor modes: the fields it validates are the same in each. */
 export const campaignFormResolver: Resolver<CampaignFormValues> = async (values, context, options) => {
   const result = await zodResolver(campaignUpdateInputSchema)(values, context, options);
-  return mergeConditionErrors(result, values);
+  return mergeConfigUrlError(mergeConditionErrors(result, values), values);
 };
+
+/** A config `url` (a social campaign's link) must be one the server's `url` spec accepts, or the save is refused. */
+function mergeConfigUrlError(
+  result: ResolverResult<CampaignFormValues>,
+  values: CampaignFormValues,
+): ResolverResult<CampaignFormValues> {
+  if (!('url' in (values.config ?? {})) || isHttpUrl(values.config.url)) {
+    return result;
+  }
+
+  return {
+    values: {},
+    errors: {
+      ...result.errors,
+      // config is an open record, so its error type is the nested map; this error is the whole field's.
+      config: {
+        type: 'validate',
+        message: __('Enter a full link that starts with https://', 'yayloyalty'),
+      } as FieldErrors<CampaignFormValues>['config'],
+    },
+  };
+}
 
 // Editor context: the loaded campaign, outside form state
 

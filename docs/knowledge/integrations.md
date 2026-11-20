@@ -1,8 +1,8 @@
 ---
 area: integrations
-updated: 2026-11-18
-updated_ref: 8a91b12
-covers: [includes/Integrations/, includes/Pro/Integrations/, includes/Engine/ActDeact.php, includes/Engine/Redemption/Adapters/, includes/Utils/CurrencyRate.php, includes/Utils/WooOrders.php]
+updated: 2026-11-19
+updated_ref: a5d0a81
+covers: [includes/Integrations/, includes/Pro/Integrations/, includes/Pro/Renewals/, includes/Engine/ActDeact.php, includes/Engine/Redemption/Adapters/, includes/Utils/CurrencyRate.php, includes/Utils/WooOrders.php]
 ---
 
 # Integrations
@@ -34,6 +34,7 @@ Every integration is detected by a constant the partner defines before YayLoyalt
 | YayMail | `YAYMAIL_VERSION` ≥ 4.4.7, `YaymailPluginAdapter` exists and is licensed | Registers designable templates and shortcodes for each loyalty email on `yaymail_register_emails` / `yaymail_register_shortcodes`. Pro adds its emails through `yayloyalty_yaymail_register_emails` | `includes/Integrations/YayMail/YayMailIntegration.php`, `includes/Pro/Integrations/YayMail/` |
 | YayPricing | `YAYDP_VERSION` ≥ 3.5.8 | Six loyalty conditions on `yaydp_register_conditions`. `LoyaltyCouponRerun` re-runs `calculate_totals()` once when the loyalty coupon set changed, because YayPricing skips an unchanged cart signature | `includes/Integrations/YayPricing/` |
 | YayCurrency | `YAY_CURRENCY_VERSION` | Answers `yayloyalty_currency_rate` (the order's saved rate, else the live rate); snapshots the rate on non-base orders; stops YayCurrency converting loyalty coupons twice; skips conversion on `yayloyalty/v1` REST so the SPA sees base currency | `includes/Integrations/YayCurrency/YayCurrencyIntegration.php` |
+| WooCommerce Subscriptions (Pro) | `function_exists( 'wcs_order_contains_renewal' )`, asked at call time, not boot | Offers the renewal campaign (`YayLoyaltyPro::has_subscriptions()`, localized to the SPA as `has_subscriptions`) and awards it on completed renewal orders. The handler is always registered; without WooCommerce Subscriptions stored renewal campaigns never fire. A refund claws the renewal row back through its order id | `includes/Pro/Renewals/` |
 | YayCommerce AdminShell | Composer package, scoped | Shared menu, licence screens, version election between Yay plugins | `YayLoyaltyPluginAdapter.php`, see [build-release.md](build-release.md#the-admin-shell-and-vendor-prefixed) |
 | Elementor | Its own hooks only (`elementor/widgets/register`, `elementor/elements/categories_registered`, `elementor/preview/enqueue_styles`) | Four classic widgets (Points balance, Ways to earn, Ways to redeem, Redeem card) in a YayLoyalty category | `includes/Integrations/PageBuilders/Elementor/` |
 | Bricks (theme) | `init` at 11, after Bricks loads `\Bricks\Element` at 10; skipped without `\Bricks\Elements` | The same four as elements, registered with their class (Bricks otherwise takes the last declared class); category label through `bricks/builder/i18n` | `includes/Integrations/PageBuilders/Bricks/` |
