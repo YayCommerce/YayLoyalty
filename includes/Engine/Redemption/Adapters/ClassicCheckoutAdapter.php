@@ -3,6 +3,7 @@ namespace YayLoyalty\Engine\Redemption\Adapters;
 
 use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Storefront\RedeemCard;
+use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -46,7 +47,7 @@ final class ClassicCheckoutAdapter {
             return;
         }
 
-        echo '<tr class="yayloyalty-redeem-row"><td colspan="2">' . $markup . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the card's template escapes every value.
+        echo '<tr class="yayloyalty-redeem-row"><td colspan="2">' . wp_kses( $markup, Kses::storefront() ) . '</td></tr>';
     }
 
     /**

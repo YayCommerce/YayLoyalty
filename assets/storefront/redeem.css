@@ -529,6 +529,11 @@
   flex-basis: 100%;
 }
 
+/* It opens with the merchant's points label, which may be lowercase. */
+.yayloyalty-redeem .yayloyalty-redeem__title-checkout::first-letter {
+  text-transform: uppercase;
+}
+
 .yayloyalty-redeem[data-mode="checkout"] .yayloyalty-redeem__balance {
   margin-left: 0;
 }

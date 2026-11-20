@@ -112,8 +112,8 @@ final class ReferralCoupon {
             'wc-blocks-checkout',
             sprintf(
                 'window.wc.blocksCheckout.registerCheckoutFilters("yayloyalty-referral",{coupons:function(c){return Array.isArray(c)?c.map(function(x){return x&&0===String(x.code).indexOf(%1$s)?Object.assign({},x,{label:%2$s}):x;}):c;}});',
-                wp_json_encode( self::CODE_PREFIX ),
-                wp_json_encode( self::display_label() )
+                wp_json_encode( self::CODE_PREFIX, JSON_HEX_TAG | JSON_HEX_AMP ),
+                wp_json_encode( self::display_label(), JSON_HEX_TAG | JSON_HEX_AMP )
             )
         );
     }

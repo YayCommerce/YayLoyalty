@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Engine\Storefront;
 
+use YayLoyalty\Engine\Register\ScriptName;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\RewardType;
@@ -31,6 +32,8 @@ final class LauncherPreview {
     /** The store around the launcher, linked by document(): flat greys, so only the launcher reads at full contrast. */
     private const FRAME_STYLE_PATH = 'assets/storefront/launcher-preview.css';
 
+    private const FRAME_STYLE_HANDLE = 'yayloyalty/style/launcher-preview-frame';
+
     /**
      * The button alone and the open panel, from one view.
      *
@@ -59,13 +62,27 @@ final class LauncherPreview {
     private static function document( array $view ): string {
         return '<!doctype html><html><head><meta charset="utf-8">'
             . '<meta name="viewport" content="width=device-width, initial-scale=1">'
-            . '<link rel="stylesheet" href="' . esc_url( Launcher::style_url() ) . '">' // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- a standalone page for an iframe; there is no WordPress head to enqueue into.
-            . '<link rel="stylesheet" href="' . esc_url( AccountMyPoints::style_url() ) . '">' // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- as above: the panel prints the My Points tab's partials.
-            . '<link rel="stylesheet" href="' . esc_url( Launcher::versioned_url( self::FRAME_STYLE_PATH ) ) . '">' // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- as above.
+            . self::style_tags()
             . '</head><body>'
             . self::store_frame()
             . Launcher::markup( $view )
             . '</body></html>';
+    }
+
+    /**
+     * The preview's stylesheet links, printed by a WP_Styles of its own: the document is a REST answer with no WordPress head.
+     * The panel prints the My Points tab's partials, so it needs that tab's stylesheet too.
+     */
+    private static function style_tags(): string {
+        $styles = new \WP_Styles();
+        $styles->add( ScriptName::STOREFRONT_STYLE, Launcher::style_url(), [], null );
+        $styles->add( ScriptName::ACCOUNT_STYLE, AccountMyPoints::style_url(), [], null );
+        $styles->add( self::FRAME_STYLE_HANDLE, Launcher::versioned_url( self::FRAME_STYLE_PATH ), [], null );
+
+        ob_start();
+        $styles->do_items( [ ScriptName::STOREFRONT_STYLE, ScriptName::ACCOUNT_STYLE, self::FRAME_STYLE_HANDLE ] );
+
+        return (string) ob_get_clean();
     }
 
     private static function store_frame(): string {

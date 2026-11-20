@@ -101,7 +101,8 @@ final class OrderCouponRemoval {
                         'keep'       => sprintf( __( 'Don\'t restore %s', 'yayloyalty' ), SettingsHelper::points_label_plural() ),
                         'cancel'     => __( 'Cancel', 'yayloyalty' ),
                     ],
-                ]
+                ],
+                JSON_HEX_TAG | JSON_HEX_AMP
             ) . ';',
             'before'
         );

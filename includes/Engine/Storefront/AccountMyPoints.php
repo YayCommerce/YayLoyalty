@@ -7,6 +7,7 @@ use YayLoyalty\Engine\Register\ScriptName;
 use YayLoyalty\Helpers\DesignHelper;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -193,7 +194,7 @@ final class AccountMyPoints {
             return;
         }
 
-        echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the template escapes every value.
+        echo wp_kses( $html, Kses::storefront() );
     }
 
     /**

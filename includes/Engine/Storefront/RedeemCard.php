@@ -16,6 +16,7 @@ use YayLoyalty\Repositories\CustomerReader;
 use YayLoyalty\Utils\CurrencyRate;
 use YayLoyalty\Utils\Log;
 use YayLoyalty\Utils\Text;
+use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -60,7 +61,7 @@ final class RedeemCard {
 
     /** Called once at boot by the plugin. */
     public function register(): void {
-        add_shortcode( self::SHORTCODE, [ $this, 'markup' ] );
+        add_shortcode( self::SHORTCODE, [ $this, 'shortcode' ] );
         add_action( self::ACTION, [ $this, 'render' ] );
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_on_cart_pages' ] );
         add_action( 'wc_ajax_' . self::AJAX_ENDPOINT, [ $this, 'on_apply' ] );
@@ -88,12 +89,17 @@ final class RedeemCard {
 
         $cart->calculate_totals();
 
-        wp_send_json_success( [ 'html' => $this->markup() ] );
+        wp_send_json_success( [ 'html' => $this->shortcode() ] );
     }
 
     /** The `yayloyalty_redeem_card` action: prints the card where a theme or a page builder calls it. */
     public function render(): void {
-        echo $this->markup(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the template escapes every value.
+        echo wp_kses( $this->markup(), Kses::storefront() );
+    }
+
+    /** The [yayloyalty_redeem] shortcode: the card, escaped. */
+    public function shortcode(): string {
+        return wp_kses( $this->markup(), Kses::storefront() );
     }
 
     /**
@@ -139,7 +145,8 @@ final class RedeemCard {
                     'callback'  => StoreApiAdapter::CALLBACK,
                     'code'      => null === $reward ? '' : $reward->get_coupon_code(),
                     'label'     => CouponProvider::display_label( $reward ),
-                ]
+                ],
+                JSON_HEX_TAG | JSON_HEX_AMP
             ) . ';',
             'before'
         );
@@ -330,8 +337,8 @@ final class RedeemCard {
     private function rows( \WC_Cart $cart, int $user_id, int $balance ): array {
         /**
          * Rows the card lists after its Points discount row; Pro adds its rewards.
-         * Internal seam for Pro, not a public API. Each string is printed as given inside the card's list, so
-         * whoever adds it escapes it.
+         * Internal seam for Pro, not a public API. Each string is printed inside the card's list through
+         * wp_kses() with Kses::storefront(), so a tag or attribute missing there is stripped.
          *
          * @param string[] $rows
          * @param array{service: RedemptionService, cart: \WC_Cart, user_id: int, balance: int} $context

@@ -1,7 +1,7 @@
 ---
 area: helpers
-updated: 2026-11-19
-updated_ref: b45b3f3
+updated: 2026-11-20
+updated_ref: 39f59a8
 covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, includes/Access/, includes/Services/, includes/Controllers/AbstractRestController.php, includes/Engine/Earning/, includes/Engine/Expiry/ExpiryRunner.php, includes/Engine/Emails/Emails.php, includes/Engine/Storefront/, includes/Engine/Points/, apps/admin/src/lib/, apps/admin/src/hooks/, apps/admin/src/components/layout/]
 ---
 
@@ -60,7 +60,7 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 
 ## Escaping, text, capabilities, REST (PHP)
 
-- `Utils\Kses::svg|inline` (`includes/Utils/Kses.php`): allowlists for printed icons and number-wrapped sentences.
+- `Utils\Kses::svg|inline|storefront` (`includes/Utils/Kses.php`): allowlists for printed icons, number-wrapped sentences and whole storefront templates; every storefront echo or returned callback goes through `wp_kses( $html, Kses::storefront() )`, and the launcher adds `Kses::allow_color_mix` around its echo.
 - `Utils\Text::plain|store_name` (`includes/Utils/Text.php`): plain text for the SPA and shopper copy.
 - `Utils\IsoCodes::is_currency|is_country` (`includes/Utils/IsoCodes.php`).
 - `Utils\Log::error|warning|debug` (`includes/Utils/Log.php`).
@@ -87,4 +87,4 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 
 Public: `yayloyalty_points_awarded` (after commit), `yayloyalty_points_redeemed`, `yayloyalty_ledger_recorded`, `yayloyalty_pro_booted`, `yayloyalty_redeem_card` (renders the card), `yayloyalty_yaymail_register_emails`, `yayloyalty_yaymail_register_shortcodes`.
 
-Seams Pro attaches through (documented "Internal seam, not a public API"): `yayloyalty_earning_gates`, `yayloyalty_redemption_gates`, `yayloyalty_register_trigger_handlers`, `yayloyalty_register_reward_handlers`, `yayloyalty_award_points` (can only lower), `yayloyalty_points_left_today`, `yayloyalty_order_award_triggers`, `yayloyalty_order_awarded` (after a completed order's awards, not for a claimed guest order), `yayloyalty_order_reversed` (after a refund, cancel, trash or refunded status is reversed), `yayloyalty_campaign_conditions_evaluator`, `yayloyalty_reward_conditions_match`, `yayloyalty_rest_controllers`, `yayloyalty_rest_item_schema`, `yayloyalty_campaign_config_schema`, `yayloyalty_reward_config_schema`, `yayloyalty_localize_admin_data`, `yayloyalty_plugin_name`. Others: `yayloyalty_table_schemas`, `yayloyalty_run_migrations`, `yayloyalty_currency_rate`, `yayloyalty_context_to_base_factor`.
+Seams Pro attaches through (documented "Internal seam, not a public API"): `yayloyalty_earning_gates`, `yayloyalty_redemption_gates`, `yayloyalty_register_trigger_handlers`, `yayloyalty_register_reward_handlers`, `yayloyalty_award_points` (can only lower), `yayloyalty_points_left_today`, `yayloyalty_order_award_triggers`, `yayloyalty_order_awarded` (after a completed order's awards, not for a claimed guest order), `yayloyalty_order_reversed` (after a refund, cancel, trash or refunded status is reversed), `yayloyalty_campaign_conditions_evaluator`, `yayloyalty_reward_conditions_match`, `yayloyalty_rest_controllers`, `yayloyalty_rest_item_schema`, `yayloyalty_campaign_config_schema`, `yayloyalty_reward_config_schema`, `yayloyalty_localize_admin_data`, `yayloyalty_plugin_name`, `yayloyalty_cart_coupons_removed_all` (the Store API removed every coupon; `StoreApiAdapter`). Others: `yayloyalty_table_schemas`, `yayloyalty_run_migrations`, `yayloyalty_currency_rate`, `yayloyalty_context_to_base_factor`.
