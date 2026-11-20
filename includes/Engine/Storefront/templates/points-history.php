@@ -30,7 +30,7 @@ $yayloyalty_download  = AccountMyPointsIcon::get( 'download' ) . esc_html__( 'Ex
 ?>
 <section class="yayloyalty-account__section" id="<?php echo esc_attr( AccountMyPoints::HISTORY_ANCHOR ); ?>" data-endpoint="<?php echo esc_url( AccountHistoryAjax::url() ); ?>" data-page="<?php echo esc_attr( $yayloyalty_page ); ?>" data-filter="<?php echo esc_attr( $yayloyalty_filter_on ); ?>">
     <div class="yayloyalty-account__section-head">
-        <h3 class="yayloyalty-account__title">
+        <h3 class="yayloyalty-account__title yayloyalty-account__title--label">
             <?php
             /* translators: %s: the store's points label, as "Points". */
             echo esc_html( sprintf( __( '%s history', 'yayloyalty' ), $yayloyalty_label ) );
