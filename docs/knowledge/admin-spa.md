@@ -1,7 +1,7 @@
 ---
 area: admin-spa
-updated: 2026-11-18
-updated_ref: af585f6
+updated: 2026-11-19
+updated_ref: 17197c9
 covers: [apps/admin/, includes/Engine/Admin/Settings.php, includes/Engine/Register/, includes/Helpers/LocalizeHelper.php]
 ---
 
@@ -40,7 +40,7 @@ React 18, TypeScript, Vite, react-router (hash router), TanStack Query, react-ho
 
 | Path | What |
 |---|---|
-| `src/router.tsx` | Hash routes: dashboard, customers, ledger, campaigns, rewards, referral (Pro: referrals, approvals and settings, with the customer drawer nested under referrals and approvals), settings (general, expiry, design, emails). Each wrapped in `guarded(CAP.X, …)`, which must match the `HeaderMenu` item's cap. A Pro-only item is behind `IS_PRO_BUILD` in `HeaderMenu`, and its route renders a Lite-safe wrapper in `pages/` that 404s in Lite (`LedgerPage`, `ReferralPage`) |
+| `src/router.tsx` | Hash routes: dashboard, customers, ledger, campaigns, rewards, referral (Pro: referrals, approvals and settings, with the customer drawer nested under referrals and approvals), tools (`CAP.RUN_TOOLS`: import balances, plus links to the Customers export and bulk adjust), settings (general, expiry, design, emails). Each wrapped in `guarded(CAP.X, …)`, which must match the `HeaderMenu` item's cap. A Pro-only item is behind `IS_PRO_BUILD` in `HeaderMenu`, and its route renders a Lite-safe wrapper in `pages/` that 404s in Lite (`LedgerPage`, `ReferralPage`) |
 | `src/lib/api/<x>.api.ts` | HTTP calls |
 | `src/lib/schema/<x>.schema.ts` | zod schemas; TypeScript copies of PHP shapes, each with a "Mirrors X" docblock naming the PHP source |
 | `src/lib/queries/<x>.queries.ts` | `X_QUERIES` `queryOptions` + `useXQuery` / `useXMutation`; keys `['<domain>', 'list'|'detail', params]`; mutations invalidate by prefix |

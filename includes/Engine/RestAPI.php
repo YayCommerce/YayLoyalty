@@ -17,6 +17,7 @@ use YayLoyalty\Controllers\RewardRestController;
 use YayLoyalty\Controllers\SettingsRestController;
 use YayLoyalty\Controllers\SetupRestController;
 use YayLoyalty\Controllers\StorefrontActivityRestController;
+use YayLoyalty\Controllers\ToolsImportRestController;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerMetaRepository;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -79,6 +80,8 @@ class RestAPI {
             // $customers is read-only here too.
             new CustomerAdjustPreviewRestController( $customers, $dashboard ),
             new LedgerRestController( $ledger ),
+            // Writes import rows through $ledger_service only; $customers and $ledger are read-only here.
+            new ToolsImportRestController( $customers, $ledger_service, $ledger ),
             // Grants an order's missed points through EarningService's own LedgerService, built per request. $ledger is read-only here.
             new OrderPointsRestController( $ledger ),
             new ActivityRestController( $customer_meta ),

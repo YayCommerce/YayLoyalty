@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  * "earn:7:order:1234:purchase" or "redeem:7:redemption:88:flexible_discount".
  * It holds the user, because a referral order pays two people. It holds a qualifier, because one
  * reference may move points once per trigger (earn), or once per reward type or per reward (redeem:
- * "redeem:7:order:1234:reward_5"). Nothing else goes in,
+ * "redeem:7:order:1234:reward_5"), or once per import file ("adjust:7:import:<import id>:import"). Nothing else goes in,
  * so a second hook, a status bounce or a retry composes the same key and collides on the index.
  */
 final class IdempotencyKey {
@@ -23,12 +23,14 @@ final class IdempotencyKey {
 
     private const SEPARATOR = ':';
 
+    private const IMPORT_QUALIFIER = 'import';
+
     /**
      * @param string $type           A LedgerType constant.
      * @param int    $user_id        Whose balance moves.
      * @param string $reference_type A ReferenceType constant.
      * @param int    $reference_id   The id in that namespace (order id, comment id, user id, year, redemption id).
-     * @param string $qualifier      A CampaignTrigger for earn/refund_earn rows; a RewardType, or `reward_{id}` for one reward's row, for redeem/refund_redeem rows; and the UTC `Ymd` run day for expire rows. Any build's, so a Pro value still composes after a downgrade.
+     * @param string $qualifier      A CampaignTrigger for earn/refund_earn rows; a RewardType, or `reward_{id}` for one reward's row, for redeem/refund_redeem rows; the UTC `Ymd` run day for expire rows; and `import` for an imported row's adjust key. Any build's, so a Pro value still composes after a downgrade.
      * @throws \InvalidArgumentException When any part is outside its vocabulary or an id is not positive.
      */
     public static function compose( string $type, int $user_id, string $reference_type, int $reference_id, string $qualifier ): string {
@@ -48,7 +50,11 @@ final class IdempotencyKey {
 
         $is_redeem = in_array( $type, [ LedgerType::REDEEM, LedgerType::REFUND_REDEEM ], true );
 
-        if ( LedgerType::EXPIRE === $type ) {
+        if ( LedgerType::ADJUST === $type && ReferenceType::IMPORT === $reference_type ) {
+            if ( self::IMPORT_QUALIFIER !== $qualifier ) {
+                throw new \InvalidArgumentException( esc_html( sprintf( 'YayLoyalty: an import key needs the "%s" qualifier, not "%s".', self::IMPORT_QUALIFIER, $qualifier ) ) );
+            }
+        } elseif ( LedgerType::EXPIRE === $type ) {
             if ( 1 !== preg_match( '/^\d{8}$/', $qualifier ) ) {
                 throw new \InvalidArgumentException( esc_html( sprintf( 'YayLoyalty: an expire key needs a Ymd day, not "%s".', $qualifier ) ) );
             }
@@ -77,6 +83,15 @@ final class IdempotencyKey {
      */
     public static function for_earn( int $user_id, string $reference_type, int $reference_id, string $trigger ): string {
         return self::compose( LedgerType::EARN, $user_id, $reference_type, $reference_id, $trigger );
+    }
+
+    /**
+     * An imported row's key: one per user per import file.
+     *
+     * @throws \InvalidArgumentException As compose().
+     */
+    public static function for_import( int $user_id, int $import_id ): string {
+        return self::compose( LedgerType::ADJUST, $user_id, ReferenceType::IMPORT, $import_id, self::IMPORT_QUALIFIER );
     }
 
     /**

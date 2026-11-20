@@ -1,5 +1,5 @@
 import { ComponentProps } from 'react';
-import { Coins, Gift, Megaphone, UserPlus } from 'lucide-react';
+import { Coins, Gift, Megaphone, UserPlus, Wrench } from 'lucide-react';
 import { NavLink } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
@@ -47,6 +47,12 @@ export function HeaderMenu() {
           </NavLink>
         </CustomMenuItem>
       ) : null}
+      <CustomMenuItem asChild key="tools" cap={CAP.RUN_TOOLS}>
+        <NavLink to="/tools">
+          <Wrench className="stroke-2" />
+          <span>{__('Tools', 'yayloyalty')}</span>
+        </NavLink>
+      </CustomMenuItem>
       <CustomMenuItem asChild key="settings" cap={CAP.VIEW}>
         <NavLink to="/settings">
           <SettingsIcon className="stroke-2" />
