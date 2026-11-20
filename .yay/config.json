@@ -18,7 +18,7 @@
   },
   "tested": {
     "wp": "7.1",
-    "wc": "11.2"
+    "wc": "11.3.1"
   },
   "git": {
     "baseBranch": "dev",
