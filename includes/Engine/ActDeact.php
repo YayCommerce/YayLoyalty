@@ -16,7 +16,8 @@ class ActDeact {
 
     /** Whether this site runs at least MIN_WP_VERSION, checked at runtime because a site can be downgraded after install. */
     public static function wordpress_supported(): bool {
-        return is_wp_version_compatible( self::MIN_WP_VERSION );
+        // get_bloginfo() reads the loaded $wp_version; is_wp_version_compatible() rereads version.php. The suffix is cut so 6.5-RC1 counts as 6.5.
+        return version_compare( strtok( get_bloginfo( 'version' ), '-' ), self::MIN_WP_VERSION, '>=' );
     }
 
     public static function wordpress_version_admin_notice() {
