@@ -345,6 +345,15 @@ build_package() {
         sed_inplace 's/^\( \* Plugin Name: *\).*/\1YayLoyalty — Points and Rewards for WooCommerce/' "$temp_dir/$(basename "$MAIN_FILE")"
         sed_inplace 's/^\( \* Description: *\).*/\1Loyalty program plugin for WooCommerce: customers earn points and spend them as a discount./' "$temp_dir/$(basename "$MAIN_FILE")"
 
+        # LicenseConfigAdapter lives in the stripped src/License/, so implementing it would fatal in Lite.
+        print_step "Switching the plugin adapter to PluginMenuAdapter..."
+        local adapter_file="$temp_dir/YayLoyaltyPluginAdapter.php"
+        sed_inplace 's/implements \\YayLoyaltyScoped\\YayCommerce\\AdminShell\\License\\Contracts\\LicenseConfigAdapter {/implements \\YayLoyaltyScoped\\YayCommerce\\AdminShell\\Contracts\\PluginMenuAdapter {/' "$adapter_file"
+        if ! grep -q 'implements \\YayLoyaltyScoped\\YayCommerce\\AdminShell\\Contracts\\PluginMenuAdapter {' "$adapter_file"; then
+            print_error "YayLoyaltyPluginAdapter.php: the class line changed, update the Lite adapter swap in run.sh"
+            exit 1
+        fi
+
         # The patch drops the shell's licensing and Recommended Plugins wiring, and registers this copy
         # at a low election version so a full shell from another YayCommerce plugin runs the shared menu.
         # It is made against vendor-prefixed/ and fails on a changed shell: regenerate it then.
