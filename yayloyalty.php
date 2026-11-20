@@ -98,6 +98,11 @@ add_action(
 
 if ( ! function_exists( 'YayLoyalty\\plugin_init' ) ) {
     function plugin_init() {
+        if ( ! \YayLoyalty\Engine\ActDeact::wordpress_supported() ) {
+            add_action( 'admin_notices', [ \YayLoyalty\Engine\ActDeact::class, 'wordpress_version_admin_notice' ] );
+            return;
+        }
+
         if ( ! function_exists( 'WC' ) ) {
             add_action( 'admin_notices', [ \YayLoyalty\Engine\ActDeact::class, 'install_woocommerce_admin_notice' ] );
             return;

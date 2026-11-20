@@ -11,6 +11,19 @@ defined( 'ABSPATH' ) || exit;
 /** Activation on a single site or a network, new-site setup and the WooCommerce boot hooks. */
 class ActDeact {
 
+    /** The plugin header's `Requires at least`. */
+    public const MIN_WP_VERSION = '6.5';
+
+    /** Whether this site runs at least MIN_WP_VERSION, checked at runtime because a site can be downgraded after install. */
+    public static function wordpress_supported(): bool {
+        return is_wp_version_compatible( self::MIN_WP_VERSION );
+    }
+
+    public static function wordpress_version_admin_notice() {
+        /* translators: %s: the minimum WordPress version */
+        echo '<div class="error"><p><strong>' . esc_html( sprintf( __( 'YayLoyalty is enabled but not effective. It requires WordPress %s or later: update WordPress to use it.', 'yayloyalty' ), self::MIN_WP_VERSION ) ) . '</strong></p></div>';
+    }
+
     public static function install_woocommerce_admin_notice() {
         /* translators: %s: WooCommerce link */
         echo '<div class="error"><p><strong>' . sprintf( esc_html__( 'YayLoyalty is enabled but not effective. It requires %s in order to work', 'yayloyalty' ), '<a href="' . esc_url( admin_url( 'plugin-install.php?s=woocommerce&tab=search&type=term' ) ) . '">WooCommerce</a>' ) . '</strong></p></div>';
