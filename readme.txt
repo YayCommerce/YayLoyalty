@@ -92,9 +92,13 @@ No. YayLoyalty stores everything in your own database and makes no requests to o
 
 == Source code ==
 
-The admin app, the block editor script and the storefront stylesheet are compiled. Their source and build steps are at https://github.com/YayCommerce/yayloyalty (replace with the public repository).
+The admin app, the block editor script and the storefront stylesheet are compiled with Vite. Their source is public at https://github.com/YayCommerce/YayLoyalty:
 
-To build them: install Node 22 and pnpm 11, run `pnpm install` in the repository root, then `./scripts/run.sh build lite`.
+* `assets/dist/admin/` is built from `apps/admin/src/`
+* `assets/dist/blocks/` is built from `apps/admin/src/blocks/`
+* `assets/dist/storefront/` is built from `apps/admin/src/storefront.css`
+
+To build them: install Node 22 and pnpm 11, then in the repository root run `pnpm install --ignore-scripts` and `./scripts/run.sh build lite`. The PHP dependencies already ship in the plugin, in `vendor/` and `vendor-prefixed/`.
 
 == Changelog ==
 
