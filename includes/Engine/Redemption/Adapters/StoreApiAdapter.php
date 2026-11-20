@@ -33,6 +33,12 @@ final class StoreApiAdapter {
 
     private RedeemCard $card;
 
+    /** Whether the REST request being dispatched removes every cart coupon. */
+    private bool $removing_all_coupons = false;
+
+    /** @var array{0: int, 1: int[]}|null The points and rewards a totals run cleared during that request, until it ends. */
+    private ?array $cleared_intent = null;
+
     public function __construct( RedemptionService $service, SessionIntent $intent, RedeemCard $card ) {
         $this->service = $service;
         $this->intent  = $intent;
@@ -77,6 +83,61 @@ final class StoreApiAdapter {
         add_action( 'woocommerce_store_api_checkout_order_processed', [ $this, 'on_order_processed' ] );
         add_action( 'woocommerce_blocks_enqueue_cart_block_scripts_after', [ $this, 'enqueue' ] );
         add_action( 'woocommerce_blocks_enqueue_checkout_block_scripts_after', [ $this, 'enqueue' ] );
+        add_filter( 'rest_request_before_callbacks', [ $this, 'watch_remove_all_coupons' ], 10, 3 );
+        // Before CouponProvider::sync_cart() (PHP_INT_MAX) and the Pro referral sync (PHP_INT_MAX - 1) add codes back.
+        add_action( 'woocommerce_before_calculate_totals', [ $this, 'cancel_on_remove_all_coupons' ], PHP_INT_MAX - 2 );
+        add_filter( 'rest_request_after_callbacks', [ $this, 'cancel_after_remove_all_coupons' ] );
+    }
+
+    /**
+     * Notes whether this request is `DELETE /wc/store/v1/cart/coupons`. Public for the hook only.
+     *
+     * @param mixed            $response
+     * @param mixed            $handler
+     * @param \WP_REST_Request $request
+     * @return mixed $response unchanged.
+     */
+    public function watch_remove_all_coupons( $response, $handler, $request ) {
+        $this->removing_all_coupons = ! is_wp_error( $response )
+            && $request instanceof \WP_REST_Request
+            && 'DELETE' === $request->get_method()
+            && 1 === preg_match( '#^/wc/store(/v1)?/cart/coupons/?$#i', $request->get_route() );
+
+        return $response;
+    }
+
+    /** Removing every coupon cancels the redemption: clears the intent on that request's first totals run with no coupon left. Public for the hook only. */
+    public function cancel_on_remove_all_coupons( \WC_Cart $cart ): void {
+        if ( ! $this->removing_all_coupons || [] !== $cart->get_applied_coupons() ) {
+            return;
+        }
+
+        $this->removing_all_coupons = false;
+        $this->cleared_intent       = [ $this->intent->get(), $this->intent->rewards() ];
+        $this->intent->clear();
+    }
+
+    /**
+     * Before WooCommerce 11.3.1 the route doesn't recalculate after remove_coupons(), so no totals run cancels
+     * it: clear the intent once the route succeeded. A route that failed (a bad nonce) gets back what a totals
+     * run cleared while loading its cart. Public for the hook only.
+     *
+     * @param mixed $response
+     * @return mixed $response unchanged.
+     */
+    public function cancel_after_remove_all_coupons( $response ) {
+        $succeeded = $response instanceof \WP_REST_Response && $response->get_status() < 400;
+
+        if ( null !== $this->cleared_intent && ! $succeeded ) {
+            $this->intent->apply( $this->cleared_intent[1], $this->cleared_intent[0] );
+        } elseif ( $this->removing_all_coupons && $succeeded ) {
+            $this->intent->clear();
+        }
+
+        $this->removing_all_coupons = false;
+        $this->cleared_intent       = null;
+
+        return $response;
     }
 
     /** On a page drawing the Cart or Checkout block: the card's assets and the slot fill that shows it. */
