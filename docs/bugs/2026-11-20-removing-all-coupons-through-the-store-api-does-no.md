@@ -7,7 +7,7 @@ editions: [pro, lite]
 found_in: 1.0.0
 fixed_in:
 branch: fix/b-2-removing-all-coupons-through-the-store-api-doe
-pr:
+pr: 205
 created: 2026-11-20
 ---
 # B-2 Removing all coupons through the Store API does not cancel the points redemption
