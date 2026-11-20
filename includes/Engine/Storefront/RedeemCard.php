@@ -139,7 +139,8 @@ final class RedeemCard {
                     'callback'  => StoreApiAdapter::CALLBACK,
                     'code'      => null === $reward ? '' : $reward->get_coupon_code(),
                     'label'     => CouponProvider::display_label( $reward ),
-                ]
+                ],
+                JSON_HEX_TAG | JSON_HEX_AMP
             ) . ';',
             'before'
         );
