@@ -2,6 +2,7 @@
 namespace YayLoyalty\Integrations\PageBuilders\Divi;
 
 use YayLoyalty\Integrations\PageBuilders\PlacementWidgets;
+use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -36,6 +37,6 @@ abstract class PlacementModule extends \ET_Builder_Module {
         $html = PlacementWidgets::output( static::PLACEMENT, DiviModules::is_preview() );
 
         // Divi adds this wrapper (order class, CSS ID and class, spacing) itself only with full Visual Builder support.
-        return '' === $html ? '' : $this->_render_module_wrapper( $html, $render_slug );
+        return '' === $html ? '' : $this->_render_module_wrapper( wp_kses( $html, Kses::storefront() ), $render_slug );
     }
 }

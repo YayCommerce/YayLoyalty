@@ -192,7 +192,7 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
             <?php endif; ?>
 
             <?php foreach ( $view['rows'] as $yayloyalty_row ) : ?>
-                <?php echo $yayloyalty_row; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the rows filter's contract: each row is escaped by whoever adds it. ?>
+                <?php echo wp_kses( $yayloyalty_row, Kses::storefront() ); ?>
             <?php endforeach; ?>
         </div>
     <?php endif; ?>

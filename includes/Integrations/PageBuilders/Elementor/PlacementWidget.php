@@ -5,6 +5,7 @@ use Elementor\Plugin;
 use Elementor\Widget_Base;
 use YayLoyalty\Engine\Storefront\Placements;
 use YayLoyalty\Integrations\PageBuilders\PlacementWidgets;
+use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -38,6 +39,6 @@ abstract class PlacementWidget extends Widget_Base {
         $plugin     = Plugin::$instance;
         $is_preview = $plugin->editor->is_edit_mode() || $plugin->preview->is_preview_mode();
 
-        echo PlacementWidgets::output( $this->placement(), $is_preview ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the placements' templates escape every value.
+        echo wp_kses( PlacementWidgets::output( $this->placement(), $is_preview ), Kses::storefront() );
     }
 }

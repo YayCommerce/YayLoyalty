@@ -121,7 +121,7 @@ final class StoreApiAdapter {
             'bound_by'  => $quote->get_bound_by(),
             'reason'    => $quote->get_reason(),
             'rewards'   => $this->applied_rewards( $cart, $decimals ),
-            'card'      => $this->card->markup(),
+            'card'      => $this->card->shortcode(),
         ];
     }
 

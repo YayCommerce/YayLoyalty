@@ -72,7 +72,7 @@ $yayloyalty_is_open = ! empty( $view['is_open'] );
             <div class="yl-launcher-handle" aria-hidden="true"><span class="yl:block yl:h-1 yl:w-11 yl:rounded-full yl:bg-background/40"></span></div>
 
             <div class="yl-launcher-header yl:flex yl:items-center yl:gap-2.5 yl:bg-foreground yl:text-background yl:px-5 yl:py-[11px]">
-                <span class="yl-launcher-header-icon yl:inline-flex yl:[&>*]:size-4"><?php echo wp_kses( LauncherIcon::gift(), Kses::svg() ); ?></span>
+                <span class="yl-launcher-header-icon yl:inline-flex yl:*:size-4"><?php echo wp_kses( LauncherIcon::gift(), Kses::svg() ); ?></span>
                 <h2 id="yayloyalty-launcher-title" class="yl:m-0 yl:text-[15px] yl:font-semibold yl:leading-tight yl:text-background"><?php echo esc_html( LauncherCopy::launcher_label() ); ?></h2>
                 <button type="button" class="yl-launcher-close yl:ml-auto yl:inline-flex yl:size-7 yl:items-center yl:justify-center yl:rounded-md yl:text-background yl:hover:bg-background/15 yl:cursor-pointer yl:transition-colors yl:outline-none yl:focus-visible:ring-[1.5px] yl:focus-visible:ring-background" data-yl-close aria-label="<?php esc_attr_e( 'Close', 'yayloyalty' ); ?>">
                     <?php echo wp_kses( LauncherIcon::close(), Kses::svg() ); ?>
