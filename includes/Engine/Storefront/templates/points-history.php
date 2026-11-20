@@ -45,7 +45,7 @@ $yayloyalty_download  = AccountMyPointsIcon::get( 'download' ) . esc_html__( 'Ex
 
     <nav class="yayloyalty-account__tabs" aria-label="<?php esc_attr_e( 'Filter history', 'yayloyalty' ); ?>">
         <?php foreach ( AccountMyPoints::filter_labels() as $yayloyalty_filter => $yayloyalty_filter_label ) : ?>
-            <a class="yayloyalty-account__tab" href="<?php echo esc_url( AccountMyPoints::url( 1, $yayloyalty_filter ) ); ?>" data-page="1" data-filter="<?php echo esc_attr( $yayloyalty_filter ); ?>"<?php echo $yayloyalty_filter === $yayloyalty_filter_on ? ' aria-current="page"' : ''; ?>><?php echo esc_html( $yayloyalty_filter_label ); ?></a>
+            <a class="yayloyalty-account__tab" href="<?php echo esc_url( AccountMyPoints::url( 1, $yayloyalty_filter ) ); ?>" data-page="1" data-filter="<?php echo esc_attr( $yayloyalty_filter ); ?>" aria-current="<?php echo esc_attr( $yayloyalty_filter === $yayloyalty_filter_on ? 'page' : 'false' ); ?>"><?php echo esc_html( $yayloyalty_filter_label ); ?></a>
         <?php endforeach; ?>
     </nav>
 

@@ -23,7 +23,7 @@ defined( 'ABSPATH' ) || exit;
             data-yl-reward
             value="<?php echo esc_attr( (string) $view['id'] ); ?>"
             data-cost="<?php echo esc_attr( (string) $view['cost'] ); ?>"
-            <?php echo $view['is_denied'] ? 'data-denied' : ''; ?>
+            <?php echo esc_attr( $view['is_denied'] ? 'data-denied' : '' ); ?>
             <?php checked( $view['is_applied'] ); ?>
             <?php disabled( $view['is_denied'] || $view['is_short'] ); ?>
         >
