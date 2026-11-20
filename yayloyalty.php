@@ -111,7 +111,7 @@ if ( ! function_exists( 'YayLoyalty\\plugin_init' ) ) {
         add_action( 'before_woocommerce_init', [ \YayLoyalty\Engine\ActDeact::class, 'before_woocommerce_init' ] );
 
         YayLoyalty::initialize();
-        I18n::load_plugin_textdomain();
+        I18n::load_translations();
     }
 }
 
