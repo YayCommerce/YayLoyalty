@@ -56,7 +56,7 @@ React 18, TypeScript, Vite, react-router (hash router), TanStack Query, react-ho
 
 ## Builds
 
-`pnpm build` (`apps/admin/package.json`) = `tsc --noEmit` → `vite build` into `assets/dist/admin/` → `vite.storefront.config.ts` (launcher CSS into `assets/dist/storefront/`, theme tokens moved off `:root`, rem → px so shop themes don't restyle it) → `vite.blocks.config.ts` (IIFE `assets/dist/blocks/editor.js`, same for both editions). In production `react`, `react-dom` and `@wordpress/*` are externals.
+`pnpm build` (`apps/admin/package.json`) = `tsc --noEmit` → `vite build` into `assets/dist/admin/` → `vite.storefront.config.ts` (launcher CSS into `assets/dist/storefront/`, theme tokens moved off `:root`, rem → px so shop themes don't restyle it) → `vite.blocks.config.ts` (IIFE `assets/dist/blocks/editor.js`, same for both editions). In production `react`, `react/jsx-runtime` (WordPress 6.6+ `react-jsx-runtime`), `react-dom` and `@wordpress/*` are externals.
 
 ## Recipes
 

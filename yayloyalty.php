@@ -10,7 +10,7 @@
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       yayloyalty
  * Domain Path:       /languages
- * Requires at least: 6.5
+ * Requires at least: 6.6
  * Requires PHP: 7.4
  * WC requires at least: 10.0
  * WC tested up to: 11.2
