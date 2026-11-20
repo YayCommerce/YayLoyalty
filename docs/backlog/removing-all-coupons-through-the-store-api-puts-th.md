@@ -2,12 +2,13 @@
 id: BL-23
 title: Removing all coupons through the Store API puts the Pro referral coupon back
 kind: deferred
-status: open
+status: done
 from: B-2
 affects: []
 default: 
-decision:
+decision: fix/b-2 branch (B-2)
 created: 2026-11-20
+settled: 2026-11-20
 ---
 # BL-23 Removing all coupons through the Store API puts the Pro referral coupon back
 

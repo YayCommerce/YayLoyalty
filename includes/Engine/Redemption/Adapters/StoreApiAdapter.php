@@ -27,6 +27,9 @@ final class StoreApiAdapter {
     /** Update-callback key the block posts with `{ points: int }` or `{ rewards: int[] }`. */
     public const CALLBACK = 'yayloyalty-redeem';
 
+    /** Fires when the Store API removes every cart coupon, before the cart's codes are synced again. Internal seam, not a public API. */
+    public const REMOVED_ALL_COUPONS_ACTION = 'yayloyalty_cart_coupons_removed_all';
+
     private RedemptionService $service;
 
     private SessionIntent $intent;
@@ -115,6 +118,7 @@ final class StoreApiAdapter {
         $this->removing_all_coupons = false;
         $this->cleared_intent       = [ $this->intent->get(), $this->intent->rewards() ];
         $this->intent->clear();
+        do_action( self::REMOVED_ALL_COUPONS_ACTION ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
     }
 
     /**
@@ -132,6 +136,7 @@ final class StoreApiAdapter {
             $this->intent->apply( $this->cleared_intent[1], $this->cleared_intent[0] );
         } elseif ( $this->removing_all_coupons && $succeeded ) {
             $this->intent->clear();
+            do_action( self::REMOVED_ALL_COUPONS_ACTION ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
         }
 
         $this->removing_all_coupons = false;

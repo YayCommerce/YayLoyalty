@@ -87,6 +87,35 @@ final class ReferralCartSyncTest extends WP_UnitTestCase {
 		$this->assertNotContains( $this->code, WC()->cart->get_applied_coupons() );
 	}
 
+	/**
+	 * @group B-2
+	 */
+	public function test_removing_all_coupons_through_the_store_api_keeps_it_off() {
+		$this->assertSame( 200, $this->remove_all_coupons()->get_status() );
+		$this->assertNotContains( $this->code, WC()->cart->get_applied_coupons() );
+	}
+
+	/**
+	 * @group B-2
+	 */
+	public function test_removing_all_coupons_brings_back_a_discount_an_individual_use_coupon_displaced() {
+		WC()->cart->apply_coupon( $this->solo );
+		WC()->cart->calculate_totals();
+		$this->assertNotContains( $this->code, WC()->cart->get_applied_coupons() );
+
+		$this->assertSame( 200, $this->remove_all_coupons()->get_status() );
+		$this->assertContains( $this->code, WC()->cart->get_applied_coupons() );
+	}
+
+	private function remove_all_coupons(): \WP_REST_Response {
+		add_filter( 'woocommerce_store_api_disable_nonce_check', '__return_true' );
+		$response = rest_get_server()->dispatch( new \WP_REST_Request( 'DELETE', '/wc/store/v1/cart/coupons' ) );
+		remove_filter( 'woocommerce_store_api_disable_nonce_check', '__return_true' );
+		WC()->cart->calculate_totals();
+
+		return $response;
+	}
+
 	public function test_block_checkout_gives_a_friend_who_signed_up_in_it_the_discount_before_payment() {
 		do_action( ReferralAttribution::CREATED_ACTION, $this->referral_id, get_current_user_id() );
 		$order = $this->signup_order();

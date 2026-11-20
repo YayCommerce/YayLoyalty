@@ -47,10 +47,18 @@ Confidence: high. Reproduced in the browser through the Store API, and `remove_c
 - `cancel_on_remove_all_coupons()` on `woocommerce_before_calculate_totals` at `PHP_INT_MAX - 2` (before the Pro referral sync and `CouponProvider::sync_cart()`) clears `SessionIntent` on the request's first totals run with no coupon left. On WooCommerce 11.3.1+ that is the route's own recalculation after `remove_coupons()`, so `sync_cart()` no longer puts the loyalty code back and the saved cart has no points discount.
 - `cancel_after_remove_all_coupons()` on `rest_request_after_callbacks` covers WooCommerce before 11.3.1, where the route doesn't recalculate: it clears the intent when the route succeeded. When the route failed (bad nonce), it restores the points and rewards a totals run cleared while the cart loaded (found by yay:bug-reviewer).
 
-Removing one coupon still goes through `CouponProvider::on_removed()`, unchanged. The Pro referral coupon still comes back on "remove all"; that is BL-23, not asked for here.
+Removing one coupon still goes through `CouponProvider::on_removed()`, unchanged.
 
 Verified:
 - `tests/php/integration/Engine/Redemption/StoreApiRemoveAllCouponsTest.php` (`@group B-2`, WC 11.2.1 wp-env): remove-all clears the intent, a refused remove-all (nonce check on) keeps it, removing one merchant coupon and reading the cart keep it. The remove-all test fails without the fix and passes with it.
 - `yayh test run integration`: 81 OK. `yayh test run unit`: 150 OK. `composer test`: 70 OK. `php -l` and phpcs on the adapter: clean.
 - WooCommerce 11.3.1 (local site, file copied in and restored after), Store API in the browser: redeem 100 points with `qa-merchant10` (total 85); `DELETE /cart/coupons` with a bad nonce is 403 and the cart keeps both coupons and `requested: 100`; with the right nonce, the next `GET /cart` has no coupons, total 100, `requested: 0`. Removing only `qa-merchant10` keeps the points discount.
 - Reviews: yay:code-reviewer (2 docblock findings, fixed); yay:bug-reviewer (1 risk, the bad-nonce case, fixed; the case-sensitive route regex now has `i`).
+
+### Pro referral coupon (BL-23, owner asked to include it)
+The friend's referral coupon came back the same way: `ReferralCartSync::sync()` re-adds it on every totals run unless the session marks it declined, and only `on_removed()` (one coupon) declined it.
+- `StoreApiAdapter` fires the internal seam `yayloyalty_cart_coupons_removed_all` (`REMOVED_ALL_COUPONS_ACTION`) where it cancels the redemption: on the totals run at `PHP_INT_MAX - 2`, before the referral sync, or after the route on WooCommerce before 11.3.1.
+- `ReferralCartSync::on_removed_all()` declines the referral for the session, as removing it alone does, but only when its code was on the cart before the removal. `$on_cart` records that from `woocommerce_cart_loaded_from_session` and from each sync. So a referral an individual-use coupon was displacing comes back once that coupon is removed with the rest (yay:bug-reviewer found the first version declined it).
+- A "refused" counterpart is not needed: the seam fires before `remove_coupons()` only for a cart with no coupons, and then no referral code was on it to decline.
+
+Verified: `ReferralCartSyncTest` (`@group B-2`): remove-all keeps the discount off (fails without the change, passes with it); a referral displaced by an individual-use coupon comes back after remove-all. `yayh test run integration` 83 OK, unit 150 OK, `composer test` 70 OK, phpcs clean on both files. Not run in a browser: the local WooCommerce 11.3.1 site has an older build without referrals. Reviews: yay:code-reviewer (1 comment churn, restored); yay:bug-reviewer (displaced-referral bug and the stale snapshot, fixed by the `$on_cart` rework; the guard risk went with the `wanted_code()` call).
