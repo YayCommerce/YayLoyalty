@@ -1,4 +1,4 @@
-=== YayLoyalty — Points, Rewards, Referral & VIP for WooCommerce ===
+=== YayLoyalty — Points and Rewards for WooCommerce ===
 Contributors: yaycommerce
 Tags: loyalty, points, rewards, woocommerce, discount
 Requires at least: 6.5
@@ -8,7 +8,7 @@ Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Loyalty program plugin for WooCommerce: points, rewards, referral & VIP tiers.
+Loyalty program plugin for WooCommerce: customers earn points and spend them as a discount.
 
 == Description ==
 
