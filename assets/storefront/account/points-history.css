@@ -3,11 +3,6 @@
  * and the row count beside the page links (points-history-pages.css).
  * Imported by rewards-tokens.css, which holds the tokens.
  */
-/* The title opens with the merchant's points label, which may be lowercase. */
-.yayloyalty-account .yayloyalty-account__title--label::first-letter {
-  text-transform: uppercase;
-}
-
 .yayloyalty-account .yayloyalty-account__download {
   display: inline-flex;
   align-items: center;
