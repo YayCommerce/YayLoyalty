@@ -12,7 +12,7 @@
 <!-- Each line is something that must be true to ship, checked by /yay:release before it tags. Tick it when it's verified, with where (staging, a test site, the e2e run). -->
 - [ ] Every item in this version works end to end on a test site, for every edition it names
 - [ ] Campaigns and rewards saved in 1.0.0 behave the same after upgrading to 1.1.0 (flat conditions read as one AND group)
-- [ ] A customer's tier updates when they cross a threshold, and drops back after a refund takes them under it
+- [ ] A customer's tier goes up when the points they earned in the qualifying period cross a threshold, and redeeming points never lowers it; it drops back when a refund of an order in their current qualifying period takes them under it, while a customer kept at their tier (raised threshold, mode switch, hold) keeps it until its next review
 - [ ] A referral pays both customers only after the friend's first order completes; self-referrals and refunded orders earn nothing
 - [ ] The widgets render in Elementor, Bricks and Divi the same as the shortcodes, and a site without those builders loads none of their code
 - [ ] A subscription renewal earns points once, and a refunded renewal takes them back
@@ -44,5 +44,5 @@
 |---|---|---|---|
 | 1 | Are VIP tiers and referrals Pro only? | Yes: tiers, referrals, condition groups and new earning actions are Pro; widgets and Tools ship in both editions | |
 | 2 | What does "more ways to earn" cover? | Social follow/share and WooCommerce Subscriptions renewals (the triggers the code already reserves) | |
-| 3 | Do tiers count lifetime spend, lifetime points, or both? | Merchant picks one per program; lifetime spend is the default | |
+| 3 | Do tiers count lifetime spend, lifetime points, or both? | Merchant picks one per program; lifetime spend is the default | Points earned in the qualifying period only (all time, last N months, or calendar period); spend isn't counted, and redeeming points never lowers a tier. Decided 2026-11-23. |
 | 4 | Should 1.1.0 avoid shipping across BFCM (late November)? | No freeze: work continues through BFCM and 1.1.0 ships after sprint 2 ends (2026-12-10) | |
