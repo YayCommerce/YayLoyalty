@@ -4,6 +4,8 @@ import { Switch } from '@/components/ui/switch';
 import {
   ADJUST_LIFETIME_LABEL,
   ADJUST_LIFETIME_SUBTEXT,
+  ADJUST_TIER_LABEL,
+  ADJUST_TIER_SUBTEXT,
   CUSTOMER_NOTE_PLACEHOLDER,
   NOTIFY_BY_EMAIL_LABEL,
   SHOW_CUSTOMER_NOTE_HELPER,
@@ -16,9 +18,12 @@ export function AdjustPointsOptions({
   state,
   onChange,
   notifyCountLabel,
+  showTier = false,
 }: {
-  state: Pick<AdjustFormState, 'adjustLifetime' | 'showCustomerNote' | 'customerNote' | 'notifyByEmail'>;
+  state: Pick<AdjustFormState, 'adjustLifetime' | 'adjustTier' | 'showCustomerNote' | 'customerNote' | 'notifyByEmail'>;
   onChange: (patch: Partial<AdjustFormState>) => void;
+  /** Pro with tiers on: the "Count toward tier points" option. */
+  showTier?: boolean;
   /** Bulk only: "340 emails" beside the notify checkbox. */
   notifyCountLabel?: string;
 }) {
@@ -34,6 +39,19 @@ export function AdjustPointsOptions({
           <span className="text-muted-foreground text-xs">{ADJUST_LIFETIME_SUBTEXT()}</span>
         </span>
       </label>
+
+      {showTier && (
+        <label className="flex items-start gap-2.5">
+          <Checkbox
+            checked={state.adjustTier}
+            onCheckedChange={(checked) => onChange({ adjustTier: checked === true })}
+          />
+          <span className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium">{ADJUST_TIER_LABEL()}</span>
+            <span className="text-muted-foreground text-xs">{ADJUST_TIER_SUBTEXT()}</span>
+          </span>
+        </label>
+      )}
 
       <div className="flex flex-col gap-2">
         <label className="flex items-start justify-between gap-2.5">

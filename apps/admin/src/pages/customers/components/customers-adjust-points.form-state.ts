@@ -12,6 +12,7 @@ export type AdjustFormState = {
   amount: number; // always a positive magnitude; direction carries the sign
   reason: string;
   adjustLifetime: boolean;
+  adjustTier: boolean;
   showCustomerNote: boolean;
   customerNote: string;
   notifyByEmail: boolean;
@@ -23,6 +24,7 @@ export function initialAdjustFormState(reason = ''): AdjustFormState {
     amount: 0,
     reason,
     adjustLifetime: true,
+    adjustTier: true,
     showCustomerNote: false,
     customerNote: '',
     notifyByEmail: false,
