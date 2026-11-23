@@ -23,8 +23,6 @@ interface RewardHandler {
      * The virtual coupon the reward is spent as, from its config; null for a type that is not spent as a coupon.
      * Lite builds and validates the coupon (Engine\Redemption\RewardCoupons) and WooCommerce does the discount
      * maths. `max_discount` is not a coupon property: it caps the line, lowering the percent until it takes off the cap.
-     * `free_shipping` and `free_item` are not coupon properties either: a reward that sets one is a 0 coupon that marks
-     * it applied, and Lite frees the shipping (RewardShipping) or adds the item at 0 (RewardCartLines) while it is.
      *
      * @return array{discount_type: string, amount: float, minimum_amount: ?float, exclude_sale_items: bool, max_discount: ?float, free_shipping?: bool, free_item?: array{product_id: int, variation_id: ?int, qty: int}}|null
      */

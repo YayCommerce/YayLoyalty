@@ -43,7 +43,7 @@ final class YayPricingIntegration {
         return array_filter(
             $items,
             static function ( $item ): bool {
-                return ! is_array( $item ) || empty( $item[ RewardCartLines::ITEM_KEY ] );
+                return ! RewardCartLines::is_reward_line( $item );
             }
         );
     }

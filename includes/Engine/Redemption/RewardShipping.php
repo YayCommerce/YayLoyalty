@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class RewardShipping {
 
-    /** Rate and shipping item meta, hidden by the leading underscore: the cost and taxes before the reward, and the reward that freed it (0 when none). */
+    /** Rate and shipping item meta: the cost and taxes before the reward, and the reward that freed it (0 when none). */
     public const META_COST   = '_yayloyalty_original_cost';
     public const META_TAXES  = '_yayloyalty_original_taxes';
     public const META_REWARD = '_yayloyalty_free_shipping_reward';

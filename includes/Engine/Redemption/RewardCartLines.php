@@ -16,7 +16,7 @@ final class RewardCartLines {
     /** Cart item data key: the reward id the line was added for. */
     public const ITEM_KEY = 'yayloyalty_reward_id';
 
-    /** Order item meta: the reward id, and the unit price on the basis prices were entered. Hidden by the leading underscore. */
+    /** Order item meta: the reward id, and the unit price on the basis prices were entered. */
     public const META_REWARD = '_yayloyalty_reward_id';
     public const META_PRICE  = '_yayloyalty_original_price';
 
@@ -101,7 +101,7 @@ final class RewardCartLines {
      * @return array
      */
     public function set_free_price( $line ) {
-        if ( is_array( $line ) && ! empty( $line[ self::ITEM_KEY ] ) && isset( $line['data'] ) && $line['data'] instanceof \WC_Product ) {
+        if ( self::is_reward_line( $line ) && isset( $line['data'] ) && $line['data'] instanceof \WC_Product ) {
             $line['data']->set_price( 0 );
         }
 
@@ -215,8 +215,12 @@ final class RewardCartLines {
         return $value;
     }
 
-    /** @param mixed $line */
-    private static function is_reward_line( $line ): bool {
+    /**
+     * Whether a cart item is a line a reward added.
+     *
+     * @param mixed $line
+     */
+    public static function is_reward_line( $line ): bool {
         return is_array( $line ) && ! empty( $line[ self::ITEM_KEY ] );
     }
 
