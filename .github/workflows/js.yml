@@ -41,7 +41,7 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      # No lockfile is tracked (docs/known-issues.md), so no --frozen-lockfile or cache.
+      # No lockfile is tracked (docs/knowledge/build-release.md), so no --frozen-lockfile or cache.
       # --ignore-scripts skips the root postinstall, which runs composer install and needs the
       # private admin-shell repo.
       - name: Install dependencies

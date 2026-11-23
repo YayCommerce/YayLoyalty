@@ -3,6 +3,7 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 import { formatStoredDate, formatWPCurrency } from '@/lib/helpers/format.helper';
 import { formatCount, formatPoints, shortPoints } from '@/lib/helpers/points.helper';
 import { flexibleDiscountSubtitle, numberConfig } from '@/lib/helpers/reward.helper';
+import { hasConditions } from '@/lib/schema/condition-match.schema';
 import { CatalogRewardType, Reward } from '@/lib/schema/reward.schema';
 
 /** Reward presentation strings and derived facts; the wire carries none of this — same split as campaign-labels.ts. */
@@ -165,13 +166,15 @@ function flexibleDiscountAvailability(config: Reward['config']): string {
   return parts.join(' · ');
 }
 
-/** Every row's Availability cell: Everyone, then a minimum order and a live window, whichever the reward has. */
+/** Every row's Availability cell: Everyone (or Selected customers), then a minimum order and a live window, whichever the reward has. */
 export function availabilityLabel(reward: Reward): string {
   if (reward.type === 'flexible_discount') {
     return flexibleDiscountAvailability(reward.config);
   }
 
-  const parts: string[] = [__('Everyone', 'yayloyalty')];
+  const parts: string[] = [
+    hasConditions(reward.conditions) ? __('Selected customers', 'yayloyalty') : __('Everyone', 'yayloyalty'),
+  ];
 
   const minOrder = numberConfig(reward.config, 'min_order');
 

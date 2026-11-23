@@ -82,6 +82,7 @@ export const DELETED_ACCOUNT_ACTION_REASON = () =>
 export const TAB_LEDGER = () => __('Points ledger', 'yayloyalty');
 export const TAB_ACTIVITY = () => __('Activity log', 'yayloyalty');
 export const TAB_REDEMPTIONS = () => __('Redemptions', 'yayloyalty');
+export const TAB_REFERRALS = () => __('Referrals', 'yayloyalty');
 
 // Ledger columns, filters and pager
 

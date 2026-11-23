@@ -77,7 +77,7 @@ final class AccountClaimOrder {
     public function claim( int $user_id, string $input ): array {
         $user = get_userdata( $user_id );
 
-        if ( ! $user || ! ProgramGate::program_enabled() || ! Launcher::viewer_can_earn( $user_id ) ) {
+        if ( ! $user || ! ProgramGate::storefront_enabled() || ! Launcher::viewer_can_earn( $user_id ) ) {
             return self::error( __( 'Your account cannot earn points right now.', 'yayloyalty' ) );
         }
 

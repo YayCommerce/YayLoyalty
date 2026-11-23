@@ -229,7 +229,9 @@ final class EarningService {
 
     /** Whether an awardable order has no earn row, so its points were never awarded. */
     public static function is_missing_points( \WC_Order $order, LedgerRepository $ledger ): bool {
-        return self::is_awardable_order( $order ) && [] === $ledger->earn_rows_for_order( (int) $order->get_id() );
+        $own_rows = array_filter( $ledger->earn_rows_for_order( (int) $order->get_id() ), static fn( LedgerEntry $row ): bool => null !== $row->get_own_order_id() );
+
+        return self::is_awardable_order( $order ) && [] === $own_rows;
     }
 
     /** The gate reason that stops the order's customer earning today (paused, opted out, excluded role), or null. */
@@ -309,6 +311,49 @@ final class EarningService {
         }
 
         return $outcome;
+    }
+
+    /**
+     * Writes one campaign-less EARN row of $points for the context's user, keyed to the reference, with the context's
+     * order id so a refund of that order claws it back. The gates apply; the award filter and pending points do not.
+     * Internal seam, not a public API.
+     *
+     * @return Outcome awarded, duplicate, or skipped( gate reason ).
+     * @throws \InvalidArgumentException When the context has no user or $points < 1.
+     * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails (rolled back).
+     */
+    public function award_flat( string $trigger, Context $ctx, int $points, string $source, string $reference_type, int $reference_id ): Outcome {
+        $user_id = (int) $ctx->get_user_id();
+
+        if ( $user_id < 1 || $points < 1 ) {
+            throw new \InvalidArgumentException( sprintf( 'YayLoyalty: user %d cannot be awarded %d flat points.', (int) $user_id, (int) $points ) );
+        }
+
+        $reason = $this->blocked_reason( $trigger, $ctx );
+
+        if ( null !== $reason ) {
+            return Outcome::skipped( $reason );
+        }
+
+        $draft = new LedgerEntry(
+            null,
+            $user_id,
+            $points,
+            0,
+            LedgerType::EARN,
+            $source,
+            $reference_type,
+            $reference_id,
+            null,
+            null,
+            $ctx->get_order_id(),
+            null,
+            null,
+            Dates::now(),
+            IdempotencyKey::for_earn( $user_id, $reference_type, $reference_id, $trigger )
+        );
+
+        return Transaction::run( fn(): Outcome => $this->ledger->earn( $draft ) );
     }
 
     /** Announces, after commit, an award an earning limit cut: awarded below its evaluation, or skipped( REASON_LIMIT_REACHED ). */

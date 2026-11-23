@@ -2,6 +2,7 @@
 namespace YayLoyalty\Repositories;
 
 use YayLoyalty\Database\QueryException;
+use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Models\LedgerEntry;
@@ -35,6 +36,16 @@ class LedgerRepository extends AbstractRepository {
      */
     public function find_by_idempotency_key( string $key ): ?LedgerEntry {
         return $this->select_entries( '`idempotency_key` = %s', [ $key ], 1 )[0] ?? null;
+    }
+
+    /** The user's newest CSV-import row from an import other than $import_id, or null. */
+    public function latest_other_import( int $user_id, int $import_id ): ?LedgerEntry {
+        return $this->select_entries(
+            '`user_id` = %d AND `source` = %s AND `reference_type` = %s AND `reference_id` <> %d',
+            [ $user_id, LedgerSource::IMPORT, ReferenceType::IMPORT, $import_id ],
+            1,
+            true
+        )[0] ?? null;
     }
 
     /**
@@ -90,6 +101,10 @@ class LedgerRepository extends AbstractRepository {
         if ( null !== $source ) {
             $where   .= ' AND source = %s';
             $values[] = $source;
+        } else {
+            // A referral payout is the merchant's fixed reward for another customer's order, not the customer's own earning today.
+            $where   .= ' AND source <> %s';
+            $values[] = LedgerSource::REFERRAL;
         }
 
         return $this->sum_points(
@@ -130,10 +145,10 @@ class LedgerRepository extends AbstractRepository {
             $wpdb->prepare(
                 'SELECT order_id, SUM(CASE WHEN type = %s THEN points ELSE 0 END) AS earned, SUM(points) AS net
                  FROM `' . esc_sql( $this->table() ) . "`
-                 WHERE order_id IN ({$in}) AND ( type IN (%s, %s) OR ( type = %s AND reference_type = %s ) )
+                 WHERE order_id IN ({$in}) AND source <> %s AND ( type IN (%s, %s) OR ( type = %s AND reference_type = %s ) )
                  GROUP BY order_id
                  HAVING earned > 0",
-                array_merge( [ LedgerType::EARN ], $ids, [ LedgerType::EARN, LedgerType::REFUND_EARN, LedgerType::ADJUST, ReferenceType::REFUND ] )
+                array_merge( [ LedgerType::EARN ], $ids, [ LedgerSource::REFERRAL, LedgerType::EARN, LedgerType::REFUND_EARN, LedgerType::ADJUST, ReferenceType::REFUND ] )
             ),
             ARRAY_A
         );
@@ -156,8 +171,9 @@ class LedgerRepository extends AbstractRepository {
         global $wpdb;
 
         return $wpdb->prepare(
-            'NOT EXISTS ( SELECT 1 FROM `' . esc_sql( $this->table() ) . '` yl_earn WHERE yl_earn.type = %s AND yl_earn.order_id = ' . $order_id_column . ' )', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- the column is a fixed name from the caller, never input.
-            LedgerType::EARN
+            'NOT EXISTS ( SELECT 1 FROM `' . esc_sql( $this->table() ) . '` yl_earn WHERE yl_earn.type = %s AND yl_earn.source <> %s AND yl_earn.order_id = ' . $order_id_column . ' )', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- the column is a fixed name from the caller, never input.
+            LedgerType::EARN,
+            LedgerSource::REFERRAL
         );
     }
 

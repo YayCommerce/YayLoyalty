@@ -2,11 +2,11 @@
 namespace YayLoyalty\Pro\Services;
 
 use YayLoyalty\Engine\Rewards\Context;
-use YayLoyalty\Engine\Rewards\RewardFacts;
 use YayLoyalty\Enums\RewardConditionType;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Models\RewardConditionSet;
 use YayLoyalty\Models\Tier;
+use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\TierRepository;
 
 defined( 'ABSPATH' ) || exit;
@@ -37,33 +37,36 @@ final class RewardTierCondition {
      * @param Context $ctx     The claim.
      */
     public function matches( $matches, Reward $reward, Context $ctx ): bool {
-        return (bool) $matches && $this->allows( $reward, $ctx->get_facts() );
+        return (bool) $matches && $this->allows( $reward, $ctx->get_user_id() );
     }
 
-    /** Whether $facts meet $reward's TIER entry; true when the reward has none. */
-    public function allows( Reward $reward, ?RewardFacts $facts ): bool {
+    /** Whether $user_id's live tier meets $reward's TIER entry; true when the reward has none. */
+    public function allows( Reward $reward, ?int $user_id ): bool {
         $entry = self::tier_entry( $reward );
 
         if ( null === $entry ) {
             return true;
         }
 
-        if ( null === $facts || 0 === $facts->get_tier_rank() || ! TierEvaluator::is_enabled() ) {
+        if ( null === $user_id || ! TierEvaluator::is_enabled() ) {
             return false;
         }
 
+        $customer = ( new CustomerRepository() )->find_by_user_id( $user_id );
+        $tier_id  = null === $customer ? null : $customer->get_tier_id();
+        $current  = null === $tier_id ? null : $this->live_tier( $tier_id );
         $required = $this->live_tier( $entry['id'] );
 
-        if ( null === $required ) {
+        if ( null === $current || null === $required ) {
             return false;
         }
 
         if ( RewardConditionType::OP_GTE === $entry['operator'] ) {
-            return $facts->get_tier_rank() >= $required->get_tier_rank();
+            return $current->get_tier_rank() >= $required->get_tier_rank();
         }
 
         if ( RewardConditionType::OP_EQ === $entry['operator'] ) {
-            return $facts->get_tier_id() === $required->get_id();
+            return $current->get_id() === $required->get_id();
         }
 
         return false;

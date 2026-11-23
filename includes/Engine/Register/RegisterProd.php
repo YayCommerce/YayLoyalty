@@ -17,7 +17,7 @@ class RegisterProd {
     }
 
     public function register_all_scripts() {
-        $deps = [ 'react', 'react-dom', 'wp-element', 'wp-components', 'wp-hooks', 'wp-i18n', 'wp-date' ];
+        $deps = [ 'react', 'react-jsx-runtime', 'react-dom', 'wp-element', 'wp-components', 'wp-hooks', 'wp-i18n', 'wp-date' ];
         wp_register_script( ScriptName::PAGE_SETTINGS, YAYLOYALTY_PLUGIN_URL . 'assets/dist/admin/js/main.js', $deps, YAYLOYALTY_VERSION, true );
         wp_set_script_translations( ScriptName::PAGE_SETTINGS, 'yayloyalty', YAYLOYALTY_PLUGIN_DIR . 'languages' );
     }

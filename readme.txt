@@ -1,14 +1,14 @@
-=== YayLoyalty — Points, Rewards, Referral & VIP for WooCommerce ===
+=== YayLoyalty — Points and Rewards for WooCommerce ===
 Contributors: yaycommerce
 Tags: loyalty, points, rewards, woocommerce, discount
-Requires at least: 6.5
+Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
 Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Loyalty program plugin for WooCommerce: points, rewards, referral & VIP tiers.
+Loyalty program plugin for WooCommerce: customers earn points and spend them as a discount.
 
 == Description ==
 
@@ -43,7 +43,7 @@ YayLoyalty adds a points and rewards program to your WooCommerce store. Customer
 
 = YayLoyalty Pro =
 
-YayLoyalty Pro is a separate plugin that replaces this one and keeps all of its data. It adds birthday, first-order, order-count and spend-milestone campaigns, campaign conditions, coupon, free-shipping and free-product rewards, batch expiry, daily earning limits, customer segments and more emails. Everything in this plugin works without it.
+YayLoyalty Pro is a separate plugin that replaces this one and keeps all of its data. It adds a referral program (a friend's first-order discount, points for the referrer after a hold, approvals, and a Referrals tab in My Account with each customer's link), birthday, first-order, order-count and spend-milestone campaigns, campaign conditions, coupon, free-shipping and free-product rewards, batch expiry, daily earning limits, customer segments and more emails. Everything in this plugin works without it.
 
 == Installation ==
 
@@ -61,6 +61,10 @@ Yes. YayLoyalty is a WooCommerce extension and does nothing without it.
 = Does it work with the block-based Cart and Checkout? =
 
 Yes. The redeem card works in the classic shortcode Cart and Checkout and in the Cart and Checkout blocks.
+
+= Does it work with Elementor, Bricks or Divi? =
+
+Yes. Each builder gets four YayLoyalty elements: Points balance, Ways to earn, Ways to redeem and Redeem card. Drag one onto a page and it shows exactly what its shortcode shows. In the builder, an element with nothing to show for you (for example the Redeem card with an empty cart) displays a short note in its place. Divi is supported through its Divi 4 modules.
 
 = What happens to points when an order is refunded? =
 
@@ -88,9 +92,13 @@ No. YayLoyalty stores everything in your own database and makes no requests to o
 
 == Source code ==
 
-The admin app, the block editor script and the storefront stylesheet are compiled. Their source and build steps are at https://github.com/YayCommerce/yayloyalty (replace with the public repository).
+The admin app, the block editor script and the storefront stylesheet are compiled with Vite. Their source is public at https://github.com/YayCommerce/YayLoyalty:
 
-To build them: install Node 22 and pnpm 11, run `pnpm install` in the repository root, then `./scripts/run.sh build lite`.
+* `assets/dist/admin/` is built from `apps/admin/src/`
+* `assets/dist/blocks/` is built from `apps/admin/src/blocks/`
+* `assets/dist/storefront/` is built from `apps/admin/src/storefront.css`
+
+To build them: install Node 22 and pnpm 11, then in the repository root run `pnpm install --ignore-scripts` and `./scripts/run.sh build lite`. The PHP dependencies already ship in the plugin, in `vendor/` and `vendor-prefixed/`.
 
 == Changelog ==
 

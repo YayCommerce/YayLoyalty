@@ -275,7 +275,7 @@ final class LauncherCopy {
      * A base-currency amount in the shopper's currency, floored once to its decimals as RewardCoupons::in_currency()
      * floors the coupon, so the text shows what WooCommerce enforces and a whole amount prints whole.
      */
-    private static function from_base( float $amount ): float {
+    public static function from_base( float $amount ): float {
         return PointsMath::floor_to_decimals( CurrencyRate::from_base( $amount ), wc_get_price_decimals() );
     }
 

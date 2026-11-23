@@ -2,6 +2,7 @@
 namespace YayLoyalty\Pro;
 
 use YayLoyalty\Engine\Earning\EarningService;
+use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Points\Triggers\Registry as TriggerRegistry;
 use YayLoyalty\Engine\Rewards\Handlers\Registry;
@@ -13,24 +14,40 @@ use YayLoyalty\Pro\Birthday\BirthdayHandler;
 use YayLoyalty\Pro\Birthday\BirthdayRunner;
 use YayLoyalty\Pro\Controllers\CampaignPerformanceRestController;
 use YayLoyalty\Pro\Controllers\CampaignPreviewRestController;
+use YayLoyalty\Pro\Controllers\CustomerReferralsRestController;
 use YayLoyalty\Pro\Controllers\CustomerTierRestController;
 use YayLoyalty\Pro\Controllers\CustomerSegmentsRestController;
 use YayLoyalty\Pro\Controllers\DashboardProRestController;
+use YayLoyalty\Pro\Controllers\ReferralSettingsRestController;
+use YayLoyalty\Pro\Controllers\ReferralsRestController;
 use YayLoyalty\Pro\Controllers\StoreLedgerRestController;
 use YayLoyalty\Pro\Controllers\TiersRestController;
+use YayLoyalty\Pro\Database\ProInstaller;
 use YayLoyalty\Pro\Emails\ProEmails;
 use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
 use YayLoyalty\Pro\Integrations\YayMail\ProYayMail;
+use YayLoyalty\Pro\Referrals\ReferralAttribution;
+use YayLoyalty\Pro\Referrals\ReferralCartSync;
+use YayLoyalty\Pro\Referrals\ReferralCodeAssigner;
+use YayLoyalty\Pro\Referrals\ReferralCoupon;
+use YayLoyalty\Pro\Referrals\ReferralEarnRow;
+use YayLoyalty\Pro\Referrals\ReferralLifecycle;
+use YayLoyalty\Pro\Referrals\ReferralPayout;
+use YayLoyalty\Pro\Referrals\ReferralRunner;
 use YayLoyalty\Pro\Repositories\CampaignPerformanceRepository;
 use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
+use YayLoyalty\Pro\Repositories\ReferralListRepository;
+use YayLoyalty\Pro\Repositories\ReferralRepository;
 use YayLoyalty\Pro\Repositories\StoreLedgerRepository;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Pro\Services\DailyEarningLimit;
 use YayLoyalty\Pro\Services\DiscountRewardHandler;
+use YayLoyalty\Pro\Services\RewardConditionsEvaluator;
 use YayLoyalty\Pro\Services\RewardTierCondition;
 use YayLoyalty\Pro\Services\TierLedgerListener;
 use YayLoyalty\Pro\Services\TierMultiplier;
 use YayLoyalty\Pro\Services\TierRunner;
+use YayLoyalty\Pro\Storefront\AccountReferrals;
 use YayLoyalty\Pro\Storefront\AccountTier;
 use YayLoyalty\Pro\Storefront\RewardsPanel;
 use YayLoyalty\Pro\Storefront\TierProgress;
@@ -41,6 +58,7 @@ use YayLoyalty\Repositories\DashboardRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Repositories\TierRepository;
 use YayLoyalty\Services\Dashboard\DashboardCache;
+use YayLoyaltyScoped\YayCommerce\AdminShell\License\LicenseState;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -89,6 +107,10 @@ final class YayLoyaltyPro {
 
         self::$booted = true;
 
+        ProInstaller::register();
+
+        add_filter( ProgramGate::STOREFRONT_FILTER, [ self::class, 'storefront_allowed' ] );
+
         add_filter( 'yayloyalty_campaign_triggers', [ self::class, 'add_triggers' ] );
         add_filter( 'yayloyalty_campaign_config_whitelist', [ self::class, 'add_config_keys' ] );
         add_filter( 'yayloyalty_campaign_config_schema', [ self::class, 'add_campaign_config_schema' ] );
@@ -98,6 +120,7 @@ final class YayLoyaltyPro {
         add_filter( 'yayloyalty_reward_config_schema', [ self::class, 'add_reward_config_schema' ] );
         add_action( 'yayloyalty_register_reward_handlers', [ self::class, 'register_reward_handlers' ] );
         add_filter( PointsEngine::CONDITIONS_EVALUATOR_FILTER, [ self::class, 'conditions_evaluator' ] );
+        add_filter( 'yayloyalty_reward_conditions_match', [ new RewardConditionsEvaluator(), 'matches' ], 10, 3 );
         add_filter( 'yayloyalty_rest_controllers', [ self::class, 'add_controllers' ] );
         add_filter( 'yayloyalty_rest_item_schema', [ self::class, 'describe_pro_config' ], 10, 2 );
         add_filter( 'yayloyalty_localize_admin_data', [ self::class, 'add_segments' ] );
@@ -123,6 +146,19 @@ final class YayLoyaltyPro {
         ( new TierMultiplier() )->register();
         ( new RewardTierCondition() )->register();
         ( new TierRunner() )->register();
+        $customers = new CustomerRepository();
+        $referrals = new ReferralRepository();
+        ( new ReferralAttribution( $customers, $referrals ) )->register();
+        AccountReferrals::register();
+        ( new ReferralCodeAssigner( $customers ) )->register();
+        ( new ReferralEarnRow() )->register();
+        $referral_coupon = new ReferralCoupon( $referrals );
+        $referral_coupon->register();
+        ( new ReferralCartSync( $referrals, $referral_coupon ) )->register();
+        $referral_payout    = new ReferralPayout( $referrals );
+        $referral_lifecycle = new ReferralLifecycle( $referrals, $referral_payout );
+        $referral_lifecycle->register();
+        ( new ReferralRunner( $referrals, $referral_payout, $referral_lifecycle ) )->register();
 
         /** Fires once Pro has attached its hooks. Pro-internal; absent from Lite. */
         do_action( 'yayloyalty_pro_booted' );
@@ -137,6 +173,11 @@ final class YayLoyaltyPro {
      */
     public static function plugin_name( string $name ): string {
         return $name . ' Pro';
+    }
+
+    /** Unlicensed, the storefront shows nothing of YayLoyalty: a key activated on this site and not revoked. */
+    public static function storefront_allowed( bool $allowed ): bool {
+        return $allowed && LicenseState::allows_features( 'yayloyalty' );
     }
 
     /** Whether boot() has run; YayLoyalty::is_pro() only asks whether the code is present. */
@@ -354,6 +395,9 @@ final class YayLoyaltyPro {
             new CampaignPointsRepository(),
             new LedgerRepository()
         );
+        $controllers[] = new ReferralSettingsRestController();
+        $controllers[] = new CustomerReferralsRestController( new ReferralListRepository(), new CustomerRepository() );
+        $controllers[] = new ReferralsRestController( new ReferralListRepository(), new ReferralRepository(), new ReferralPayout( new ReferralRepository() ) );
         $controllers[] = new StoreLedgerRestController(
             new StoreLedgerRepository( new LedgerRepository() ),
             new LedgerRepository()

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { hasConditions } from '@/lib/schema/condition-match.schema';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/custom/error-state';
@@ -28,13 +29,13 @@ export function ConditionsPreview({
     mutationFn: (id: number) => previewConditions(campaignId, id),
   });
 
-  const stored = Array.isArray(conditions) ? conditions : [];
+  const hasStored = hasConditions(conditions);
   const parsedUserId = Number.parseInt(userId, 10);
   const canPreview = Number.isFinite(parsedUserId) && parsedUserId > 0;
 
   return (
     <div className="flex flex-col gap-4">
-      {stored.length === 0 && (
+      {!hasStored && (
         <p className="text-muted-foreground text-sm">
           {__('This campaign has no conditions, so every customer qualifies.', 'yayloyalty')}
         </p>

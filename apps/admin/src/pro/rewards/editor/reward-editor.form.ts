@@ -7,10 +7,10 @@ import { formatWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
 import { pointsPhrase } from '@/lib/helpers/points.helper';
 import { numberConfig } from '@/lib/helpers/reward.helper';
 import { isScheduleInOrder } from '@/lib/schema/campaign.schema';
+import { ConditionList, emptyConditionList, toConditionList } from '@/lib/schema/condition-match.schema';
 import {
   CatalogRewardType,
   isCatalogRewardType,
-  normalizeRewardConditions,
   Reward,
   REWARD_CONFIG_SCHEMAS,
   RewardCondition,
@@ -21,6 +21,7 @@ import {
   RewardUpdateInput,
 } from '@/lib/schema/reward.schema';
 import type { EditorSaveIntent } from '@/hooks/useEditorSave';
+import { mergeConditionErrors } from '../../conditions/condition-form';
 import { defaultRewardName } from '../reward-labels';
 
 /** The reward's tier rule: none, "Minimum tier" (`gte`) or "Only this tier" (`eq`). */
@@ -29,8 +30,9 @@ const TIER_RULES = ['any', 'gte', 'eq'] as const;
 export type TierRule = (typeof TIER_RULES)[number];
 
 /**
- * The form's fields. Of the stored `conditions` the form shows only the tier
- * entry, as `tier_rule` and `tier_id`; a save sends every other entry back untouched.
+ * The form's fields. `conditions` is edited in "Who can redeem" for catalog rewards, less its
+ * tier entry, which the form holds as `tier_rule` and `tier_id`; the built-in shows none, and a
+ * save sends its stored conditions back untouched.
  */
 export interface RewardFormValues {
   name: string;
@@ -39,6 +41,7 @@ export interface RewardFormValues {
   /** Null only for flexible_discount, whose customer picks the amount. */
   cost_points: number | null;
   config: Record<string, unknown>;
+  conditions: ConditionList<RewardCondition>;
   starts_at: string | null;
   ends_at: string | null;
   /** Only coupon rewards set a rule other than `any`. */
@@ -125,6 +128,7 @@ export function rewardCreateSeed(type: CatalogRewardType, currency: string): Rew
     status: 'active',
     cost_points: SEED_COST_POINTS[type],
     config,
+    conditions: emptyConditionList(),
     starts_at: null,
     ends_at: null,
     tier_rule: 'any',
@@ -136,6 +140,7 @@ export function rewardCreateSeed(type: CatalogRewardType, currency: string): Rew
 export function rewardToFormValues(reward: Reward, storeCurrency: string): RewardFormValues {
   // A catalog row missing a key (written before typed validation) gets the seed's value, so every input renders.
   const base = isCatalogRewardType(reward.type) ? seedConfig(reward.type, storeCurrency) : {};
+  const stored = toConditionList<RewardCondition>(reward.conditions);
 
   return {
     name: reward.name,
@@ -144,9 +149,10 @@ export function rewardToFormValues(reward: Reward, storeCurrency: string): Rewar
     cost_points: reward.cost_points,
     // Cloned: form state must never share references with the query cache.
     config: structuredClone({ ...base, ...reward.config }),
+    conditions: structuredClone({ ...stored, conditions: stored.conditions.filter((entry) => entry.type !== 'tier') }),
     starts_at: reward.starts_at,
     ends_at: reward.ends_at,
-    ...tierRuleOf(normalizeRewardConditions(reward.conditions)),
+    ...tierRuleOf(stored.conditions),
   };
 }
 
@@ -180,38 +186,26 @@ export function rewardEditorActions(reward: Reward | null, isDirty: boolean) {
 }
 
 /** PUT body: every editable field, so the server sees the form as a whole. */
-export function formValuesToUpdateInput(
-  values: RewardFormValues,
-  reward: Reward,
-  intent: RewardSaveIntent,
-): RewardUpdateInput {
-  return formValuesToBody(values, normalizeRewardConditions(reward.conditions), intent);
+export function formValuesToUpdateInput(values: RewardFormValues, intent: RewardSaveIntent): RewardUpdateInput {
+  return formValuesToBody(values, intent);
 }
 
-/**
- * POST body for a new reward of `type`. `sourceConditions` is a duplicated
- * reward's stored list, so rules the form cannot show survive the copy.
- */
+/** POST body for a new reward of `type`; a duplicate carries its source's conditions in the form values. */
 export function formValuesToCreateInput(
   values: RewardFormValues,
   type: CatalogRewardType,
   intent: RewardSaveIntent,
-  sourceConditions: RewardCondition[] = [],
 ): RewardCreateInput {
-  return { type, ...formValuesToBody(values, sourceConditions, intent) };
+  return { type, ...formValuesToBody(values, intent) };
 }
 
-function formValuesToBody(
-  values: RewardFormValues,
-  storedConditions: RewardCondition[],
-  intent: RewardSaveIntent,
-): RewardUpdateInput {
+function formValuesToBody(values: RewardFormValues, intent: RewardSaveIntent): RewardUpdateInput {
   return {
     name: values.name,
     status: resolveSaveStatus(values, intent),
     cost_points: values.cost_points,
     config: values.config,
-    conditions: withTierRule(storedConditions, values.tier_rule, values.tier_id),
+    conditions: withTierRule(values.conditions, values.tier_rule, values.tier_id),
     starts_at: values.starts_at,
     ends_at: values.ends_at,
   };
@@ -225,7 +219,7 @@ export function rewardFormSchema(type: RewardType) {
   const costMessage = __('A reward needs a cost of at least 1 point.', 'yayloyalty');
 
   return rewardFieldsSchema
-    .pick({ name: true, starts_at: true, ends_at: true })
+    .pick({ name: true, conditions: true, starts_at: true, ends_at: true })
     .extend({
       cost_points:
         type === 'flexible_discount'
@@ -261,14 +255,23 @@ function tierRuleOf(conditions: RewardCondition[]): Pick<RewardFormValues, 'tier
     : { tier_rule: 'any', tier_id: null };
 }
 
-/** The stored list with its tier entries replaced by one for `rule`, or with none for `any`. */
-function withTierRule(conditions: RewardCondition[], rule: TierRule, tierId: number | null): RewardCondition[] {
-  const rest = conditions.filter((condition) => condition.type !== 'tier');
+/** The list with its tier entries replaced by one for `rule`, or with none for `any`. */
+function withTierRule(
+  list: ConditionList<RewardCondition>,
+  rule: TierRule,
+  tierId: number | null,
+): ConditionList<RewardCondition> {
+  const rest = list.conditions.filter((condition) => condition.type !== 'tier');
 
-  return rule === 'any' || tierId === null ? rest : [...rest, { type: 'tier', operator: rule, value: tierId }];
+  return {
+    ...list,
+    conditions: rule === 'any' || tierId === null ? rest : [...rest, { type: 'tier', operator: rule, value: tierId }],
+  };
 }
 
 export function rewardFormResolver(type: RewardType): Resolver<RewardFormValues> {
   // Form state keeps config as a loose record shared by every type; the per-type schema is what types it.
-  return zodResolver(rewardFormSchema(type)) as unknown as Resolver<RewardFormValues>;
+  const resolver = zodResolver(rewardFormSchema(type)) as unknown as Resolver<RewardFormValues>;
+
+  return async (values, context, options) => mergeConditionErrors(await resolver(values, context, options), values);
 }

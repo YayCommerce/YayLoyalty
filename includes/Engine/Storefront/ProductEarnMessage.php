@@ -11,6 +11,7 @@ use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Log;
+use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -54,7 +55,7 @@ final class ProductEarnMessage {
         global $product;
 
         if ( $product instanceof \WC_Product ) {
-            echo self::markup( self::sentence( $product ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup() escapes every part.
+            echo wp_kses( self::markup( self::sentence( $product ) ), Kses::storefront() );
         }
     }
 
@@ -82,7 +83,7 @@ final class ProductEarnMessage {
 
         $product = wc_get_product( get_queried_object_id() );
 
-        return $product ? $content . self::markup( self::sentence( $product ) ) : $content;
+        return $product ? $content . wp_kses( self::markup( self::sentence( $product ) ), Kses::storefront() ) : $content;
     }
 
     /** Each variation's sentence in WooCommerce's variation data, which product-earn.js swaps in when it is picked. */

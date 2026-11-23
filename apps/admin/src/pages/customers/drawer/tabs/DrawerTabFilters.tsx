@@ -29,8 +29,9 @@ export function DrawerTabFilters<F extends string>({
   value: F;
   onChange: (value: F) => void;
   ariaLabel?: string;
-  range: DateRange | undefined;
-  onRangeChange: (range: DateRange | undefined) => void;
+  /** Omit both to hide the date range. */
+  range?: DateRange | undefined;
+  onRangeChange?: (range: DateRange | undefined) => void;
   search: string;
   onSearchChange: (value: string) => void;
   searchPlaceholder: string;
@@ -71,12 +72,14 @@ export function DrawerTabFilters<F extends string>({
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
         />
-        <DateRangePicker
-          value={range}
-          onValueChange={onRangeChange}
-          placeholder={DATE_RANGE_LABEL()}
-          className="w-auto min-w-0 shrink-0"
-        />
+        {onRangeChange && (
+          <DateRangePicker
+            value={range}
+            onValueChange={onRangeChange}
+            placeholder={DATE_RANGE_LABEL()}
+            className="w-auto min-w-0 shrink-0"
+          />
+        )}
         {extra}
       </div>
     </div>

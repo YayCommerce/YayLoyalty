@@ -3,14 +3,12 @@ namespace YayLoyalty\Pro\Storefront;
 
 use YayLoyalty\Engine\Redemption\ProgramGate;
 use YayLoyalty\Engine\Redemption\RedemptionService;
-use YayLoyalty\Engine\Rewards\ContextFactory;
 use YayLoyalty\Engine\Rewards\Result;
 use YayLoyalty\Engine\Storefront\LauncherPayload;
 use YayLoyalty\Engine\Storefront\RedeemCard;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Pro\Services\RewardTierCondition;
-use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\RewardRepository;
 
 defined( 'ABSPATH' ) || exit;
@@ -43,11 +41,10 @@ final class RewardsPanel {
      * @return array<int, array{name: string, cost: int, text: string}>
      */
     public function redeem_offers( array $offers, string $now, ?int $user_id = null ): array {
-        $facts = ( new ContextFactory( new CustomerRepository() ) )->facts_for( $user_id );
         $tiers = new RewardTierCondition();
 
         foreach ( ( new RewardRepository() )->live_of_types( [ RewardType::FIXED_COUPON, RewardType::PERCENT_COUPON ], $now ) as $reward ) {
-            if ( $tiers->allows( $reward, $facts ) ) {
+            if ( $tiers->allows( $reward, $user_id ) ) {
                 $offers[] = LauncherPayload::offer( $reward );
             }
         }
@@ -73,7 +70,13 @@ final class RewardsPanel {
 
         $user_id = (int) $context['user_id'];
         $balance = (int) $context['balance'];
-        $options = $service->reward_options( $cart, $user_id );
+        // A reward the shopper's conditions exclude is not theirs to see.
+        $options = array_filter(
+            $service->reward_options( $cart, $user_id ),
+            static function ( array $option ): bool {
+                return Result::REASON_CONDITIONS_NOT_MET !== $option['quote']->get_reason();
+            }
+        );
 
         if ( [] === $options || self::is_refused( $options ) ) {
             return $rows;

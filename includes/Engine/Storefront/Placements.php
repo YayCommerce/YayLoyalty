@@ -4,6 +4,7 @@ namespace YayLoyalty\Engine\Storefront;
 use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Register\ScriptName;
 use YayLoyalty\Helpers\DesignHelper;
+use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -150,7 +151,7 @@ final class Placements {
      * @param callable $output Prints the partial.
      */
     private static function render( callable $output ): string {
-        if ( ! ProgramGate::program_enabled() ) {
+        if ( ! ProgramGate::storefront_enabled() ) {
             return '';
         }
 
@@ -162,6 +163,6 @@ final class Placements {
 
         wp_enqueue_style( ScriptName::ACCOUNT_STYLE );
 
-        return '<div class="yayloyalty-account yayloyalty-placement">' . $html . '</div>';
+        return '<div class="yayloyalty-account yayloyalty-placement">' . wp_kses( $html, Kses::storefront() ) . '</div>';
     }
 }

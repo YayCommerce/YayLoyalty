@@ -2,6 +2,8 @@ import { ReactElement } from 'react';
 import { createHashRouter, redirect } from 'react-router';
 
 import { Can, CAP, Capability } from '@/lib/access';
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
+import { ApprovalsTab, ReferralSettingsPage, ReferralsTab } from '@/pro';
 import AppLayout from './AppLayout';
 import NotFoundPage from './pages/404';
 import ErrorPage from './pages/500';
@@ -14,6 +16,7 @@ import CustomersPage from './pages/customers/CustomersPage';
 import CustomerDrawer from './pages/customers/drawer/CustomerDrawer';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import LedgerPage from './pages/ledger/LedgerPage';
+import ReferralPage from './pages/referral/ReferralPage';
 import RewardAddPage from './pages/rewards/RewardAddPage';
 import RewardCreatePage from './pages/rewards/RewardCreatePage';
 import RewardEditorPage from './pages/rewards/RewardEditorPage';
@@ -24,6 +27,7 @@ import ExpirySettingsPage from './pages/settings/ExpirySettingsPage';
 import GeneralSettingsPage from './pages/settings/GeneralSettingsPage';
 import SettingsLayout from './pages/settings/SettingsLayout';
 import TiersPage from './pages/tiers/TiersPage';
+import ToolsPage from './pages/tools/ToolsPage';
 
 /**
  * A route the user cannot reach 404s inside the SPA rather than rendering an
@@ -103,6 +107,35 @@ export function getManagerRouter() {
         {
           path: 'tiers',
           element: guarded(CAP.MANAGE_TIERS, <TiersPage />),
+        },
+        {
+          path: 'referral',
+          element: guarded(CAP.VIEW, <ReferralPage />),
+          children: [
+            {
+              index: true,
+              loader: () => redirect('/referral/referrals'),
+            },
+            {
+              path: 'referrals',
+              element: IS_PRO_BUILD ? <ReferralsTab /> : null,
+              children: [{ path: ':userId', element: <CustomerDrawer /> }],
+            },
+            {
+              path: 'approvals',
+              element: IS_PRO_BUILD ? <ApprovalsTab /> : null,
+              children: [{ path: ':userId', element: <CustomerDrawer /> }],
+            },
+            {
+              path: 'settings',
+              // The parent's `guarded()` checks CAP.VIEW; Lite 404s the parent, so this never renders there.
+              element: IS_PRO_BUILD ? <ReferralSettingsPage /> : null,
+            },
+          ],
+        },
+        {
+          path: 'tools',
+          element: guarded(CAP.RUN_TOOLS, <ToolsPage />),
         },
         {
           path: 'settings',

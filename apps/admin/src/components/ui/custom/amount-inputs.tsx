@@ -27,10 +27,12 @@ export function PointsInput({
 
 /** A non-negative money amount at the currency's decimals, with the currency code as its unit. */
 export function MoneyInput({
+  id,
   value,
   currency,
   onValueChange,
 }: {
+  id?: string;
   value: number;
   currency: string;
   onValueChange: (value: number) => void;
@@ -44,7 +46,7 @@ export function MoneyInput({
       value={value}
       onValueChange={onValueChange}
     >
-      <NumberInputInput />
+      <NumberInputInput id={id} />
       <NumberInputUnit unit={currency} />
     </NumberInputRoot>
   );

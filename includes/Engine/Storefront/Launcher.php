@@ -10,6 +10,7 @@ use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Helpers\DesignHelper;
 use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Log;
+use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -89,7 +90,9 @@ final class Launcher {
             return;
         }
 
-        echo self::markup( $this->view ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the templates escape every value.
+        add_filter( 'safecss_filter_attr_allow_css', [ Kses::class, 'allow_color_mix' ], 10, 2 );
+        echo wp_kses( self::markup( $this->view ), Kses::storefront() );
+        remove_filter( 'safecss_filter_attr_allow_css', [ Kses::class, 'allow_color_mix' ], 10 );
 
         // Inline and right after the markup, so a dragged button is placed before the first paint.
         $spot_script = (string) file_get_contents( YAYLOYALTY_PLUGIN_DIR . self::SPOT_SCRIPT_PATH ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- a local plugin file.
@@ -119,7 +122,7 @@ final class Launcher {
     }
 
     private function should_render( array $design ): bool {
-        if ( is_embed() || is_feed() || ! function_exists( 'wc_get_page_permalink' ) ) {
+        if ( is_embed() || is_feed() || ! function_exists( 'wc_get_page_permalink' ) || ! ProgramGate::storefront_allowed() ) {
             return false;
         }
 

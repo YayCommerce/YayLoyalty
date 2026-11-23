@@ -2,6 +2,7 @@
 namespace YayLoyalty\Repositories;
 
 use YayLoyalty\Database\QueryException;
+use YayLoyalty\Database\Transaction;
 use YayLoyalty\Enums\LotStatus;
 use YayLoyalty\Models\Customer;
 use YayLoyalty\Utils\Dates;
@@ -50,6 +51,65 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         return $model instanceof Customer ? $model : null;
     }
 
+    /** The existing user whose member row holds $code, or null. A deleted account's row outlives it, so users is joined. */
+    public function find_user_by_referral_code( string $code ): ?int {
+        global $wpdb;
+
+        $user_id = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT c.user_id FROM `' . esc_sql( $this->table() ) . '` c INNER JOIN `' . esc_sql( $wpdb->users ) . '` u ON u.ID = c.user_id WHERE c.referral_code = %s LIMIT 1', // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the tables are escaped identifiers.
+                $code
+            )
+        );
+
+        return null === $user_id ? null : (int) $user_id;
+    }
+
+    /**
+     * The member's referral code, created on first use: 8 characters with no look-alikes, never their name.
+     *
+     * @throws QueryException When no code could be stored.
+     */
+    public function assign_referral_code( int $user_id ): string {
+        global $wpdb;
+
+        $table = esc_sql( $this->table() );
+
+        for ( $attempt = 0; $attempt < 6; $attempt++ ) {
+            $code = $wpdb->get_var( $wpdb->prepare( "SELECT referral_code FROM `{$table}` WHERE user_id = %d", $user_id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the plugin's own table; the identifier is escaped.
+
+            if ( is_string( $code ) && '' !== $code ) {
+                return $code;
+            }
+
+            if ( 5 === $attempt ) {
+                break;
+            }
+
+            // Read first: most customers already have a row and a code, so the upsert is skipped.
+            if ( 0 === $attempt ) {
+                $this->ensure_row( $user_id );
+            }
+
+            $suppressed = $wpdb->suppress_errors( true );
+            $wpdb->query( $wpdb->prepare( "UPDATE `{$table}` SET referral_code = %s WHERE user_id = %d AND referral_code IS NULL", self::random_referral_code(), $user_id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the plugin's own table; the identifier is escaped.
+            $wpdb->suppress_errors( $suppressed );
+        }
+
+        throw new QueryException( 'assign referral code', '', esc_html( $this->table() ) );
+    }
+
+    private static function random_referral_code(): string {
+        $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        $code     = '';
+
+        for ( $i = 0; $i < 8; $i++ ) {
+            $code .= $alphabet[ wp_rand( 0, strlen( $alphabet ) - 1 ) ];
+        }
+
+        return $code;
+    }
+
     /**
      * Ensures a row exists without racing. Create-then-lock, never
      * check-then-create: FOR UPDATE on a missing row takes a gap lock, so two
@@ -77,6 +137,20 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
 
         if ( false === $result ) {
             throw new QueryException( 'insert', esc_html( $wpdb->last_error ), esc_html( $this->table() . ' (ensure_row)' ) );
+        }
+
+        // 1 row affected is a new row; 0 is the no-op update of an existing one.
+        if ( 1 === $result ) {
+            /**
+             * Fires once, when the customer's row is first created.
+             *
+             * @param int $user_id The customer.
+             */
+            Transaction::after_commit(
+                static function () use ( $user_id ): void {
+                    do_action( 'yayloyalty_customer_created', $user_id );
+                }
+            );
         }
     }
 

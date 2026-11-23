@@ -20,9 +20,26 @@ final class ProgramGate implements Gate {
     public const REASON_OPTED_OUT      = 'opted_out';
     public const REASON_EXCLUDED_ROLE  = 'excluded_role';
 
+    public const STOREFRONT_FILTER = 'yayloyalty_storefront_allowed';
+
     /** Whether the program is on. Asks nothing about the shopper: a "may this shopper earn" check runs EarningService::gate_reason(). */
     public static function program_enabled(): bool {
         return (bool) SettingsHelper::get_settings()['enabled'];
+    }
+
+    /** Whether the store shows customers anything of the program: it is on and storefront_allowed(). */
+    public static function storefront_enabled(): bool {
+        return self::program_enabled() && self::storefront_allowed();
+    }
+
+    public static function storefront_allowed(): bool {
+        /**
+         * Filters whether the storefront shows YayLoyalty: the launcher, My Account tabs, placements, product and
+         * thank-you messages and the redeem card. Earning and the admin are unaffected.
+         *
+         * @param bool $allowed Default true.
+         */
+        return (bool) apply_filters( self::STOREFRONT_FILTER, true ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
     }
 
     public function check( string $trigger, Context $ctx ): ?string { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the rules apply to every trigger.

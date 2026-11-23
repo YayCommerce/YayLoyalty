@@ -88,6 +88,8 @@ const externalProd = {
   '@wordpress/i18n': 'wp.i18n',
   '@wordpress/date': 'wp.date',
   react: 'React',
+  // Prebuilt dependencies import the automatic runtime; WordPress 6.6+ ships it as the react-jsx-runtime script.
+  'react/jsx-runtime': 'ReactJSXRuntime',
   'react-dom': 'ReactDOM',
   'react-dom/client': 'ReactDOM',
 };

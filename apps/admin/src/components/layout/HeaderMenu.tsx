@@ -1,10 +1,11 @@
 import { ComponentProps } from 'react';
-import { Coins, Crown, Gift, Megaphone } from 'lucide-react';
+import { Coins, Crown, Gift, Megaphone, UserPlus, Wrench } from 'lucide-react';
 import { NavLink } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
 import { Can, CAP, Capability } from '@/lib/access';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
+import { ReferralApprovalsBadge } from '@/pro';
 import { cn } from '@/lib/utils';
 import { HeaderNavMenuItem, HeaderNavMenuList } from '@/components/ui/navmenu-header';
 import DashboardIcon from '@/components/icons/DashboardIcon';
@@ -37,14 +38,29 @@ export function HeaderMenu() {
           <span>{__('Rewards', 'yayloyalty')}</span>
         </NavLink>
       </CustomMenuItem>
-      {IS_PRO_BUILD && (
+      {IS_PRO_BUILD ? (
         <CustomMenuItem asChild key="tiers" cap={CAP.MANAGE_TIERS}>
           <NavLink to="/tiers">
             <Crown className="stroke-2" />
             <span>{__('Tiers', 'yayloyalty')}</span>
           </NavLink>
         </CustomMenuItem>
-      )}
+      ) : null}
+      {IS_PRO_BUILD ? (
+        <CustomMenuItem asChild key="referral" cap={CAP.VIEW}>
+          <NavLink to="/referral">
+            <UserPlus className="stroke-2" />
+            <span>{__('Referral', 'yayloyalty')}</span>
+            <ReferralApprovalsBadge />
+          </NavLink>
+        </CustomMenuItem>
+      ) : null}
+      <CustomMenuItem asChild key="tools" cap={CAP.RUN_TOOLS}>
+        <NavLink to="/tools">
+          <Wrench className="stroke-2" />
+          <span>{__('Tools', 'yayloyalty')}</span>
+        </NavLink>
+      </CustomMenuItem>
       <CustomMenuItem asChild key="settings" cap={CAP.VIEW}>
         <NavLink to="/settings">
           <SettingsIcon className="stroke-2" />

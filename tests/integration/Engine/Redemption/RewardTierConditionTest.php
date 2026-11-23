@@ -146,9 +146,7 @@ final class RewardTierConditionTest extends IntegrationTestCase {
     }
 
     private function allows( Reward $reward, ?int $user_id ): bool {
-        $facts = ( new ContextFactory( new CustomerRepository() ) )->facts_for( $user_id );
-
-        return ( new RewardTierCondition() )->allows( $reward, $facts );
+        return ( new RewardTierCondition() )->allows( $reward, $user_id );
     }
 
     /** The cart-time quote through RewardGate alone, which applies the conditions filter Pro answers. */

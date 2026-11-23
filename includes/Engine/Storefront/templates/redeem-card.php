@@ -47,7 +47,7 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
     data-state="<?php echo esc_attr( $yayloyalty_state ); ?>"
     data-endpoint="<?php echo esc_url( $view['endpoint'] ); ?>"
     data-nonce="<?php echo esc_attr( $view['nonce'] ); ?>"
-    <?php echo $yayloyalty_is_applied ? 'data-applied' : ''; ?>
+    <?php echo esc_attr( $yayloyalty_is_applied ? 'data-applied' : '' ); ?>
     <?php if ( $yayloyalty_is_flexible ) : ?>
         data-rate="<?php echo esc_attr( (string) $view['rate'] ); ?>"
         data-decimals="<?php echo esc_attr( (string) $yayloyalty_money['decimals'] ); ?>"
@@ -129,7 +129,7 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
                             <?php disabled( $view['is_disabled'] ); ?>
                         >
                     </label>
-                    <div class="yayloyalty-redeem__body" data-yl-flexible-body<?php echo $yayloyalty_is_ticked ? '' : ' hidden'; ?>>
+                    <div class="yayloyalty-redeem__body" data-yl-flexible-body<?php echo esc_attr( $yayloyalty_is_ticked ? '' : ' hidden' ); ?>>
                         <?php if ( $yayloyalty_is_auto ) : ?>
                             <p class="yayloyalty-redeem__auto">
                                 <?php
@@ -192,7 +192,7 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
             <?php endif; ?>
 
             <?php foreach ( $view['rows'] as $yayloyalty_row ) : ?>
-                <?php echo $yayloyalty_row; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the rows filter's contract: each row is escaped by whoever adds it. ?>
+                <?php echo wp_kses( $yayloyalty_row, Kses::storefront() ); ?>
             <?php endforeach; ?>
         </div>
     <?php endif; ?>

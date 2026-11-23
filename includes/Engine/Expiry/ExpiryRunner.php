@@ -43,8 +43,10 @@ final class ExpiryRunner {
     /**
      * Wires a daily job in GROUP: $run on $action, and $schedule on init to keep it scheduled. Does nothing
      * without Action Scheduler (WooCommerce inactive).
+     *
+     * @param int $accepted_args How many stored arguments a continuation passes to $run.
      */
-    public static function register_daily( string $action, callable $schedule, callable $run ): void {
+    public static function register_daily( string $action, callable $schedule, callable $run, int $accepted_args = 1 ): void {
         if ( ! function_exists( 'as_has_scheduled_action' ) ) {
             return;
         }
@@ -54,7 +56,7 @@ final class ExpiryRunner {
             add_action( 'init', $schedule );
         }
 
-        add_action( $action, $run );
+        add_action( $action, $run, 10, $accepted_args );
     }
 
     /** Schedules $action to recur daily in GROUP unless it already is. */
