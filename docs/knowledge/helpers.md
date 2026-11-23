@@ -1,7 +1,7 @@
 ---
 area: helpers
-updated: 2026-11-19
-updated_ref: a5d0a81
+updated: 2026-11-23
+updated_ref: 255aa5c
 covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, includes/Access/, includes/Services/, includes/Controllers/AbstractRestController.php, includes/Engine/Earning/, includes/Engine/Expiry/ExpiryRunner.php, includes/Engine/Emails/Emails.php, includes/Engine/Storefront/, includes/Engine/Points/, apps/admin/src/lib/, apps/admin/src/hooks/, apps/admin/src/components/layout/]
 ---
 
@@ -16,8 +16,9 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 - `Database\Transaction::run($fn)` / `after_commit($fn)` (`includes/Database/Transaction.php`): the only way to open a transaction; defer emails and actions until commit.
 - `Utils\Json::encode|decode|encode_list|decode_list` (`includes/Utils/Json.php`): versioned JSON columns; never throws on read.
 - `Utils\ConditionMatch::parse|decode|encode|assert_structure|fold` (`includes/Utils/ConditionMatch.php`): a campaign's or reward's `conditions` as `{ match, conditions }`; reads a flat list as `all`. `Campaign|Reward::has_conditions()` asks whether there is a condition.
-- `Services\LedgerService` (`includes/Services/LedgerService.php`): every points change. `adjust()` / `record()` for manual rows; `earn()`, `refund_earn()`, `restore_refund()`, `expire()`, `redeem()` for keyed system rows. Get an instance from an existing composition root, don't construct a new one.
-- `Engine\Earning\IdempotencyKey::compose|for_earn` (`includes/Engine/Earning/IdempotencyKey.php`): the key for any new ledger write.
+- Tier points: `LedgerType::counts_toward_tier()` (PHP) and `LedgerRepository::window_total()` (SQL, any date range; `created_by` for a closed period, `except_ref_*` for the total before one refund). Don't sum `lifetime_earned` for a tier.
+- `Services\LedgerService` (`includes/Services/LedgerService.php`): every points change. `adjust()` / `record()` for manual rows; `earn()`, `refund_earn()`, `restore_refund()`, `expire()`, `redeem()` for keyed system rows; `import()` for a CSV import row (keyed, so a re-upload is a duplicate). `adjust()`'s `$counts_toward_tier` stores a row's tier-points choice (null: by type). Get an instance from an existing composition root, don't construct a new one.
+- `Engine\Earning\IdempotencyKey::compose|for_earn|for_import` (`includes/Engine/Earning/IdempotencyKey.php`): the key for any new ledger write.
 - `Repositories\CustomerReader` (`includes/Repositories/CustomerReader.php`): depend on this when code may read a customer but must never write one.
 - `Database\Installer::install_locked($still_needed)` (`includes/Database/Installer.php`): run the idempotent install under the upgrade mutex; Pro's `ProInstaller` uses it.
 - `Repositories\CustomerRepository::find_user_by_referral_code($code)`: the existing user who owns a referral code.
@@ -60,7 +61,7 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 
 ## Escaping, text, capabilities, REST (PHP)
 
-- `Utils\Kses::svg|inline` (`includes/Utils/Kses.php`): allowlists for printed icons and number-wrapped sentences.
+- `Utils\Kses::svg|inline|storefront` (`includes/Utils/Kses.php`): allowlists for printed icons, number-wrapped sentences and whole storefront templates; every storefront echo or returned callback goes through `wp_kses( $html, Kses::storefront() )`, and the launcher adds `Kses::allow_color_mix` around its echo.
 - `Utils\Text::plain|store_name` (`includes/Utils/Text.php`): plain text for the SPA and shopper copy.
 - `Utils\IsoCodes::is_currency|is_country` (`includes/Utils/IsoCodes.php`).
 - `Utils\Log::error|warning|debug` (`includes/Utils/Log.php`).
@@ -81,10 +82,10 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 - `useDebouncedSearchCommit` (`hooks/useDebouncedSearchCommit.ts`): search inputs.
 - `formatWPDate`, `formatStoredDate`, `utcToDate`, `dateToStored`, `formatWPCurrency`, `formatStoreNumber` (`lib/helpers/format.helper.ts`): every date and money display.
 - `lib/points-math/points-math.ts`: client copy of `PointsMath`.
-- `settleInChunks` (`lib/helpers/settle-in-chunks.helper.ts`), `setPaginatedRow` (`lib/helpers/paginated-row.helper.ts`), `useCsvExport` (`hooks/`): bulk writes, cache patching, CSV.
+- `settleInChunks` (`lib/helpers/settle-in-chunks.helper.ts`), `setPaginatedRow` (`lib/helpers/paginated-row.helper.ts`), `useCsvExport` (`hooks/`): bulk writes, cache patching, CSV. Reading a CSV: `parseImportCsv`, `importIdForRows` (`pages/tools/tools-import.csv.ts`).
 
 ## Hooks the plugin exposes
 
 Public: `yayloyalty_points_awarded` (after commit), `yayloyalty_points_redeemed`, `yayloyalty_ledger_recorded`, `yayloyalty_pro_booted`, `yayloyalty_redeem_card` (renders the card), `yayloyalty_yaymail_register_emails`, `yayloyalty_yaymail_register_shortcodes`.
 
-Seams Pro attaches through (documented "Internal seam, not a public API"): `yayloyalty_earning_gates`, `yayloyalty_redemption_gates`, `yayloyalty_register_trigger_handlers`, `yayloyalty_register_reward_handlers`, `yayloyalty_award_points` (can only lower), `yayloyalty_points_left_today`, `yayloyalty_order_award_triggers`, `yayloyalty_order_awarded` (after a completed order's awards, not for a claimed guest order), `yayloyalty_order_reversed` (after a refund, cancel, trash or refunded status is reversed), `yayloyalty_campaign_conditions_evaluator`, `yayloyalty_reward_conditions_match`, `yayloyalty_rest_controllers`, `yayloyalty_rest_item_schema`, `yayloyalty_campaign_config_schema`, `yayloyalty_reward_config_schema`, `yayloyalty_localize_admin_data`, `yayloyalty_plugin_name`. Others: `yayloyalty_table_schemas`, `yayloyalty_run_migrations`, `yayloyalty_currency_rate`, `yayloyalty_context_to_base_factor`.
+Seams Pro attaches through (documented "Internal seam, not a public API"): `yayloyalty_earning_gates`, `yayloyalty_redemption_gates`, `yayloyalty_register_trigger_handlers`, `yayloyalty_register_reward_handlers`, `yayloyalty_award_points` (can only lower), `yayloyalty_points_left_today`, `yayloyalty_order_award_triggers`, `yayloyalty_order_awarded` (after a completed order's awards, not for a claimed guest order), `yayloyalty_order_reversed` (after a refund, cancel, trash or refunded status is reversed), `yayloyalty_campaign_conditions_evaluator`, `yayloyalty_reward_conditions_match`, `yayloyalty_rest_controllers`, `yayloyalty_rest_item_schema`, `yayloyalty_campaign_config_schema`, `yayloyalty_reward_config_schema`, `yayloyalty_localize_admin_data`, `yayloyalty_plugin_name`, `yayloyalty_cart_coupons_removed_all` (the Store API removed every coupon; `StoreApiAdapter`). Others: `yayloyalty_table_schemas`, `yayloyalty_run_migrations`, `yayloyalty_currency_rate`, `yayloyalty_context_to_base_factor`.

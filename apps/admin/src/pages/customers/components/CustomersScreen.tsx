@@ -32,6 +32,8 @@ export function CustomersScreen({
   queryFilters,
   sort,
   pagination,
+  showTiers,
+  tierLabel,
 }: {
   /** What the list query produced for the current page. */
   list: {
@@ -62,6 +64,10 @@ export function CustomersScreen({
     pageCount: number;
     onChange: (page: number) => void;
   };
+  /** Pro with tiers on: the Tier column and sort show. */
+  showTiers: boolean;
+  /** The tier filter's choices as text, for the bulk adjust filter line. */
+  tierLabel: string | null;
 }) {
   const { rows, isLoading, isFetching, isStoreEmpty, totalItems, suggestions } = list;
   const { value: filters, onChange: onFiltersChange } = filtersProp;
@@ -141,6 +147,7 @@ export function CustomersScreen({
               ) : undefined
             }
             sort={{ by: sortBy, dir: sortDir, onChange: onSort }}
+            showTiers={showTiers}
             selection={{
               enabled: IS_PRO_BUILD,
               header: headerSelection,
@@ -185,6 +192,7 @@ export function CustomersScreen({
         excludedCount={excludedCount}
         selectionMode={selection.mode}
         filters={queryFilters}
+        tierLabel={tierLabel}
         rowsOnPage={rows.length}
         acknowledgementResetKey={acknowledgementResetKey}
         recountedCount={recountedCount}

@@ -30,7 +30,7 @@ $yayloyalty_download  = AccountMyPointsIcon::get( 'download' ) . esc_html__( 'Ex
 ?>
 <section class="yayloyalty-account__section" id="<?php echo esc_attr( AccountMyPoints::HISTORY_ANCHOR ); ?>" data-endpoint="<?php echo esc_url( AccountHistoryAjax::url() ); ?>" data-page="<?php echo esc_attr( $yayloyalty_page ); ?>" data-filter="<?php echo esc_attr( $yayloyalty_filter_on ); ?>">
     <div class="yayloyalty-account__section-head">
-        <h3 class="yayloyalty-account__title">
+        <h3 class="yayloyalty-account__title yayloyalty-account__cap-first">
             <?php
             /* translators: %s: the store's points label, as "Points". */
             echo esc_html( sprintf( __( '%s history', 'yayloyalty' ), $yayloyalty_label ) );
@@ -45,7 +45,7 @@ $yayloyalty_download  = AccountMyPointsIcon::get( 'download' ) . esc_html__( 'Ex
 
     <nav class="yayloyalty-account__tabs" aria-label="<?php esc_attr_e( 'Filter history', 'yayloyalty' ); ?>">
         <?php foreach ( AccountMyPoints::filter_labels() as $yayloyalty_filter => $yayloyalty_filter_label ) : ?>
-            <a class="yayloyalty-account__tab" href="<?php echo esc_url( AccountMyPoints::url( 1, $yayloyalty_filter ) ); ?>" data-page="1" data-filter="<?php echo esc_attr( $yayloyalty_filter ); ?>"<?php echo $yayloyalty_filter === $yayloyalty_filter_on ? ' aria-current="page"' : ''; ?>><?php echo esc_html( $yayloyalty_filter_label ); ?></a>
+            <a class="yayloyalty-account__tab" href="<?php echo esc_url( AccountMyPoints::url( 1, $yayloyalty_filter ) ); ?>" data-page="1" data-filter="<?php echo esc_attr( $yayloyalty_filter ); ?>" aria-current="<?php echo esc_attr( $yayloyalty_filter === $yayloyalty_filter_on ? 'page' : 'false' ); ?>"><?php echo esc_html( $yayloyalty_filter_label ); ?></a>
         <?php endforeach; ?>
     </nav>
 
@@ -81,7 +81,7 @@ $yayloyalty_download  = AccountMyPointsIcon::get( 'download' ) . esc_html__( 'Ex
                     <tr>
                         <th scope="col"><?php echo esc_html( $yayloyalty_columns['date'] ); ?></th>
                         <th scope="col"><?php echo esc_html( $yayloyalty_columns['description'] ); ?></th>
-                        <th scope="col" class="yayloyalty-account__num"><?php echo esc_html( $yayloyalty_columns['points'] ); ?></th>
+                        <th scope="col" class="yayloyalty-account__num yayloyalty-account__cap-first"><?php echo esc_html( $yayloyalty_columns['points'] ); ?></th>
                         <th scope="col" class="yayloyalty-account__num"><?php echo esc_html( $yayloyalty_columns['balance'] ); ?></th>
                     </tr>
                 </thead>
@@ -91,7 +91,7 @@ $yayloyalty_download  = AccountMyPointsIcon::get( 'download' ) . esc_html__( 'Ex
                         <tr>
                             <td class="yayloyalty-account__date" data-title="<?php echo esc_attr( $yayloyalty_columns['date'] ); ?>"><?php echo esc_html( Dates::to_site_date( $yayloyalty_row['created_at'] ) ); ?></td>
                             <td data-title="<?php echo esc_attr( $yayloyalty_columns['description'] ); ?>">
-                                <?php echo esc_html( $yayloyalty_row['label'] ); ?>
+                                <span class="yayloyalty-account__cap-first"><?php echo esc_html( $yayloyalty_row['label'] ); ?></span>
                                 <?php if ( '' !== $yayloyalty_row['order'] ) : ?>
                                     <?php
                                     /* translators: %s: order number. */
@@ -104,7 +104,7 @@ $yayloyalty_download  = AccountMyPointsIcon::get( 'download' ) . esc_html__( 'Ex
                                     <?php endif; ?>
                                 <?php endif; ?>
                             </td>
-                            <td class="yayloyalty-account__num" data-title="<?php echo esc_attr( $yayloyalty_columns['points'] ); ?>"><span class="yayloyalty-account__badge yayloyalty-account__badge--<?php echo esc_attr( $yayloyalty_tone ); ?>"><?php echo esc_html( LauncherCopy::signed_points( $yayloyalty_row['points'] ) ); ?></span></td>
+                            <td class="yayloyalty-account__num yayloyalty-account__cap-first" data-title="<?php echo esc_attr( $yayloyalty_columns['points'] ); ?>"><span class="yayloyalty-account__badge yayloyalty-account__badge--<?php echo esc_attr( $yayloyalty_tone ); ?>"><?php echo esc_html( LauncherCopy::signed_points( $yayloyalty_row['points'] ) ); ?></span></td>
                             <td class="yayloyalty-account__num" data-title="<?php echo esc_attr( $yayloyalty_columns['balance'] ); ?>"><?php echo esc_html( LauncherCopy::points( $yayloyalty_row['balance'] ) ); ?></td>
                         </tr>
                     <?php endforeach; ?>

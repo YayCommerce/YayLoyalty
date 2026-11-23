@@ -90,6 +90,26 @@ final class RewardConditionsEvaluatorTest extends TestCase {
         $this->assertSame( 1, $this->facts_reads );
     }
 
+    public function test_a_tier_entry_stays_out_of_the_fold() {
+        $tier = [
+            'type'     => 'tier',
+            'operator' => 'gte',
+            'value'    => 2,
+        ];
+
+        $this->assertTrue( $this->redeemable( $this->reward( [ $tier ] ), $this->ctx( 7 ) ) );
+
+        $any = $this->reward(
+            [
+                'match'      => 'any',
+                'conditions' => [ $this->role_in( 'wholesale' ), $tier ],
+            ]
+        );
+
+        $this->assertTrue( $this->redeemable( $any, $this->ctx( 8 ) ) );
+        $this->assertFalse( $this->redeemable( $any, $this->ctx( 7 ) ) );
+    }
+
     private function redeemable( Reward $reward, Context $ctx ): bool {
         return ( new RewardConditionsEvaluator() )->matches( true, $reward, $ctx );
     }

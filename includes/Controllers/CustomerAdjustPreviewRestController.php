@@ -59,6 +59,7 @@ final class CustomerAdjustPreviewRestController extends AbstractRestController {
                                     'type' => 'string',
                                     'enum' => CustomerFilters::EXPIRY_RANGES,
                                 ],
+                                'tier'          => [ 'type' => 'string' ],
                             ],
                         ],
                     ],
@@ -80,12 +81,13 @@ final class CustomerAdjustPreviewRestController extends AbstractRestController {
     /**
      * COUNT-only: never fetches rows. WP REST validates `filters.*` against
      * the enums above but does not run sanitize_callback on sub-properties,
-     * so search is sanitized here.
+     * so search and tier are sanitized here.
      *
      * @param array<string, mixed> $filters
      */
     private function count_matching( array $filters ): int {
         $filters['search'] = sanitize_text_field( (string) ( $filters['search'] ?? '' ) );
+        $filters['tier']   = sanitize_text_field( (string) ( $filters['tier'] ?? '' ) );
 
         return $this->customers->count_list( CustomerRowFilters::to_criteria( $filters ) );
     }

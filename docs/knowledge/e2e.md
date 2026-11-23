@@ -83,6 +83,7 @@ The site runs this checkout with `YAYLOYALTY_IS_DEVELOPMENT` false, so it serves
 | Social campaign create: network, action, share link and points save and reload | admin | important | `specs/campaign-social.spec.ts` @flow-campaign-social | `apps/admin/src/pro/campaigns/editor/CampaignEditorEarnSocial.tsx` |
 | Social claim from My Points: pays once, redirects to the network, Earned after, guest and excluded customers get no claim | customer (a fresh one per test, logged in by form), guest | important | `specs/social-claim.spec.ts` @flow-social-claim | `includes/Pro/Social/SocialClaim.php` |
 | Renewal campaign: card with WooCommerce Subscriptions, earns per renewal order, replaces order points, refunds claw back | admin | important | `specs/renewal-campaign.spec.ts` @flow-renewal-campaign (installs its own mu-plugin stand-in for WooCommerce Subscriptions; the last test skips while another one is active) | `includes/Pro/Renewals/RenewalTriggers.php` |
+| Tools import: preview errors, apply, re-upload applies nothing | admin | critical | `specs/tools-import.spec.ts` @flow-tools-import | `apps/admin/src/pages/tools/ToolsImportCard.tsx` |
 | Campaign create, edit, pause | admin | important | candidate | `apps/admin/src/pro/campaigns/editor/CampaignEditor.tsx` |
 | Reward create and edit | admin | important | candidate | `apps/admin/src/pro/rewards/editor/RewardEditor.tsx` |
 | Customer drawer, ledger and activity tabs | admin | important | candidate | `apps/admin/src/pages/customers/drawer/CustomerDrawer.tsx` |

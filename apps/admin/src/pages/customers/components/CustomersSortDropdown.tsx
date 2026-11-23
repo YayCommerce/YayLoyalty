@@ -22,6 +22,7 @@ const SORT_LABELS: Record<SortKey, string> = {
   lifetime: __('Lifetime earned', 'yayloyalty'),
   last_activity: __('Last activity', 'yayloyalty'),
   expires: __('Expires', 'yayloyalty'),
+  tier: __('Tier', 'yayloyalty'),
 };
 
 const SORTABLE_KEYS = Object.keys(SORT_LABELS) as SortKey[];
@@ -31,11 +32,14 @@ export function CustomersSortDropdown({
   dir,
   onChange,
   disabled,
+  showTiers,
 }: {
   by: SortKey;
   dir: SortDirection;
   onChange: (key: SortKey) => void;
   disabled?: boolean;
+  /** Pro with tiers on: Tier is a sort choice. */
+  showTiers: boolean;
 }) {
   const DirectionIcon = dir === 'asc' ? ArrowUp : ArrowDown;
 
@@ -51,7 +55,7 @@ export function CustomersSortDropdown({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           <DropdownMenuRadioGroup value={by} onValueChange={(value) => onChange(value as SortKey)}>
-            {SORTABLE_KEYS.map((key) => (
+            {SORTABLE_KEYS.filter((key) => key !== 'tier' || showTiers).map((key) => (
               <DropdownMenuRadioItem key={key} value={key}>
                 {SORT_LABELS[key]}
               </DropdownMenuRadioItem>

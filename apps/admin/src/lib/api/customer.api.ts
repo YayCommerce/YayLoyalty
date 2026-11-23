@@ -45,6 +45,7 @@ export async function adjustCustomerPoints(userId: number, input: AdjustPointsIn
     note: input.note,
     adjust_lifetime: input.adjustLifetime,
     notify: input.notify,
+    ...(input.adjustTier === undefined ? {} : { adjust_tier: input.adjustTier }),
     ...(input.customerNote === undefined ? {} : { customer_note: input.customerNote }),
   };
 
@@ -65,6 +66,7 @@ export async function previewAdjustPoints(
           search: input.filters.search,
           balance_range: input.filters.balanceRange,
           expiring_soon: input.filters.expiringSoon,
+          tier: input.filters.tier,
         },
       }
     : {};
@@ -81,6 +83,8 @@ export type CustomerListParams = {
   search?: string;
   balanceRange?: CustomerBalanceRange;
   expiringSoon?: CustomerExpiringSoon;
+  /** Comma-separated tier ids and/or `none`; '' is no filter. */
+  tier?: string;
 };
 
 const customerListEnvelopeSchema = paginatedSchema(customerListRowSchema).extend({
@@ -99,6 +103,7 @@ export async function getCustomers(params: CustomerListParams = {}, signal?: Abo
   if (params.search?.trim()) searchParams.search = params.search.trim();
   if (params.balanceRange && params.balanceRange !== 'any') searchParams.balance_range = params.balanceRange;
   if (params.expiringSoon && params.expiringSoon !== 'off') searchParams.expiring_soon = params.expiringSoon;
+  if (params.tier) searchParams.tier = params.tier;
 
   const payload = await api.get('customers', { searchParams, signal }).json();
 

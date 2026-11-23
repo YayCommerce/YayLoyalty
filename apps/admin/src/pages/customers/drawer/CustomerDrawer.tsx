@@ -1,10 +1,12 @@
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useCustomerQuery } from '@/lib/queries/customer.queries';
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { CustomerTierCard } from '@/pro';
 import { CustomerDrawerActions } from './CustomerDrawerActions';
 import { CustomerDrawerDeletedActions } from './CustomerDrawerDeletedActions';
 import { CustomerDrawerDeletedBanner } from './CustomerDrawerDeletedBanner';
@@ -83,6 +85,8 @@ export default function CustomerDrawer() {
                 ) : (
                   <>
                     <CustomerDrawerStats customer={query.data} />
+                    {/* The guard, not the card's own tiers check, keeps the @/pro import out of Lite. */}
+                    {IS_PRO_BUILD && <CustomerTierCard customer={query.data} />}
                     <CustomerDrawerActions customer={query.data} isLoading={query.isFetching} />
                     {/* `deleted_at` and `loose_ends` are non-null together. Checking both gives the children non-null props. */}
                     {query.data.deleted_at && query.data.loose_ends && (

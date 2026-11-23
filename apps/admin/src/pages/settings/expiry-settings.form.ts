@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { formatWPDate } from '@/lib/helpers/format.helper';
+import { formatDaysFromNow } from '@/lib/helpers/format.helper';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { Settings, settingsSchema, SettingsUpdate } from '@/lib/schema/settings.schema';
 
@@ -49,7 +49,7 @@ export function buildExpirySettingsUpdate(values: ExpirySettingsFormValues): Set
  */
 export function graceFloorText(expiry: Expiry): string {
   const days = Math.min(window.yayLoyaltyMeta.loyaltyMeta.expiryGraceDays, windowDays(expiry));
-  const floor = formatWPDate(new Date(Date.now() + days * 86_400_000));
+  const floor = formatDaysFromNow(days);
 
   /* translators: 1: a date, 2: number of days */
   return sprintf(_n('%1$s, %2$d day from today', '%1$s, %2$d days from today', days, 'yayloyalty'), floor, days);

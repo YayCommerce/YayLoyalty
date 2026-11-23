@@ -22,7 +22,7 @@ $yayloyalty_is_open = ! empty( $view['is_open'] );
     class="yayloyalty-launcher"
     <?php // Bottom right until the shopper drags it; launcher-spot.js then sets the side. ?>
     data-position="bottom_right"
-    data-hide-mobile="<?php echo $view['hide_mobile'] ? '1' : '0'; ?>"
+    data-hide-mobile="<?php echo esc_attr( $view['hide_mobile'] ? '1' : '0' ); ?>"
     <?php if ( null !== $yayloyalty_member ) : ?>
         data-activity-url="<?php echo esc_url( $view['activity_url'] ?? '' ); ?>"
         data-seen-url="<?php echo esc_url( $view['seen_url'] ?? '' ); ?>"
@@ -33,7 +33,7 @@ $yayloyalty_is_open = ! empty( $view['is_open'] );
     <button
         type="button"
         class="yl-launcher-trigger yl:inline-flex yl:items-center yl:justify-center yl:rounded-full yl:bg-primary yl:text-primary-foreground yl:hover:bg-primary-accent yl:shadow-lg yl:cursor-pointer yl:outline-none yl:focus-visible:ring-[1.5px] yl:focus-visible:ring-ring yl:focus-visible:ring-offset-2"
-        aria-expanded="<?php echo $yayloyalty_is_open ? 'true' : 'false'; ?>"
+        aria-expanded="<?php echo esc_attr( $yayloyalty_is_open ? 'true' : 'false' ); ?>"
         aria-controls="yayloyalty-launcher-panel"
         data-yl-open
     >
@@ -55,7 +55,7 @@ $yayloyalty_is_open = ! empty( $view['is_open'] );
         <?php endif; ?>
     </button>
 
-    <div class="yl-launcher-overlay" data-yl-close data-state="<?php echo $yayloyalty_is_open ? 'open' : 'closed'; ?>" <?php echo $yayloyalty_is_open ? '' : 'hidden'; ?>></div>
+    <div class="yl-launcher-overlay" data-yl-close data-state="<?php echo esc_attr( $yayloyalty_is_open ? 'open' : 'closed' ); ?>" <?php echo esc_attr( $yayloyalty_is_open ? '' : 'hidden' ); ?>></div>
 
     <div
         id="yayloyalty-launcher-panel"
@@ -64,15 +64,15 @@ $yayloyalty_is_open = ! empty( $view['is_open'] );
         tabindex="-1"
         aria-modal="true"
         aria-labelledby="yayloyalty-launcher-title"
-        data-state="<?php echo $yayloyalty_is_open ? 'open' : 'closed'; ?>"
-        <?php echo $yayloyalty_is_open ? '' : 'hidden'; ?>
+        data-state="<?php echo esc_attr( $yayloyalty_is_open ? 'open' : 'closed' ); ?>"
+        <?php echo esc_attr( $yayloyalty_is_open ? '' : 'hidden' ); ?>
     >
         <?php // On mobile the bar and the header are the sheet's drag-to-close area (launcher.js); desktop draws no bar and ignores it. ?>
         <div class="yl-launcher-grip yl:bg-foreground" data-yl-handle>
             <div class="yl-launcher-handle" aria-hidden="true"><span class="yl:block yl:h-1 yl:w-11 yl:rounded-full yl:bg-background/40"></span></div>
 
             <div class="yl-launcher-header yl:flex yl:items-center yl:gap-2.5 yl:bg-foreground yl:text-background yl:px-5 yl:py-[11px]">
-                <span class="yl-launcher-header-icon yl:inline-flex yl:[&>*]:size-4"><?php echo wp_kses( LauncherIcon::gift(), Kses::svg() ); ?></span>
+                <span class="yl-launcher-header-icon yl:inline-flex yl:*:size-4"><?php echo wp_kses( LauncherIcon::gift(), Kses::svg() ); ?></span>
                 <h2 id="yayloyalty-launcher-title" class="yl:m-0 yl:text-[15px] yl:font-semibold yl:leading-tight yl:text-background"><?php echo esc_html( LauncherCopy::launcher_label() ); ?></h2>
                 <button type="button" class="yl-launcher-close yl:ml-auto yl:inline-flex yl:size-7 yl:items-center yl:justify-center yl:rounded-md yl:text-background yl:hover:bg-background/15 yl:cursor-pointer yl:transition-colors yl:outline-none yl:focus-visible:ring-[1.5px] yl:focus-visible:ring-background" data-yl-close aria-label="<?php esc_attr_e( 'Close', 'yayloyalty' ); ?>">
                     <?php echo wp_kses( LauncherIcon::close(), Kses::svg() ); ?>

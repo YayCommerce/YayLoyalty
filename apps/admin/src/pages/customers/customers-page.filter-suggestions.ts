@@ -12,13 +12,14 @@ import {
  * "Which single filter should I drop?" The counts arrive in the list
  * response once filters match nothing; this file only turns them into text.
  */
-export type FilterKey = 'search' | 'balanceRange' | 'expiringSoon';
+export type FilterKey = 'search' | 'balanceRange' | 'expiringSoon' | 'tier';
 
 /** Wire param name → CustomerListFilters key; the one place the two spellings meet. */
 const FILTER_KEY_BY_WIRE_KEY: Record<NoMatchSuggestion['key'], FilterKey> = {
   search: 'search',
   balance_range: 'balanceRange',
   expiring_soon: 'expiringSoon',
+  tier: 'tier',
 };
 
 export interface FilterDropSuggestion {
@@ -34,6 +35,7 @@ function activeFilterKeys(filters: CustomerListFilters): FilterKey[] {
   if (filters.search.trim() !== '') keys.push('search');
   if (filters.balanceRange !== 'any') keys.push('balanceRange');
   if (filters.expiringSoon !== 'off') keys.push('expiringSoon');
+  if (filters.tier !== '') keys.push('tier');
   return keys;
 }
 
@@ -42,7 +44,7 @@ export function countActiveFilters(filters: CustomerListFilters): number {
   return activeFilterKeys(filters).length;
 }
 
-function describeFilterValue(key: FilterKey, filters: CustomerListFilters): string {
+function describeFilterValue(key: FilterKey, filters: CustomerListFilters, tierLabel: string | null): string {
   switch (key) {
     case 'search':
       return sprintf(
@@ -54,13 +56,16 @@ function describeFilterValue(key: FilterKey, filters: CustomerListFilters): stri
       return BALANCE_RANGE_OPTIONS.find((option) => option.value === filters.balanceRange)?.label ?? '';
     case 'expiringSoon':
       return EXPIRING_SOON_OPTIONS.find((option) => option.value === filters.expiringSoon)?.label ?? '';
+    case 'tier':
+      return tierLabel ?? __('Tier', 'yayloyalty');
   }
 }
 
-/** Turns the server's {key, count} pairs into display-ready suggestions. */
+/** Turns the server's {key, count} pairs into display-ready suggestions. `tierLabel` names the tier filter's choices. */
 export function toFilterDropSuggestions(
   raw: NoMatchSuggestion[],
   filters: CustomerListFilters,
+  tierLabel: string | null = null,
 ): FilterDropSuggestion[] {
   return raw.map(({ key: wireKey, count }) => {
     const key = FILTER_KEY_BY_WIRE_KEY[wireKey];
@@ -68,7 +73,7 @@ export function toFilterDropSuggestions(
     return {
       key,
       count,
-      label: describeFilterValue(key, filters),
+      label: describeFilterValue(key, filters, tierLabel),
       phrasing: key === 'search' ? ('only' as const) : ('without' as const),
     };
   });

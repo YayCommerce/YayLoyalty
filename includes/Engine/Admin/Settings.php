@@ -10,6 +10,9 @@ defined( 'ABSPATH' ) || exit;
 class Settings {
     use SingletonTrait;
 
+    /** The settings page's hook suffix, which is also its screen id. */
+    private const HOOK_SUFFIX = 'yaycommerce_page_yayloyalty';
+
     protected function __construct() {
 
         add_filter( 'admin_body_class', [ $this, 'admin_body_class' ] );
@@ -18,7 +21,9 @@ class Settings {
     }
 
     public function admin_body_class( string $classes ): string {
-        if ( strpos( $classes, 'yay-ui' ) === false ) {
+        $screen = get_current_screen();
+
+        if ( null !== $screen && self::HOOK_SUFFIX === $screen->id && strpos( $classes, 'yay-ui' ) === false ) {
             $classes .= ' yay-ui';
         }
         return $classes;
@@ -27,7 +32,7 @@ class Settings {
     public function admin_enqueue_scripts( $hook_suffix ) {
 
         // Hook suffix of the AdminShell submenu page: yaycommerce (parent) + yayloyalty (slug).
-        $allow_hook_suffixes = [ 'yaycommerce_page_yayloyalty' ];
+        $allow_hook_suffixes = [ self::HOOK_SUFFIX ];
 
         if ( ! in_array( $hook_suffix, $allow_hook_suffixes, true ) ) {
             return;

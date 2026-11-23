@@ -11,6 +11,11 @@ export function formatWPDate(date: Date | string | undefined) {
   return dateI18n(formats.date, typeof date === 'string' ? utcToDate(date) : date);
 }
 
+/** The date `days` days from now, in the site's date format. */
+export function formatDaysFromNow(days: number) {
+  return formatWPDate(new Date(Date.now() + days * 86_400_000));
+}
+
 /** "2 days ago" for a stored UTC datetime. Parsed as UTC explicitly: a bare new Date() reads it as local. */
 export function formatWPRelativeDate(date: string) {
   return humanTimeDiff(utcToDate(date));

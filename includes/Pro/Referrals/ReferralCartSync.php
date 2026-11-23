@@ -3,6 +3,7 @@ namespace YayLoyalty\Pro\Referrals;
 
 use YayLoyalty\Engine\Earning\Listeners\ListenerGuard;
 use YayLoyalty\Engine\Points\Context;
+use YayLoyalty\Engine\Redemption\Adapters\StoreApiAdapter;
 use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Redemption\RewardCoupons;
 use YayLoyalty\Pro\Repositories\ReferralRepository;
@@ -26,6 +27,9 @@ final class ReferralCartSync {
     /** @var array<int, int> Referral ids this request created, by friend user id. */
     private array $created = [];
 
+    /** The referral whose code the cart last carried: as loaded from the session, then as each sync left it. */
+    private ?int $on_cart = null;
+
     public function __construct( ReferralRepository $referrals, ReferralCoupon $coupon ) {
         $this->referrals = $referrals;
         $this->coupon    = $coupon;
@@ -36,6 +40,8 @@ final class ReferralCartSync {
         add_action( 'woocommerce_before_calculate_totals', [ $this, 'sync_cart' ], PHP_INT_MAX - 1 );
         add_action( 'woocommerce_check_cart_items', [ $this, 'sync_before_check' ], 0 );
         add_action( 'woocommerce_removed_coupon', [ $this, 'on_removed' ] );
+        add_action( 'woocommerce_cart_loaded_from_session', [ $this, 'on_cart_loaded' ] );
+        add_action( StoreApiAdapter::REMOVED_ALL_COUPONS_ACTION, [ $this, 'on_removed_all' ] );
         add_filter( 'woocommerce_apply_individual_use_coupon', [ $this, 'on_individual_use_apply' ], PHP_INT_MAX, 3 );
         add_action( ReferralAttribution::CREATED_ACTION, [ $this, 'on_referral_created' ], 10, 2 );
         add_action( 'woocommerce_store_api_checkout_order_processed', [ $this, 'apply_to_signup_order' ] );
@@ -130,6 +136,34 @@ final class ReferralCartSync {
         }
     }
 
+    public function on_cart_loaded( \WC_Cart $cart ): void {
+        $this->on_cart = self::referral_on( $cart->get_applied_coupons() );
+    }
+
+    /** The friend removed every coupon while the discount was on the cart: it stays off for the session, as when they remove it alone. */
+    public function on_removed_all(): void {
+        if ( null !== $this->on_cart && function_exists( 'WC' ) && WC()->session ) {
+            WC()->session->set( self::DECLINED_SESSION_KEY, $this->on_cart );
+        }
+    }
+
+    /**
+     * The referral id of the first referral code among $codes, null when there is none.
+     *
+     * @param mixed[] $codes
+     */
+    private static function referral_on( array $codes ): ?int {
+        foreach ( $codes as $code ) {
+            $id = ReferralCoupon::referral_id( $code );
+
+            if ( null !== $id ) {
+                return $id;
+            }
+        }
+
+        return null;
+    }
+
     private function sync( \WC_Cart $cart ): void {
         $applied = $cart->get_applied_coupons();
         $next    = array_values(
@@ -147,6 +181,8 @@ final class ReferralCartSync {
         if ( $next !== $applied ) {
             $cart->set_applied_coupons( $next );
         }
+
+        $this->on_cart = null !== $wanted ? ReferralCoupon::referral_id( $wanted ) : null;
     }
 
     /** The code the cart should carry: the logged-in friend's, while usable, not declined, the cart meets the minimum and no individual-use coupon is on it. */

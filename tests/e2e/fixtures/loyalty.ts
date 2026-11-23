@@ -9,6 +9,10 @@ export function userId( login: string ): number {
 	return Number( wp( 'user', 'get', login, '--field=ID' ) );
 }
 
+export function emailOf( login: string ): string {
+	return wp( 'user', 'get', login, '--field=user_email' );
+}
+
 /** A field of the customer's row, as the admin REST route reports it. */
 function customerField( user: number, field: 'balance' | 'pending_points' ): number {
 	return Number(

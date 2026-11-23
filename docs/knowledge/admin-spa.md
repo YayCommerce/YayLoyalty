@@ -1,7 +1,7 @@
 ---
 area: admin-spa
-updated: 2026-11-19
-updated_ref: a5d0a81
+updated: 2026-11-23
+updated_ref: 255aa5c
 covers: [apps/admin/, includes/Engine/Admin/Settings.php, includes/Engine/Register/, includes/Helpers/LocalizeHelper.php]
 ---
 
@@ -14,7 +14,7 @@ React 18, TypeScript, Vite, react-router (hash router), TanStack Query, react-ho
 ## How wp-admin loads it
 
 - The menu comes from the shared AdminShell: `YayLoyaltyPluginAdapter` registers slug `yayloyalty` under the `yaycommerce` parent and prints `<div id="yayloyalty">`, which `src/main.tsx` mounts.
-- `Engine/Admin/Settings.php` enqueues only on hook suffix `yaycommerce_page_yayloyalty` and adds body class `yay-ui`.
+- `Engine/Admin/Settings.php` enqueues only on hook suffix `yaycommerce_page_yayloyalty` and adds body class `yay-ui` on that screen only.
 - `Engine/Register/RegisterFacade.php` picks `RegisterDev` (`http://localhost:3030/main.tsx` + React refresh preamble) when `YAYLOYALTY_IS_DEVELOPMENT === true`, else `RegisterProd` (`assets/dist/admin/js/main.js`). The dev port lives in both `RegisterDev.php` and `apps/admin/vite.config.ts`. Release builds delete `RegisterDev.php`.
 - Handles are in `Engine/Register/ScriptName.php`. Any handle containing `yayloyalty/module/` gets `type="module"`; rename it and the bundle stops loading.
 - PHP localizes `window.yayLoyaltyMeta` (WP URLs, REST root and nonce, plugin meta, WooCommerce currency/countries) and `window.yayLoyaltyAdmin` (settings, design, the user's capabilities) — `Helpers/LocalizeHelper.php`, typed in `src/types/localize.type.ts`. Both are filterable; Pro adds `segments` and `has_subscriptions` (WooCommerce Subscriptions is active). **There is no Pro flag in localized data.**
@@ -40,7 +40,7 @@ React 18, TypeScript, Vite, react-router (hash router), TanStack Query, react-ho
 
 | Path | What |
 |---|---|
-| `src/router.tsx` | Hash routes: dashboard, customers, ledger, campaigns, rewards, referral (Pro: referrals, approvals and settings, with the customer drawer nested under referrals and approvals), settings (general, expiry, design, emails). Each wrapped in `guarded(CAP.X, …)`, which must match the `HeaderMenu` item's cap. A Pro-only item is behind `IS_PRO_BUILD` in `HeaderMenu`, and its route renders a Lite-safe wrapper in `pages/` that 404s in Lite (`LedgerPage`, `ReferralPage`) |
+| `src/router.tsx` | Hash routes: dashboard, customers, ledger, campaigns, rewards, referral (Pro: referrals, approvals and settings, with the customer drawer nested under referrals and approvals), tools (`CAP.RUN_TOOLS`: import balances, plus links to the Customers export and bulk adjust), settings (general, expiry, design, emails). Each wrapped in `guarded(CAP.X, …)`, which must match the `HeaderMenu` item's cap. A Pro-only item is behind `IS_PRO_BUILD` in `HeaderMenu`, and its route renders a Lite-safe wrapper in `pages/` that 404s in Lite (`LedgerPage`, `ReferralPage`) |
 | `src/lib/api/<x>.api.ts` | HTTP calls |
 | `src/lib/schema/<x>.schema.ts` | zod schemas; TypeScript copies of PHP shapes, each with a "Mirrors X" docblock naming the PHP source |
 | `src/lib/queries/<x>.queries.ts` | `X_QUERIES` `queryOptions` + `useXQuery` / `useXMutation`; keys `['<domain>', 'list'|'detail', params]`; mutations invalidate by prefix |
@@ -56,7 +56,7 @@ React 18, TypeScript, Vite, react-router (hash router), TanStack Query, react-ho
 
 ## Builds
 
-`pnpm build` (`apps/admin/package.json`) = `tsc --noEmit` → `vite build` into `assets/dist/admin/` → `vite.storefront.config.ts` (launcher CSS into `assets/dist/storefront/`, theme tokens moved off `:root`, rem → px so shop themes don't restyle it) → `vite.blocks.config.ts` (IIFE `assets/dist/blocks/editor.js`, same for both editions). In production `react`, `react-dom` and `@wordpress/*` are externals.
+`pnpm build` (`apps/admin/package.json`) = `tsc --noEmit` → `vite build` into `assets/dist/admin/` → `vite.storefront.config.ts` (launcher CSS into `assets/dist/storefront/`, theme tokens moved off `:root`, rem → px so shop themes don't restyle it) → `vite.blocks.config.ts` (IIFE `assets/dist/blocks/editor.js`, same for both editions). In production `react`, `react/jsx-runtime` (WordPress 6.6+ `react-jsx-runtime`), `react-dom` and `@wordpress/*` are externals.
 
 ## Recipes
 

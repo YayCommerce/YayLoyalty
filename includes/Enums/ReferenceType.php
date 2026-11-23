@@ -40,6 +40,9 @@ final class ReferenceType {
     /** yayloyalty_campaigns id of a social campaign, paid once per customer. */
     public const SOCIAL = 'social';
 
+    /** yayloyalty_tiers id, for a tier's entry bonus. */
+    public const TIER = 'tier';
+
     /** @return string[] */
     public static function all(): array {
         return [
@@ -52,6 +55,7 @@ final class ReferenceType {
             self::BIRTHDAY,
             self::IMPORT,
             self::SOCIAL,
+            self::TIER,
         ];
     }
 

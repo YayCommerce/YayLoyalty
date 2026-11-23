@@ -1,0 +1,176 @@
+/*
+ * templates/account-tier.php: My Points' "Your tier" section: the status card with its details, then the tier list.
+ * Imported by rewards-tokens.css, which holds the tokens. Only the dots carry a tier's colour.
+ */
+.yayloyalty-account .yayloyalty-account__tiers-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px;
+  border: 1px solid var(--yayloyalty-account-border);
+  border-radius: var(--yayloyalty-account-radius);
+  background: var(--yayloyalty-account-surface);
+  color: var(--yayloyalty-account-text);
+}
+
+.yayloyalty-account .yayloyalty-account__tiers-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.yayloyalty-account .yayloyalty-account__tiers-badge,
+.yayloyalty-account .yayloyalty-account__tiers-row-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-weight: 600;
+  color: var(--yayloyalty-account-text);
+  overflow-wrap: anywhere;
+}
+
+.yayloyalty-account .yayloyalty-account__tiers-badge {
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.yayloyalty-account .yayloyalty-account__tiers-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.yayloyalty-account .yayloyalty-account__tiers-chip {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: var(--yayloyalty-account-radius-sm);
+  background: var(--yayloyalty-account-subtle);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--yayloyalty-account-text);
+}
+
+.yayloyalty-account .yayloyalty-account__tiers-text {
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.yayloyalty-account .yayloyalty-account__tiers-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--yayloyalty-account-icon-bg);
+}
+
+.yayloyalty-account .yayloyalty-account__tiers-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--yayloyalty-account-accent);
+}
+
+.yayloyalty-account .yayloyalty-account__tiers-caption {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--yayloyalty-account-muted);
+}
+
+.yayloyalty-account .yayloyalty-account__tiers-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 6px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--yayloyalty-account-divider);
+}
+
+.yayloyalty-account .yayloyalty-account__tiers-detail {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.yayloyalty-account .yayloyalty-account__tiers-detail dt {
+  color: var(--yayloyalty-account-muted);
+  font-weight: 400;
+}
+
+.yayloyalty-account .yayloyalty-account__tiers-detail dd {
+  margin: 0;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.yayloyalty-account .yayloyalty-account__tiers-subtitle {
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: inherit;
+}
+
+/* The padding sits on the rows, not the list as in rule-list-item.css, so the current row's background reaches the border. */
+.yayloyalty-account .yayloyalty-account__tiers-list {
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--yayloyalty-account-border);
+  border-radius: var(--yayloyalty-account-radius);
+  background: var(--yayloyalty-account-surface);
+  color: var(--yayloyalty-account-text);
+  list-style: none;
+}
+
+.yayloyalty-account .yayloyalty-account__tiers-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 16px;
+  padding: 14px 16px;
+  font-size: 14px;
+}
+
+.yayloyalty-account .yayloyalty-account__tiers-row + .yayloyalty-account__tiers-row {
+  border-top: 1px solid var(--yayloyalty-account-divider);
+}
+
+.yayloyalty-account .yayloyalty-account__tiers-row.is-current {
+  background: var(--yayloyalty-account-subtle);
+}
+
+.yayloyalty-account .yayloyalty-account__tiers-row-meta {
+  color: var(--yayloyalty-account-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.yayloyalty-account .yayloyalty-account__tiers-row-perks {
+  justify-self: end;
+  text-align: right;
+}
+
+@media (max-width: 479px) {
+  .yayloyalty-account .yayloyalty-account__tiers-card {
+    padding: 16px;
+  }
+
+  .yayloyalty-account .yayloyalty-account__tiers-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .yayloyalty-account .yayloyalty-account__tiers-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .yayloyalty-account .yayloyalty-account__tiers-row-perks {
+    justify-self: start;
+    text-align: left;
+  }
+}

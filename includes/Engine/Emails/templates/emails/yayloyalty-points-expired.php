@@ -31,7 +31,9 @@ $is_email_improvements_enabled = FeaturesUtil::feature_is_enabled( 'email_improv
 do_action( 'woocommerce_email_header', $email_heading, $email );
 ?>
 
-<?php echo $is_email_improvements_enabled ? '<div class="email-introduction">' : ''; ?>
+<?php if ( $is_email_improvements_enabled ) : ?>
+<div class="email-introduction">
+<?php endif; ?>
 <?php if ( ! empty( $entry ) ) : ?>
     <?php if ( ! empty( $greeting_text ) ) : ?>
 <p><?php echo wp_kses_post( $greeting_text ); ?></p>
@@ -49,13 +51,19 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
 <?php if ( ! empty( $cta_url ) ) : ?>
 <p><a class="button" href="<?php echo esc_url( $cta_url ); ?>" style="display:inline-block;padding:12px 24px;text-decoration:none;font-weight:bold;"><?php echo esc_html( $cta_text ); ?></a></p>
 <?php endif; ?>
-<?php echo $is_email_improvements_enabled ? '</div>' : ''; ?>
+<?php if ( $is_email_improvements_enabled ) : ?>
+</div>
+<?php endif; ?>
 
 <?php
 if ( $additional_content ) {
-    echo $is_email_improvements_enabled ? '<table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation"><tr><td class="email-additional-content email-additional-content-aligned">' : '';
+    if ( $is_email_improvements_enabled ) {
+        echo '<table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation"><tr><td class="email-additional-content email-additional-content-aligned">';
+    }
     echo wp_kses_post( wpautop( wptexturize( $additional_content ) ) );
-    echo $is_email_improvements_enabled ? '</td></tr></table>' : '';
+    if ( $is_email_improvements_enabled ) {
+        echo '</td></tr></table>';
+    }
 }
 
 do_action( 'woocommerce_email_footer', $email );

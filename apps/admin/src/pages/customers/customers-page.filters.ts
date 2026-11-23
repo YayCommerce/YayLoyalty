@@ -10,12 +10,15 @@ export interface CustomerListFilters {
   search: string;
   balanceRange: BalanceRangeValue;
   expiringSoon: ExpiringSoonValue;
+  /** Mirrors CustomerRowFilters' `tier` param, the source of truth: comma-separated tier ids and/or `none`; '' is no filter. */
+  tier: string;
 }
 
 export const DEFAULT_CUSTOMER_LIST_FILTERS: CustomerListFilters = {
   search: '',
   balanceRange: 'any',
   expiringSoon: 'off',
+  tier: '',
 };
 
 export const BALANCE_RANGE_OPTIONS: { value: BalanceRangeValue; label: string }[] = [
@@ -44,5 +47,7 @@ export function initialFiltersFromSearch(params: URLSearchParams): CustomerListF
     ...DEFAULT_CUSTOMER_LIST_FILTERS,
     balanceRange: pick('balance_range', BALANCE_RANGE_OPTIONS, DEFAULT_CUSTOMER_LIST_FILTERS.balanceRange),
     expiringSoon: pick('expiring_soon', EXPIRING_SOON_OPTIONS, DEFAULT_CUSTOMER_LIST_FILTERS.expiringSoon),
+    // Tier ids aren't known here; the server drops any token it can't parse.
+    tier: params.get('tier') ?? DEFAULT_CUSTOMER_LIST_FILTERS.tier,
   };
 }

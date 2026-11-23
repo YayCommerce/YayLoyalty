@@ -26,6 +26,8 @@ import EmailsSettingsPage from './pages/settings/EmailsSettingsPage';
 import ExpirySettingsPage from './pages/settings/ExpirySettingsPage';
 import GeneralSettingsPage from './pages/settings/GeneralSettingsPage';
 import SettingsLayout from './pages/settings/SettingsLayout';
+import TiersPage from './pages/tiers/TiersPage';
+import ToolsPage from './pages/tools/ToolsPage';
 
 /**
  * A route the user cannot reach 404s inside the SPA rather than rendering an
@@ -103,6 +105,10 @@ export function getManagerRouter() {
           element: guarded(CAP.MANAGE_REWARDS, <RewardEditorPage />),
         },
         {
+          path: 'tiers',
+          element: guarded(CAP.MANAGE_TIERS, <TiersPage />),
+        },
+        {
           path: 'referral',
           element: guarded(CAP.VIEW, <ReferralPage />),
           children: [
@@ -126,6 +132,10 @@ export function getManagerRouter() {
               element: IS_PRO_BUILD ? <ReferralSettingsPage /> : null,
             },
           ],
+        },
+        {
+          path: 'tools',
+          element: guarded(CAP.RUN_TOOLS, <ToolsPage />),
         },
         {
           path: 'settings',

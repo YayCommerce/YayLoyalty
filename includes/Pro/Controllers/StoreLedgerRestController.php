@@ -3,6 +3,7 @@ namespace YayLoyalty\Pro\Controllers;
 
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\AbstractRestController;
+use YayLoyalty\Controllers\LedgerItemTierNames;
 use YayLoyalty\Controllers\LedgerRestController;
 use YayLoyalty\Controllers\Schemas\LedgerQueryArgs;
 use YayLoyalty\Pro\Repositories\StoreLedgerRepository;
@@ -70,9 +71,12 @@ final class StoreLedgerRestController extends AbstractRestController {
             ]
         );
 
-        $counts = LedgerQueryArgs::group_counts( $this->store_ledger->count_by_type() );
+        $counts   = LedgerQueryArgs::group_counts( $this->store_ledger->count_by_type() );
+        $response = $this->respond_paginated( $result );
 
-        return $this->respond_paginated( $result ) + [ 'type_counts' => $counts ];
+        $response['data'] = LedgerItemTierNames::attach( $response['data'] );
+
+        return $response + [ 'type_counts' => $counts ];
     }
 
     /** The per-customer ledger entry, plus who it belongs to. */

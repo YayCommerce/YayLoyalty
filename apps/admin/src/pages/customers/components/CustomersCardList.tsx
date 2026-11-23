@@ -14,12 +14,14 @@ export function CustomersCardList({
   isFetching,
   isStoreEmpty,
   noMatchContent,
+  showTiers,
 }: {
   rows: CustomerListRow[];
   isLoading: boolean;
   isFetching: boolean;
   isStoreEmpty: boolean;
   noMatchContent?: ReactNode;
+  showTiers: boolean;
 }) {
   const isEmpty = !isLoading && rows.length === 0;
 
@@ -39,7 +41,7 @@ export function CustomersCardList({
           )}
         </div>
       )}
-      {!isLoading && rows.map((row) => <CustomerCardRow key={row.user_id} customer={row} />)}
+      {!isLoading && rows.map((row) => <CustomerCardRow key={row.user_id} customer={row} showTiers={showTiers} />)}
     </div>
   );
 }

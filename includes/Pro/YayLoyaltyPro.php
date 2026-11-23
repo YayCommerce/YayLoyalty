@@ -15,11 +15,13 @@ use YayLoyalty\Pro\Birthday\BirthdayRunner;
 use YayLoyalty\Pro\Controllers\CampaignPerformanceRestController;
 use YayLoyalty\Pro\Controllers\CampaignPreviewRestController;
 use YayLoyalty\Pro\Controllers\CustomerReferralsRestController;
+use YayLoyalty\Pro\Controllers\CustomerTierRestController;
 use YayLoyalty\Pro\Controllers\CustomerSegmentsRestController;
 use YayLoyalty\Pro\Controllers\DashboardProRestController;
 use YayLoyalty\Pro\Controllers\ReferralSettingsRestController;
 use YayLoyalty\Pro\Controllers\ReferralsRestController;
 use YayLoyalty\Pro\Controllers\StoreLedgerRestController;
+use YayLoyalty\Pro\Controllers\TiersRestController;
 use YayLoyalty\Pro\Database\ProInstaller;
 use YayLoyalty\Pro\Emails\ProEmails;
 use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
@@ -43,15 +45,23 @@ use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Pro\Services\DailyEarningLimit;
 use YayLoyalty\Pro\Services\DiscountRewardHandler;
 use YayLoyalty\Pro\Services\RewardConditionsEvaluator;
+use YayLoyalty\Pro\Services\RewardTierCondition;
+use YayLoyalty\Pro\Services\TierLedgerListener;
+use YayLoyalty\Pro\Services\TierMultiplier;
+use YayLoyalty\Pro\Services\TierRunner;
 use YayLoyalty\Pro\Social\SocialClaim;
 use YayLoyalty\Pro\Social\SocialEarnRow;
 use YayLoyalty\Pro\Social\SocialHandler;
 use YayLoyalty\Pro\Storefront\AccountReferrals;
+use YayLoyalty\Pro\Storefront\AccountTier;
 use YayLoyalty\Pro\Storefront\RewardsPanel;
+use YayLoyalty\Pro\Storefront\TierProgress;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\DashboardRepository;
+use YayLoyalty\Repositories\RewardRepository;
+use YayLoyalty\Repositories\TierRepository;
 use YayLoyalty\Services\Dashboard\DashboardCache;
 use YayLoyaltyScoped\YayCommerce\AdminShell\License\LicenseState;
 
@@ -134,9 +144,15 @@ final class YayLoyaltyPro {
         add_filter( EarningService::POINTS_LEFT_TODAY_FILTER, [ $daily_limit, 'left_today' ], 10, 2 );
 
         ( new RewardsPanel() )->register();
+        ( new TierProgress() )->register();
+        ( new AccountTier() )->register();
         ( new BirthdayRunner() )->register();
         ( new BirthdayFields() )->register();
         ( new BirthdayEarnRow() )->register();
+        ( new TierLedgerListener() )->register();
+        ( new TierMultiplier() )->register();
+        ( new RewardTierCondition() )->register();
+        ( new TierRunner() )->register();
         $customers = new CustomerRepository();
         $referrals = new ReferralRepository();
         ( new ReferralAttribution( $customers, $referrals ) )->register();
@@ -422,6 +438,16 @@ final class YayLoyaltyPro {
         $controllers[] = new ReferralsRestController( new ReferralListRepository(), new ReferralRepository(), new ReferralPayout( new ReferralRepository() ) );
         $controllers[] = new StoreLedgerRestController(
             new StoreLedgerRepository( new LedgerRepository() ),
+            new LedgerRepository()
+        );
+        $controllers[] = new TiersRestController(
+            new TierRepository(),
+            new RewardRepository(),
+            new CustomerRepository()
+        );
+        $controllers[] = new CustomerTierRestController(
+            new CustomerRepository(),
+            new TierRepository(),
             new LedgerRepository()
         );
 

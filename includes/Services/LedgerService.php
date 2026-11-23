@@ -21,12 +21,12 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The only writer of the ledger and the customer aggregates, EarningService's award included.
- * Enforced by convention: it is constructed in exactly five places, Engine\RestAPI::controllers(),
+ * Enforced by convention: it is constructed in exactly six places, Engine\RestAPI::controllers(),
  * Engine\Earning\EarningService::build(), Engine\Earning\Reversal::build(),
- * Engine\Expiry\ExpiryRunner::run() and Engine\Redemption\RedemptionService::build().
- * Name a sixth here before adding it.
+ * Engine\Expiry\ExpiryRunner::run(), Engine\Redemption\RedemptionService::build() and
+ * Pro\Services\TierEvaluator::build() (the tier entry bonus). Name a seventh here before adding it.
  * Manual rows enter through adjust() and record(). System rows enter through earn(),
- * refund_earn(), restore_refund(), expire() and redeem(), which add the idempotency-key duplicate branch.
+ * refund_earn(), restore_refund(), expire(), redeem() and import(), which add the idempotency-key duplicate branch.
  * Lock order: the customer row, then, for an earn row, its campaign row shared, which
  * CampaignRestController::delete_item() locks exclusively before deleting.
  * It also keeps `lots` and `lot_allocations` in step with every row, through LotService, which
@@ -45,6 +45,9 @@ final class LedgerService {
 
     /** Outcome::skipped reason: under the lock the customer is no longer due to expire (expiry off, or activity moved the date). */
     public const REASON_NOT_DUE = 'not_due';
+
+    /** Outcome::skipped reason: an imported debit would take the balance below zero. */
+    public const REASON_WOULD_GO_NEGATIVE = 'would_go_negative';
 
     /** @var LedgerRepository */
     private $ledger;
@@ -74,10 +77,11 @@ final class LedgerService {
      *             deduction can undo a mistaken grant's lifetime total. False
      *             writes a CORRECTION row: balance only.
      * @param string|null $customer_note Shown to the customer in place of "Adjustment by {store}"; blank stores NULL.
+     * @param bool|null   $counts_toward_tier Whether the row counts toward tier points; null lets its type decide.
      *
      * @throws \InvalidArgumentException When points is zero or the type is bad.
      */
-    public function adjust( int $user_id, int $points, string $note, int $actor_id, bool $adjust_lifetime = true, ?string $customer_note = null ): LedgerEntry {
+    public function adjust( int $user_id, int $points, string $note, int $actor_id, bool $adjust_lifetime = true, ?string $customer_note = null, ?bool $counts_toward_tier = null ): LedgerEntry {
         if ( 0 === $points ) {
             throw new \InvalidArgumentException( 'YayLoyalty: an adjustment of zero points is meaningless.' );
         }
@@ -98,10 +102,59 @@ final class LedgerService {
             $actor_id > 0 ? $actor_id : null,
             Dates::now(),
             null,
-            null === $customer_note || '' === trim( $customer_note ) ? null : trim( $customer_note )
+            null === $customer_note || '' === trim( $customer_note ) ? null : trim( $customer_note ),
+            null,
+            null,
+            $counts_toward_tier
         );
 
         return $this->record( $draft );
+    }
+
+    /**
+     * One row of a CSV import: an ADJUST row (lifetime moves with the balance) keyed on the import,
+     * so a retried or re-uploaded file writes each customer's row once. A debit that would take the
+     * balance below zero is skipped under the lock.
+     *
+     * @param int $import_id Positive id of the import file.
+     * @return Outcome awarded, duplicate, or skipped( REASON_WOULD_GO_NEGATIVE ).
+     * @throws \InvalidArgumentException When points is zero or the import id is not positive.
+     */
+    public function import( int $user_id, int $points, int $import_id, string $note, int $actor_id ): Outcome {
+        if ( 0 === $points ) {
+            throw new \InvalidArgumentException( 'YayLoyalty: an imported row of zero points is meaningless.' );
+        }
+
+        $draft = new LedgerEntry(
+            null,
+            $user_id,
+            $points,
+            0,
+            LedgerType::ADJUST,
+            LedgerSource::IMPORT,
+            ReferenceType::IMPORT,
+            $import_id,
+            null,
+            null,
+            null,
+            $note,
+            $actor_id > 0 ? $actor_id : null,
+            Dates::now(),
+            IdempotencyKey::for_import( $user_id, $import_id )
+        );
+
+        return $this->write_keyed(
+            $draft,
+            static function ( Customer $customer ) use ( $points ): int {
+                return self::import_would_go_negative( $customer->get_balance(), $points ) ? 0 : $points;
+            },
+            self::REASON_WOULD_GO_NEGATIVE
+        );
+    }
+
+    /** Whether an imported row of $points would take $balance below zero; the Tools preview asks it too. */
+    public static function import_would_go_negative( int $balance, int $points ): bool {
+        return $balance + $points < 0;
     }
 
     /**
