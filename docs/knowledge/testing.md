@@ -75,6 +75,10 @@ Run one test with `vendor/bin/phpunit -c tests/php/unit.xml.dist --filter <Name>
 | `Dates::site_day_to_utc` invalid day | unit | important | bug: B-1 | `includes/Utils/Dates.php` |
 | `Dates` site-day and DST helpers | unit | critical | candidate | `includes/Utils/Dates.php` |
 | `LotService::rebuild` / `backfill` | unit | critical | candidate | `includes/Services/LotService.php` |
+| `RewardCartLines` free product lines (add, lock at 0, remove) | integration | critical | `tests/php/integration/Engine/Redemption/RewardCartLinesTest.php` @P-10 | `includes/Engine/Redemption/RewardCartLines.php` |
+| `RewardShipping` rate restore and zeroing | integration | critical | `tests/php/integration/Engine/Redemption/RewardShippingTest.php` @P-10 | `includes/Engine/Redemption/RewardShipping.php` |
+| `CommitWriter` free reward value (`freed_value`) | integration | critical | `tests/php/integration/Engine/Redemption/FreeRewardCommitTest.php` @P-10 | `includes/Engine/Redemption/CommitWriter.php` |
+| `FreeProductRewardHandler::quote` | integration | important | `tests/php/integration/Pro/Services/FreeProductRewardHandlerTest.php` @P-10 | `includes/Pro/Services/FreeProductRewardHandler.php` |
 | `ToolsImportRestController` preview and apply | integration | critical | `tests/php/integration/Controllers/ToolsImportRestControllerTest.php` @P-8 | `includes/Controllers/ToolsImportRestController.php` |
 | `parseImportCsv`, `importIdForRows` | js | important | `tests/js/lib/tools-import.csv.test.ts` @P-8 | `apps/admin/src/pages/tools/tools-import.csv.ts` |
 | `LedgerService::refund_earn`, `expire`, `restore_refund` | integration | critical | candidate | `includes/Services/LedgerService.php` |

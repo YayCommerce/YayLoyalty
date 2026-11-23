@@ -22,7 +22,6 @@ phpcs runs `PHPCompatibilityWP` with `testVersion 7.4-`, but it doesn't flag PHP
 
 ## Unfinished or missing
 
-- **Pro `free_shipping` and `free_product` rewards can't redeem.** `YayLoyaltyPro` offers both types and their config schemas (`includes/Pro/YayLoyaltyPro.php`), but only `fixed_coupon` and `percent_coupon` get a handler (`DiscountRewardHandler`). Don't build on them until they have handlers.
 - **No `cart_checkout_blocks` compatibility declaration.** `ActDeact::before_woocommerce_init` declares only `custom_order_tables`, although `StoreApiAdapter` supports the block checkout. WooCommerce may show the plugin as incompatible with the block checkout. An oversight, not a choice.
 - **No privacy exporter or eraser** for the `customer_meta` activity snapshot: `TODO(privacy-eraser)` in `includes/Services/CustomerActivityService.php`.
 - **A custom CSS design field must not render yet**: `TODO(custom-css)` in `includes/Helpers/DesignSchema.php` (CSS exfiltration risk).
