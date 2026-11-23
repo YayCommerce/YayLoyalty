@@ -1,7 +1,7 @@
 ---
 area: e2e
-updated: 2026-11-20
-updated_ref: c962b38
+updated: 2026-11-23
+updated_ref: a6bd2ed
 covers: [tests/e2e/]
 ---
 
@@ -26,6 +26,7 @@ The site runs this checkout with `YAYLOYALTY_IS_DEVELOPMENT` false, so it serves
 
 - Users `admin`/`password` and `customer`/`password` (Jane Smith, `customer@example.com`, billing address in San Francisco).
 - `e2e-simple-product`: $10, **virtual**, so checkout needs no shipping zone. USD, US:CA, COD on, pretty permalinks.
+- The free-reward spec adds its own shippable product, a $7 flat rate on the "Rest of the world" zone and the customer's shipping address, and archives its rewards afterwards (a claimed reward can't be deleted, so each run names its own).
 - `yayloyalty_setup_completed` = 1, so the first-run wizard doesn't cover the admin screens.
 - The licence placeholder (see Gates).
 - The plugin's own installer seeds the built-ins: purchase 1 point per $1, signup 100, review 50, and the "Points discount" reward (100 points = $1, min 100, `auto_max`).
@@ -68,6 +69,7 @@ The site runs this checkout with `YAYLOYALTY_IS_DEVELOPMENT` false, so it serves
 | Redeem points at classic cart and checkout | customer | critical | `specs/redeem-classic-checkout.spec.ts` @flow-redeem-classic-checkout | `includes/Engine/Redemption/Adapters/ClassicCheckoutAdapter.php` |
 | Earn on a completed order, seen in My Points | customer | critical | `specs/earn-on-completed-order.spec.ts` @flow-earn-on-completed-order | `includes/Engine/Earning/Listeners/OrderListener.php` |
 | Launcher opens, closes, hides for excluded roles | customer | important | `specs/launcher.spec.ts` @flow-launcher | `includes/Engine/Storefront/Launcher.php` |
+| Free shipping and free product rewards at block checkout | customer | critical | `specs/redeem-block-checkout.spec.ts` @P-10 @flow-redeem-block-checkout | `includes/Engine/Redemption/RewardCartLines.php`, `RewardShipping.php` |
 | Redeem card below the minimum | customer | important | `specs/redeem-block-checkout.spec.ts` @flow-redeem-block-checkout | `includes/Engine/Storefront/RedeemCard.php` |
 | Redeem card for a guest | guest | minor | candidate | `includes/Engine/Storefront/templates/redeem-card.php` |
 | Setup wizard completes and goes live | admin | important | candidate | `apps/admin/src/components/setup-wizard/SetupWizardModal.tsx` |
