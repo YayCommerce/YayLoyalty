@@ -93,7 +93,7 @@ Pro merchants group customers into ranked tiers by the points they earn. Each ti
 | D19 | **Seed and switch:** Bronze 0 / Silver 800 / Gold 3000, multipliers 1.00 / 1.25 / 1.50, bonus 0, colours #CD7F32 / #C0C0C0 / #FFD700. `tiers_enabled` is off after upgrade. Turning it on runs the placement batch. |
 | D20 | **Single writer:** the tier is stored. `TierEvaluator` is the only writer of the tier columns, and runs after commit, never inside `LedgerService`'s lock. This lands as a decision record. |
 | D22 | **Multiplied points round down, always** (`floor`), whatever the campaign's own `rounding` says: 101 × 1.25 = 126. Pro's `DailyEarningLimit` then applies to the final, multiplied points, as it applies today to whatever an award writes. |
-| D21 | **Delivery:** vertical slices 1–5 (see Delivery), all committed to `jason/feat/tiers`. The user opens the one PR from it into `dev/edd`. |
+| D21 | **Delivery:** vertical slices 1–5 (see Delivery), all committed to `jason/feat/tiers`. The user opens the one PR from it into `dev` (PR #184). |
 
 ## Acceptance criteria
 
