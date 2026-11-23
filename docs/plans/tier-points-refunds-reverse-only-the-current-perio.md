@@ -70,8 +70,8 @@ Done means, with Silver 800 and Gold 3,000 (and Gold raised to 5,000 where state
 - **Compatibility:** existing rows read NULL and count exactly as before. The mode-switch gap is covered by D-a: a customer the `to_rolling` or `to_calendar` sweep hasn't reached yet doesn't reach their tier on the new mode's total, so a refund keeps them. A staff deduction in that gap can still drop them (accepted, see Risks).
 
 ## Tasks
-- [ ] T1 Ledger column and the tier-points rule — `includes/Database/Schema/LedgerTable.php`, `includes/Models/LedgerEntry.php`, `includes/Enums/LedgerType.php` [risk: 3]
-  - Reuse: `LedgerType::affects_lifetime_earned()` and `lifetime_earned_types()` (`includes/Enums/LedgerType.php:52-58`); the `tier_multiplier` column pattern in `LedgerEntry::from_row()`, `get_format()` and `to_array()`
+- [x] T1 Ledger column and the tier-points rule — `includes/Database/Schema/LedgerTable.php`, `includes/Models/LedgerEntry.php`, `includes/Enums/LedgerType.php` [risk: 3]
+  - Reuse: `LedgerType::affects_lifetime_earned()` and `lifetime_earned_types()` (`includes/Enums/LedgerType.php:52-58`); the `tier_multiplier` column pattern in `LedgerEntry::from_row()`, `to_row()` and `get_format()` (not `to_array()`: nothing reads the field over REST until BL-24)
   - Callers: `LedgerEntry::get_counts_toward_tier()` → `TierDecision::ledger_policy()` callers in `TierEvaluator::on_ledger_entry()` (T3); `LedgerType::counts_toward_tier()` → `TierEvaluator::on_ledger_entry()` (T3)
 - [ ] T2 Tier-aware totals in the ledger repository — `includes/Repositories/LedgerRepository.php`, `tests/integration/Repositories/LedgerWindowTotalTest.php` [risk: 3]
   - Reuse: `window_total()`, `staff_adjust_since()`, `clawback_row_sql()`, `sum_points()`, `Sql::in_placeholders()`; none for the predicate, new private `tier_points_sql()` because the type list alone can't express the override
