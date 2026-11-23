@@ -1,4 +1,4 @@
-<!-- Kit-managed by the yay plugin 0.14.0. Run /yay:harness-update instead of editing; put repo-specific notes in another docs/ file. -->
+<!-- Kit-managed by the yay plugin 0.16.0. Run /yay:harness-update instead of editing; put repo-specific notes in another docs/ file. -->
 # From roadmap to release
 
 A worked example: shipping **v1.0.0** of this plugin with three features, from the roadmap to the release tag. Lines starting with `/yay:` are typed into Claude Code; lines starting with `yayh` are run in the terminal.
@@ -80,6 +80,13 @@ If it stops, run the same command again: it resumes from each item's brainstorm 
   /yay:debug "what you see, in plain words"   # root cause with file:line evidence → B-1
   /yay:fix B-1                                # minimal fix + regression test + PR
   ```
+- **Tell the lead or the team:**
+  ```
+  /yay:report idea "your notes, in any order"   # an idea: the problem, the idea, what you need
+  /yay:report done --from=P-1                   # what you finished, in what users will notice
+  /yay:report feature "customers keep asking…"  # a feature pitch: who, what they'd see, why, size
+  ```
+  One plain page (a private link) plus paste-ready text, under 300 words, with no code or jargon. Kept in `.yay/reports/`, never committed.
 
 ## 4. Release v1.0.0
 

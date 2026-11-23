@@ -1,7 +1,7 @@
 # YayLoyalty — Points,  Rewards,  Referral & VIP for WooCommerce
 
-<!-- yay:managed:start v=0.14.0 -->
-<!-- Kit-managed by the yay plugin 0.14.0. Don't edit this block; run /yay:harness-update. Project knowledge goes in the yay:project block below. -->
+<!-- yay:managed:start v=0.16.0 -->
+<!-- Kit-managed by the yay plugin 0.16.0. Don't edit this block; run /yay:harness-update. Project knowledge goes in the yay:project block below. -->
 ## How we work here
 
 This repo uses the **yay** harness. Work through its skills so every developer and every Claude session follows the same flow:
@@ -20,6 +20,7 @@ This repo uses the **yay** harness. Work through its skills so every developer a
 | Test build for QA | `/yay:release --bundle` | `release/bundles/<slug>-<x.y.z>-rc.<n>/` |
 | Ship | `/yay:release` → merge → `/yay:release --tag-only` | readme.txt changelog, `docs/releases/`, checked bundle, tag |
 | Keep docs true | `/yay:knowledge-update` | this file's project block, `docs/knowledge/` |
+| Share with the lead or team | `/yay:report` | `.yay/reports/` (never committed): a plain page link or paste-ready text |
 
 - A worked example from roadmap to release tag, with the exact prompts, is in `docs/yay-workflow.md`.
 - Each skill checks for the previous step's output and says when it's missing. You can still run any skill on its own.
