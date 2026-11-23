@@ -127,7 +127,7 @@ The rest of this section applies only while `tiers_mode` is `calendar`. P is `ti
 - `end_hold()` acts in both modes. In Calendar it leaves the customer untouched while `tier_held_until` + 1 s > now, so a run inside the last second of a period doesn't review on the wrong period.
 
 Accepted consequences:
-- A refund of an order from the qualifying period can drop a held customer. A refund of an order from the kept period can't, because its clawback is attributed outside the qualifying window.
+- A refund of an order from the qualifying period can drop a held customer. A refund of an order from the kept period can't, because its clawback is attributed outside the qualifying window. *Amended by P-9:* a closed period's total (previous and qualifying) ignores rows created after it ended, so a refund of a previous period's order no longer counts for tiers at all, and a refund restore goes with its refund. Accepted: an order at the end of a period can earn a tier for the next one and be refunded after it closes.
 - Most Calendar holds end on the same boundary. The hold-end step works through them over several batches that day.
 - A period change gives every member a hold to the end of the current period under the new setting, whatever their old hold said. A Yearly → Monthly change on 11 Nov reviews everyone on 1 Dec, on November's points.
 
@@ -190,7 +190,7 @@ T is the moment of the action. Today is in 2026.
    - The current tier wins, so the hold restarts with AC 4's dates.
 10. **Refund outside the qualifying period.** Customer H holds Gold from 2025, with 1,100 pts dated in 2025 and a hold to 2026-12-31 16:59:59.
     - H completes a 50-unit order in 2026, then it is fully refunded. H stays Gold with the hold unchanged.
-    - Refunding 700 of a 2025 order (its clawback is dated now, but attributed to 2025) moves H to Bronze, reason `refund`:
+    - *Superseded by P-9:* refunding 700 of a 2025 order in 2026 now leaves H Gold with the hold unchanged. As first designed, it moved H to Bronze, reason `refund`:
       - the qualifying total is 400, the previous total is 400 and the current total is 0, so every candidate is Bronze;
       - the window tier wins the tie over the qualifying tier, and current wins over previous, so the hold becomes 2026-12-31 17:00:00 → 2027-12-31 16:59:59.
 11. **Staff deduction during a hold.** Customer I holds Gold with a qualifying total of 1,100 and a current total of 0.

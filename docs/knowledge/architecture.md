@@ -1,7 +1,7 @@
 ---
 area: architecture
-updated: 2026-11-19
-updated_ref: b45b3f3
+updated: 2026-11-23
+updated_ref: 255aa5c
 covers: [yayloyalty.php, YayLoyaltyPluginAdapter.php, includes/YayLoyalty.php, includes/Access/, includes/Database/, includes/Models/, includes/Repositories/, includes/Services/, includes/Controllers/, includes/Engine/, includes/Enums/, includes/Pro/YayLoyaltyPro.php, includes/Pro/Referrals/, includes/Pro/Repositories/ReferralRepository.php]
 ---
 
@@ -41,7 +41,7 @@ A second copy of the plugin (both editions active) defines `plugin_init` first; 
 
 - **`LedgerService` is the only writer of ledger rows, balances, lots and lot allocations** (lots through `LotService`, which only it constructs). It is constructed in exactly five places, listed in its docblock: `Engine/RestAPI.php`, `Engine/Earning/EarningService.php`, `Engine/Earning/Reversal.php`, `Engine/Expiry/ExpiryRunner.php`, `Engine/Redemption/RedemptionService.php`. It fires `yayloyalty_ledger_recorded` after each row.
 - Other `customers` columns are written outside it on purpose: pending points (`PendingPoints` → `CustomerRepository::apply_pending_delta`), expiry clearing (`ExpiryRunner` → `clear_expiry`), birthdays (Pro `BirthdayFields` → `set_birthday`), and row creation on `user_register` (`CustomerActivityListener`). Never the balance.
-- `TierEvaluator` (Pro) is the only writer of the customer tier columns; it runs after the ledger commit. [The decision record](../decisions/2026-11-04-tier-evaluator-sole-writer.md) says why.
+- `TierEvaluator` (Pro) is the only writer of the customer tier columns; it runs after the ledger commit. Every mode qualifies on tier points (`LedgerRepository::window_total()`, the ledger's `counts_toward_tier` or the row's type), not `customers.lifetime_earned`. [The decision record](../decisions/2026-11-04-tier-evaluator-sole-writer.md) says why.
 - `CustomerReader` is the read-only interface handed to code that must not write (the redemption quote path).
 - `Database\Transaction::run()` is the only place that opens, commits or rolls back a transaction; it nests with savepoints, detects a foreign (WooCommerce) transaction and offers `after_commit()`. Emails and `yayloyalty_points_awarded` fire after commit.
 - Ledger idempotency: every system row carries an `idempotency_key` built by `Engine\Earning\IdempotencyKey` (`{type}:{user}:{reftype}:{refid}:{qualifier}`, max 96 chars) behind a UNIQUE index. A repeat is `Outcome::DUPLICATE`: nothing written, nothing thrown. Manual adjustments carry no key on purpose; an imported CSV row does: `IdempotencyKey::for_import()` (`adjust:{user}:import:{import id}:import`, the import id being a 53-bit hash of the file's parsed rows made in the SPA), written by `LedgerService::import()`, so a retried chunk or a re-uploaded file writes each customer's row once.
@@ -53,7 +53,7 @@ A second copy of the plugin (both editions active) defines `plugin_init` first; 
 | Slug | Holds |
 |---|---|
 | `customers` | Per-user aggregates: balance, lifetime, pending, `expires_at`, birthday |
-| `ledger` | Append-only points events, `balance_after` chain, unique `idempotency_key` |
+| `ledger` | Append-only points events, `balance_after` chain, unique `idempotency_key`. Nullable `counts_toward_tier`: a manual adjustment's tier-points choice; NULL means by type |
 | `lots`, `lot_allocations` | Expiry batches and what each spend took from them. Invariant: `SUM(open remaining) = max(0, balance)` |
 | `campaigns`, `rewards` | Earn rules and redeemable rewards; unique `slug`, `is_builtin`. `conditions` is one list with a match, all or any (`Utils/ConditionMatch.php`): an `all` list, or none, is stored in the 1.0.0 `{"schema_version":1,"items":[…]}` list envelope, an `any` list in the same envelope plus `"match":"any"` at `schema_version` 2. The models and REST read either shape and always serve `{ match, conditions }` |
 | `customer_meta` | Append-only activity timeline (`meta_key` is the event type) |

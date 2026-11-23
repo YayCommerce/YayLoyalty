@@ -530,12 +530,92 @@ final class TierEvaluatorTest extends IntegrationTestCase {
                 $this->assertSame( 'Gold', $this->tier_of( $user ) );
                 $this->assertSame( $hold, $this->hold_of( $user ) );
 
-                $this->ledger_service()->refund_earn( $old, 500, 'refund', 3 ); // Previous and qualifying 2,500.
-                $this->assertSame( 'Silver', $this->tier_of( $user ) );
-                $this->assertSame( [ 'refund' ], $this->last_change( $user, [ 'reason' ] ) );
-                $this->assertSame( $this->calendar_hold( 'previous', 'year' ), $this->hold_of( $user ) );
+                $this->ledger_service()->refund_earn( $old, 500, 'refund', 3 ); // A closed period's order: no effect (P-9).
+                $this->assertSame( 'Gold', $this->tier_of( $user ) );
+                $this->assertSame( $hold, $this->hold_of( $user ) );
             }
         );
+    }
+
+    /** @group P-9 */
+    public function test_refund_keeps_a_lifetime_customer_kept_by_a_raised_threshold(): void {
+        $user = $this->customer();
+        $this->earn( $user, 4001, 3500 );
+        $this->assertSame( 'Gold', $this->tier_of( $user ) );
+        $this->set_threshold( 'Gold', 5000 );
+        $rows = count( $this->changes( $user ) );
+
+        $this->ledger_service()->refund_earn( $this->earn( $user, 4002, 100 ), 10, 'refund', 4 );
+
+        $this->assertSame( 'Gold', $this->tier_of( $user ) );
+        $this->assertCount( $rows, $this->changes( $user ) );
+    }
+
+    /** @group P-9 */
+    public function test_refund_that_causes_the_loss_drops_a_lifetime_customer(): void {
+        $this->set_bonus( 'Gold', 100 );
+        $user = $this->customer();
+        $earn = $this->earn( $user, 4003, 3000 );
+        $this->assertSame( 'Gold', $this->tier_of( $user ) );
+
+        $this->ledger_service()->refund_earn( $earn, 1500, 'refund', 5 );
+
+        $this->assertSame( 'Silver', $this->tier_of( $user ) );
+        $this->assertSame( [ 'refund' ], $this->last_change( $user, [ 'reason' ] ) );
+        $this->assertCount( 1, $this->bonus_rows( $user ) );
+    }
+
+    /** @group P-9 */
+    public function test_refund_of_an_old_order_keeps_a_rolling_customer_after_the_mode_switch(): void {
+        $user = $this->customer();
+        $earn = $this->earn( $user, 4004, 3000 );
+        $this->backdate( $earn, $this->months_ago( 24 ) );
+        $this->assertSame( 'Gold', $this->tier_of( $user ) );
+
+        $this->with_rolling(
+            6,
+            function () use ( $user, $earn ): void {
+                TierEvaluator::build()->sweep_one( $user, TierSweep::MODE_TO_ROLLING );
+                $hold = $this->hold_of( $user );
+
+                $this->ledger_service()->refund_earn( $earn, 500, 'refund', 6 );
+
+                $this->assertSame( 'Gold', $this->tier_of( $user ) );
+                $this->assertSame( $hold, $this->hold_of( $user ) );
+            }
+        );
+    }
+
+    /** @group P-9 */
+    public function test_refund_before_the_mode_sweep_keeps_the_customer(): void {
+        $user = $this->customer();
+        $earn = $this->earn( $user, 4005, 3000 );
+        $this->backdate( $earn, $this->months_ago( 24 ) );
+
+        $this->with_rolling(
+            6,
+            function () use ( $user, $earn ): void {
+                $this->ledger_service()->refund_earn( $earn, 500, 'refund', 7 ); // No hold yet: the sweep hasn't reached them.
+
+                $this->assertSame( 'Gold', $this->tier_of( $user ) );
+            }
+        );
+    }
+
+    /** @group P-9 */
+    public function test_adjust_not_counted_toward_tier_points_moves_balance_and_lifetime_only(): void {
+        $user = $this->customer();
+        $this->ledger_service()->adjust( $user, 100, 'seed', 1 );
+        $this->ledger_service()->adjust( $user, 1000, 'not for tiers', 1, true, null, false );
+
+        $row = $this->customer_row( $user );
+        $this->assertSame( 'Bronze', $this->tier_of( $user ) );
+        $this->assertSame( [ 1100, 1100, 100 ], [ (int) $row['balance'], (int) $row['lifetime_earned'], (int) $row['tier_progress_value'] ] );
+        $this->assertSame( '0', (string) $this->ledger_rows( $user )[1]['counts_toward_tier'] );
+
+        $this->ledger_service()->adjust( $user, 1000, 'for tiers', 1, true, null, true );
+
+        $this->assertSame( 'Silver', $this->tier_of( $user ) );
     }
 
     public function test_calendar_staff_deduction_counts_against_the_hold(): void {

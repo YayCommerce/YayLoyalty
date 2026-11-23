@@ -1,7 +1,7 @@
 ---
 area: testing
-updated: 2026-11-19
-updated_ref: 17197c9
+updated: 2026-11-23
+updated_ref: 255aa5c
 covers: [tests/php/, tests/js/, tests/unit/, tests/integration/, tests/bootstrap.php, phpunit.xml.dist, phpunit-integration.xml.dist, tests/e2e/.wp-env.json]
 ---
 
@@ -55,6 +55,9 @@ Run one test with `vendor/bin/phpunit -c tests/php/unit.xml.dist --filter <Name>
 | `RewardCoupons::percent_for_cap`, `in_currency` | unit | critical | `tests/php/unit/Engine/Redemption/RewardCouponsTest.php` @baseline | `includes/Engine/Redemption/RewardCoupons.php` (fix `6342a296`) |
 | `SettingsHelper::validate`, `sanitize_output`, `is_valid`, `update_settings` | unit | critical | `tests/php/unit/Helpers/SettingsHelperTest.php` @baseline | `includes/Helpers/SettingsHelper.php` |
 | `LedgerService` lot invariant, idempotent earn, correction, `import` | integration | critical | `tests/php/integration/Services/LedgerServiceTest.php` @baseline @P-8 | `includes/Services/LedgerService.php` |
+| Tier points: `window_total()` override, before-refund total, closed period with restores | integration | critical | `tests/integration/Repositories/LedgerWindowTotalTest.php` @P-9 | `includes/Repositories/LedgerRepository.php` |
+| Pro tier refund rule (`refund_move`, `ledger_policy`) and the evaluator per mode | unit + integration | critical | `tests/unit/Pro/TierDecisionTest.php`, `tests/integration/Services/TierEvaluatorTest.php` @P-9 (older suites: run one file at a time in wp-env) | `includes/Pro/Services/TierDecision.php`, `TierEvaluator.php` |
+| Adjust `adjust_tier` sent only when set | js | important | `tests/js/lib/api/customer-adjust.api.test.ts` @P-9 | `apps/admin/src/lib/api/customer.api.ts` |
 | SPA `format.helper` money and UTC dates | js | important | `tests/js/lib/helpers/format.helper.test.ts` @baseline | `apps/admin/src/lib/helpers/format.helper.ts` |
 | `ConditionMatch` and `CampaignConditionSet` match rules, v1/v2 encoding | unit | critical | `tests/php/unit/Models/CampaignConditionSetTest.php` @P-1 | `includes/Utils/ConditionMatch.php`, `includes/Models/CampaignConditionSet.php` |
 | Pro `ConditionsEvaluator` all/any fold | unit | critical | `tests/php/unit/Pro/Services/ConditionsEvaluatorTest.php` @P-1 | `includes/Pro/Services/ConditionsEvaluator.php` |

@@ -143,11 +143,12 @@ export type CustomerExpiringSoon = 'off' | '30' | '90' | 'no_expiry';
 export type CustomerSortKey = 'name' | 'balance' | 'pending' | 'lifetime' | 'last_activity' | 'expires' | 'tier';
 export type CustomerSortDirection = 'asc' | 'desc';
 
-/** Request body for POST /customers/{id}/adjust — `adjustLifetime` and `customerNote` map to the wire's `adjust_lifetime` and `customer_note` in customer.api.ts; `notify` goes as is. */
+/** Request body for POST /customers/{id}/adjust — `adjustLifetime`, `adjustTier` and `customerNote` map to the wire's `adjust_lifetime`, `adjust_tier` and `customer_note` in customer.api.ts; `notify` goes as is. */
 export const adjustPointsSchema = z.object({
   points: z.number().int(),
   note: z.string().min(1),
   adjustLifetime: z.boolean(),
+  adjustTier: z.boolean().optional(),
   notify: z.boolean(),
   customerNote: z.string().optional(),
 });

@@ -30,6 +30,7 @@ final class TierDecisionTest extends TestCase {
             [
                 'move'   => 'up',
                 'reason' => 'earn',
+                'kind'   => 'up',
             ],
             TierDecision::ledger_policy( 'earn', 'order', 30 )
         );
@@ -37,6 +38,7 @@ final class TierDecisionTest extends TestCase {
             [
                 'move'   => 'up',
                 'reason' => 'adjustment',
+                'kind'   => 'up',
             ],
             TierDecision::ledger_policy( 'adjust', 'manual', 10 )
         );
@@ -44,6 +46,7 @@ final class TierDecisionTest extends TestCase {
             [
                 'move'   => 'to_target',
                 'reason' => 'refund',
+                'kind'   => 'refund',
             ],
             TierDecision::ledger_policy( 'refund_earn', 'order', -30 )
         );
@@ -51,6 +54,7 @@ final class TierDecisionTest extends TestCase {
             [
                 'move'   => 'to_target',
                 'reason' => 'adjustment',
+                'kind'   => 'down',
             ],
             TierDecision::ledger_policy( 'adjust', 'manual', -10 )
         );
@@ -58,6 +62,7 @@ final class TierDecisionTest extends TestCase {
             [
                 'move'   => 'up',
                 'reason' => 'refund',
+                'kind'   => 'up',
             ],
             TierDecision::ledger_policy( 'refund_earn', 'order', 30 )
         );
@@ -65,6 +70,47 @@ final class TierDecisionTest extends TestCase {
         $this->assertNull( TierDecision::ledger_policy( 'redeem', 'order', -50 ) );
         $this->assertNull( TierDecision::ledger_policy( 'correction', 'manual', 50 ) );
         $this->assertNull( TierDecision::ledger_policy( 'expire', 'expiry', -50 ) );
+    }
+
+    /** @group P-9 */
+    public function test_ledger_policy_honours_the_tier_points_choice_and_flags_clawbacks(): void {
+        $this->assertNull( TierDecision::ledger_policy( 'adjust', 'manual', 1000, false ) );
+        $this->assertSame( [ 'up', 'adjustment', 'up' ], array_values( TierDecision::ledger_policy( 'correction', 'manual', 50, true ) ) );
+        $this->assertSame( 'down', TierDecision::ledger_policy( 'correction', 'manual', -50, true )['kind'] );
+        $this->assertSame( 'down', TierDecision::ledger_policy( 'adjust', 'manual', -10 )['kind'] );
+        $this->assertSame( 'refund', TierDecision::ledger_policy( 'refund_earn', 'order', -30 )['kind'] );
+        $this->assertSame( 'up', TierDecision::ledger_policy( 'adjust', 'order', 30 )['kind'] );
+    }
+
+    /** @group P-9 */
+    public function test_refund_move_keeps_a_customer_already_below_their_tier(): void {
+        // Lifetime, Gold raised: their total reached only Silver before the refund.
+        $r = TierDecision::refund_move( 3, 3, $this->silver(), $this->silver(), null, null, false );
+
+        $this->assertSame( [ false, TierDecision::HOLD_KEEP ], [ $r['changed'], $r['hold'] ] );
+    }
+
+    /** @group P-9 */
+    public function test_refund_move_outside_the_period_changes_nothing(): void {
+        $r = TierDecision::refund_move( 3, 3, $this->gold(), $this->gold(), null, null, false );
+
+        $this->assertFalse( $r['changed'] );
+    }
+
+    /** @group P-9 */
+    public function test_refund_move_that_causes_the_loss_drops_to_the_better_of_floor_and_after(): void {
+        $to_after = TierDecision::refund_move( 3, 3, $this->gold(), $this->silver(), null, null, false );
+        $to_floor = TierDecision::refund_move( 3, 3, $this->gold(), $this->bronze(), null, $this->silver(), false );
+
+        $this->assertSame( [ 2, false, TierDecision::HOLD_START ], [ $to_after['to']->get_id(), $to_after['is_upgrade'], $to_after['hold'] ] );
+        $this->assertSame( [ 2, TierDecision::HOLD_CLEAR ], [ $to_floor['to']->get_id(), $to_floor['hold'] ] );
+    }
+
+    /** @group P-9 */
+    public function test_refund_move_during_a_hold_is_still_protected_by_the_qualifying_tier(): void {
+        $r = TierDecision::refund_move( 3, 3, $this->gold(), $this->silver(), $this->gold(), null, true );
+
+        $this->assertSame( [ false, TierDecision::HOLD_KEEP ], [ $r['changed'], $r['hold'] ] );
     }
 
     public function test_up_only_never_lowers(): void {

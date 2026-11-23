@@ -70,6 +70,9 @@ final class LedgerEntry extends AbstractModel {
     /** @var string|null That multiplier, as "1.25"; null when none applied. */
     private $tier_multiplier;
 
+    /** @var bool|null Whether the row counts toward tier points; null means its type decides. */
+    private $counts_toward_tier;
+
     public function __construct(
         ?int $id,
         int $user_id,
@@ -88,26 +91,28 @@ final class LedgerEntry extends AbstractModel {
         ?string $idempotency_key = null,
         ?string $customer_note = null,
         ?int $tier_id = null,
-        ?string $tier_multiplier = null
+        ?string $tier_multiplier = null,
+        ?bool $counts_toward_tier = null
     ) {
-        $this->id              = $id;
-        $this->user_id         = $user_id;
-        $this->points          = $points;
-        $this->balance_after   = $balance_after;
-        $this->type            = $type;
-        $this->source          = $source;
-        $this->reference_type  = $reference_type;
-        $this->reference_id    = $reference_id;
-        $this->campaign_id     = $campaign_id;
-        $this->redemption_id   = $redemption_id;
-        $this->order_id        = $order_id;
-        $this->note            = $note;
-        $this->actor_id        = $actor_id;
-        $this->created_at      = $created_at;
-        $this->idempotency_key = $idempotency_key;
-        $this->customer_note   = $customer_note;
-        $this->tier_id         = $tier_id;
-        $this->tier_multiplier = $tier_multiplier;
+        $this->id                 = $id;
+        $this->user_id            = $user_id;
+        $this->points             = $points;
+        $this->balance_after      = $balance_after;
+        $this->type               = $type;
+        $this->source             = $source;
+        $this->reference_type     = $reference_type;
+        $this->reference_id       = $reference_id;
+        $this->campaign_id        = $campaign_id;
+        $this->redemption_id      = $redemption_id;
+        $this->order_id           = $order_id;
+        $this->note               = $note;
+        $this->actor_id           = $actor_id;
+        $this->created_at         = $created_at;
+        $this->idempotency_key    = $idempotency_key;
+        $this->customer_note      = $customer_note;
+        $this->tier_id            = $tier_id;
+        $this->tier_multiplier    = $tier_multiplier;
+        $this->counts_toward_tier = $counts_toward_tier;
     }
 
     public static function from_row( array $row ): self {
@@ -129,35 +134,37 @@ final class LedgerEntry extends AbstractModel {
             self::cast_string( $row['idempotency_key'] ?? null ),
             self::cast_string( $row['customer_note'] ?? null ),
             self::cast_int( $row['tier_id'] ?? null ),
-            self::cast_string( $row['tier_multiplier'] ?? null )
+            self::cast_string( $row['tier_multiplier'] ?? null ),
+            isset( $row['counts_toward_tier'] ) ? self::cast_bool( $row['counts_toward_tier'] ) : null
         );
     }
 
     /** Insert payload. `id` is omitted so AUTO_INCREMENT assigns it. */
     public function to_row(): array {
         return [
-            'user_id'         => $this->user_id,
-            'points'          => $this->points,
-            'balance_after'   => $this->balance_after,
-            'type'            => $this->type,
-            'source'          => $this->source,
-            'reference_type'  => $this->reference_type,
-            'reference_id'    => $this->reference_id,
-            'campaign_id'     => $this->campaign_id,
-            'tier_id'         => $this->tier_id,
-            'tier_multiplier' => $this->tier_multiplier,
-            'redemption_id'   => $this->redemption_id,
-            'order_id'        => $this->order_id,
-            'note'            => $this->note,
-            'customer_note'   => $this->customer_note,
-            'actor_id'        => $this->actor_id,
-            'idempotency_key' => $this->idempotency_key,
-            'created_at'      => $this->created_at,
+            'user_id'            => $this->user_id,
+            'points'             => $this->points,
+            'balance_after'      => $this->balance_after,
+            'type'               => $this->type,
+            'source'             => $this->source,
+            'reference_type'     => $this->reference_type,
+            'reference_id'       => $this->reference_id,
+            'campaign_id'        => $this->campaign_id,
+            'tier_id'            => $this->tier_id,
+            'tier_multiplier'    => $this->tier_multiplier,
+            'counts_toward_tier' => null === $this->counts_toward_tier ? null : (int) $this->counts_toward_tier,
+            'redemption_id'      => $this->redemption_id,
+            'order_id'           => $this->order_id,
+            'note'               => $this->note,
+            'customer_note'      => $this->customer_note,
+            'actor_id'           => $this->actor_id,
+            'idempotency_key'    => $this->idempotency_key,
+            'created_at'         => $this->created_at,
         ];
     }
 
     public function get_format(): array {
-        return [ '%d', '%d', '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%d', '%d', '%s', '%s', '%d', '%s', '%s' ];
+        return [ '%d', '%d', '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%s', '%s' ];
     }
 
     public function to_array(): array {
@@ -241,6 +248,10 @@ final class LedgerEntry extends AbstractModel {
 
     public function get_tier_multiplier(): ?string {
         return $this->tier_multiplier;
+    }
+
+    public function get_counts_toward_tier(): ?bool {
+        return $this->counts_toward_tier;
     }
 
     public function get_order_id(): ?int {

@@ -66,8 +66,8 @@ final class TierStanding {
             $progress = $this->ledger->window_total( $customer->get_user_id(), $bounds['current_start'], $now );
         } else {
             $progress = $customer->get_tier_progress_value();
-            // The evaluator's last value; a customer never evaluated reads their points earned.
-            $progress = null === $progress ? $customer->get_lifetime_earned() : (int) $progress;
+            // The evaluator's last value; a customer never evaluated reads their tier points over all time.
+            $progress = null === $progress ? $this->ledger->window_total( $customer->get_user_id(), Dates::ZERO, $now ) : (int) $progress;
         }
 
         return [

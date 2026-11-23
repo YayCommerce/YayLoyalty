@@ -234,17 +234,21 @@ class LedgerRepository extends AbstractRepository {
     }
 
     /**
-     * Net points a user earned in [$from, $to], both bounds inclusive: the signed SUM of
-     * lifetime_earned_types() rows by their attributed date. A row's attributed date is its
+     * Net tier points a user earned in [$from, $to], both bounds inclusive: the signed SUM of
+     * the rows that count toward tier points (tier_points_sql()) by their attributed date. A row's attributed date is its
      * created_at, except a clawback's, which is the created_at of the earliest earn row it
      * reverses (clawback_match_sql()), or its own when none matches. So a refund of an old
      * order lowers the old window, not the current one. 0 for a guest. Takes no lock: read
      * after the ledger commit, inside the caller's own transaction.
      *
-     * @param string $from UTC MySQL datetime.
-     * @param string $to   UTC MySQL datetime.
+     * @param string      $from       UTC MySQL datetime.
+     * @param string      $to         UTC MySQL datetime.
+     * @param string|null $created_by      UTC MySQL datetime: leave out rows created after it, for a closed
+     *                                     period; a refund restore goes by its refund's date.
+     * @param string      $except_ref_type With $except_ref_id, a refund whose REFUND_EARN rows to leave out, for
+     *                                     the total before it; '' for none.
      */
-    public function window_total( int $user_id, string $from, string $to ): int {
+    public function window_total( int $user_id, string $from, string $to, ?string $created_by = null, string $except_ref_type = '', int $except_ref_id = 0 ): int {
         global $wpdb;
 
         if ( $user_id < 1 ) {
@@ -252,24 +256,30 @@ class LedgerRepository extends AbstractRepository {
         }
 
         $table      = esc_sql( $this->table() );
-        $types      = LedgerType::lifetime_earned_types();
         $attributed = 'COALESCE( CASE WHEN ' . $this->clawback_row_sql( 'r' ) . " THEN ( SELECT MIN(e.created_at) FROM `{$table}` e WHERE " . $this->clawback_match_sql( 'r', 'e' ) . ' ) END, r.created_at )';
+        $created    = null === $created_by ? '' : ' AND ' . $this->restore_follows_refund_sql( 'r' ) . ' <= %s';
+        $except     = '' === $except_ref_type ? '' : ' AND NOT ( r.type = %s AND r.reference_type = %s AND r.reference_id = %d )';
+        $values     = array_merge(
+            [ $user_id, $from, $to ],
+            null === $created_by ? [] : [ $created_by ],
+            '' === $except_ref_type ? [] : [ LedgerType::REFUND_EARN, $except_ref_type, $except_ref_id ]
+        );
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- the table name and the predicate's literals are escaped; every value is bound.
         return (int) $wpdb->get_var( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 "SELECT COALESCE(SUM(r.points), 0) FROM `{$table}` r
-                 WHERE r.user_id = %d AND r.type IN (" . Sql::in_placeholders( $types ) . ")
-                 AND {$attributed} BETWEEN %s AND %s",
-                array_merge( [ $user_id ], $types, [ $from, $to ] )
+                 WHERE r.user_id = %d AND " . $this->tier_points_sql( 'r' ) . "
+                 AND {$attributed} BETWEEN %s AND %s{$created}{$except}",
+                $values
             )
         );
         // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
     }
 
     /**
-     * The signed SUM of a user's staff ADJUST rows created strictly after $after. An ADJUST
-     * restoring a refund is a clawback's undo, not a staff change, so it is left out.
+     * The signed SUM of a user's staff adjustments that count toward tier points, created strictly
+     * after $after. An ADJUST restoring a refund is a clawback's undo, not a staff change, so it is left out.
      *
      * @param string $after UTC MySQL datetime. A row at this exact second is excluded.
      */
@@ -279,8 +289,45 @@ class LedgerRepository extends AbstractRepository {
         }
 
         return $this->sum_points(
-            'user_id = %d AND type = %s AND ( reference_type IS NULL OR reference_type <> %s ) AND created_at > %s',
-            [ $user_id, LedgerType::ADJUST, ReferenceType::REFUND, $after ]
+            'user_id = %d AND type IN ( %s, %s ) AND ' . $this->tier_points_sql( '' ) . ' AND ( reference_type IS NULL OR reference_type <> %s ) AND created_at > %s',
+            [ $user_id, LedgerType::ADJUST, LedgerType::CORRECTION, ReferenceType::REFUND, $after ]
+        );
+    }
+
+    /**
+     * A row's created_at as SQL, except a refund restore's, which is the created_at of the REFUND_EARN rows it
+     * undoes, so a closed period's cut-off keeps or drops a refund and its restore together.
+     *
+     * @param string $row A table alias from this class only, never input.
+     */
+    private function restore_follows_refund_sql( string $row ): string {
+        $table = esc_sql( $this->table() );
+
+        return sprintf(
+            "COALESCE( CASE WHEN %1\$s.type = '%2\$s' AND %1\$s.reference_type = '%3\$s' THEN ( SELECT MIN(f.created_at) FROM `%5\$s` f
+               WHERE f.type = '%4\$s' AND f.user_id = %1\$s.user_id AND f.reference_type = %1\$s.reference_type AND f.reference_id = %1\$s.reference_id
+               AND f.order_id <=> %1\$s.order_id AND f.campaign_id <=> %1\$s.campaign_id ) END, %1\$s.created_at )",
+            $row,
+            esc_sql( LedgerType::ADJUST ),
+            esc_sql( ReferenceType::REFUND ),
+            esc_sql( LedgerType::REFUND_EARN ),
+            $table
+        );
+    }
+
+    /**
+     * Whether a ledger row counts toward tier points, as SQL: its stored choice, else whether its type
+     * feeds lifetime_earned. The SQL twin of LedgerType::counts_toward_tier().
+     *
+     * @param string $row A table alias from this class only, never input; '' for none.
+     */
+    private function tier_points_sql( string $row ): string {
+        $col = '' === $row ? '' : $row . '.';
+
+        return sprintf(
+            "COALESCE( %1\$scounts_toward_tier, %1\$stype IN ( '%2\$s' ) )",
+            $col,
+            implode( "', '", array_map( 'esc_sql', LedgerType::lifetime_earned_types() ) )
         );
     }
 

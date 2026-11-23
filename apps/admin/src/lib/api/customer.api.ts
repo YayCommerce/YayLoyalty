@@ -45,6 +45,7 @@ export async function adjustCustomerPoints(userId: number, input: AdjustPointsIn
     note: input.note,
     adjust_lifetime: input.adjustLifetime,
     notify: input.notify,
+    ...(input.adjustTier === undefined ? {} : { adjust_tier: input.adjustTier }),
     ...(input.customerNote === undefined ? {} : { customer_note: input.customerNote }),
   };
 

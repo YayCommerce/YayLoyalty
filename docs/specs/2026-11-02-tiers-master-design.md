@@ -72,7 +72,7 @@ Pro merchants group customers into ranked tiers by the points they earn. Each ti
 
 | # | Decision |
 |---|---|
-| D1 | **Metric:** points earned, `lifetime_earned` semantics, pending excluded. |
+| D1 | **Metric:** points earned, `lifetime_earned` semantics, pending excluded. *Amended by P-9:* the metric is **tier points**, the rows that count toward tier points (`counts_toward_tier`, or by type when NULL: EARN, REFUND_EARN, ADJUST). Staff can leave an adjustment out, so tier points and `lifetime_earned` may differ; Lifetime sums tier points over all time. |
 | D2 | **Modes:** `lifetime` and `rolling`. Rolling months come from 3, 6, 9, 12, 18 or 24, **default 6**. |
 | D3 | **Changing the rolling months** never moves a stored `tier_held_until`. Current holds end on their old date, and the new window applies from each customer's next evaluation. Lifetime → Rolling gives every current member a hold of now + N months. Rolling → Lifetime clears holds and re-evaluates, which can only raise. |
 | D4 | **Rolling window:** the qualifying total is the net points earned in the last N months. A clawback (REFUND_EARN) counts in the window of the earn row it reverses, not on its own date. |
