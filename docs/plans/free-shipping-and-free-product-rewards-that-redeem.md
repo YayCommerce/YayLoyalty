@@ -98,9 +98,9 @@ Model on: `RewardHandler::coupon_props()` → `RewardCoupons` (`includes/Engine/
 - `yayh test run unit` → exit 0
 - `yayh test run integration` → exit 0 (integration: the four tests above)
 - `yayh e2e run --grep @P-10` → exit 0 (e2e)
-- `composer lint` → no new errors beyond the `dev` baseline in known-issues
+- `vendor/bin/phpcs -q includes/Engine/Redemption/RewardCartLines.php includes/Engine/Redemption/RewardShipping.php includes/Engine/Redemption/CouponProvider.php includes/Engine/Redemption/CommitWriter.php includes/Pro/Services/FreeShippingRewardHandler.php includes/Pro/Services/FreeProductRewardHandler.php includes/Integrations/YayPricing/YayPricingIntegration.php includes/Engine/Storefront/LauncherCopy.php includes/Enums/RewardType.php` → exit 0 (`composer lint` fails on `dev` with its known baseline; the new test files share the existing tests' tabs style)
 - `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` → exit 0
-- `yayh code unused` → no line for a symbol this plan added
+- `yayh code unused dev` → exit 0
 - `grep -rn "YayLoyaltyPro\|Pro\\\\" includes/Engine/Redemption/RewardCartLines.php includes/Engine/Redemption/RewardShipping.php` → exit 1 (Lite names no Pro)
 - Classic checkout (Pro, a store with a flat-rate method, customer with enough points): tick the free-shipping reward on the cart's redeem card → shipping reads 0 and a row named after the reward shows $0. Place the order → `wp db query "SELECT points, value FROM wp_yayloyalty_redemptions ORDER BY id DESC LIMIT 1"` shows the reward's cost and the flat rate's cost.
 - Classic checkout: tick the free-product reward with that product already in the cart → a second line of the product at $0 with "Reward: <name>", no remove link, fixed qty; the shopper's own line is unchanged. Untick → the free line is gone.

@@ -49,7 +49,7 @@ final class RewardShipping {
         $before = 0.0;
 
         foreach ( $packages as $index => $package ) {
-            $rates     = isset( $package['rates'] ) && is_array( $package['rates'] ) ? $package['rates'] : [];
+            $rates = isset( $package['rates'] ) && is_array( $package['rates'] ) ? $package['rates'] : [];
             // A choice that is no longer offered (the address changed) falls back as WooCommerce will: its first rate.
             $chosen_id = isset( $chosen[ $index ] ) && isset( $rates[ $chosen[ $index ] ] ) ? $chosen[ $index ] : (string) array_key_first( $rates );
 

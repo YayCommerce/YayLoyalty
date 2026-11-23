@@ -76,6 +76,10 @@ test.describe( 'Free shipping and free product rewards at the block checkout', {
 	let shirt: string;
 	let method: string;
 	const rewards: string[] = [];
+	// A claimed reward can only be archived, never deleted, so each run names its own.
+	const run = Date.now();
+	const shippingName = `E2E free shipping ${ run }`;
+	const shirtName = `E2E free shirt ${ run }`;
 
 	test.beforeAll( () => {
 		customer = userId( 'customer' );
@@ -86,8 +90,8 @@ test.describe( 'Free shipping and free product rewards at the block checkout', {
 				'WC_Cache_Helper::get_transient_version( "shipping", true ); echo $id;'
 		);
 		wp( 'wc', 'customer', 'update', String( customer ), '--user=admin', '--shipping={"first_name":"Jane","last_name":"Smith","address_1":"1 Test Street","city":"San Francisco","state":"CA","postcode":"94110","country":"US"}' );
-		rewards.push( createReward( 'E2E free shipping', 'free_shipping', 100, { currency: 'USD' } ) );
-		rewards.push( createReward( 'E2E free shirt', 'free_product', 200, { product_id: Number( shirt ), qty: 1 } ) );
+		rewards.push( createReward( shippingName, 'free_shipping', 100, { currency: 'USD' } ) );
+		rewards.push( createReward( shirtName, 'free_product', 200, { product_id: Number( shirt ), qty: 1 } ) );
 	} );
 
 	test.beforeEach( () => {
@@ -97,7 +101,10 @@ test.describe( 'Free shipping and free product rewards at the block checkout', {
 
 	test.afterAll( () => {
 		for ( const id of rewards ) {
-			asAdmin( `rest_do_request( new WP_REST_Request( 'DELETE', '/yayloyalty/v1/rewards/${ id }' ) );` );
+			asAdmin(
+				`if ( rest_do_request( new WP_REST_Request( 'DELETE', '/yayloyalty/v1/rewards/${ id }' ) )->is_error() ) {` +
+					`$r = new WP_REST_Request( 'PATCH', '/yayloyalty/v1/rewards/${ id }' ); $r->set_body_params( [ 'status' => 'archived' ] ); rest_do_request( $r ); }`
+			);
 		}
 
 		asAdmin( `WC_Shipping_Zones::get_zone( 0 )->delete_shipping_method( ${ method } );` );
@@ -112,12 +119,12 @@ test.describe( 'Free shipping and free product rewards at the block checkout', {
 		const total = page.locator( '.wc-block-components-totals-footer-item' );
 		await expect( total ).toContainText( '$22.00' );
 
-		await card.getByRole( 'checkbox', { name: /E2E free shipping/ } ).check();
+		await card.getByRole( 'checkbox', { name: new RegExp( shippingName ) } ).check();
 		await expect( total ).toContainText( '$15.00' );
 
-		await card.getByRole( 'checkbox', { name: /E2E free shirt/ } ).check();
+		await card.getByRole( 'checkbox', { name: new RegExp( shirtName ) } ).check();
 		await expect( page.locator( '.wc-block-cart-items__row' ) ).toHaveCount( 2 );
-		await expect( page.getByText( 'E2E free shirt', { exact: true } ).first() ).toBeVisible();
+		await expect( page.getByText( shirtName, { exact: true } ).first() ).toBeVisible();
 		await expect( total ).toContainText( '$15.00' );
 
 		await page.goto( '/checkout/' );
