@@ -49,3 +49,84 @@ test.describe( 'Redeem points at the block checkout', { tag: '@flow-redeem-block
 		await expect( page.locator( '.wc-block-components-totals-footer-item' ) ).toContainText( '$10.00' );
 	} );
 } );
+
+/** Runs PHP in the site as the admin and returns what it echoes. */
+function asAdmin( code: string ): string {
+	return wp( 'eval', '--user=admin', code );
+}
+
+/** A Pro reward created through the admin REST route, as the reward editor saves it; its id. */
+function createReward( name: string, type: string, cost: number, config: Record< string, unknown > ): string {
+	const id = asAdmin(
+		`$r = new WP_REST_Request( 'POST', '/yayloyalty/v1/rewards' );` +
+			`$r->set_header( 'Content-Type', 'application/json' );` +
+			`$r->set_body( ${ JSON.stringify( JSON.stringify( { name, type, cost_points: cost, config, status: 'active' } ) ) } );` +
+			`$res = rest_do_request( $r ); echo $res->get_status() < 300 ? $res->get_data()['id'] : '';`
+	);
+
+	if ( ! id ) {
+		throw new Error( `Creating the ${ type } reward failed.` );
+	}
+
+	return id;
+}
+
+test.describe( 'Free shipping and free product rewards at the block checkout', { tag: [ '@P-10', '@flow-redeem-block-checkout' ] }, () => {
+	let customer: number;
+	let shirt: string;
+	let method: string;
+	const rewards: string[] = [];
+
+	test.beforeAll( () => {
+		customer = userId( 'customer' );
+		shirt = wp( 'wc', 'product', 'create', '--name=E2E P10 shirt', '--regular_price=15', '--user=admin', '--porcelain' );
+		method = asAdmin(
+			`$id = WC_Shipping_Zones::get_zone( 0 )->add_shipping_method( 'flat_rate' );` +
+				`update_option( 'woocommerce_flat_rate_' . $id . '_settings', [ 'title' => 'Flat rate', 'tax_status' => 'none', 'cost' => '7' ] );` +
+				'WC_Cache_Helper::get_transient_version( "shipping", true ); echo $id;'
+		);
+		wp( 'wc', 'customer', 'update', String( customer ), '--user=admin', '--shipping={"first_name":"Jane","last_name":"Smith","address_1":"1 Test Street","city":"San Francisco","state":"CA","postcode":"94110","country":"US"}' );
+		rewards.push( createReward( 'E2E free shipping', 'free_shipping', 100, { currency: 'USD' } ) );
+		rewards.push( createReward( 'E2E free shirt', 'free_product', 200, { product_id: Number( shirt ), qty: 1 } ) );
+	} );
+
+	test.beforeEach( () => {
+		setBalance( customer, 500 );
+		emptyCart( customer );
+	} );
+
+	test.afterAll( () => {
+		for ( const id of rewards ) {
+			asAdmin( `rest_do_request( new WP_REST_Request( 'DELETE', '/yayloyalty/v1/rewards/${ id }' ) );` );
+		}
+
+		asAdmin( `WC_Shipping_Zones::get_zone( 0 )->delete_shipping_method( ${ method } );` );
+		wp( 'wc', 'product', 'delete', shirt, '--force=true', '--user=admin' );
+		setBalance( customer, 0 );
+	} );
+
+	test( 'shipping drops to 0, the free shirt is added at 0, and both rewards are paid for in points', async ( { customerPage: page } ) => {
+		await page.goto( `/?add-to-cart=${ shirt }` );
+		await page.goto( '/cart/' );
+		const card = page.locator( '[data-yl-redeem]' );
+		const total = page.locator( '.wc-block-components-totals-footer-item' );
+		await expect( total ).toContainText( '$22.00' );
+
+		await card.getByRole( 'checkbox', { name: /E2E free shipping/ } ).check();
+		await expect( total ).toContainText( '$15.00' );
+
+		await card.getByRole( 'checkbox', { name: /E2E free shirt/ } ).check();
+		await expect( page.locator( '.wc-block-cart-items__row' ) ).toHaveCount( 2 );
+		await expect( page.getByText( 'E2E free shirt', { exact: true } ).first() ).toBeVisible();
+		await expect( total ).toContainText( '$15.00' );
+
+		await page.goto( '/checkout/' );
+		await expect( page.locator( '.wc-block-components-totals-footer-item' ) ).toContainText( '$15.00' );
+		await page.getByRole( 'button', { name: 'Place Order' } ).click();
+		await expect( page ).toHaveURL( /order-received/ );
+
+		const order = new URL( page.url() ).pathname.split( '/' ).filter( Boolean ).pop() as string;
+		expect( wp( 'wc', 'shop_order', 'get', order, '--field=shipping_total', '--user=admin' ) ).toBe( '0.00' );
+		expect( balanceOf( customer ) ).toBe( 200 );
+	} );
+} );
