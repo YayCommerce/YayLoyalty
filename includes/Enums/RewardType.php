@@ -35,6 +35,15 @@ final class RewardType {
     }
 
     /**
+     * The types this build offers as catalog rewards: all() without the flexible discount.
+     *
+     * @return string[]
+     */
+    public static function catalog_types(): array {
+        return array_values( array_diff( self::all(), [ self::FLEXIBLE_DISCOUNT ] ) );
+    }
+
+    /**
      * Lite's own types, unfiltered, so all_known() never depends on the build.
      *
      * @return string[]

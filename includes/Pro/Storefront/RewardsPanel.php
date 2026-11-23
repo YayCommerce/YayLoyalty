@@ -32,7 +32,7 @@ final class RewardsPanel {
     }
 
     /**
-     * Appends every live `fixed_coupon` / `percent_coupon` reward, in `sort_order`, that the member's tier
+     * Appends every live catalog reward, in `sort_order`, that the member's tier
      * allows, whatever their balance: there is no cart to check the rest against.
      *
      * @param array<int, array{name: string, cost: int, text: string}> $offers
@@ -43,7 +43,7 @@ final class RewardsPanel {
     public function redeem_offers( array $offers, string $now, ?int $user_id = null ): array {
         $tiers = new RewardTierCondition();
 
-        foreach ( ( new RewardRepository() )->live_of_types( [ RewardType::FIXED_COUPON, RewardType::PERCENT_COUPON ], $now ) as $reward ) {
+        foreach ( ( new RewardRepository() )->live_of_types( RewardType::catalog_types(), $now ) as $reward ) {
             if ( $tiers->allows( $reward, $user_id ) ) {
                 $offers[] = LauncherPayload::offer( $reward );
             }

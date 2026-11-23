@@ -384,7 +384,7 @@ final class RedemptionService {
         $ctx     = null;
         $on_cart = array_map( 'strval', $cart->get_applied_coupons() );
 
-        foreach ( $this->rewards->live_of_types( [ RewardType::FIXED_COUPON, RewardType::PERCENT_COUPON ], Dates::now() ) as $reward ) {
+        foreach ( $this->rewards->live_of_types( RewardType::catalog_types(), Dates::now() ) as $reward ) {
             if ( ! $this->is_reward_offered( $reward ) ) {
                 continue;
             }
