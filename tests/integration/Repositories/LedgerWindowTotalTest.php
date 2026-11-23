@@ -100,6 +100,40 @@ final class LedgerWindowTotalTest extends IntegrationTestCase {
         $this->assertSame( 30, $this->ledger->staff_adjust_since( self::USER, $this->created_at_of_adjust( -100 ) ) ); // Exclusive bound.
     }
 
+    /** @group P-9 */
+    public function test_counts_toward_tier_overrides_the_type_both_ways(): void {
+        $this->order_earn( 1006, 100, '' );
+        $this->manual_row( LedgerType::ADJUST, 500, false );
+        $this->manual_row( LedgerType::CORRECTION, 200, true );
+        $this->manual_row( LedgerType::CORRECTION, 50, null );
+
+        $this->assertSame( 300, $this->ledger->window_total( self::USER, $this->from, $this->to ) );
+        $this->assertSame( 200, $this->ledger->staff_adjust_since( self::USER, Dates::offset( -DAY_IN_SECONDS ) ) );
+    }
+
+    /** @group P-9 */
+    public function test_except_refund_gives_the_total_before_every_row_of_that_refund(): void {
+        $campaign_x = $this->insert_campaign( 'Purchase X', CampaignTrigger::PURCHASE, Status::ACTIVE, 1 );
+        $campaign_y = $this->insert_campaign( 'First order Y', CampaignTrigger::FIRST_ORDER, Status::ACTIVE, 2 );
+        $x          = $this->order_earn( 1007, 600, Dates::offset( -30 * DAY_IN_SECONDS ), $campaign_x, CampaignTrigger::PURCHASE );
+        $y          = $this->order_earn( 1007, 300, Dates::offset( -30 * DAY_IN_SECONDS ), $campaign_y, CampaignTrigger::FIRST_ORDER );
+        $this->ledger_service()->refund_earn( $x, 200, ReferenceType::REFUND, 505 );
+        $this->ledger_service()->refund_earn( $y, 100, ReferenceType::REFUND, 505 );
+        $this->ledger_service()->refund_earn( $y, 150, ReferenceType::REFUND, 507 );
+
+        $this->assertSame( 550, $this->ledger->window_total( self::USER, $this->from, $this->to ) );
+        $this->assertSame( 850, $this->ledger->window_total( self::USER, $this->from, $this->to, null, ReferenceType::REFUND, 505 ) ); // Refund 507 took the remaining 50 of its cumulative 150.
+    }
+
+    /** @group P-9 */
+    public function test_created_by_ignores_rows_created_after_a_closed_period(): void {
+        $old_earn = $this->order_earn( 1008, 900, $this->old );
+        $this->ledger_service()->refund_earn( $old_earn, 400, ReferenceType::REFUND, 506 );
+
+        $this->assertSame( 500, $this->ledger->window_total( self::USER, $this->old_from(), $this->old_to() ) );
+        $this->assertSame( 900, $this->ledger->window_total( self::USER, $this->old_from(), $this->old_to(), $this->old_to() ) );
+    }
+
     public function test_sum_refunded_for_is_unchanged(): void {
         $earn = $this->order_earn( 1005, 200, '' );
         $this->ledger_service()->refund_earn( $earn, 50, ReferenceType::REFUND, 601 );
@@ -116,6 +150,13 @@ final class LedgerWindowTotalTest extends IntegrationTestCase {
         $this->ledger_service()->refund_earn( $review, 20, ReferenceType::COMMENT, 78 );
 
         $this->assertSame( 20, $this->ledger->sum_refunded_for( $review ) );
+    }
+
+    /** A manual row with an explicit tier-points choice, written as stored rather than through adjust(). */
+    private function manual_row( string $type, int $points, ?bool $counts_toward_tier ): void {
+        $this->ledger->insert(
+            new LedgerEntry( null, self::USER, $points, 0, $type, LedgerSource::MANUAL, null, null, null, null, null, 'staff', 1, Dates::now(), null, null, null, null, $counts_toward_tier )
+        );
     }
 
     /** The old window, one month either side of $this->old. */
