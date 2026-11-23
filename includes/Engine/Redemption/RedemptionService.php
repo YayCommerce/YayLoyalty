@@ -714,7 +714,7 @@ final class RedemptionService {
      * The coupon the reward's handler describes, in the currency the request charges in; null for the flexible discount's
      * type, or a type with no handler (Lite).
      */
-    private function coupon_props_of( Reward $reward ): ?array {
+    public function coupon_props_of( Reward $reward ): ?array {
         $props = $this->registry->has( $reward->get_type() ) ? $this->registry->get( $reward->get_type() )->coupon_props( $reward ) : null;
 
         return null === $props ? null : RewardCoupons::in_currency( $props, CurrencyRate::rate( CurrencyRate::current() ) );

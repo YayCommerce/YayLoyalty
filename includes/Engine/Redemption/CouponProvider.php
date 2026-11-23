@@ -24,6 +24,9 @@ defined( 'ABSPATH' ) || exit;
  */
 final class CouponProvider {
 
+    /** Fires with the cart once sync_cart() has settled the loyalty codes for this totals run. */
+    public const SYNCED_ACTION = 'yayloyalty_reward_coupons_synced';
+
     /**
      * Denial reasons that take a picked reward out of the session; any other leaves it there, unapplied. A program
      * gate's reasons hide the Rewards panel, so nothing else could take the reward out before checkout refuses it.
@@ -132,7 +135,7 @@ final class CouponProvider {
     }
 
     /** "{name} was removed: this order no longer qualifies.", for a picked reward or the points discount. */
-    private static function notice_dropped( string $name ): void {
+    public static function notice_dropped( string $name ): void {
         /* translators: %s: the reward's name, as "$5 off". */
         self::add_notice( sprintf( __( '%s was removed: this order no longer qualifies.', 'yayloyalty' ), $name ) );
     }
@@ -246,6 +249,7 @@ final class CouponProvider {
 
         // Nothing asked and nothing to take off: the common case, answered without a quote.
         if ( ! $has_ours && 0 === $points && [] === $reward_ids ) {
+            self::synced( $cart );
             return;
         }
 
@@ -264,6 +268,17 @@ final class CouponProvider {
         if ( $next !== $applied ) {
             $cart->set_applied_coupons( $next );
         }
+
+        self::synced( $cart );
+    }
+
+    private static function synced( \WC_Cart $cart ): void {
+        /**
+         * Fires once the loyalty codes for this totals run are on the cart, before WooCommerce totals it.
+         *
+         * @param \WC_Cart $cart
+         */
+        do_action( self::SYNCED_ACTION, $cart ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
     }
 
     /**
