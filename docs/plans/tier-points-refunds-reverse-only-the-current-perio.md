@@ -51,7 +51,7 @@ Done means, with Silver 800 and Gold 3,000 (and Gold raised to 5,000 where state
   - D-b: "current period" is the whole history in Lifetime, the last N months in Rolling, and only the current period in Calendar. The user accepted the risk of a big order at the end of December being refunded in January while the customer keeps Gold all year.
   - D-c: a separate "Count toward tier points" option in the Adjust dialog, independent of "Adjust lifetime totals too".
 - **Decided** (by the plan):
-  - The new option defaults to ticked, so today's behaviour is unchanged.
+  - The new option defaults to ticked and follows "Adjust lifetime totals too" whenever staff toggle it (they can still change it afterwards), so the default is today's behaviour: a balance-only correction doesn't count toward tier points.
   - It shows only in a Pro build with tiers on.
   - A staff adjustment counted toward tier points keeps today's rule (it may drop the customer), because it is staff's lever to lower a tier (D13).
 - **Storage (Lite):** `ledger.counts_toward_tier tinyint(1) DEFAULT NULL`. A row counts toward tier points when `COALESCE(counts_toward_tier, type IN lifetime_earned_types)` is true. One PHP helper and one SQL fragment hold this rule. No migration: dbDelta adds the column. Lite never reads it, and a move to Lite keeps it.

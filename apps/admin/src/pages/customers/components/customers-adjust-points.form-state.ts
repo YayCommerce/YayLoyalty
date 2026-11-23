@@ -31,6 +31,11 @@ export function initialAdjustFormState(reason = ''): AdjustFormState {
   };
 }
 
+/** Toggling lifetime totals resets the tier-points choice to match, so the default is what the row type decides. */
+export function withAdjustLifetime(adjustLifetime: boolean): Pick<AdjustFormState, 'adjustLifetime' | 'adjustTier'> {
+  return { adjustLifetime, adjustTier: adjustLifetime };
+}
+
 export function signedPoints(state: Pick<AdjustFormState, 'direction' | 'amount'>): number {
   return state.direction === 'remove' ? -state.amount : state.amount;
 }

@@ -11,7 +11,7 @@ import {
   SHOW_CUSTOMER_NOTE_HELPER,
   SHOW_CUSTOMER_NOTE_LABEL,
 } from '../customers-adjust-points.copy';
-import type { AdjustFormState } from '../customers-adjust-points.form-state';
+import { withAdjustLifetime, type AdjustFormState } from '../customers-adjust-points.form-state';
 
 /** The adjustment's options, for both layouts. */
 export function AdjustPointsOptions({
@@ -32,7 +32,7 @@ export function AdjustPointsOptions({
       <label className="flex items-start gap-2.5">
         <Checkbox
           checked={state.adjustLifetime}
-          onCheckedChange={(checked) => onChange({ adjustLifetime: checked === true })}
+          onCheckedChange={(checked) => onChange(withAdjustLifetime(checked === true))}
         />
         <span className="flex flex-col gap-0.5">
           <span className="text-sm font-medium">{ADJUST_LIFETIME_LABEL()}</span>
