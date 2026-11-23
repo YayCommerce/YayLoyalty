@@ -8,7 +8,7 @@ design:
 trello:
 type: feat
 branch: feat/p-9-tier-points-refunds-reverse-only-the-current-p
-pr:
+pr: 207
 editions: [pro, lite]
 created: 2026-11-23
 ---
