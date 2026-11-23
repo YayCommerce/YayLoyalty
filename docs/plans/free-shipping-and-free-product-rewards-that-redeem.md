@@ -84,7 +84,7 @@ Model on: `RewardHandler::coupon_props()` → `RewardCoupons` (`includes/Engine/
   - Reuse: `DiscountRewardHandler` in `includes/Pro/Services/DiscountRewardHandler.php` (the no-cart cost-only quote, `Result::allowed()` / `denied()`); `RewardCoupons::REASON_NO_VALUE`; `RewardShipping::cart_value()` (T3); `wc_get_product()` for the free product's price and stock
   - Callers: `FreeShippingRewardHandler`, `FreeProductRewardHandler` → `YayLoyaltyPro::register_reward_handlers()` on `yayloyalty_register_reward_handlers`; `RewardCartLines::quantity_of()` → `RewardCartLines::reconcile()` and `FreeProductRewardHandler::quote()` (a sold-individually product gives 1); `CouponProvider::notice_dropped()` made public → `RewardCartLines::reconcile()` when the line can't be added
   - Shipping can be freed once: a free-shipping reward picked after another is denied `no_value`. A variation with an "Any" attribute is denied `no_value`, since the line couldn't pick one.
-- [ ] T6 Keep YayPricing's rules off the free line: `includes/Integrations/YayPricing/YayPricingIntegration.php`
+- [x] T6 Keep YayPricing's rules off the free line: `includes/Integrations/YayPricing/YayPricingIntegration.php`
   - Reuse: `RewardCartLines` cart item key constant (T2)
   - Callers: `YayPricingIntegration::skip_reward_lines()` → filter `yaydp_init_cart_items`
 - [ ] T7 Knowledge: drop the known issue; add the free lines, the rate filter and the commit value to Redemption; update the YayPricing row and the testing coverage table: `docs/knowledge/known-issues.md`, `docs/knowledge/architecture.md`, `docs/knowledge/integrations.md`, `docs/knowledge/testing.md` [risk: 1] [tier: veryfast]

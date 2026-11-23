@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Integrations\YayPricing;
 
+use YayLoyalty\Engine\Redemption\RewardCartLines;
 use YayLoyalty\Utils\SingletonTrait;
 
 defined( 'ABSPATH' ) || exit;
@@ -23,7 +24,28 @@ final class YayPricingIntegration {
         }
 
         add_action( 'yaydp_register_conditions', [ $this, 'register_conditions' ] );
+        add_filter( 'yaydp_init_cart_items', [ $this, 'skip_reward_lines' ] );
         ( new LoyaltyCouponRerun() )->register();
+    }
+
+    /**
+     * Leaves the lines a reward added at 0 out of YayPricing's cart, so they neither count toward its rules nor get
+     * priced by them. Marking them as YayPricing's own free items instead would make it delete them.
+     *
+     * @param mixed $items WooCommerce cart items, keyed by cart item key.
+     * @return mixed
+     */
+    public function skip_reward_lines( $items ) {
+        if ( ! is_array( $items ) ) {
+            return $items;
+        }
+
+        return array_filter(
+            $items,
+            static function ( $item ): bool {
+                return ! is_array( $item ) || empty( $item[ RewardCartLines::ITEM_KEY ] );
+            }
+        );
     }
 
     /** YayPricing's main file defines YAYDP_VERSION before YayLoyalty boots. */
