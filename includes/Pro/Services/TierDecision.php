@@ -110,10 +110,7 @@ final class TierDecision {
     }
 
     /**
-     * Where a refund leaves its customer, in any mode. A customer whose own total already fell short of their tier
-     * before the refund is being kept (a raised threshold, a mode switch, a hold) and stays until the next review.
-     * Otherwise the refund is judged as any negative row: rolling_move()'s KIND_DOWN, where an active hold's
-     * qualifying tier still protects them. Lifetime passes no qualifying tier and no hold.
+     * Where a refund leaves its customer, in any mode.
      *
      * @param Tier|null $before_tier target() of the mode's total without this refund, with no floor.
      * @param Tier|null $after_tier  target() of the mode's total with it, with no floor.
