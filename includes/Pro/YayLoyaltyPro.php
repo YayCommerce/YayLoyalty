@@ -44,6 +44,8 @@ use YayLoyalty\Pro\Repositories\StoreLedgerRepository;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Pro\Services\DailyEarningLimit;
 use YayLoyalty\Pro\Services\DiscountRewardHandler;
+use YayLoyalty\Pro\Services\FreeProductRewardHandler;
+use YayLoyalty\Pro\Services\FreeShippingRewardHandler;
 use YayLoyalty\Pro\Services\RewardConditionsEvaluator;
 use YayLoyalty\Pro\Services\RewardTierCondition;
 use YayLoyalty\Pro\Services\TierLedgerListener;
@@ -315,10 +317,12 @@ final class YayLoyaltyPro {
         $registry->register( new RenewalHandler() );
     }
 
-    /** The handlers that spend `fixed_coupon` and `percent_coupon` rewards as virtual coupons on the cart. */
+    /** The handlers that spend Pro's reward types as virtual coupons on the cart: two discounts, free shipping and a free product. */
     public static function register_reward_handlers( Registry $registry ): void {
         $registry->register( new DiscountRewardHandler( RewardType::FIXED_COUPON ) );
         $registry->register( new DiscountRewardHandler( RewardType::PERCENT_COUPON ) );
+        $registry->register( new FreeShippingRewardHandler() );
+        $registry->register( new FreeProductRewardHandler() );
     }
 
     /**
