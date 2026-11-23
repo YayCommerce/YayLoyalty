@@ -111,7 +111,7 @@ Lifetime mode is exactly slice 2's **Evaluation rules**. The rest of this sectio
 
 Consequences that follow from these rules (accepted):
 - A Lifetime → Rolling → Lifetime round trip clears holds, and a later switch back gives fresh holds of now + N.
-- A raised threshold (D18) keeps Rolling members until hold end. A negative row during the hold compares the qualifying total against the new threshold, so a refund can then drop them (as slice 2 accepted for Lifetime).
+- A raised threshold (D18) keeps Rolling members until hold end. A negative row during the hold compares the qualifying total against the new threshold, so a staff deduction can then drop them. *Amended by P-9:* a refund drops a customer only when it is the cause: if their window total already fell short of their tier before the refund, they keep it until the hold ends; otherwise the refund is judged as above.
 - A customer whose window decays below their tier during a hold keeps it until hold end, unless a clawback or staff deduction pulls the qualifying total below the tier.
 
 ## Acceptance criteria
