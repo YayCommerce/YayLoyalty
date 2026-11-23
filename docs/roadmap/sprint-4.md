@@ -37,3 +37,12 @@ Goal: Holiday sprint, kept light: referral fraud checks, referral emails with th
 - depends: R-4
 - why: requested 2026-11-17 in the referral wireframe (1a, 1c): shared email domains, matching IP hashes and a per-advocate monthly cap should hold a referral for review instead of paying it (BL-8)
 - acceptance: A referral whose friend shares the advocate's email domain or IP hash, or exceeds the advocate's monthly cap, is held as Flagged in Approvals with the matched checks spelled out, is excluded from bulk approve, and shows 'Under review' to the advocate
+
+### R-16 Referral events in the customer activity timeline
+- status: todo
+- size: S
+- why: Deferred from P-3 (BL-10): merchants can't see referral joins, payouts, rejections or reversals in a customer's history
+- acceptance: A customer's activity timeline in the admin shows when they joined through a referral and when a referral reward was paid, rejected or reversed; a site that never used referrals shows nothing new
+- editions: pro
+- from: BL-10
+- depends: R-4

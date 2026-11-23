@@ -9,19 +9,20 @@ Goal: Finish 1.1.0: VIP tiers, social and renewal earning, and the Tools page, s
 - why: requested 2026-11-13 for 1.1; the customers table already reserves tier_id and tier progress columns, and the tier condition waits for it (CustomersTable.php, CampaignConditionType::TIER)
 - acceptance: A merchant defines ranked tiers (e.g. Silver, Gold) by lifetime spend or points with a points multiplier per tier; customers see their tier and progress to the next in My Points, and are moved up or down when they cross a threshold, including after a refund
 - target: 1.1.0
-- note: Jason's open PR #184 (jason/feat/tiers) already builds tiers; review it against this acceptance before brainstorming
+- note: Overlaps open PR #184 (jason/feat/tiers, +15k lines, idle since 2026-11-12): decide in the brainstorm whether to build on it or start fresh
 
 ### R-5 More ways to earn: social shares and subscription renewals
-- status: todo
+- status: in-progress
 - size: M
 - editions: pro
 - why: requested 2026-11-13 for 1.1; the social and renewal triggers are reserved but not offered (CampaignTrigger::SOCIAL, ::RENEWAL)
 - acceptance: A merchant turns on campaigns for following/sharing on social networks and for WooCommerce Subscriptions renewals; customers earn once per action, and a renewal that is refunded takes its points back
 - target: 1.1.0
-- note: reading unconfirmed: could also mean other actions (newsletter sign-up, account anniversary, product purchase of a set category); built from the reserved social and renewal triggers
+- note: P-7 built, PR #203 open
+- started: 2026-11-23
 
 ### R-6 Tools: CSV import/export and bulk point adjustments
-- status: in-progress
+- status: done
 - size: M
 - editions: pro, lite
 - why: requested 2026-11-13 for 1.1; merchants moving from another loyalty plugin need to bring balances in, and adjustments today are one customer at a time
@@ -29,3 +30,4 @@ Goal: Finish 1.1.0: VIP tiers, social and renewal earning, and the Tools page, s
 - target: 1.1.0
 - started: 2026-11-19
 - built: 2026-11-19
+- merged: 2026-11-20

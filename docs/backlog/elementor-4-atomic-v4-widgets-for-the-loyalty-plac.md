@@ -4,7 +4,7 @@ title: Elementor 4 atomic (v4) widgets for the loyalty placements
 kind: deferred
 status: open
 from: P-2
-affects: []
+affects: [R-18]
 default: 
 decision:
 created: 2026-11-16
