@@ -602,6 +602,22 @@ final class TierEvaluatorTest extends IntegrationTestCase {
         );
     }
 
+    /** @group P-9 */
+    public function test_adjust_not_counted_toward_tier_points_moves_balance_and_lifetime_only(): void {
+        $user = $this->customer();
+        $this->ledger_service()->adjust( $user, 100, 'seed', 1 );
+        $this->ledger_service()->adjust( $user, 1000, 'not for tiers', 1, true, null, false );
+
+        $row = $this->customer_row( $user );
+        $this->assertSame( 'Bronze', $this->tier_of( $user ) );
+        $this->assertSame( [ 1100, 1100, 100 ], [ (int) $row['balance'], (int) $row['lifetime_earned'], (int) $row['tier_progress_value'] ] );
+        $this->assertSame( '0', (string) $this->ledger_rows( $user )[1]['counts_toward_tier'] );
+
+        $this->ledger_service()->adjust( $user, 1000, 'for tiers', 1, true, null, true );
+
+        $this->assertSame( 'Silver', $this->tier_of( $user ) );
+    }
+
     public function test_calendar_staff_deduction_counts_against_the_hold(): void {
         $user = $this->held_from_previous( 3200 )->get_user_id();
 

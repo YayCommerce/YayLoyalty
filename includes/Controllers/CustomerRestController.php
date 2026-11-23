@@ -141,7 +141,8 @@ final class CustomerRestController extends AbstractRestController {
             (string) $request['note'],
             get_current_user_id(),
             (bool) $request['adjust_lifetime'],
-            isset( $request['customer_note'] ) ? (string) $request['customer_note'] : null
+            isset( $request['customer_note'] ) ? (string) $request['customer_note'] : null,
+            isset( $request['adjust_tier'] ) ? (bool) $request['adjust_tier'] : null
         );
 
         if ( (bool) $request['notify'] ) {
