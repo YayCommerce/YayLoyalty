@@ -4,7 +4,7 @@ title: Log referral events (joined, rewarded, rejected, reversed) in the custome
 kind: deferred
 status: open
 from: P-3
-affects: []
+affects: [R-19]
 default: 
 decision:
 created: 2026-11-17

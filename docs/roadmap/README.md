@@ -1,6 +1,6 @@
 ---
 horizon: 2027-01-21
-capacity: 24
+capacity: 40
 sprint_length: 2w
 updated: 2026-11-23
 ---
@@ -14,15 +14,15 @@ One file per sprint (`sprint-<n>.md`), `later.md` for unscheduled work, and a ge
 | Section | Dates | Goal | Items | Dev-days |
 |---|---|---|---|---|
 | [Sprint 1](sprint-1.md) | 2026-11-13 → 2026-11-26 | Merchants can match campaign and reward conditions by any or all (1.1.0). | 1 (1 done, 0 shipped) | 8 |
-| [Sprint 2](sprint-2.md) | 2026-11-27 → 2026-12-10 | Finish 1.1.0: VIP tiers, social and renewal earning, and the Tools page, so 1.1.0 can ship when the sprint ends (2026-12-10). | 3 (0 shipped) | 16 |
-| [Sprint 3](sprint-3.md) | 2026-12-11 → 2026-12-24 | Every reward and campaign a merchant can save actually pays: free shipping and free product redeem, milestone triggers fire, launcher filtering and privacy tools. | 5 (1 done, 0 shipped) | 21.5 |
-| [Sprint 4](sprint-4.md) | 2026-12-25 → 2027-01-07 | Holiday sprint, kept light: referral fraud checks, referral emails with the advocate coupon reward, and the Lite referral upsell. | 4 (1 done, 0 shipped) | 17.5 |
-| [Sprint 5](sprint-5.md) | 2027-01-08 → 2027-01-21 | Referral growth: the landing page, sharing and code at checkout, then the overview report with its click funnel. | 2 (0 shipped) | 16 |
+| [Sprint 2](sprint-2.md) | 2026-11-27 → 2026-12-10 | Ship 1.1.0 (all six items built), then make every reward and campaign a merchant can save actually pay: free shipping and free product redeem, milestone triggers fire, launcher filtering and privacy tools. | 7 (3 done, 0 shipped) | 29.5 |
+| [Sprint 3](sprint-3.md) | 2026-12-11 → 2026-12-24 | The referral program grows up: fraud flags and the monthly cap, referral emails with the advocate coupon, the Lite upsell, the landing page with sharing and code at checkout, and the overview report. | 6 (1 done, 0 shipped) | 33.5 |
+| [Sprint 4](sprint-4.md) | 2026-12-25 → 2027-01-07 | Holiday sprint, kept light: referral events in the activity timeline, tier-point labels on adjustments, and balance export for the largest stores. | 4 (1 done, 0 shipped) | 15 |
+| [Sprint 5](sprint-5.md) | 2027-01-08 → 2027-01-21 | Elementor 4 atomic widgets; the rest is spare capacity for fixes and the next release. | 1 (0 shipped) | 4 |
 | [Later](later.md) | - | - | 0 (0 shipped) | 0 |
 
 **Versions**
 
 | Version | Items | Last open item |
 |---|---|---|
-| [1.1.0](v1.1.0.md) · [brief](release-1.1.0.md) | 6 items: 0 open, 3 in progress, 3 done, 0 shipped, 0 dropped | [Sprint 2](sprint-2.md), ends 2026-12-10 |
+| [1.1.0](v1.1.0.md) · [brief](release-1.1.0.md) | 6 items: 0 open, 0 in progress, 6 done, 0 shipped, 0 dropped | - |
 <!-- yay:roadmap-index:end -->
