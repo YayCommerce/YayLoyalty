@@ -37,6 +37,9 @@ final class ReferenceType {
     /** Import batch id. */
     public const IMPORT = 'import';
 
+    /** yayloyalty_campaigns id of a social campaign, paid once per customer. */
+    public const SOCIAL = 'social';
+
     /** yayloyalty_tiers id, for a tier's entry bonus. */
     public const TIER = 'tier';
 
@@ -51,6 +54,7 @@ final class ReferenceType {
             self::USER,
             self::BIRTHDAY,
             self::IMPORT,
+            self::SOCIAL,
             self::TIER,
         ];
     }

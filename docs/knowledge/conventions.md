@@ -1,7 +1,7 @@
 ---
 area: conventions
-updated: 2026-11-17
-updated_ref: e166d61
+updated: 2026-11-19
+updated_ref: a5d0a81
 covers: [includes/Utils/, includes/Models/AbstractModel.php, includes/Helpers/SettingsHelper.php, includes/Controllers/BaseRestController.php, includes/Enums/]
 ---
 

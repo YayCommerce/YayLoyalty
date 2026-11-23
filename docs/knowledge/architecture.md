@@ -2,7 +2,7 @@
 area: architecture
 updated: 2026-11-23
 updated_ref: 255aa5c
-covers: [yayloyalty.php, YayLoyaltyPluginAdapter.php, includes/YayLoyalty.php, includes/Access/, includes/Database/, includes/Models/, includes/Repositories/, includes/Services/, includes/Controllers/, includes/Engine/, includes/Enums/, includes/Pro/YayLoyaltyPro.php, includes/Pro/Referrals/, includes/Pro/Repositories/ReferralRepository.php]
+covers: [yayloyalty.php, YayLoyaltyPluginAdapter.php, includes/YayLoyalty.php, includes/Access/, includes/Database/, includes/Models/, includes/Repositories/, includes/Services/, includes/Controllers/, includes/Engine/, includes/Enums/, includes/Pro/YayLoyaltyPro.php, includes/Pro/Referrals/, includes/Pro/Social/, includes/Pro/Repositories/ReferralRepository.php]
 ---
 
 # Architecture
@@ -100,7 +100,8 @@ Pro adds controllers through `yayloyalty_rest_controllers` (campaign preview and
 ## Earning
 
 - `OrderListener` is the only class that reads WooCommerce order statuses. **Only `completed` awards** (`Enums/OrderStatus::AWARD`). `pending` and `on-hold` stage points as order meta; `cancelled`, `trash`, `refunded` reverse.
-- Triggers in Lite: purchase, signup (`user_register`, self-registration only), review (`comment_post` priority 20, after WooCommerce writes `verified`). Pro adds birthday, first_order, order_count, spend_milestone via `yayloyalty_register_trigger_handlers`.
+- Triggers in Lite: purchase, signup (`user_register`, self-registration only), review (`comment_post` priority 20, after WooCommerce writes `verified`). Pro adds birthday, first_order, order_count, spend_milestone, social and renewal via `yayloyalty_register_trigger_handlers`. `OrderListener::on_awardable()` awards each trigger of `yayloyalty_order_award_triggers` (default `[purchase]`); Pro's `Renewals/RenewalTriggers` appends `renewal` for a WooCommerce Subscriptions renewal order and drops `purchase` when the renewal campaign that pays has `replace_purchase`.
+- **Social claim link:** each live social campaign is a Ways to earn row (`Pro/Social/SocialEarnRow`) whose link is `?yl_social=<campaign id>&_wpnonce=…`. `SocialClaim::maybe_claim()` on `template_redirect` awards through `EarningService::award()` (so gates, conditions and the daily limit apply), then `wp_redirect()`s to the campaign's stored http(s) URL, never one from the request. The idempotency key `earn:<user>:social:<campaign id>:social` pays once per customer per campaign.
 - Points = included line totals after all discounts (tax optional) × `to_base_factor` × `points_per_unit`, rounded once per order by `PointsMath::round_points`. Campaigns are tried in priority order; the first eligible one wins.
 - Scoring uses the order's creation date (`Context::occurred_at`), never "now".
 - Gates: `ProgramGate` (program paused, no customer, opted out, excluded role) first, then Pro gates. Guests (no user id) never earn at completion; a signed-in shopper can claim a guest order placed with their email from My Points (`Storefront/AccountClaimOrder.php`).

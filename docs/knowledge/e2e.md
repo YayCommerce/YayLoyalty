@@ -1,7 +1,7 @@
 ---
 area: e2e
-updated: 2026-11-19
-updated_ref: 17197c9
+updated: 2026-11-20
+updated_ref: c962b38
 covers: [tests/e2e/]
 ---
 
@@ -80,6 +80,9 @@ The site runs this checkout with `YAYLOYALTY_IS_DEVELOPMENT` false, so it serves
 | My Account → Referrals: the offer, Copy link puts the link on the clipboard, no horizontal scroll at 375px | customer | important | `specs/referral-account.spec.ts` @flow-referral-account | `includes/Pro/Storefront/AccountReferrals.php` |
 | Referral approvals: approve pays, reject with a reason, the advocate's drawer shows their link | admin | important | `specs/referral-approvals.spec.ts` @flow-referral-approvals | `apps/admin/src/pro/referral/approvals/ApprovalsTab.tsx` |
 | Referred friend's discount in classic and block totals, not under the minimum | customer (a fresh friend per test, logged in by form) | critical | `specs/referral-checkout.spec.ts` @flow-referral-checkout | `includes/Pro/Referrals/ReferralCartSync.php` |
+| Social campaign create: network, action, share link and points save and reload | admin | important | `specs/campaign-social.spec.ts` @flow-campaign-social | `apps/admin/src/pro/campaigns/editor/CampaignEditorEarnSocial.tsx` |
+| Social claim from My Points: pays once, redirects to the network, Earned after, guest and excluded customers get no claim | customer (a fresh one per test, logged in by form), guest | important | `specs/social-claim.spec.ts` @flow-social-claim | `includes/Pro/Social/SocialClaim.php` |
+| Renewal campaign: card with WooCommerce Subscriptions, earns per renewal order, replaces order points, refunds claw back | admin | important | `specs/renewal-campaign.spec.ts` @flow-renewal-campaign (installs its own mu-plugin stand-in for WooCommerce Subscriptions; the last test skips while another one is active) | `includes/Pro/Renewals/RenewalTriggers.php` |
 | Tools import: preview errors, apply, re-upload applies nothing | admin | critical | `specs/tools-import.spec.ts` @flow-tools-import | `apps/admin/src/pages/tools/ToolsImportCard.tsx` |
 | Campaign create, edit, pause | admin | important | candidate | `apps/admin/src/pro/campaigns/editor/CampaignEditor.tsx` |
 | Reward create and edit | admin | important | candidate | `apps/admin/src/pro/rewards/editor/RewardEditor.tsx` |

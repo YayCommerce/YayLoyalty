@@ -14,8 +14,8 @@ export const LITE_CAMPAIGN_TRIGGERS = ['purchase', 'signup', 'review'] as const;
 /** Lite's triggers; the Lite build's POST accepts only these, while Pro adds more through the yayloyalty_campaign_triggers filter that CampaignTrigger::is_valid() reads. */
 export type LiteCampaignTrigger = (typeof LITE_CAMPAIGN_TRIGGERS)[number];
 
-/** The triggers the create form has an editor for: Lite's three, plus birthday in the Pro build. */
-export const CREATABLE_CAMPAIGN_TRIGGERS = [...LITE_CAMPAIGN_TRIGGERS, 'birthday'] as const;
+/** The triggers the create form has an editor for: Lite's three, plus birthday, social and renewal in the Pro build. */
+export const CREATABLE_CAMPAIGN_TRIGGERS = [...LITE_CAMPAIGN_TRIGGERS, 'birthday', 'social', 'renewal'] as const;
 
 export type CreatableCampaignTrigger = (typeof CREATABLE_CAMPAIGN_TRIGGERS)[number];
 
@@ -24,7 +24,7 @@ export function isCreatableCampaignTrigger(trigger: string): trigger is Creatabl
 }
 
 /** Mirrors YayLoyaltyPro::ADDED_TRIGGERS, the source of truth. */
-export const PRO_CAMPAIGN_TRIGGERS = ['birthday', 'first_order', 'order_count', 'spend_milestone'] as const;
+export const PRO_CAMPAIGN_TRIGGERS = ['birthday', 'first_order', 'order_count', 'spend_milestone', 'social'] as const;
 
 /**
  * Mirrors CampaignTrigger::all_known(), the source of truth. Every trigger the API may hand back.
@@ -35,7 +35,6 @@ export const ALL_KNOWN_CAMPAIGN_TRIGGERS = [
   ...LITE_CAMPAIGN_TRIGGERS,
   ...PRO_CAMPAIGN_TRIGGERS,
   'referral',
-  'social',
   'renewal',
 ] as const;
 
@@ -346,6 +345,48 @@ export interface BirthdayConfig {
 
 /** Mirrors YayLoyaltyPro::add_campaign_config_schema()['birthday']['days_before']['max'], the source of truth. */
 export const BIRTHDAY_DAYS_BEFORE_MAX = 30;
+
+/** Mirrors SocialHandler::NETWORKS, the source of truth. */
+export const SOCIAL_NETWORKS = ['facebook', 'instagram', 'x', 'tiktok', 'youtube', 'linkedin', 'pinterest'] as const;
+
+export type SocialNetwork = (typeof SOCIAL_NETWORKS)[number];
+
+/** Mirrors SocialHandler::ACTIONS, the source of truth. */
+export const SOCIAL_ACTIONS = ['follow', 'share'] as const;
+
+export type SocialAction = (typeof SOCIAL_ACTIONS)[number];
+
+/** Mirrors YayLoyaltyPro::add_campaign_config_schema()['social'], the source of truth. */
+export interface SocialConfig {
+  network?: SocialNetwork;
+  action?: SocialAction;
+  /** http or https only; ConfigSpec's `url` type refuses anything else. */
+  url?: string;
+  points?: number;
+}
+
+/** Mirrors YayLoyaltyPro::add_campaign_config_schema()['renewal'], the source of truth. */
+export interface RenewalConfig {
+  points?: number;
+  /** True: the renewal order earns these points instead of its order points. */
+  replace_purchase?: boolean;
+}
+
+/** PHP's FILTER_VALIDATE_URL host rule: ASCII labels of letters, digits and inner hyphens. */
+const HTTP_URL_START = /^https?:\/\/[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:\d+)?([/?#]|$)/i;
+
+/** The form's side of ConfigSpec's `url` type: an absolute http or https link the server will accept. */
+export function isHttpUrl(value: unknown): boolean {
+  if (typeof value !== 'string' || /\s/.test(value) || !HTTP_URL_START.test(value)) {
+    return false;
+  }
+
+  try {
+    return new URL(value).hostname !== '';
+  } catch {
+    return false;
+  }
+}
 
 /** The form's side of CampaignRestController::lacks_purchase_rate(): a purchase campaign with no numeric rate could never earn, so saving it is refused. */
 export function lacksPurchaseRate(config: Record<string, unknown>): boolean {

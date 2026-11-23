@@ -24,5 +24,5 @@ One file per sprint (`sprint-<n>.md`), `later.md` for unscheduled work, and a ge
 
 | Version | Items | Last open item |
 |---|---|---|
-| [1.1.0](v1.1.0.md) · [brief](release-1.1.0.md) | 6 items: 1 open, 2 in progress, 3 done, 0 shipped, 0 dropped | [Sprint 2](sprint-2.md), ends 2026-12-10 |
+| [1.1.0](v1.1.0.md) · [brief](release-1.1.0.md) | 6 items: 0 open, 3 in progress, 3 done, 0 shipped, 0 dropped | [Sprint 2](sprint-2.md), ends 2026-12-10 |
 <!-- yay:roadmap-index:end -->

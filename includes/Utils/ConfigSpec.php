@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Checks a config value against a typed spec, for the campaign and reward config schemas.
  * Spec types: bool, string, enum [values], enum_list [values], currency, int and number [min, exclusive_min, max],
- * nullable_int, nullable_number, int_list, and limit (null = no limit). An unknown type is accepted.
+ * nullable_int, nullable_number, int_list, url (http or https), and limit (null = no limit). An unknown type is accepted.
  */
 final class ConfigSpec {
 
@@ -34,6 +34,10 @@ final class ConfigSpec {
                 }
 
                 return true;
+
+            // Printed as a storefront link, so a javascript: or relative URL is refused.
+            case 'url':
+                return is_string( $value ) && 1 === preg_match( '#^https?://#i', $value ) && false !== filter_var( $value, FILTER_VALIDATE_URL );
 
             case 'currency':
                 return is_string( $value ) && IsoCodes::is_currency( $value );

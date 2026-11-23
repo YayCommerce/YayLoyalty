@@ -62,4 +62,6 @@ export type AdminData = {
     name: string;
     filters: { balance_range: CustomerBalanceRange; expiring_soon: CustomerExpiringSoon };
   }[];
+  /** WooCommerce Subscriptions is active, so the renewal campaign is offered. Pro-only hence optional. */
+  has_subscriptions?: boolean;
 };

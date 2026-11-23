@@ -34,6 +34,8 @@ use YayLoyalty\Pro\Referrals\ReferralEarnRow;
 use YayLoyalty\Pro\Referrals\ReferralLifecycle;
 use YayLoyalty\Pro\Referrals\ReferralPayout;
 use YayLoyalty\Pro\Referrals\ReferralRunner;
+use YayLoyalty\Pro\Renewals\RenewalHandler;
+use YayLoyalty\Pro\Renewals\RenewalTriggers;
 use YayLoyalty\Pro\Repositories\CampaignPerformanceRepository;
 use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
 use YayLoyalty\Pro\Repositories\ReferralListRepository;
@@ -47,6 +49,9 @@ use YayLoyalty\Pro\Services\RewardTierCondition;
 use YayLoyalty\Pro\Services\TierLedgerListener;
 use YayLoyalty\Pro\Services\TierMultiplier;
 use YayLoyalty\Pro\Services\TierRunner;
+use YayLoyalty\Pro\Social\SocialClaim;
+use YayLoyalty\Pro\Social\SocialEarnRow;
+use YayLoyalty\Pro\Social\SocialHandler;
 use YayLoyalty\Pro\Storefront\AccountReferrals;
 use YayLoyalty\Pro\Storefront\AccountTier;
 use YayLoyalty\Pro\Storefront\RewardsPanel;
@@ -76,8 +81,8 @@ final class YayLoyaltyPro {
     private static $evaluator = null;
 
     /**
-     * Triggers Pro offers. referral, social and renewal are recognised but not
-     * yet fireable, so offering them would sell a switch that does nothing.
+     * Triggers Pro always offers. referral is recognised but not fireable, so offering it
+     * would sell a switch that does nothing; renewal is offered only with WooCommerce Subscriptions.
      *
      * @var string[]
      */
@@ -86,6 +91,7 @@ final class YayLoyaltyPro {
         CampaignTrigger::FIRST_ORDER,
         CampaignTrigger::ORDER_COUNT,
         CampaignTrigger::SPEND_MILESTONE,
+        CampaignTrigger::SOCIAL,
     ];
 
     /** @var string[] */
@@ -124,6 +130,7 @@ final class YayLoyaltyPro {
         add_filter( 'yayloyalty_rest_controllers', [ self::class, 'add_controllers' ] );
         add_filter( 'yayloyalty_rest_item_schema', [ self::class, 'describe_pro_config' ], 10, 2 );
         add_filter( 'yayloyalty_localize_admin_data', [ self::class, 'add_segments' ] );
+        add_filter( 'yayloyalty_localize_admin_data', [ self::class, 'add_has_subscriptions' ] );
         add_filter( 'yayloyalty_plugin_name', [ self::class, 'plugin_name' ] );
         add_filter( 'woocommerce_email_classes', [ ProEmails::class, 'add_classes' ] );
         add_filter( 'woocommerce_email_groups', [ ProEmails::class, 'add_groups' ] );
@@ -159,6 +166,9 @@ final class YayLoyaltyPro {
         $referral_lifecycle = new ReferralLifecycle( $referrals, $referral_payout );
         $referral_lifecycle->register();
         ( new ReferralRunner( $referrals, $referral_payout, $referral_lifecycle ) )->register();
+        ( new RenewalTriggers() )->register();
+        ( new SocialEarnRow() )->register();
+        add_action( 'template_redirect', [ SocialClaim::class, 'maybe_claim' ] );
 
         /** Fires once Pro has attached its hooks. Pro-internal; absent from Lite. */
         do_action( 'yayloyalty_pro_booted' );
@@ -202,7 +212,14 @@ final class YayLoyaltyPro {
      * @return string[]
      */
     public static function add_triggers( array $triggers ): array {
-        return array_values( array_unique( array_merge( $triggers, self::ADDED_TRIGGERS ) ) );
+        $added = self::has_subscriptions() ? array_merge( self::ADDED_TRIGGERS, [ CampaignTrigger::RENEWAL ] ) : self::ADDED_TRIGGERS;
+
+        return array_values( array_unique( array_merge( $triggers, $added ) ) );
+    }
+
+    /** Whether WooCommerce Subscriptions is active, so renewal campaigns can fire. Asked late: it may load after Pro boots. */
+    public static function has_subscriptions(): bool {
+        return function_exists( 'wcs_order_contains_renewal' );
     }
 
     /**
@@ -244,7 +261,7 @@ final class YayLoyaltyPro {
     }
 
     /**
-     * Typed config specs for the campaign triggers Pro adds. Birthday's keys are the only ones its config may hold.
+     * Typed config specs for the campaign triggers Pro adds. Birthday's, social's and renewal's keys are the only ones their configs may hold.
      * The other three type only `points`, which must be whole; add_config_keys() lists the rest of their keys.
      *
      * @param array<string, array<string, array<string, mixed>>> $schema
@@ -269,12 +286,33 @@ final class YayLoyaltyPro {
             ],
         ];
 
+        $schema[ CampaignTrigger::SOCIAL ] = [
+            'network' => [
+                'type'   => 'enum',
+                'values' => array_keys( SocialHandler::NETWORKS ),
+            ],
+            'action'  => [
+                'type'   => 'enum',
+                'values' => SocialHandler::ACTIONS,
+            ],
+            'url'     => [ 'type' => 'url' ],
+            'points'  => $points,
+        ];
+
+        $schema[ CampaignTrigger::RENEWAL ] = [
+            'points'           => $points,
+            'replace_purchase' => [ 'type' => 'bool' ],
+        ];
+
         return $schema;
     }
 
     /** The handlers for the campaign triggers Pro can fire. */
     public static function register_trigger_handlers( TriggerRegistry $registry ): void {
         $registry->register( new BirthdayHandler() );
+        $registry->register( new SocialHandler() );
+        // Unconditional: the registry is built at boot, and the handler checks for WooCommerce Subscriptions itself.
+        $registry->register( new RenewalHandler() );
     }
 
     /** The handlers that spend `fixed_coupon` and `percent_coupon` rewards as virtual coupons on the cart. */
@@ -424,6 +462,18 @@ final class YayLoyaltyPro {
      */
     public static function add_segments( array $data ): array {
         $data['segments'] = CustomerSegmentsHelper::get_segments();
+
+        return $data;
+    }
+
+    /**
+     * Tells the admin whether to offer the renewal campaign.
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    public static function add_has_subscriptions( array $data ): array {
+        $data['has_subscriptions'] = self::has_subscriptions();
 
         return $data;
     }

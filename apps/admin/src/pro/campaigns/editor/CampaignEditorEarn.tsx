@@ -15,6 +15,8 @@ import { Switch } from '@/components/ui/switch';
 import { triggerLabel } from '../campaign-labels';
 import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
 import { CampaignEditorEarnPurchase } from './CampaignEditorEarnPurchase';
+import { CampaignEditorEarnRenewal } from './CampaignEditorEarnRenewal';
+import { CampaignEditorEarnSocial } from './CampaignEditorEarnSocial';
 
 /** Reward section: the per-trigger field maps behind the editor's third card. */
 
@@ -31,6 +33,10 @@ export function CampaignEditorEarn() {
       return <EarnFieldsReview />;
     case 'birthday':
       return <EarnFieldsBirthday />;
+    case 'social':
+      return <CampaignEditorEarnSocial />;
+    case 'renewal':
+      return <CampaignEditorEarnRenewal />;
     default:
       return <EarnFieldsUnknown trigger={trigger} />;
   }
@@ -184,7 +190,7 @@ function EarnFieldsBirthday() {
 }
 
 /**
- * Fallback for a trigger with no field map (the Pro triggers other than birthday). Binds
+ * Fallback for a trigger with no field map (first_order, order_count, spend_milestone). Binds
  * nothing back to config: the seeded clone must round-trip untouched, or
  * this would erase on the client what the server preserves for a downgrade.
  */

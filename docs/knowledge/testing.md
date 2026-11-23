@@ -35,6 +35,7 @@ Run one test with `vendor/bin/phpunit -c tests/php/unit.xml.dist --filter <Name>
 
 - **Edition:** unit tests run as Lite. Stub the Pro filter a test needs (`yayloyalty_expiry_modes`, `yayloyalty_campaign_triggers`…). Under Vitest `IS_PRO_BUILD` is false; use `vi.stubEnv( 'VITE_IS_PRO', 'true' )` and re-import for Pro paths. The integration site loads the full tree, so Pro boots.
 - **Signup points:** creating a user with no current user is a self-registration, and the seeded signup campaign awards points. Integration tests that count a balance call `wp_set_current_user( 1 )` before `self::factory()->user->create()`.
+- **Partner plugins:** the tests site installs only WooCommerce. A test that needs a partner's function defines a stand-in next to it, guarded by `function_exists` (`tests/php/integration/Pro/Renewals/wcs-renewal-stub.php` for WooCommerce Subscriptions). Pro asks for the partner at call time, so the stand-in works although it loads after boot; it stays defined for the rest of the run.
 - **Transactions:** `Database\Transaction` detects the test suite's open transaction and nests with savepoints, so plugin writes roll back with each test.
 
 ## Traps hit while setting up
