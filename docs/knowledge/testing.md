@@ -1,7 +1,7 @@
 ---
 area: testing
 updated: 2026-11-23
-updated_ref: 255aa5c
+updated_ref: 4ad856a
 covers: [tests/php/, tests/js/, tests/unit/, tests/integration/, tests/bootstrap.php, phpunit.xml.dist, phpunit-integration.xml.dist, tests/e2e/.wp-env.json]
 ---
 
