@@ -24,9 +24,15 @@ import type { EditorSaveIntent } from '@/hooks/useEditorSave';
 import { mergeConditionErrors } from '../../conditions/condition-form';
 import { defaultRewardName } from '../reward-labels';
 
+/** The reward's tier rule: none, "Minimum tier" (`gte`) or "Only this tier" (`eq`). */
+const TIER_RULES = ['any', 'gte', 'eq'] as const;
+
+export type TierRule = (typeof TIER_RULES)[number];
+
 /**
- * The form's fields. `conditions` is edited in "Who can redeem" for catalog
- * rewards; the built-in shows none, and a save sends its stored conditions back untouched.
+ * The form's fields. `conditions` is edited in "Who can redeem" for catalog rewards, less its
+ * tier entry, which the form holds as `tier_rule` and `tier_id`; the built-in shows none, and a
+ * save sends its stored conditions back untouched.
  */
 export interface RewardFormValues {
   name: string;
@@ -38,6 +44,10 @@ export interface RewardFormValues {
   conditions: ConditionList<RewardCondition>;
   starts_at: string | null;
   ends_at: string | null;
+  /** Only coupon rewards set a rule other than `any`. */
+  tier_rule: TierRule;
+  /** The required tier's id; null for `any`, or until the merchant picks one. */
+  tier_id: number | null;
 }
 
 export type RewardSaveIntent = EditorSaveIntent;
@@ -121,6 +131,8 @@ export function rewardCreateSeed(type: CatalogRewardType, currency: string): Rew
     conditions: emptyConditionList(),
     starts_at: null,
     ends_at: null,
+    tier_rule: 'any',
+    tier_id: null,
   };
 }
 
@@ -128,6 +140,7 @@ export function rewardCreateSeed(type: CatalogRewardType, currency: string): Rew
 export function rewardToFormValues(reward: Reward, storeCurrency: string): RewardFormValues {
   // A catalog row missing a key (written before typed validation) gets the seed's value, so every input renders.
   const base = isCatalogRewardType(reward.type) ? seedConfig(reward.type, storeCurrency) : {};
+  const stored = toConditionList<RewardCondition>(reward.conditions);
 
   return {
     name: reward.name,
@@ -136,9 +149,10 @@ export function rewardToFormValues(reward: Reward, storeCurrency: string): Rewar
     cost_points: reward.cost_points,
     // Cloned: form state must never share references with the query cache.
     config: structuredClone({ ...base, ...reward.config }),
-    conditions: structuredClone(toConditionList<RewardCondition>(reward.conditions)),
+    conditions: structuredClone({ ...stored, conditions: stored.conditions.filter((entry) => entry.type !== 'tier') }),
     starts_at: reward.starts_at,
     ends_at: reward.ends_at,
+    ...tierRuleOf(stored.conditions),
   };
 }
 
@@ -191,7 +205,7 @@ function formValuesToBody(values: RewardFormValues, intent: RewardSaveIntent): R
     status: resolveSaveStatus(values, intent),
     cost_points: values.cost_points,
     config: values.config,
-    conditions: values.conditions,
+    conditions: withTierRule(values.conditions, values.tier_rule, values.tier_id),
     starts_at: values.starts_at,
     ends_at: values.ends_at,
   };
@@ -213,11 +227,46 @@ export function rewardFormSchema(type: RewardType) {
           : z.number({ invalid_type_error: costMessage }).int().min(1, costMessage),
       config: REWARD_CONFIG_SCHEMAS[type],
       status: z.enum(EDITABLE_REWARD_STATUSES),
+      tier_rule: z.enum(TIER_RULES),
+      tier_id: z.number().int().positive().nullable(),
     })
     .refine((data) => isScheduleInOrder(data.starts_at, data.ends_at), {
       message: __('The reward must end after it starts.', 'yayloyalty'),
       path: ['ends_at'],
+    })
+    .refine((data) => data.tier_rule === 'any' || data.tier_id !== null, {
+      message: __('Pick a tier.', 'yayloyalty'),
+      path: ['tier_id'],
     });
+}
+
+/**
+ * Mirrors RewardTierCondition::tier_entry(), the source of truth: the rule and
+ * id of a `tier` entry with `gte` or `eq`, or `any` without a usable one.
+ */
+function tierRuleOf(conditions: RewardCondition[]): Pick<RewardFormValues, 'tier_rule' | 'tier_id'> {
+  const entry = conditions.find((condition) => condition.type === 'tier');
+  const operator = entry?.operator;
+  const value = entry?.value;
+  const id = typeof value === 'number' || typeof value === 'string' ? Number(value) : NaN;
+
+  return (operator === 'gte' || operator === 'eq') && Number.isInteger(id) && id > 0
+    ? { tier_rule: operator, tier_id: id }
+    : { tier_rule: 'any', tier_id: null };
+}
+
+/** The list with its tier entries replaced by one for `rule`, or with none for `any`. */
+function withTierRule(
+  list: ConditionList<RewardCondition>,
+  rule: TierRule,
+  tierId: number | null,
+): ConditionList<RewardCondition> {
+  const rest = list.conditions.filter((condition) => condition.type !== 'tier');
+
+  return {
+    ...list,
+    conditions: rule === 'any' || tierId === null ? rest : [...rest, { type: 'tier', operator: rule, value: tierId }],
+  };
 }
 
 export function rewardFormResolver(type: RewardType): Resolver<RewardFormValues> {

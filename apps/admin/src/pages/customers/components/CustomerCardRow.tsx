@@ -5,11 +5,13 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import { formatWPDate, formatWPRelativeDate } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { PointsValue } from '@/components/ui/custom/points-value';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CustomersTierCell } from '@/pro';
 import { BalanceCell, CustomerNameCell } from './CustomersTableCells';
 
 /**
@@ -17,7 +19,7 @@ import { BalanceCell, CustomerNameCell } from './CustomersTableCells';
  * and the other columns sit in a "Details" popover, so no column is silently dropped.
  * No selection checkbox: bulk actions are desktop-only.
  */
-export function CustomerCardRow({ customer }: { customer: CustomerListRow }) {
+export function CustomerCardRow({ customer, showTiers }: { customer: CustomerListRow; showTiers: boolean }) {
   const negative = customer.balance < 0;
   const [searchParams] = useSearchParams();
   const search = searchParams.toString();
@@ -36,7 +38,7 @@ export function CustomerCardRow({ customer }: { customer: CustomerListRow }) {
         <div className="flex min-w-0 items-center gap-2 text-xs">
           <span className="text-muted-foreground truncate">{summaryLine(customer, negative)}</span>
         </div>
-        <CardDetailsPopover customer={customer} negative={negative} />
+        <CardDetailsPopover customer={customer} negative={negative} showTiers={showTiers} />
       </div>
     </div>
   );
@@ -69,8 +71,16 @@ function summaryLine(customer: CustomerListRow, negative: boolean): string {
   return activity ?? '—';
 }
 
-/** The columns the card does not show inline: Lifetime earned and Expires. */
-function CardDetailsPopover({ customer, negative }: { customer: CustomerListRow; negative: boolean }) {
+/** The columns the card does not show inline: Tier (Pro, tiers on), Lifetime earned and Expires. */
+function CardDetailsPopover({
+  customer,
+  negative,
+  showTiers,
+}: {
+  customer: CustomerListRow;
+  negative: boolean;
+  showTiers: boolean;
+}) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -80,6 +90,11 @@ function CardDetailsPopover({ customer, negative }: { customer: CustomerListRow;
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="flex w-56 flex-col gap-2 text-sm">
+        {IS_PRO_BUILD && showTiers && (
+          <DetailRow label={__('Tier', 'yayloyalty')}>
+            <CustomersTierCell tierId={customer.tier_id} />
+          </DetailRow>
+        )}
         <DetailRow label={__('Lifetime earned', 'yayloyalty')}>
           <PointsValue value={customer.lifetime_earned} />
         </DetailRow>

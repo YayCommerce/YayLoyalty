@@ -373,24 +373,32 @@ final class RedemptionService {
 
     /**
      * Every coupon reward this build offers now, keyed by reward id in `sort_order`, each quoted alone against
-     * the full balance: what the Rewards panel lists. Writes nothing.
+     * the full balance: what the Rewards panel lists. A reward whose conditions the shopper doesn't meet (a
+     * minimum tier, say) is left out, unless its coupon is already on the cart: that one stays as a refused row,
+     * so the shopper can untick it. Writes nothing.
      *
      * @return array<int, array{reward: Reward, quote: Result}>
      */
     public function reward_options( \WC_Cart $cart, ?int $user_id ): array {
         $options = [];
         $ctx     = null;
+        $on_cart = array_map( 'strval', $cart->get_applied_coupons() );
 
         foreach ( $this->rewards->live_of_types( [ RewardType::FIXED_COUPON, RewardType::PERCENT_COUPON ], Dates::now() ) as $reward ) {
             if ( ! $this->is_reward_offered( $reward ) ) {
                 continue;
             }
 
-            $ctx = $ctx ?? $this->contexts->from_cart( $cart, $user_id, null );
+            $ctx   = $ctx ?? $this->contexts->from_cart( $cart, $user_id, null );
+            $quote = $this->quoter->quote( $reward, $ctx );
+
+            if ( Result::REASON_CONDITIONS_NOT_MET === $quote->get_reason() && ! in_array( $reward->get_coupon_code(), $on_cart, true ) ) {
+                continue;
+            }
 
             $options[ (int) $reward->get_id() ] = [
                 'reward' => $reward,
-                'quote'  => $this->quoter->quote( $reward, $ctx ),
+                'quote'  => $quote,
             ];
         }
 

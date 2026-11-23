@@ -21,10 +21,10 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The only writer of the ledger and the customer aggregates, EarningService's award included.
- * Enforced by convention: it is constructed in exactly five places, Engine\RestAPI::controllers(),
+ * Enforced by convention: it is constructed in exactly six places, Engine\RestAPI::controllers(),
  * Engine\Earning\EarningService::build(), Engine\Earning\Reversal::build(),
- * Engine\Expiry\ExpiryRunner::run() and Engine\Redemption\RedemptionService::build().
- * Name a sixth here before adding it.
+ * Engine\Expiry\ExpiryRunner::run(), Engine\Redemption\RedemptionService::build() and
+ * Pro\Services\TierEvaluator::build() (the tier entry bonus). Name a seventh here before adding it.
  * Manual rows enter through adjust() and record(). System rows enter through earn(),
  * refund_earn(), restore_refund(), expire(), redeem() and import(), which add the idempotency-key duplicate branch.
  * Lock order: the customer row, then, for an earn row, its campaign row shared, which
@@ -77,10 +77,11 @@ final class LedgerService {
      *             deduction can undo a mistaken grant's lifetime total. False
      *             writes a CORRECTION row: balance only.
      * @param string|null $customer_note Shown to the customer in place of "Adjustment by {store}"; blank stores NULL.
+     * @param bool|null   $counts_toward_tier Whether the row counts toward tier points; null lets its type decide.
      *
      * @throws \InvalidArgumentException When points is zero or the type is bad.
      */
-    public function adjust( int $user_id, int $points, string $note, int $actor_id, bool $adjust_lifetime = true, ?string $customer_note = null ): LedgerEntry {
+    public function adjust( int $user_id, int $points, string $note, int $actor_id, bool $adjust_lifetime = true, ?string $customer_note = null, ?bool $counts_toward_tier = null ): LedgerEntry {
         if ( 0 === $points ) {
             throw new \InvalidArgumentException( 'YayLoyalty: an adjustment of zero points is meaningless.' );
         }
@@ -101,7 +102,10 @@ final class LedgerService {
             $actor_id > 0 ? $actor_id : null,
             Dates::now(),
             null,
-            null === $customer_note || '' === trim( $customer_note ) ? null : trim( $customer_note )
+            null === $customer_note || '' === trim( $customer_note ) ? null : trim( $customer_note ),
+            null,
+            null,
+            $counts_toward_tier
         );
 
         return $this->record( $draft );

@@ -59,6 +59,11 @@ final class CustomerRouteArgs {
                 'type'        => 'boolean',
                 'default'     => true,
             ],
+            // Absent leaves the choice to the row's type, so older clients and Lite behave as before.
+            'adjust_tier'     => [
+                'description' => __( 'Whether this adjustment counts toward tier points.', 'yayloyalty' ),
+                'type'        => 'boolean',
+            ],
             'notify'          => [
                 'description' => __( 'Whether to email the customer about this adjustment.', 'yayloyalty' ),
                 'type'        => 'boolean',

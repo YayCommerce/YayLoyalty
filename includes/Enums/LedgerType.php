@@ -58,6 +58,11 @@ final class LedgerType {
         return array_values( array_filter( self::all(), [ self::class, 'affects_lifetime_earned' ] ) );
     }
 
+    /** Whether a row counts toward tier points: its stored choice, else whether its type feeds lifetime_earned. */
+    public static function counts_toward_tier( string $type, ?bool $choice ): bool {
+        return null === $choice ? self::affects_lifetime_earned( $type ) : $choice;
+    }
+
     /** Whether the row is an admin's manual adjustment, with or without lifetime totals. */
     public static function is_manual_adjustment( string $type ): bool {
         return in_array( $type, [ self::ADJUST, self::CORRECTION ], true );

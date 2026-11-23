@@ -1,5 +1,5 @@
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
-import { CustomersSavedSegmentRow } from '@/pro';
+import { CustomersSavedSegmentRow, CustomersTierFilter } from '@/pro';
 import type { CustomerListFilters } from '../customers-page.filters';
 import type { SortDirection, SortKey } from '../customers-page.sort';
 import { CustomersExportButton } from './CustomersExportButton';
@@ -33,7 +33,18 @@ export function CustomersFilterBar({
           <CustomersSavedSegmentRow disabled={disabled} filters={filters} onFiltersChange={onFiltersChange} />
           <CustomersExportButton disabled={exportDisabled} queryFilters={queryFilters} sort={sort} />
         </div>
-        <CustomersToolbar filters={filters} onFiltersChange={onFiltersChange} disabled={disabled} />
+        <CustomersToolbar
+          filters={filters}
+          onFiltersChange={onFiltersChange}
+          disabled={disabled}
+          extraFilters={
+            <CustomersTierFilter
+              value={filters.tier}
+              onChange={(tier) => onFiltersChange({ tier })}
+              disabled={disabled}
+            />
+          }
+        />
       </>
     );
   }

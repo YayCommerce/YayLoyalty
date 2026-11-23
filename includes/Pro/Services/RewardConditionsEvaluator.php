@@ -36,6 +36,11 @@ final class RewardConditionsEvaluator {
         $verdicts = [];
 
         foreach ( $set->all() as $condition ) {
+            // RewardTierCondition enforces TIER on its own, AND-ed whatever the match, so it stays out of the fold.
+            if ( RewardConditionType::TIER === $condition->get_type() ) {
+                continue;
+            }
+
             $verdicts[] = $this->evaluate_one( $condition, $ctx, $roles );
         }
 

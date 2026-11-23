@@ -51,6 +51,17 @@ final class RewardConditionSet {
         return new self( $conditions, $parsed['match'] );
     }
 
+    /** The entry of $type, or null without one; the set holds at most one per type. */
+    public function find( string $type ): ?RewardCondition {
+        foreach ( $this->conditions as $condition ) {
+            if ( $type === $condition->get_type() ) {
+                return $condition;
+            }
+        }
+
+        return null;
+    }
+
     /** Builds from the stored column value. Malformed JSON yields an empty set, never an exception. */
     public static function from_json( ?string $raw ): self {
         return self::from_array( ConditionMatch::decode( $raw ) );
@@ -226,6 +237,12 @@ final class RewardConditionSet {
 
             case 'int':
                 ConditionValueRules::validate_int( $type, $operator, $value );
+                break;
+
+            case 'tier':
+                if ( ! ConditionValueRules::is_int_like( $value ) || (int) $value <= 0 ) {
+                    throw ConditionValueRules::bad( esc_html( $type ), 'expects a positive tier id' );
+                }
                 break;
         }
     }

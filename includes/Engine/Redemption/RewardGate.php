@@ -10,11 +10,14 @@ defined( 'ABSPATH' ) || exit;
 /**
  * The reward-level gate: is the reward live at the claim's time, do the
  * reward's conditions (role, tier, lifetime points) hold, can the customer
- * afford a fixed cost. First failing rule wins, in that order.
+ * afford a fixed cost. First failing rule wins, in that order. Conditions
+ * come before cost so that a customer the reward is not for hears so
+ * whatever their balance, and the listings can drop it on that reason alone.
  * Balance for `flexible_discount` is not a gate — Clamp reports it as a
  * ceiling so the UI can explain — only fixed-cost types fail here.
  * Conditions go through the `yayloyalty_reward_conditions_match` filter
- * (default true; Pro attaches an evaluator over $ctx->get_facts()).
+ * (default true; Pro's RewardConditionsEvaluator and RewardTierCondition
+ * answer it).
  */
 final class RewardGate implements Gate {
 

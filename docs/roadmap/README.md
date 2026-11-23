@@ -2,7 +2,7 @@
 horizon: 2027-01-21
 capacity: 24
 sprint_length: 2w
-updated: 2026-11-19
+updated: 2026-11-23
 ---
 # Roadmap: YayLoyalty — Points,  Rewards,  Referral & VIP for WooCommerce
 
@@ -24,5 +24,5 @@ One file per sprint (`sprint-<n>.md`), `later.md` for unscheduled work, and a ge
 
 | Version | Items | Last open item |
 |---|---|---|
-| [1.1.0](v1.1.0.md) · [brief](release-1.1.0.md) | 6 items: 2 open, 1 in progress, 3 done, 0 shipped, 0 dropped | [Sprint 2](sprint-2.md), ends 2026-12-10 |
+| [1.1.0](v1.1.0.md) · [brief](release-1.1.0.md) | 6 items: 1 open, 2 in progress, 3 done, 0 shipped, 0 dropped | [Sprint 2](sprint-2.md), ends 2026-12-10 |
 <!-- yay:roadmap-index:end -->

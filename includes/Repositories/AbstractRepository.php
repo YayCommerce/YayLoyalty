@@ -250,6 +250,13 @@ abstract class AbstractRepository {
         ];
     }
 
+    /** COUNT(*) of every row in the table, soft-deleted ones included. */
+    public function count_all(): int {
+        global $wpdb;
+
+        return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM `' . esc_sql( $this->table() ) . '`' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- no values; the table name is escaped.
+    }
+
     /** COUNT(*) of one user's rows, for a table with a `user_id` column. */
     protected function count_where_user( int $user_id ): int {
         global $wpdb;

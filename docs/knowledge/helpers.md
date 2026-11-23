@@ -1,7 +1,7 @@
 ---
 area: helpers
-updated: 2026-11-20
-updated_ref: 39f59a8
+updated: 2026-11-23
+updated_ref: 255aa5c
 covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, includes/Access/, includes/Services/, includes/Controllers/AbstractRestController.php, includes/Engine/Earning/, includes/Engine/Expiry/ExpiryRunner.php, includes/Engine/Emails/Emails.php, includes/Engine/Storefront/, includes/Engine/Points/, apps/admin/src/lib/, apps/admin/src/hooks/, apps/admin/src/components/layout/]
 ---
 
@@ -16,7 +16,8 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 - `Database\Transaction::run($fn)` / `after_commit($fn)` (`includes/Database/Transaction.php`): the only way to open a transaction; defer emails and actions until commit.
 - `Utils\Json::encode|decode|encode_list|decode_list` (`includes/Utils/Json.php`): versioned JSON columns; never throws on read.
 - `Utils\ConditionMatch::parse|decode|encode|assert_structure|fold` (`includes/Utils/ConditionMatch.php`): a campaign's or reward's `conditions` as `{ match, conditions }`; reads a flat list as `all`. `Campaign|Reward::has_conditions()` asks whether there is a condition.
-- `Services\LedgerService` (`includes/Services/LedgerService.php`): every points change. `adjust()` / `record()` for manual rows; `earn()`, `refund_earn()`, `restore_refund()`, `expire()`, `redeem()` for keyed system rows; `import()` for a CSV import row (keyed, so a re-upload is a duplicate). Get an instance from an existing composition root, don't construct a new one.
+- Tier points: `LedgerType::counts_toward_tier()` (PHP) and `LedgerRepository::window_total()` (SQL, any date range; `created_by` for a closed period, `except_ref_*` for the total before one refund). Don't sum `lifetime_earned` for a tier.
+- `Services\LedgerService` (`includes/Services/LedgerService.php`): every points change. `adjust()` / `record()` for manual rows; `earn()`, `refund_earn()`, `restore_refund()`, `expire()`, `redeem()` for keyed system rows; `import()` for a CSV import row (keyed, so a re-upload is a duplicate). `adjust()`'s `$counts_toward_tier` stores a row's tier-points choice (null: by type). Get an instance from an existing composition root, don't construct a new one.
 - `Engine\Earning\IdempotencyKey::compose|for_earn|for_import` (`includes/Engine/Earning/IdempotencyKey.php`): the key for any new ledger write.
 - `Repositories\CustomerReader` (`includes/Repositories/CustomerReader.php`): depend on this when code may read a customer but must never write one.
 - `Database\Installer::install_locked($still_needed)` (`includes/Database/Installer.php`): run the idempotent install under the upgrade mutex; Pro's `ProInstaller` uses it.
