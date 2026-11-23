@@ -94,7 +94,8 @@ Done means, with Silver 800 and Gold 3,000 (and Gold raised to 5,000 where state
 
 ## Verify
 - `composer test` → exit 0 (unit)
-- `composer test:integration` → exit 0 (integration)
+- `cd tests/e2e && ./node_modules/.bin/wp-env run tests-cli --env-cwd=wp-content/plugins/yayloyalty env YAYLOYALTY_WP_ROOT=/var/www/html vendor/bin/phpunit -c phpunit-integration.xml.dist tests/integration/Repositories/LedgerWindowTotalTest.php` → OK (integration)
+- `cd tests/e2e && ./node_modules/.bin/wp-env run tests-cli --env-cwd=wp-content/plugins/yayloyalty env YAYLOYALTY_WP_ROOT=/var/www/html vendor/bin/phpunit -c phpunit-integration.xml.dist tests/integration/Services/TierEvaluatorTest.php` → OK (integration)
 - `yayh test run js` → exit 0 (js)
 - `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` → exit 0
 - `pnpm --filter @yayloyalty/admin-page lint` → exit 0
