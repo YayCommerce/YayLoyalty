@@ -4,7 +4,7 @@ title: Label adjustments that don't count toward tier points in the drawer ledge
 kind: deferred
 status: open
 from: P-9
-affects: []
+affects: [R-20]
 default: 
 decision:
 created: 2026-11-23

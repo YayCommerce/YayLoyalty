@@ -4,7 +4,7 @@ title: Export balances on Tools fails above 50,000 customers (fetchAllMatchingCu
 kind: deferred
 status: open
 from: P-8
-affects: [R-6]
+affects: [R-21]
 default: 
 decision:
 created: 2026-11-19

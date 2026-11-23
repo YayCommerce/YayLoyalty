@@ -1,6 +1,6 @@
 ## Sprint 4 (2026-12-25 → 2027-01-07)
 
-Goal: Holiday sprint, kept light: referral fraud checks, referral emails with the advocate coupon reward, and the Lite referral upsell.
+Goal: Holiday sprint, kept light: referral events in the activity timeline, tier-point labels on adjustments, and balance export for the largest stores.
 
 ### R-4 Referral program
 - status: done
@@ -14,26 +14,29 @@ Goal: Holiday sprint, kept light: referral fraud checks, referral emails with th
 - built: 2026-11-18
 - merged: 2026-11-18
 
-### R-13 Referral emails and advocate coupon reward
-- status: todo
-- size: M
-- editions: pro
-- depends: R-4
-- why: requested 2026-11-17 in the referral wireframe (1a): advocates and friends hear when a referral moves, and a merchant can reward the advocate with a coupon instead of points
-- acceptance: Settings → Emails lists referral emails (friend joined, reward on the way, reward paid) that send at those moments; Referral → Settings offers points or a coupon for the advocate, never both
-
-### R-14 Referral upsell screen in Lite
+### R-19 Referral events in the customer activity timeline
 - status: todo
 - size: S
-- editions: lite
+- editions: pro
+- from: BL-10
 - depends: R-4
-- why: requested 2026-11-17 in the referral wireframe (1f): Lite merchants should see what the Pro referral programme does
-- acceptance: In Lite the YayLoyalty header shows a locked Referral item that opens a Pro feature screen with example figures labelled as illustrative and one Upgrade button; the storefront shows nothing referral-related
+- why: Deferred from P-3 (BL-10): merchants can't see referral joins, payouts, rejections or reversals in a customer's history
+- acceptance: A customer's admin activity timeline shows when they joined through a referral and when a referral reward was paid, rejected or reversed; a site that never used referrals shows nothing new
 
-### R-12 Referral fraud flags and monthly cap
+### R-20 Label adjustments that don't count toward tier points
+- status: todo
+- size: S
+- editions: pro
+- from: BL-24
+- depends: R-2
+- why: Deferred from P-9 (BL-24): a staff adjustment kept out of tier points looks the same as one that counts in the drawer ledger and activity
+- acceptance: In the customer drawer's ledger and activity, a staff adjustment that doesn't count toward tier points is labelled so; adjustments that count look as they do today
+
+### R-21 Export balances for stores above 50,000 customers
 - status: todo
 - size: M
-- editions: pro
-- depends: R-4
-- why: requested 2026-11-17 in the referral wireframe (1a, 1c): shared email domains, matching IP hashes and a per-advocate monthly cap should hold a referral for review instead of paying it (BL-8)
-- acceptance: A referral whose friend shares the advocate's email domain or IP hash, or exceeds the advocate's monthly cap, is held as Flagged in Approvals with the matched checks spelled out, is excluded from bulk approve, and shows 'Under review' to the advocate
+- editions: pro, lite
+- from: BL-20
+- depends: R-6
+- why: Deferred from P-8 (BL-20): Tools > Export balances fails above the 50,000-row fetch cap, so the largest stores can't export
+- acceptance: A store with 100,000 customers exports every balance from Tools in one CSV without a timeout or a missing row
