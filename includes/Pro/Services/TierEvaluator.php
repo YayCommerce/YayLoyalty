@@ -31,7 +31,7 @@ defined( 'ABSPATH' ) || exit;
  * gathers the state and writes the columns, the `tier_changed` activity row and the entry bonus, then fires
  * `yayloyalty_tier_changed` after commit.
  *
- * Lifetime qualifies on points earned and writes no hold column. Rolling qualifies on the window total
+ * Lifetime qualifies on tier points over all time (LedgerRepository::window_total()) and writes no hold column. Rolling qualifies on the window total
  * (LedgerRepository::window_total()) and, during an active hold, lets the qualifying total keep the tier.
  * Calendar qualifies on the better of the current and previous calendar period (TierCalendar), holding a
  * tier through the period after the one that earned it.
@@ -113,7 +113,7 @@ final class TierEvaluator {
 
     /** A committed ledger row: moves its customer as TierDecision::ledger_policy() allows. */
     public function on_ledger_entry( LedgerEntry $entry ): void {
-        $policy = TierDecision::ledger_policy( $entry->get_type(), $entry->get_source(), $entry->get_points() );
+        $policy = TierDecision::ledger_policy( $entry->get_type(), $entry->get_source(), $entry->get_points(), $entry->get_counts_toward_tier() );
 
         if ( null === $policy ) {
             return;
@@ -121,10 +121,15 @@ final class TierEvaluator {
 
         $this->apply(
             $entry->get_user_id(),
-            static function () use ( $policy ): array {
-                $kind = TierDecision::MOVE_UP === $policy['move'] ? TierDecision::KIND_UP : TierDecision::KIND_DOWN;
+            static function () use ( $policy, $entry ): array {
+                $plan = self::plan( $policy['move'], $policy['reason'], $policy['kind'] );
 
-                return self::plan( $policy['move'], $policy['reason'], $kind );
+                if ( TierDecision::KIND_REFUND === $policy['kind'] ) {
+                    $plan['refund_ref_type'] = (string) $entry->get_reference_type();
+                    $plan['refund_ref_id']   = (int) $entry->get_reference_id();
+                }
+
+                return $plan;
             },
             null,
             true
@@ -282,20 +287,23 @@ final class TierEvaluator {
     /**
      * @param string $move The Lifetime move, a TierDecision::MOVE_* constant.
      * @param string $kind The Rolling move, a TierDecision::KIND_* constant.
-     * @return array{move: string, reason: string, kind: string, mode: string|null, clear_hold: bool, floor: string, floor_id: int|null, floor_until: string|null}
+     * @return array{move: string, reason: string, kind: string, mode: string|null, clear_hold: bool, floor: string, floor_id: int|null, floor_until: string|null, refund_ref_type: string, refund_ref_id: int}
      *         `floor` is keep, clear or set. `mode` null follows tiers_mode; a mode sweep names its own.
-     *         `clear_hold` clears both hold columns, for the switch to Lifetime.
+     *         `clear_hold` clears both hold columns, for the switch to Lifetime. `refund_ref_*` name the
+     *         refund a KIND_REFUND plan judges.
      */
     private static function plan( string $move, string $reason, string $kind ): array {
         return [
-            'move'        => $move,
-            'reason'      => $reason,
-            'kind'        => $kind,
-            'mode'        => null,
-            'clear_hold'  => false,
-            'floor'       => 'keep',
-            'floor_id'    => null,
-            'floor_until' => null,
+            'move'            => $move,
+            'reason'          => $reason,
+            'kind'            => $kind,
+            'mode'            => null,
+            'clear_hold'      => false,
+            'floor'           => 'keep',
+            'floor_id'        => null,
+            'floor_until'     => null,
+            'refund_ref_type' => '',
+            'refund_ref_id'   => 0,
         ];
     }
 
@@ -355,7 +363,7 @@ final class TierEvaluator {
                 if ( TierMode::ROLLING === $mode ) {
                     $months   = self::rolling_months();
                     $total    = $this->ledger_rows->window_total( $user_id, Dates::add_months( $now, -$months ), $now );
-                    $decision = $this->rolling_decision( $customer, $live, $floor, $current_rank, $total, $months, $plan['kind'], $now );
+                    $decision = $this->rolling_decision( $customer, $live, $floor, $current_rank, $total, $months, $plan, $now );
 
                     if ( TierDecision::HOLD_START === $decision['hold'] ) {
                         $columns['tier_held_from']  = $now;
@@ -365,7 +373,7 @@ final class TierEvaluator {
                         $columns['tier_held_until'] = null;
                     }
                 } elseif ( TierMode::CALENDAR === $mode ) {
-                    $decision = $this->calendar_decision( $customer, $live, $floor, $current_rank, $plan['kind'], $now );
+                    $decision = $this->calendar_decision( $customer, $live, $floor, $current_rank, $plan, $now );
                     $total    = $decision['total'];
 
                     if ( TierDecision::HOLD_START === $decision['hold'] ) {
@@ -378,8 +386,14 @@ final class TierEvaluator {
                         $columns['tier_held_until'] = null;
                     }
                 } else {
-                    $total    = $customer->get_lifetime_earned();
-                    $decision = TierDecision::move( $current_id, $current_rank, TierDecision::target( $live, $total, $floor ), $plan['move'] );
+                    $total = $this->ledger_rows->window_total( $user_id, Dates::ZERO, $now );
+
+                    if ( TierDecision::KIND_REFUND === $plan['kind'] ) {
+                        $before   = $this->ledger_rows->window_total( $user_id, Dates::ZERO, $now, null, $plan['refund_ref_type'], $plan['refund_ref_id'] );
+                        $decision = TierDecision::refund_move( $current_id, $current_rank, TierDecision::target( $live, $before, null ), TierDecision::target( $live, $total, null ), null, $floor, false );
+                    } else {
+                        $decision = TierDecision::move( $current_id, $current_rank, TierDecision::target( $live, $total, $floor ), $plan['move'] );
+                    }
 
                     if ( $plan['clear_hold'] ) {
                         $columns['tier_held_from']  = null;
@@ -429,9 +443,10 @@ final class TierEvaluator {
      * less $months.
      *
      * @param array<int, Tier> $live
+     * @param array            $plan plan()'s shape.
      * @return array{changed: bool, to: Tier|null, is_upgrade: bool, hold: string} TierDecision::rolling_move().
      */
-    private function rolling_decision( Customer $customer, array $live, ?Tier $floor, int $current_rank, int $window, int $months, string $kind, string $now ): array {
+    private function rolling_decision( Customer $customer, array $live, ?Tier $floor, int $current_rank, int $window, int $months, array $plan, string $now ): array {
         $user_id     = $customer->get_user_id();
         $current_id  = $customer->get_tier_id();
         $held_until  = $customer->get_tier_held_until();
@@ -455,6 +470,12 @@ final class TierEvaluator {
             $qualifying       = TierDecision::target( $live, $qualifying_total, null );
         }
 
+        if ( TierDecision::KIND_REFUND === $plan['kind'] ) {
+            $before = $this->ledger_rows->window_total( $user_id, Dates::add_months( $now, -$months ), $now, null, $plan['refund_ref_type'], $plan['refund_ref_id'] );
+
+            return TierDecision::refund_move( $current_id, $current_rank, TierDecision::target( $live, $before, null ), TierDecision::target( $live, $window, null ), $qualifying, $floor, $hold_active );
+        }
+
         return TierDecision::rolling_move(
             $current_id,
             $current_rank,
@@ -462,7 +483,7 @@ final class TierEvaluator {
             $qualifying,
             $floor,
             $hold_active,
-            $kind
+            $plan['kind']
         );
     }
 
@@ -474,19 +495,21 @@ final class TierEvaluator {
      * plus staff adjustments since.
      *
      * @param array<int, Tier> $live
+     * @param array            $plan plan()'s shape.
      * @return array{changed: bool, to: Tier|null, is_upgrade: bool, hold: string, source: string, bounds: array{current_start: string, next_start: string, previous_start: string}, total: int}
      *         TierDecision::rolling_move(), the window tier's TierCalendar::SOURCE_*, the period bounds, and the
      *         current period's total.
      */
-    private function calendar_decision( Customer $customer, array $live, ?Tier $floor, int $current_rank, string $kind, string $now ): array {
+    private function calendar_decision( Customer $customer, array $live, ?Tier $floor, int $current_rank, array $plan, string $now ): array {
         $tz       = wp_timezone();
         $period   = self::calendar_period();
         $user_id  = $customer->get_user_id();
         $bounds   = TierCalendar::bounds( $now, $period, $tz );
         $prev_end = Dates::offset( -1, $bounds['current_start'] );
         $current  = $this->ledger_rows->window_total( $user_id, $bounds['current_start'], $now );
-        $previous = $this->ledger_rows->window_total( $user_id, $bounds['previous_start'], $prev_end )
+        $previous = $this->ledger_rows->window_total( $user_id, $bounds['previous_start'], $prev_end, $prev_end )
             + $this->ledger_rows->staff_adjust_since( $user_id, $prev_end );
+        $kind     = $plan['kind'];
 
         [ $window_tier, $source ] = TierCalendar::pick( TierDecision::target( $live, $current, null ), TierDecision::target( $live, $previous, null ) );
 
@@ -503,12 +526,22 @@ final class TierEvaluator {
             $window     = TierCalendar::qualifying_window( $customer->get_tier_held_from(), $held_until, $period, $tz );
             $qualifying = TierDecision::target(
                 $live,
-                $this->ledger_rows->window_total( $user_id, $window['from'], $window['to'] ) + $this->ledger_rows->staff_adjust_since( $user_id, $window['to'] ),
+                $this->ledger_rows->window_total( $user_id, $window['from'], $window['to'], $window['to'] ) + $this->ledger_rows->staff_adjust_since( $user_id, $window['to'] ),
                 null
             );
         }
 
-        return TierDecision::rolling_move( $current_id, $current_rank, $window_tier, $qualifying, $floor, $hold_active, $kind ) + [
+        if ( TierDecision::KIND_REFUND === $kind ) {
+            $before = $this->ledger_rows->window_total( $user_id, $bounds['current_start'], $now, null, $plan['refund_ref_type'], $plan['refund_ref_id'] );
+
+            [ $before_tier ] = TierCalendar::pick( TierDecision::target( $live, $before, null ), TierDecision::target( $live, $previous, null ) );
+
+            $decision = TierDecision::refund_move( $current_id, $current_rank, $before_tier, $window_tier, $qualifying, $floor, $hold_active );
+        } else {
+            $decision = TierDecision::rolling_move( $current_id, $current_rank, $window_tier, $qualifying, $floor, $hold_active, $kind );
+        }
+
+        return $decision + [
             'source' => $source,
             'bounds' => $bounds,
             'total'  => $current,

@@ -41,6 +41,9 @@ final class TierDecision {
     /** Rolling: the switch from Lifetime. Never moves; only starts or clears the hold. */
     public const KIND_HOLD_ONLY = 'hold_only';
 
+    /** Any mode: a refund's clawback. Lowers the tier only when this refund is why the customer no longer qualifies. */
+    public const KIND_REFUND = 'refund';
+
     private const SOURCE_FLOOR      = 'floor';
     private const SOURCE_WINDOW     = 'window';
     private const SOURCE_QUALIFYING = 'qualifying';
@@ -70,12 +73,14 @@ final class TierDecision {
 
     /**
      * How a committed ledger row may move its customer. Null when it may not: the bonus row (an entry bonus
-     * never triggers a further upgrade in the same evaluation), a row that leaves points earned alone, or zero.
+     * never triggers a further upgrade in the same evaluation), a row that doesn't count toward tier points,
+     * or zero. `kind` is KIND_UP for a positive row, KIND_REFUND for a negative REFUND_EARN, else KIND_DOWN.
      *
-     * @return array{move: string, reason: string}|null
+     * @param bool|null $counts_toward_tier The row's stored choice; null lets its type decide.
+     * @return array{move: string, reason: string, kind: string}|null
      */
-    public static function ledger_policy( string $type, string $source, int $points ): ?array {
-        if ( 0 === $points || LedgerSource::TIER_BONUS === $source || ! LedgerType::affects_lifetime_earned( $type ) ) {
+    public static function ledger_policy( string $type, string $source, int $points, ?bool $counts_toward_tier = null ): ?array {
+        if ( 0 === $points || LedgerSource::TIER_BONUS === $source || ! LedgerType::counts_toward_tier( $type, $counts_toward_tier ) ) {
             return null;
         }
 
@@ -84,16 +89,42 @@ final class TierDecision {
                 $reason = TierChangeReason::REFUND;
                 break;
             case LedgerType::ADJUST:
+            case LedgerType::CORRECTION:
                 $reason = TierChangeReason::ADJUSTMENT;
                 break;
             default:
                 $reason = TierChangeReason::EARN;
         }
 
+        if ( $points > 0 ) {
+            $kind = self::KIND_UP;
+        } else {
+            $kind = LedgerType::REFUND_EARN === $type ? self::KIND_REFUND : self::KIND_DOWN;
+        }
+
         return [
             'move'   => $points > 0 ? self::MOVE_UP : self::MOVE_TO_TARGET,
             'reason' => $reason,
+            'kind'   => $kind,
         ];
+    }
+
+    /**
+     * Where a refund leaves its customer, in any mode. A customer whose own total already fell short of their tier
+     * before the refund is being kept (a raised threshold, a mode switch, a hold) and stays until the next review.
+     * Otherwise the refund is judged as any negative row: rolling_move()'s KIND_DOWN, where an active hold's
+     * qualifying tier still protects them. Lifetime passes no qualifying tier and no hold.
+     *
+     * @param Tier|null $before_tier target() of the mode's total without this refund, with no floor.
+     * @param Tier|null $after_tier  target() of the mode's total with it, with no floor.
+     * @return array{changed: bool, to: Tier|null, is_upgrade: bool, hold: string} rolling_move()'s shape.
+     */
+    public static function refund_move( ?int $current_id, int $current_rank, ?Tier $before_tier, ?Tier $after_tier, ?Tier $qualifying_tier, ?Tier $floor, bool $hold_active ): array {
+        if ( self::rank( $before_tier ) < $current_rank ) {
+            return self::unchanged() + [ 'hold' => self::HOLD_KEEP ];
+        }
+
+        return self::rolling_move( $current_id, $current_rank, $after_tier, $qualifying_tier, $floor, $hold_active, self::KIND_DOWN );
     }
 
     /**

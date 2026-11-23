@@ -134,6 +134,21 @@ final class LedgerWindowTotalTest extends IntegrationTestCase {
         $this->assertSame( 900, $this->ledger->window_total( self::USER, $this->old_from(), $this->old_to(), $this->old_to() ) );
     }
 
+    /** @group P-9 */
+    public function test_created_by_keeps_a_restore_with_its_refund(): void {
+        $kept   = $this->order_earn( 1009, 900, $this->old );
+        $refund = $this->ledger_service()->refund_earn( $kept, 400, ReferenceType::REFUND, 508 )->get_entry();
+        $this->backdate( (int) $refund->get_id(), Dates::offset( DAY_IN_SECONDS, $this->old ) );
+        $this->ledger_service()->restore_refund( $this->ledger->find( (int) $refund->get_id() ), 508 );
+
+        $late        = $this->order_earn( 1010, 300, $this->old );
+        $late_refund = $this->ledger_service()->refund_earn( $late, 300, ReferenceType::REFUND, 509 )->get_entry();
+        $this->ledger_service()->restore_refund( $late_refund, 509 );
+
+        // Refund in the period, restored after it: both count. Refund and restore after it: neither does.
+        $this->assertSame( 1200, $this->ledger->window_total( self::USER, $this->old_from(), $this->old_to(), $this->old_to() ) );
+    }
+
     public function test_sum_refunded_for_is_unchanged(): void {
         $earn = $this->order_earn( 1005, 200, '' );
         $this->ledger_service()->refund_earn( $earn, 50, ReferenceType::REFUND, 601 );

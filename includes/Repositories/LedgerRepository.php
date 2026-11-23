@@ -243,7 +243,8 @@ class LedgerRepository extends AbstractRepository {
      *
      * @param string      $from       UTC MySQL datetime.
      * @param string      $to         UTC MySQL datetime.
-     * @param string|null $created_by      UTC MySQL datetime: leave out rows created after it, for a closed period.
+     * @param string|null $created_by      UTC MySQL datetime: leave out rows created after it, for a closed
+     *                                     period; a refund restore goes by its refund's date.
      * @param string      $except_ref_type With $except_ref_id, a refund whose REFUND_EARN rows to leave out, for
      *                                     the total before it; '' for none.
      */
@@ -256,7 +257,7 @@ class LedgerRepository extends AbstractRepository {
 
         $table      = esc_sql( $this->table() );
         $attributed = 'COALESCE( CASE WHEN ' . $this->clawback_row_sql( 'r' ) . " THEN ( SELECT MIN(e.created_at) FROM `{$table}` e WHERE " . $this->clawback_match_sql( 'r', 'e' ) . ' ) END, r.created_at )';
-        $created    = null === $created_by ? '' : ' AND r.created_at <= %s';
+        $created    = null === $created_by ? '' : ' AND ' . $this->restore_follows_refund_sql( 'r' ) . ' <= %s';
         $except     = '' === $except_ref_type ? '' : ' AND NOT ( r.type = %s AND r.reference_type = %s AND r.reference_id = %d )';
         $values     = array_merge(
             [ $user_id, $from, $to ],
@@ -290,6 +291,27 @@ class LedgerRepository extends AbstractRepository {
         return $this->sum_points(
             'user_id = %d AND type IN ( %s, %s ) AND ' . $this->tier_points_sql( '' ) . ' AND ( reference_type IS NULL OR reference_type <> %s ) AND created_at > %s',
             [ $user_id, LedgerType::ADJUST, LedgerType::CORRECTION, ReferenceType::REFUND, $after ]
+        );
+    }
+
+    /**
+     * A row's created_at as SQL, except a refund restore's, which is the created_at of the REFUND_EARN rows it
+     * undoes, so a closed period's cut-off keeps or drops a refund and its restore together.
+     *
+     * @param string $row A table alias from this class only, never input.
+     */
+    private function restore_follows_refund_sql( string $row ): string {
+        $table = esc_sql( $this->table() );
+
+        return sprintf(
+            "COALESCE( CASE WHEN %1\$s.type = '%2\$s' AND %1\$s.reference_type = '%3\$s' THEN ( SELECT MIN(f.created_at) FROM `%5\$s` f
+               WHERE f.type = '%4\$s' AND f.user_id = %1\$s.user_id AND f.reference_type = %1\$s.reference_type AND f.reference_id = %1\$s.reference_id
+               AND f.order_id <=> %1\$s.order_id AND f.campaign_id <=> %1\$s.campaign_id ) END, %1\$s.created_at )",
+            $row,
+            esc_sql( LedgerType::ADJUST ),
+            esc_sql( ReferenceType::REFUND ),
+            esc_sql( LedgerType::REFUND_EARN ),
+            $table
         );
     }
 
