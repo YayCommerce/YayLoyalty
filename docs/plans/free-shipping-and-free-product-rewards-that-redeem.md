@@ -78,7 +78,7 @@ Model on: `RewardHandler::coupon_props()` → `RewardCoupons` (`includes/Engine/
 - [x] T3 Free shipping on the rates: keep the original cost, zero every rate while a `free_shipping` marker is applied, and note the original total for the quote: `includes/Engine/Redemption/RewardShipping.php` (new), `includes/YayLoyalty.php` [risk: 3]
   - Reuse: `RedemptionService::applied_rewards()` and the props read from T2; `WC_Shipping_Rate::add_meta_data()` / `set_cost()` / `set_taxes()`
   - Callers: `RewardShipping::adjust_packages()` → filter `woocommerce_shipping_packages`; `RewardShipping::cart_value()` → `FreeShippingRewardHandler::quote()` (T5); `RewardShipping::order_value()` → `CommitWriter` (T4); `register()` → `includes/YayLoyalty.php`
-- [ ] T4 Commit a free reward at what it freed: `includes/Engine/Redemption/CommitWriter.php` [risk: 3]
+- [x] T4 Commit a free reward at what it freed: `includes/Engine/Redemption/CommitWriter.php` [risk: 3]
   - Reuse: `ContextFactory::line_discount_of()`; `RewardCartLines::order_value()` (T2); `RewardShipping::order_value()` (T3); `CommitWriter::money()` / `base_value()`
 - [ ] T5 Pro handlers for `free_shipping` and `free_product`, registered with Lite: `includes/Pro/Services/FreeShippingRewardHandler.php` (new), `includes/Pro/Services/FreeProductRewardHandler.php` (new), `includes/Pro/YayLoyaltyPro.php` [risk: 3]
   - Reuse: `DiscountRewardHandler` in `includes/Pro/Services/DiscountRewardHandler.php` (the no-cart cost-only quote, `Result::allowed()` / `denied()`); `RewardCoupons::REASON_NO_VALUE`; `RewardShipping::cart_value()` (T3); `wc_get_product()` for the free product's price and stock
