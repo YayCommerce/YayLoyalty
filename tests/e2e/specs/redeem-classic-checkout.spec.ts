@@ -1,12 +1,5 @@
-import { balanceOf, emptyCart, setBalance, userId } from '../fixtures/loyalty';
+import { balanceOf, emptyCart, setBalance, shortcodePage, userId } from '../fixtures/loyalty';
 import { expect, test, wp } from '../fixtures/test';
-
-/** A published page holding one shortcode, created once and reused on later runs. */
-function shortcodePage( slug: string, shortcode: string ): void {
-	if ( wp( 'post', 'list', '--post_type=page', `--name=${ slug }`, '--format=count' ) === '0' ) {
-		wp( 'post', 'create', '--post_type=page', '--post_status=publish', `--post_name=${ slug }`, `--post_title=${ slug }`, `--post_content=[${ shortcode }]` );
-	}
-}
 
 test.describe( 'Redeem points at the classic checkout', { tag: '@flow-redeem-classic-checkout' }, () => {
 	let customer: number;

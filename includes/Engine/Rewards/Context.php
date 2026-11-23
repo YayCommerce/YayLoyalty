@@ -29,7 +29,7 @@ final class Context {
     /** @var string UTC MySQL datetime the claim is evaluated at. */
     private $at;
 
-    /** @var CustomerFacts|null Read once by ContextFactory for the conditions gate (tier, lifetime points); null for a guest. */
+    /** @var CustomerFacts|\Closure|null For the conditions gate (tier, lifetime points); null for a guest. A Closure is the loader, replaced by its result on first read. */
     private $facts;
 
     /** @var \WC_Cart|null The cart a coupon-describing handler dry-runs against; null at commit and for a catalog claim. */
@@ -38,6 +38,11 @@ final class Context {
     /** @var float Units of `currency` per 1 base unit (CurrencyRate's direction); 1.0 in the base currency. */
     private $currency_rate;
 
+    /**
+     * @param CustomerFacts|\Closure|null $facts The facts, or a loader returning ?CustomerFacts, run once on the
+     *                                    first get_facts() across this Context and its copies, so a claim
+     *                                    no history condition asks about reads nothing.
+     */
     public function __construct(
         ?int $user_id,
         int $balance,
@@ -45,17 +50,21 @@ final class Context {
         ?float $discountable_amount,
         string $currency,
         string $at,
-        ?CustomerFacts $facts = null,
+        $facts = null,
         ?\WC_Cart $cart = null,
         float $currency_rate = 1.0
     ) {
+        if ( null !== $facts && ! $facts instanceof CustomerFacts && ! $facts instanceof \Closure ) {
+            throw new \InvalidArgumentException( 'YayLoyalty: facts must be CustomerFacts, a Closure or null.' );
+        }
+
         $this->user_id             = $user_id;
         $this->balance             = $balance;
         $this->points_requested    = $points_requested;
         $this->discountable_amount = $discountable_amount;
         $this->currency            = $currency;
         $this->at                  = $at;
-        $this->facts               = $facts;
+        $this->facts               = $facts instanceof \Closure ? self::once( $facts ) : $facts;
         $this->cart                = $cart;
         $this->currency_rate       = $currency_rate;
     }
@@ -101,6 +110,11 @@ final class Context {
     }
 
     public function get_facts(): ?CustomerFacts {
+        if ( $this->facts instanceof \Closure ) {
+            $facts       = ( $this->facts )();
+            $this->facts = $facts instanceof CustomerFacts ? $facts : null;
+        }
+
         return $this->facts;
     }
 
@@ -110,5 +124,20 @@ final class Context {
 
     public function get_currency_rate(): float {
         return $this->currency_rate;
+    }
+
+    /** Wraps a loader so with_balance() copies made before the first read share one result. */
+    private static function once( \Closure $loader ): \Closure {
+        $loaded = false;
+        $result = null;
+
+        return static function () use ( $loader, &$loaded, &$result ) {
+            if ( ! $loaded ) {
+                $result = $loader();
+                $loaded = true;
+            }
+
+            return $result;
+        };
     }
 }

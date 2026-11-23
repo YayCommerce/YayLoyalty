@@ -39,6 +39,7 @@ final class Installer {
             new \YayLoyalty\Database\Schema\RewardsTable(),
             new \YayLoyalty\Database\Schema\CustomerMetaTable(),
             new \YayLoyalty\Database\Schema\RedemptionsTable(),
+            new \YayLoyalty\Database\Schema\TiersTable(),
         ];
 
         /**
@@ -76,25 +77,37 @@ final class Installer {
             return;
         }
 
+        self::install_locked( static fn(): bool => get_option( self::OPTION_DB_VERSION ) !== YAYLOYALTY_VERSION );
+    }
+
+    /**
+     * Runs install() under the upgrade mutex when $still_needed() is true inside it.
+     *
+     * @param callable(): bool $still_needed Re-checked inside the lock: the previous holder may have just finished.
+     * @return bool False when another request holds the lock.
+     */
+    public static function install_locked( callable $still_needed ): bool {
         if ( ! self::acquire_lock() ) {
             // Another request is upgrading. Do not queue behind it.
-            return;
+            return false;
         }
 
         try {
-            // Re-check inside the lock: the previous holder may have just finished.
-            if ( get_option( self::OPTION_DB_VERSION ) !== YAYLOYALTY_VERSION ) {
+            if ( $still_needed() ) {
                 self::install();
             }
         } finally {
             self::release_lock();
         }
+
+        return true;
     }
 
-    /** Seeds every built-in row. Idempotent by slug, with the unique key on slug as the backstop. */
+    /** Seeds every built-in row. Campaigns and the reward are idempotent by slug; tiers seed only into an empty table. */
     private static function seed_builtins(): void {
         self::seed_builtin_campaigns();
         self::seed_builtin_reward();
+        ( new \YayLoyalty\Repositories\TierRepository() )->seed_defaults( \YayLoyalty\Utils\Dates::now() );
     }
 
     /** Seeds the built-in campaigns. Addressed by slug: ids differ between sites. */

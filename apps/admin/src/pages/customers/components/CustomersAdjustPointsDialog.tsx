@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { __ } from '@wordpress/i18n';
 
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import {
   adjustPointsSchema,
   type AdjustPointsInput,
@@ -11,6 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/custom/dialog';
 import { FieldError } from '@/components/ui/field';
+import { useTiersEnabled } from '@/pro';
 import { DEFAULT_CUSTOMER_LIST_FILTERS, type CustomerListFilters } from '../customers-page.filters';
 import { AdjustPointsAmountField } from './adjust-points/AdjustPointsAmountField';
 import { AdjustPointsBulkPanels } from './adjust-points/AdjustPointsBulkPanels';
@@ -40,6 +42,8 @@ import {
 import { useBulkAdjustCounts } from './customers-adjust-points.use-bulk-adjust-counts';
 import { useSingleCustomerBaseline } from './customers-adjust-points.use-single-customer-baseline';
 
+const useShowTiers: () => boolean = IS_PRO_BUILD ? useTiersEnabled : () => false;
+
 /**
  * A live read the dialog renders from and re-checks against.
  * A failed `refetch()` does not reject: it resolves with the previous `data` and a set `error`,
@@ -68,6 +72,7 @@ export function CustomersAdjustPointsDialog({
   excludedCount = 0,
   selectionMode = 'partial',
   filters,
+  tierLabel = null,
   rowsOnPage = 0,
   acknowledgementResetKey = 0,
   recountedCount = null,
@@ -90,6 +95,8 @@ export function CustomersAdjustPointsDialog({
   selectionMode?: 'partial' | 'all';
   /** Bulk only, for the filter restatement. */
   filters?: CustomerListFilters;
+  /** Bulk only: the tier filter's choices as text, for the filter restatement. */
+  tierLabel?: string | null;
   /** Bulk only: rows already loaded on the current page, for the "not shown on this page" line. */
   rowsOnPage?: number;
   /** Bulk only: bumped by the caller after a pre-submit count mismatch, to force a fresh consent. */
@@ -100,6 +107,7 @@ export function CustomersAdjustPointsDialog({
   const [state, setState] = useState<AdjustFormState>(() => initialAdjustFormState(DEFAULT_REASON()));
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isCheckingBeforeSubmit, setIsCheckingBeforeSubmit] = useState(false);
+  const showTier = useShowTiers();
 
   const isSingle = target.kind === 'single';
   const source = target.kind === 'single' ? target.customer : target.preview;
@@ -179,6 +187,7 @@ export function CustomersAdjustPointsDialog({
       points: signedPoints(state),
       note: state.reason,
       adjustLifetime: state.adjustLifetime,
+      adjustTier: showTier ? state.adjustTier : undefined,
       notify: state.notifyByEmail,
       customerNote: state.showCustomerNote && state.customerNote.trim() ? state.customerNote.trim() : undefined,
     });
@@ -273,6 +282,7 @@ export function CustomersAdjustPointsDialog({
             isCountLoading={bulk.usedFilters && source.isLoading}
             selectionMode={selectionMode}
             filters={filters ?? DEFAULT_CUSTOMER_LIST_FILTERS}
+            tierLabel={tierLabel}
             notShownOnPage={bulk.notShownOnPage}
             liabilityPoints={previewData?.liability_points ?? null}
             hasPreviewError={!!source.error}
@@ -288,6 +298,7 @@ export function CustomersAdjustPointsDialog({
           state={state}
           onChange={patchState}
           notifyCountLabel={!isSingle ? bulkNotifyByEmailCount(bulk.effectiveCount) : undefined}
+          showTier={showTier}
         />
 
         {validationError && <FieldError>{validationError}</FieldError>}

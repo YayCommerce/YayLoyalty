@@ -20,5 +20,13 @@
   "lifecycleScripts": {
     "afterStart": "bash ./bin/setup-env.sh",
     "afterClean": "bash ./bin/setup-env.sh"
+  },
+  "env": {
+    "development": {
+      "plugins": [
+        "https://downloads.wordpress.org/plugin/woocommerce.11.2.1.zip",
+        "https://downloads.wordpress.org/plugin/elementor.4.4.0.zip"
+      ]
+    }
   }
 }

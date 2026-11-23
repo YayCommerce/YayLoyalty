@@ -8,6 +8,7 @@ use YayLoyalty\Engine\Storefront\LauncherPayload;
 use YayLoyalty\Engine\Storefront\RedeemCard;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Models\Reward;
+use YayLoyalty\Pro\Services\RewardTierCondition;
 use YayLoyalty\Repositories\RewardRepository;
 
 defined( 'ABSPATH' ) || exit;
@@ -17,26 +18,35 @@ defined( 'ABSPATH' ) || exit;
  * Points discount row and ticked to apply: its name and cost only. Draws only; redeem.js posts the ticked ids and
  * the server answers a new card. It also lists the same rewards, with a one-line description, under "Ways to
  * redeem" in the launcher and My Account.
+ *
+ * A reward whose minimum tier the shopper doesn't hold is hidden from both. The card learns that from the quote
+ * (reward_options() drops it, unless it is already applied); the launcher and My Account have no quote, so
+ * redeem_offers() asks RewardTierCondition::allows() directly.
  */
 final class RewardsPanel {
 
     /** Called once by YayLoyaltyPro::boot(). */
     public function register(): void {
         add_filter( RedeemCard::ROWS_FILTER, [ $this, 'rows' ], 10, 2 );
-        add_filter( LauncherPayload::REDEEM_OFFERS_FILTER, [ $this, 'redeem_offers' ], 10, 2 );
+        add_filter( LauncherPayload::REDEEM_OFFERS_FILTER, [ $this, 'redeem_offers' ], 10, 3 );
     }
 
     /**
-     * Appends every live `fixed_coupon` / `percent_coupon` reward, in `sort_order`, whatever the member's
-     * conditions or balance: there is no cart to check them against.
+     * Appends every live `fixed_coupon` / `percent_coupon` reward, in `sort_order`, that the member's tier
+     * allows, whatever their balance: there is no cart to check the rest against.
      *
      * @param array<int, array{name: string, cost: int, text: string}> $offers
-     * @param string                                                   $now    UTC MySQL datetime.
+     * @param string                                                   $now     UTC MySQL datetime.
+     * @param int|null                                                 $user_id The member; null for a guest and the Design preview.
      * @return array<int, array{name: string, cost: int, text: string}>
      */
-    public function redeem_offers( array $offers, string $now ): array {
+    public function redeem_offers( array $offers, string $now, ?int $user_id = null ): array {
+        $tiers = new RewardTierCondition();
+
         foreach ( ( new RewardRepository() )->live_of_types( [ RewardType::FIXED_COUPON, RewardType::PERCENT_COUPON ], $now ) as $reward ) {
-            $offers[] = LauncherPayload::offer( $reward );
+            if ( $tiers->allows( $reward, $user_id ) ) {
+                $offers[] = LauncherPayload::offer( $reward );
+            }
         }
 
         return $offers;
@@ -60,7 +70,13 @@ final class RewardsPanel {
 
         $user_id = (int) $context['user_id'];
         $balance = (int) $context['balance'];
-        $options = $service->reward_options( $cart, $user_id );
+        // A reward the shopper's conditions exclude is not theirs to see.
+        $options = array_filter(
+            $service->reward_options( $cart, $user_id ),
+            static function ( array $option ): bool {
+                return Result::REASON_CONDITIONS_NOT_MET !== $option['quote']->get_reason();
+            }
+        );
 
         if ( [] === $options || self::is_refused( $options ) ) {
             return $rows;

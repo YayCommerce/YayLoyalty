@@ -182,6 +182,13 @@ final class OrderReversalListener {
 
         $this->note_restored( $order, $restored, $reason );
         $this->note_reversed( $order, $reversed, $reason );
+
+        /**
+         * Fires once an order's refund, cancel, trash or refunded status is reversed. Internal seam, not a public API.
+         *
+         * @param \WC_Order $order
+         */
+        do_action( 'yayloyalty_order_reversed', $order );
     }
 
     /**

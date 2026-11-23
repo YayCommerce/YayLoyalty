@@ -88,7 +88,7 @@ final class RewardRouteTest extends IntegrationTestCase {
         $this->assertSame( 6, $data['sort_order'] );
         $this->assertSame( 500, $data['cost_points'] );
         $this->assertSame( get_current_user_id(), $data['created_by'] );
-        $this->assertSame( 'user_role', $data['conditions'][0]['type'] );
+        $this->assertSame( 'user_role', $data['conditions']['conditions'][0]['type'] );
     }
 
     public function test_create_numbers_a_colliding_slug_and_honours_a_draft_status(): void {
@@ -372,7 +372,7 @@ final class RewardRouteTest extends IntegrationTestCase {
         $this->assertSame( '5-off', $stored->get_slug() );
         $this->assertSame( RewardType::FIXED_COUPON, $stored->get_type() );
         $this->assertSame( 5, $stored->get_config()['amount'] );
-        $this->assertSame( [], $stored->get_conditions() );
+        $this->assertFalse( $stored->has_conditions() );
     }
 
     public function test_status_moves_set_and_clear_archived_at(): void {

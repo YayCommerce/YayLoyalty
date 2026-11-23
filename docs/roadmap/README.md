@@ -1,8 +1,8 @@
 ---
 horizon: 2027-01-21
-capacity: 8
+capacity: 24
 sprint_length: 2w
-updated: 2026-11-13
+updated: 2026-11-23
 ---
 # Roadmap: YayLoyalty — Points,  Rewards,  Referral & VIP for WooCommerce
 
@@ -13,15 +13,16 @@ One file per sprint (`sprint-<n>.md`), `later.md` for unscheduled work, and a ge
 
 | Section | Dates | Goal | Items | Dev-days |
 |---|---|---|---|---|
-| [Sprint 1](sprint-1.md) | 2026-11-13 → 2026-11-26 | Merchants can combine campaign and reward conditions with AND/OR groups (1.1.0). | 1 (0 shipped) | 8 |
-| [Sprint 2](sprint-2.md) | 2026-11-27 → 2026-12-10 | Customers move up VIP tiers and get each tier's perks (1.1.0). | 1 (0 shipped) | 8 |
-| [Sprint 3](sprint-3.md) | 2026-12-11 → 2026-12-24 | The points widgets can be placed in Elementor, Bricks and Divi (1.1.0). | 1 (0 shipped) | 8 |
-| [Sprint 4](sprint-4.md) | 2026-12-25 → 2027-01-07 | Customers earn points for referring friends who order (1.1.0). | 1 (0 shipped) | 8 |
-| [Sprint 5](sprint-5.md) | 2027-01-08 → 2027-01-21 | Social and subscription-renewal earning, and a Tools page for CSV import/export and bulk points (1.1.0). | 2 (0 shipped) | 8 |
+| [Sprint 1](sprint-1.md) | 2026-11-13 → 2026-11-26 | Merchants can match campaign and reward conditions by any or all (1.1.0). | 1 (1 done, 0 shipped) | 8 |
+| [Sprint 2](sprint-2.md) | 2026-11-27 → 2026-12-10 | Finish 1.1.0: VIP tiers, social and renewal earning, and the Tools page, so 1.1.0 can ship when the sprint ends (2026-12-10). | 3 (0 shipped) | 16 |
+| [Sprint 3](sprint-3.md) | 2026-12-11 → 2026-12-24 | Every reward and campaign a merchant can save actually pays: free shipping and free product redeem, milestone triggers fire, launcher filtering and privacy tools. | 5 (1 done, 0 shipped) | 21.5 |
+| [Sprint 4](sprint-4.md) | 2026-12-25 → 2027-01-07 | Holiday sprint, kept light: referral fraud checks, referral emails with the advocate coupon reward, and the Lite referral upsell. | 4 (1 done, 0 shipped) | 17.5 |
+| [Sprint 5](sprint-5.md) | 2027-01-08 → 2027-01-21 | Referral growth: the landing page, sharing and code at checkout, then the overview report with its click funnel. | 2 (0 shipped) | 16 |
+| [Later](later.md) | - | - | 0 (0 shipped) | 0 |
 
 **Versions**
 
 | Version | Items | Last open item |
 |---|---|---|
-| [1.1.0](v1.1.0.md) · [brief](release-1.1.0.md) | 6 items: 6 open, 0 in progress, 0 shipped, 0 dropped | [Sprint 5](sprint-5.md), ends 2027-01-21 |
+| [1.1.0](v1.1.0.md) · [brief](release-1.1.0.md) | 6 items: 1 open, 2 in progress, 3 done, 0 shipped, 0 dropped | [Sprint 2](sprint-2.md), ends 2026-12-10 |
 <!-- yay:roadmap-index:end -->

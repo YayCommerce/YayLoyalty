@@ -48,6 +48,11 @@ function Frame({ description, children }: { description?: string | null; childre
   );
 }
 
+/** The dashboard names no tier: an entry bonus reads as plain bonus points. */
+function describeRow(row: Activity['rows'][number]): string {
+  return row.source === 'tier_bonus' ? __('Bonus points', 'yayloyalty') : describeLedgerEntry(row);
+}
+
 /**
  * Six newest ledger rows — a pulse check, not a feed: when
  * more happened today than fits, the header says what fraction is shown.
@@ -66,7 +71,7 @@ export function DashboardRecentActivity({ activity }: { activity: Activity }) {
         </TableRow>
       ) : (
         rows.map((row) => {
-          const event = describeLedgerEntry(row);
+          const event = describeRow(row);
 
           return (
             <TableRow key={row.id}>

@@ -270,7 +270,8 @@ final class OrderMissingPoints {
                         'granted' => __( '%s granted. Reloading…', 'yayloyalty' ),
                         'failed'  => __( 'The points could not be granted.', 'yayloyalty' ),
                     ],
-                ]
+                ],
+                JSON_HEX_TAG | JSON_HEX_AMP
             ) . ';',
             'before'
         );

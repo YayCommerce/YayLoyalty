@@ -118,6 +118,10 @@ export const DEFAULT_REASON = () => REASON_PRESETS()[0].text;
 export const ADJUST_LIFETIME_LABEL = () => __('Adjust lifetime totals too', 'yayloyalty');
 export const ADJUST_LIFETIME_SUBTEXT = () => __('Turn off for balance-only changes.', 'yayloyalty');
 
+export const ADJUST_TIER_LABEL = () => __('Count toward tier points', 'yayloyalty');
+export const ADJUST_TIER_SUBTEXT = () =>
+  __("Turn off to leave the customer's tier and tier progress unchanged.", 'yayloyalty');
+
 export const SHOW_CUSTOMER_NOTE_LABEL = () => __('Custom description for the customer', 'yayloyalty');
 /** Generic: the localized meta carries no store name to show. */
 export const SHOW_CUSTOMER_NOTE_HELPER = () =>

@@ -1,3 +1,4 @@
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useCustomerActivityQuery } from '@/lib/queries/customer.queries';
 import { ACTIVITY_GROUPS, type ActivityGroup } from '@/lib/schema/activity.schema';
 import { toActivityRow } from '../customer-drawer.activity-rows';
@@ -8,6 +9,7 @@ import {
   ACTIVITY_GROUP_EMAILS,
   ACTIVITY_GROUP_EXPIRY,
   ACTIVITY_GROUP_LABEL,
+  ACTIVITY_GROUP_TIERS,
   ACTIVITY_SEARCH_PLACEHOLDER,
 } from '../customer-drawer.activity.copy';
 import { useDrawerTabQueryState } from '../customer-drawer.tab-query-state';
@@ -20,7 +22,11 @@ const GROUP_LABELS: Record<ActivityGroup, () => string> = {
   admin: ACTIVITY_GROUP_ADMIN,
   expiry: ACTIVITY_GROUP_EXPIRY,
   emails: ACTIVITY_GROUP_EMAILS,
+  tiers: ACTIVITY_GROUP_TIERS,
 };
+
+/** Tier changes only on Pro, which writes them. */
+const SHOWN_GROUPS = ACTIVITY_GROUPS.filter((group) => IS_PRO_BUILD || group !== 'tiers');
 
 /** Filters, rows and pager, like LedgerTab. Paged with the full filter set: a large activity log is unbrowsable otherwise. */
 export function ActivityLogTab({ userId }: { userId: number }) {
@@ -33,7 +39,7 @@ export function ActivityLogTab({ userId }: { userId: number }) {
   return (
     <div className="flex flex-col gap-3">
       <DrawerTabFilters
-        options={ACTIVITY_GROUPS.map((group) => ({ value: group, label: GROUP_LABELS[group]() }))}
+        options={SHOWN_GROUPS.map((group) => ({ value: group, label: GROUP_LABELS[group]() }))}
         value={state.filter}
         onChange={state.setFilter}
         ariaLabel={ACTIVITY_GROUP_LABEL()}

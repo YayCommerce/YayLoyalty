@@ -40,6 +40,9 @@ final class Result {
     /** @var string */
     private $reason;
 
+    /** @var Multiplier|null Set only by awarded(). */
+    private $multiplier;
+
     private function __construct(
         bool $awarded,
         int $points,
@@ -66,9 +69,13 @@ final class Result {
         Breakdown $breakdown,
         string $reference_type,
         ?int $reference_id,
-        string $source
+        string $source,
+        ?Multiplier $multiplier = null
     ): self {
-        return new self( true, $points, $campaign, $breakdown, $reference_type, $reference_id, $source, '' );
+        $result             = new self( true, $points, $campaign, $breakdown, $reference_type, $reference_id, $source, '' );
+        $result->multiplier = $multiplier;
+
+        return $result;
     }
 
     public static function none( string $reason ): self {
@@ -105,5 +112,10 @@ final class Result {
 
     public function get_reason(): string {
         return $this->reason;
+    }
+
+    /** The multiplier the points include; none() when nothing multiplied them. */
+    public function get_multiplier(): Multiplier {
+        return $this->multiplier ?? Multiplier::none();
     }
 }

@@ -21,15 +21,29 @@ export { CampaignTable } from './campaigns/CampaignTable';
 export { CampaignCreator, CampaignEditor } from './campaigns/editor/CampaignEditor';
 export { CampaignPerformance } from './campaigns/performance/CampaignPerformance';
 export { CustomersSavedSegmentRow } from './customers/CustomersSavedSegmentRow';
+export { CustomerTierCard } from './customers/CustomerTierCard';
+export { CustomersTierCell } from './customers/CustomersTierCell';
+export { CustomersTierFilter, useTierFilterLabel } from './customers/CustomersTierFilter';
 export { DashboardProPanels } from './dashboard/DashboardProPanels';
 export { DesignPanelSection } from './design/DesignPanelSection';
 export { DesignCustomCssSection } from './design/DesignCustomCssSection';
 export { BatchExpirySection, ExpiryModeSection } from './settings/ExpirySections';
 export { FraudLimitsSection } from './settings/FraudLimitsSection';
 export { StoreLedger } from './ledger/StoreLedger';
+export { ReferralLayout } from './referral/ReferralLayout';
+export { ReferralsTab } from './referral/referrals/ReferralsTab';
+export { ApprovalsTab } from './referral/approvals/ApprovalsTab';
+export { ReferralApprovalsBadge } from './referral/approvals/ReferralApprovalsBadge';
+export { CustomerReferralsTab } from './referral/drawer/CustomerReferralsTab';
+export { CustomerReferralsTrigger } from './referral/drawer/CustomerReferralsTrigger';
+export { ReferralSettingsPage } from './referral/settings/ReferralSettingsPage';
 export { RewardTemplatePicker } from './rewards/add/RewardTemplatePicker';
 export { RewardCreator, RewardEditor } from './rewards/editor/RewardEditor';
 export { RewardTable } from './rewards/RewardTable';
+export { TierCatalog } from './tiers/TierCatalog';
+export { TierModeCard } from './tiers/TierModeCard';
+export { TierSwitchCard } from './tiers/TierSwitchCard';
+export { useTiersEnabled } from './tiers/tiers.queries';
 
 /** Keeps the sentinel reachable code rather than a literal a minifier may discard. */
 export function proBundleMarker(): string {

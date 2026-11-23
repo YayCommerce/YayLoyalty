@@ -2,6 +2,7 @@
 namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Enums\RewardType;
+use YayLoyalty\Enums\TierMode;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Utils\CurrencyRate;
@@ -161,6 +162,67 @@ final class LauncherCopy {
         return sprintf( __( 'Your %s', 'yayloyalty' ), SettingsHelper::points_label_plural() );
     }
 
+    /**
+     * A member's progress to the next tier, in the launcher's tier line and on My Points: "Top tier" without a next
+     * tier, "{n} Points to {next}" while points are needed, else "{next} unlocks with your next earn".
+     *
+     * @param array{name: string, threshold: int}|null $next The next tier; null at the top tier.
+     */
+    public static function tier_progress_text( ?array $next, int $needed ): string {
+        if ( null === $next ) {
+            return __( 'Top tier', 'yayloyalty' );
+        }
+
+        if ( $needed > 0 ) {
+            /* translators: 1: points with the store's label, as "120 Points", 2: the next tier's name. */
+            return sprintf( __( '%1$s to %2$s', 'yayloyalty' ), SettingsHelper::points_text( $needed ), $next['name'] );
+        }
+
+        /* translators: %s: the next tier's name. */
+        return sprintf( __( '%s unlocks with your next earn', 'yayloyalty' ), $next['name'] );
+    }
+
+    /** The progress bar's fill, 0–100. A threshold of 0 is already reached: a full bar, and no division by zero. */
+    public static function tier_progress_percent( int $progress, int $threshold ): int {
+        return 0 === $threshold ? 100 : min( 100, intdiv( $progress * 100, $threshold ) );
+    }
+
+    /** The qualifying window's caption: "Counts Points earned in the last 6 months." */
+    public static function tier_window_caption( int $window_months ): string {
+        /* translators: 1: the store's points label, as "Points", 2: number of months. */
+        return sprintf( __( 'Counts %1$s earned in the last %2$d months.', 'yayloyalty' ), SettingsHelper::points_label_plural(), $window_months );
+    }
+
+    /** The calendar period's caption: "Counts Points earned this year." One full sentence per period. */
+    public static function tier_period_caption( string $period ): string {
+        $label = SettingsHelper::points_label_plural();
+
+        if ( TierMode::CALENDAR_MONTH === $period ) {
+            /* translators: %s: the store's points label, as "Points". */
+            return sprintf( __( 'Counts %s earned this month.', 'yayloyalty' ), $label );
+        }
+
+        if ( TierMode::CALENDAR_QUARTER === $period ) {
+            /* translators: %s: the store's points label, as "Points". */
+            return sprintf( __( 'Counts %s earned this quarter.', 'yayloyalty' ), $label );
+        }
+
+        /* translators: %s: the store's points label, as "Points". */
+        return sprintf( __( 'Counts %s earned this year.', 'yayloyalty' ), $label );
+    }
+
+    /**
+     * A tier's earn multiplier: "1.5× Points" for "1.50", "2× Points" for "2.00".
+     *
+     * @param string $multiplier Tier's decimal string.
+     */
+    public static function tier_multiplier( string $multiplier ): string {
+        $number = false === strpos( $multiplier, '.' ) ? $multiplier : rtrim( rtrim( $multiplier, '0' ), '.' );
+
+        /* translators: 1: the multiplier, as "1.5", 2: the store's points label, as "Points". */
+        return sprintf( __( '%1$s× %2$s', 'yayloyalty' ), $number, SettingsHelper::points_label_plural() );
+    }
+
     /** The guest card's heading off a product page. */
     public static function signed_out_prompt(): string {
         /* translators: %s: the store's points label, as "Points". */
@@ -213,7 +275,7 @@ final class LauncherCopy {
      * A base-currency amount in the shopper's currency, floored once to its decimals as RewardCoupons::in_currency()
      * floors the coupon, so the text shows what WooCommerce enforces and a whole amount prints whole.
      */
-    private static function from_base( float $amount ): float {
+    public static function from_base( float $amount ): float {
         return PointsMath::floor_to_decimals( CurrencyRate::from_base( $amount ), wc_get_price_decimals() );
     }
 

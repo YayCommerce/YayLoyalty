@@ -104,6 +104,14 @@ final class OrderListener {
     private function route( int $order_id, string $to, \WC_Order $order ): void {
         if ( OrderStatus::AWARD === $to ) {
             ListenerGuard::for_order( 'OrderListener', 'award', $order_id, fn() => $this->on_awardable( $order ) );
+
+            /**
+             * Fires once a completed order's triggers are awarded; not for a guest order claimed later.
+             * Internal seam, not a public API.
+             *
+             * @param \WC_Order $order
+             */
+            do_action( 'yayloyalty_order_awarded', $order );
             return;
         }
         switch ( $to ) {

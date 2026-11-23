@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
 ?>
 <li class="yayloyalty-account__activity-row">
     <span class="yayloyalty-account__activity-body">
-        <span class="yayloyalty-account__activity-label" data-yl-label><?php echo esc_html( $yayloyalty_item['label'] ?? '' ); ?></span>
+        <span class="yayloyalty-account__activity-label yayloyalty-account__cap-first" data-yl-label><?php echo esc_html( $yayloyalty_item['label'] ?? '' ); ?></span>
         <span class="yayloyalty-account__activity-meta" data-yl-meta><?php echo esc_html( $yayloyalty_item['meta'] ?? '' ); ?></span>
     </span>
     <span class="yayloyalty-account__activity-delta yayloyalty-account__badge<?php echo null === $yayloyalty_item ? '' : esc_attr( ' yayloyalty-account__badge--' . $yayloyalty_item['tone'] ); ?>" data-yl-delta><?php echo esc_html( $yayloyalty_item['delta'] ?? '' ); ?></span>

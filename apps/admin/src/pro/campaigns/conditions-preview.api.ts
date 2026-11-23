@@ -22,6 +22,8 @@ export const conditionsPreviewSchema = z.object({
   campaign_id: z.number().int(),
   user_id: z.number().int(),
   matches: z.boolean(),
+  /** How the conditions combine: all | any. */
+  match: z.string(),
   conditions: z.array(conditionResultSchema),
 });
 

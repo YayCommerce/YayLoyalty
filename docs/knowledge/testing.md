@@ -1,7 +1,7 @@
 ---
 area: testing
-updated: 2026-11-12
-updated_ref: cc2a3e71
+updated: 2026-11-23
+updated_ref: 255aa5c
 covers: [tests/php/, tests/js/, tests/unit/, tests/integration/, tests/bootstrap.php, phpunit.xml.dist, phpunit-integration.xml.dist, tests/e2e/.wp-env.json]
 ---
 
@@ -49,16 +49,33 @@ Run one test with `vendor/bin/phpunit -c tests/php/unit.xml.dist --filter <Name>
 | unit | layer | priority | tests | source |
 |---|---|---|---|---|
 | `ClawbackMath::owed` | unit | critical | `tests/php/unit/Engine/Earning/ClawbackMathTest.php` @baseline | `includes/Engine/Earning/ClawbackMath.php` |
-| `IdempotencyKey::compose`, `for_earn`, `qualifier_of` | unit | critical | `tests/php/unit/Engine/Earning/IdempotencyKeyTest.php` @baseline | `includes/Engine/Earning/IdempotencyKey.php` |
+| `IdempotencyKey::compose`, `for_earn`, `for_import`, `qualifier_of` | unit | critical | `tests/php/unit/Engine/Earning/IdempotencyKeyTest.php` @baseline @P-8 | `includes/Engine/Earning/IdempotencyKey.php` |
 | `ExpiryPolicy` date maths and `customer_expires_at` | unit | critical | `tests/php/unit/Engine/Expiry/ExpiryPolicyTest.php` @baseline | `includes/Engine/Expiry/ExpiryPolicy.php` |
 | `LotService::record` open and take order | unit | critical | `tests/php/unit/Services/LotServiceTest.php` @baseline | `includes/Services/LotService.php` |
 | `RewardCoupons::percent_for_cap`, `in_currency` | unit | critical | `tests/php/unit/Engine/Redemption/RewardCouponsTest.php` @baseline | `includes/Engine/Redemption/RewardCoupons.php` (fix `6342a296`) |
 | `SettingsHelper::validate`, `sanitize_output`, `is_valid`, `update_settings` | unit | critical | `tests/php/unit/Helpers/SettingsHelperTest.php` @baseline | `includes/Helpers/SettingsHelper.php` |
-| `LedgerService` lot invariant, idempotent earn, correction | integration | critical | `tests/php/integration/Services/LedgerServiceTest.php` @baseline | `includes/Services/LedgerService.php` |
+| `LedgerService` lot invariant, idempotent earn, correction, `import` | integration | critical | `tests/php/integration/Services/LedgerServiceTest.php` @baseline @P-8 | `includes/Services/LedgerService.php` |
+| Tier points: `window_total()` override, before-refund total, closed period with restores | integration | critical | `tests/integration/Repositories/LedgerWindowTotalTest.php` @P-9 | `includes/Repositories/LedgerRepository.php` |
+| Pro tier refund rule (`refund_move`, `ledger_policy`) and the evaluator per mode | unit + integration | critical | `tests/unit/Pro/TierDecisionTest.php`, `tests/integration/Services/TierEvaluatorTest.php` @P-9 (older suites: run one file at a time in wp-env) | `includes/Pro/Services/TierDecision.php`, `TierEvaluator.php` |
+| Adjust `adjust_tier` sent only when set | js | important | `tests/js/lib/api/customer-adjust.api.test.ts` @P-9 | `apps/admin/src/lib/api/customer.api.ts` |
 | SPA `format.helper` money and UTC dates | js | important | `tests/js/lib/helpers/format.helper.test.ts` @baseline | `apps/admin/src/lib/helpers/format.helper.ts` |
+| `ConditionMatch` and `CampaignConditionSet` match rules, v1/v2 encoding | unit | critical | `tests/php/unit/Models/CampaignConditionSetTest.php` @P-1 | `includes/Utils/ConditionMatch.php`, `includes/Models/CampaignConditionSet.php` |
+| Pro `ConditionsEvaluator` all/any fold | unit | critical | `tests/php/unit/Pro/Services/ConditionsEvaluatorTest.php` @P-1 | `includes/Pro/Services/ConditionsEvaluator.php` |
+| Pro `RewardConditionsEvaluator`, lazy facts | unit | critical | `tests/php/unit/Pro/Services/RewardConditionsEvaluatorTest.php` @P-1 | `includes/Pro/Services/RewardConditionsEvaluator.php` |
+| SPA `toConditionList`, `conditionsLabel` | js | important | `tests/js/lib/schema/condition-match.schema.test.ts` @P-1 | `apps/admin/src/lib/schema/condition-match.schema.ts` |
+| Pro referral settings bounds, plain decimals only, defaults on bad stored values | unit | critical | `tests/php/unit/Pro/Referrals/ReferralSettingsTest.php` @P-3 | `includes/Pro/Referrals/ReferralSettings.php` |
+| Pro referral settings REST caps and refusals | integration | important | `tests/php/integration/Pro/Controllers/ReferralSettingsRestControllerTest.php` @P-3 | `includes/Pro/Controllers/ReferralSettingsRestController.php` |
+| Pro referral attribution: self-registration only, live program, existing advocate, once per friend | integration | critical | `tests/php/integration/Pro/Referrals/ReferralAttributionTest.php` @P-3 | `includes/Pro/Referrals/ReferralAttribution.php` |
+| SPA referral settings form messages and dirty-only payload | js | important | `tests/js/pro/referral/referral-settings.form.test.ts` @P-3 | `apps/admin/src/pro/referral/settings/referral-settings.form.ts` |
+| Page builder `PlacementWidgets::output` shortcode or preview-only placeholder | unit | important | `tests/php/unit/Integrations/PageBuilders/PlacementWidgetsTest.php` @P-2 | `includes/Integrations/PageBuilders/PlacementWidgets.php` |
+| Divi module slugs never equal a loyalty shortcode tag | unit | critical | `tests/php/unit/Integrations/PageBuilders/DiviModuleSlugsTest.php` @P-2 | `includes/Integrations/PageBuilders/Divi/` |
+| Page builders load no builder class on a site without one | integration | critical | `tests/php/integration/Integrations/PageBuilders/PageBuildersIntegrationTest.php` @P-2 | `includes/Integrations/PageBuilders/PageBuildersIntegration.php` |
+| Page builder elements print the real shortcodes, nothing live when paused | integration | important | `tests/php/integration/Integrations/PageBuilders/PlacementWidgetsTest.php` @P-2 | `includes/Integrations/PageBuilders/PlacementWidgets.php` |
 | `Dates::site_day_to_utc` invalid day | unit | important | bug: B-1 | `includes/Utils/Dates.php` |
 | `Dates` site-day and DST helpers | unit | critical | candidate | `includes/Utils/Dates.php` |
 | `LotService::rebuild` / `backfill` | unit | critical | candidate | `includes/Services/LotService.php` |
+| `ToolsImportRestController` preview and apply | integration | critical | `tests/php/integration/Controllers/ToolsImportRestControllerTest.php` @P-8 | `includes/Controllers/ToolsImportRestController.php` |
+| `parseImportCsv`, `importIdForRows` | js | important | `tests/js/lib/tools-import.csv.test.ts` @P-8 | `apps/admin/src/pages/tools/tools-import.csv.ts` |
 | `LedgerService::refund_earn`, `expire`, `restore_refund` | integration | critical | candidate | `includes/Services/LedgerService.php` |
 | `EarningService` award-points clamp, `points_left_today` | unit | critical | candidate | `includes/Engine/Earning/EarningService.php` |
 | `AbstractRestController::get_write_args` (mass assignment) | unit | critical | candidate | `includes/Controllers/AbstractRestController.php` |

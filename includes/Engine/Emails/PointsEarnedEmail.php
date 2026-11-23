@@ -55,7 +55,7 @@ class PointsEarnedEmail extends LedgerEntryEmail {
 
     /** @return array<string, mixed> */
     protected function build_values( LedgerEntry $entry ): array {
-        $order        = $entry->get_order_id() ? wc_get_order( $entry->get_order_id() ) : null;
+        $order        = $entry->get_own_order_id() ? wc_get_order( $entry->get_own_order_id() ) : null;
         $order_number = $order ? (string) $order->get_order_number() : '';
 
         return $this->shared_values( $entry ) + [

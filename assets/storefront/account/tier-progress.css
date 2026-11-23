@@ -1,0 +1,58 @@
+/*
+ * templates/tier-progress.php: the launcher panel's tier badge, progress text, bar and window caption.
+ * Imported by rewards-tokens.css, which holds the tokens. Only the dot carries the tier's colour.
+ */
+.yayloyalty-account .yayloyalty-account__tier {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--yayloyalty-account-border);
+  border-radius: var(--yayloyalty-account-radius);
+  color: var(--yayloyalty-account-text);
+}
+
+.yayloyalty-account .yayloyalty-account__tier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--yayloyalty-account-text);
+}
+
+.yayloyalty-account .yayloyalty-account__tier-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.yayloyalty-account .yayloyalty-account__tier-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.yayloyalty-account .yayloyalty-account__tier-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--yayloyalty-account-icon-bg);
+}
+
+.yayloyalty-account .yayloyalty-account__tier-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--yayloyalty-account-accent);
+}
+
+.yayloyalty-account .yayloyalty-account__tier-caption {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--yayloyalty-account-muted);
+}

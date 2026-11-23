@@ -7,8 +7,8 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The Customers list's filter rules: search, balance buckets and the
- * expiring-soon window. SQL-free: it owns every threshold and edge, and
+ * The Customers list's filter rules: search, balance buckets, the
+ * expiring-soon window and tiers. SQL-free: it owns every threshold and edge, and
  * CustomerRepository turns them into WHERE.
  */
 final class CustomerRowFilters {
@@ -18,7 +18,11 @@ final class CustomerRowFilters {
         'search'        => '',
         'balance_range' => CustomerFilters::BALANCE_RANGES[0],
         'expiring_soon' => CustomerFilters::EXPIRY_RANGES[0],
+        'tier'          => '',
     ];
+
+    /** The `tier` token for customers with no tier. */
+    public const TIER_NONE = 'none';
 
     /**
      * Wire params off the request, defaulted.
@@ -30,13 +34,14 @@ final class CustomerRowFilters {
             'search'        => (string) $request->get_param( 'search' ),
             'balance_range' => (string) $request->get_param( 'balance_range' ),
             'expiring_soon' => (string) $request->get_param( 'expiring_soon' ),
+            'tier'          => (string) $request->get_param( 'tier' ),
         ];
     }
 
     /**
      * Normalises filter params into the logical criteria CustomerRepository turns into SQL.
      *
-     * @param array<string, string> $filters search / balance_range / expiring_soon
+     * @param array<string, string> $filters search / balance_range / expiring_soon / tier
      * @return array{
      *     search: string,
      *     balance_min: int|null,
@@ -44,11 +49,14 @@ final class CustomerRowFilters {
      *     expires_from: string|null,
      *     expires_to: string|null,
      *     expires_is_null: bool,
+     *     tier_ids: int[],
+     *     tier_none: bool,
      * }
      */
     public static function to_criteria( array $filters ): array {
         [ $balance_min, $balance_max ]                   = self::balance_bounds( (string) ( $filters['balance_range'] ?? self::DEFAULTS['balance_range'] ) );
         [ $expires_from, $expires_to, $expires_is_null ] = self::expiry_window( (string) ( $filters['expiring_soon'] ?? self::DEFAULTS['expiring_soon'] ) );
+        [ $tier_ids, $tier_none ]                        = self::tier_tokens( (string) ( $filters['tier'] ?? self::DEFAULTS['tier'] ) );
 
         return [
             'search'          => strtolower( trim( (string) ( $filters['search'] ?? self::DEFAULTS['search'] ) ) ),
@@ -57,6 +65,8 @@ final class CustomerRowFilters {
             'expires_from'    => $expires_from,
             'expires_to'      => $expires_to,
             'expires_is_null' => $expires_is_null,
+            'tier_ids'        => $tier_ids,
+            'tier_none'       => $tier_none,
         ];
     }
 
@@ -111,6 +121,29 @@ final class CustomerRowFilters {
             default:
                 return [ null, null ];
         }
+    }
+
+    /**
+     * `tier` is comma-separated tier ids and/or `none`; anything else is dropped. An id needn't be a
+     * live tier: an unknown one matches no row.
+     *
+     * @return array{0: int[], 1: bool} [tier ids, include tierless].
+     */
+    private static function tier_tokens( string $value ): array {
+        $ids  = [];
+        $none = false;
+
+        foreach ( explode( ',', $value ) as $token ) {
+            $token = trim( $token );
+
+            if ( self::TIER_NONE === $token ) {
+                $none = true;
+            } elseif ( ctype_digit( $token ) && (int) $token >= 1 ) {
+                $ids[] = (int) $token;
+            }
+        }
+
+        return [ array_values( array_unique( $ids ) ), $none ];
     }
 
     /**

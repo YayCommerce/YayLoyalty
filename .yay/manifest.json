@@ -3,7 +3,7 @@
   "updated": "2026-11-23",
   "files": {
     "CLAUDE.md#managed": {
-      "sha256": "83b04c900beb1b03c9c8fedc0ffc2b20037e301bb889d03363e94c4cf6319cc4",
+      "sha256": "caefa5cc3f0f91a887ccba5a808c64ec4d8de0ba5d19e2b7084f0c0f2f6df2c3",
       "template": "CLAUDE.managed.md"
     },
     ".claude/rules/yay-workflow.md": {
@@ -27,7 +27,7 @@
       "template": "github/pull_request_template.md"
     },
     "docs/yay-workflow.md": {
-      "sha256": "fcdb188d1d49bf318e977c9b04137948175775f8aba0d73707cbb4af9b8971d7",
+      "sha256": "418c1708a6466c693a70982edfb4b6bb74f510a31b8326243df45b6e5cca12ee",
       "template": "docs/yay-workflow.md"
     }
   }

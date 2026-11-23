@@ -49,6 +49,16 @@ abstract class BaseRestController {
     }
 
     /**
+     * Runs a writing route whose service commits each unit of work itself, with no outer transaction:
+     * one would hold every unit's lock to the end, and a deadlock on one would undo the units already reported done.
+     *
+     * @return \WP_REST_Response|\WP_Error|void
+     */
+    public function exec_self_committing( $callback, \WP_REST_Request $request ) {
+        return $this->exec_read( $callback, $request );
+    }
+
+    /**
      * Runs a writing route inside Transaction::run(). A callback that returns
      * a WP_Error rolls back like one that throws, or a validation failure
      * would commit partial work and still answer 4xx.

@@ -1,7 +1,7 @@
 ---
 area: known-issues
-updated: 2026-11-12
-updated_ref: cc2a3e71
+updated: 2026-11-20
+updated_ref: 39f59a8
 covers: [phpcs.xml.dist, YayLoyaltyPluginAdapter.php, tests/integration/bootstrap.php, includes/Pro/YayLoyaltyPro.php, includes/Engine/ActDeact.php, includes/Engine/Emails/EmailThrottle.php, includes/Engine/Storefront/, includes/Engine/Earning/Listeners/, includes/Services/CustomerActivityService.php, includes/Helpers/DesignSchema.php]
 ---
 
@@ -40,6 +40,7 @@ phpcs runs `PHPCompatibilityWP` with `testVersion 7.4-`, but it doesn't flag PHP
 - **Every version bump re-runs `Installer::install()`** (`maybe_upgrade` compares with `===`), so migrations must be idempotent.
 - **A Pro hook attached after `RedemptionService::build()` or `EarningService::build()` is never applied** (see [architecture.md § Boot](architecture.md#boot)).
 - **`./scripts/run.sh release` stamps the version in the working tree**, so a release leaves `yayloyalty.php` and `readme.txt` modified.
+- **`WC_Cart::remove_coupons()` fires no hook**, so `CouponProvider::on_removed()` never sees "remove all coupons"; a coupon that a `woocommerce_before_calculate_totals` sync re-adds from session state comes straight back. The Store API case is handled in `StoreApiAdapter::watch_remove_all_coupons()` (B-2), which fires `yayloyalty_cart_coupons_removed_all` so another re-adding sync (the Pro referral coupon) can stand down too.
 - **The integration suite needs the plugin active on the site it runs in** and bails with exit 1 otherwise; on a Local site set `YAYLOYALTY_TEST_SOCKET` to the site's mysqld socket (header of `tests/integration/bootstrap.php`).
 
 ## Open questions

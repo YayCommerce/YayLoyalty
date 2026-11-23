@@ -1,7 +1,7 @@
 ---
 area: decisions
-updated: 2026-11-12
-updated_ref: 3f6424ea
+updated: 2026-11-19
+updated_ref: b45b3f3
 covers: [includes/YayLoyalty.php, includes/Services/LedgerService.php, includes/Database/, includes/Engine/Redemption/, includes/Engine/Earning/, apps/admin/src/main.tsx, apps/admin/src/pro/index.ts, scripts/run.sh]
 ---
 
@@ -54,5 +54,28 @@ covers: [includes/YayLoyalty.php, includes/Services/LedgerService.php, includes/
 **Evidence:** `includes/Utils/Dates.php`, `includes/Database/Installer.php`, `yayloyalty.php`.
 
 ### Lite fails open without a conditions evaluator
-**Why:** failing closed would disable every conditional campaign when a site downgrades from Pro.
-**Evidence:** `includes/Engine/Points/PointsEngine.php`.
+**Why:** failing closed would disable every conditional campaign or reward when a site downgrades from Pro.
+**Evidence:** `includes/Engine/Points/PointsEngine.php`, `includes/Engine/Redemption/RewardGate.php`.
+
+### 2026-11-17 Referral is Pro's first table of its own, with its own install stamp
+**Why:** referral is a Pro-only feature (BS-3), so a Lite site must have no referrals table, and Pro data in a Lite table would ship Lite a schema it never uses. Lite's install runs on activation before Pro boots and skips while its stamp is current, so Pro keeps `yayloyalty_pro_db_version` and installs under the same mutex. Referral settings are a Pro option for the same reason.
+**Rejected:** a Lite `referrals` table; storing the settings in a Referral campaign (UX-2's first draft).
+**Evidence:** `includes/Pro/Database/ProInstaller.php`, `includes/Database/Installer.php` `install_locked()`, P-3.
+
+### 2026-11-18 A referral payout carries the friend's order, but is never shown as that order's points
+The advocate's referral row keeps the friend's `order_id` so `Reversal` claws it back on a refund, prorated like any campaign-less row. Every reader that means "this customer's points for this order" (the orders list column, Missing points, the grant check, the advocate's history and earned email, the daily earning total) leaves referral rows out, through `LedgerEntry::get_own_order_id()` or `source <> 'referral'`. Alternative rejected: no order id and a Pro-side clawback, which needed a new ledger seam and lost proration (P-4).
+
+### 2026-11-13 Conditions are one list matched by all or any, flat rows untouched
+**Why:** Merchants asked for the YayPricing model: one list of conditions and one Any/All switch, no groups. An `all` list keeps the 1.0.0 list envelope, so flat rows need no migration; an `any` list adds `"match":"any"` at `schema_version` 2 to the same envelope, so a 1.0.0 reader still sees its items and reads them as `all`, which fails closed. At most one entry per type under either match. New conditions start as `all`.
+**Rejected:** two levels of AND/OR groups (built first in P-1, then removed at review); a nested tree (BS-1 option B); a data migration.
+**Evidence:** `includes/Utils/ConditionMatch.php`, P-1.
+
+### 2026-11-23 Tier points are their own total; a refund drops a tier only when it is the cause
+**Why:** staff must be able to correct a balance without touching a tier, and a refund must not strip a tier the customer is being kept at (raised threshold, mode switch, hold). A ledger row counts toward tier points by `counts_toward_tier`, or by type when NULL (EARN, REFUND_EARN, ADJUST), so every existing row keeps its meaning. All three modes sum tier points through `LedgerRepository::window_total()`; Lifetime no longer reads `lifetime_earned`, which can now differ. A refund compares the mode's total with and without that refund's rows (all of them: one reversal writes its clawbacks in one transaction): already short before → keep; otherwise judged as any negative row. In Calendar, a closed period ignores rows created after it ended, with a restore dated by its refund, so refunding last period's order changes no tier (accepted abuse window). A staff deduction counted toward tier points still drops a customer: it is staff's lever.
+**Rejected:** reading `lifetime_earned` for Lifetime; leaving out only the refund row for the before-total; cutting off only REFUND_EARN rows at a closed period (a later restore would inflate it).
+**Evidence:** `includes/Repositories/LedgerRepository.php` (`window_total()`, `tier_points_sql()`), `includes/Pro/Services/TierDecision.php` (`refund_move()`), P-9.
+
+### 2026-11-19 A CSV import is keyed on a hash of the file, not stored as a job
+**Why:** a migration's worst failure is applying a row twice. Each imported row is an `adjust` row keyed `adjust:{user}:import:{import id}:import`, the import id being a 53-bit hash of the file's parsed rows (email, points, note) made in the SPA, so a retried chunk or the same file uploaded again, even re-saved by a spreadsheet, is `Outcome::DUPLICATE` per row, with nothing stored about the import. Apply runs each row in its own transaction (`exec_self_committing()`, not `exec_write()`), so no outer transaction holds every customer's lock or lets a deadlock undo rows already reported imported. An edited file is a new import, so the preview flags each customer with a row from another import (`LedgerRepository::latest_other_import()`) as `imported_before`, and the SPA leaves them out unless the merchant ticks them in. Manual adjustments stay unkeyed on purpose.
+**Rejected:** the client-only per-customer adjust loop (not retry-safe); an Action Scheduler job with stored files (a sixth `LedgerService` site, BS-5 option C).
+**Evidence:** `includes/Engine/Earning/IdempotencyKey.php`, `LedgerService::import()`, `includes/Controllers/ToolsImportRestController.php`, P-8.

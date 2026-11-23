@@ -1,18 +1,29 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Outlet, useSearchParams } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useCustomersQuery } from '@/lib/queries/customer.queries';
 import { useDebouncedSearchCommit } from '@/hooks/useDebouncedSearchCommit';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageLayout from '@/components/layout/PageLayout';
+import { useTierFilterLabel, useTiersEnabled } from '@/pro';
 import { CustomersScreen } from './components/CustomersScreen';
 import { countActiveFilters, toFilterDropSuggestions } from './customers-page.filter-suggestions';
 import { initialFiltersFromSearch, type CustomerListFilters } from './customers-page.filters';
 import { defaultSortDirection, type SortDirection, type SortKey } from './customers-page.sort';
 
 const PER_PAGE = 10;
+
+// Build-time picks: the hook order never changes, and Lite drops the Pro hooks.
+const useShowTiers: () => boolean = IS_PRO_BUILD ? useTiersEnabled : () => false;
+const useTierLabel: (value: string) => string | null = IS_PRO_BUILD ? useTierFilterLabel : () => null;
+
+/** While tiers are off the tier filter and sort are inert: nothing shows them, so nothing sends them. */
+function withoutTier(filters: CustomerListFilters): CustomerListFilters {
+  return filters.tier === '' ? filters : { ...filters, tier: '' };
+}
 
 /**
  * Customers list screen. Owns the data concerns: the paged list query,
@@ -24,11 +35,20 @@ export default function CustomersPage() {
   // `filters` drives the toolbar instantly; `queryFilters` drives the fetch, with search debounced.
   // Seeded from `?balance_range=` once on mount; same-route navigation will not re-seed.
   const [searchParams] = useSearchParams();
-  const [filters, setFilters] = useState<CustomerListFilters>(() => initialFiltersFromSearch(searchParams));
-  const [queryFilters, setQueryFilters] = useState<CustomerListFilters>(filters);
+  const [liveFilters, setFilters] = useState<CustomerListFilters>(() => initialFiltersFromSearch(searchParams));
+  const [liveQueryFilters, setQueryFilters] = useState<CustomerListFilters>(liveFilters);
   const [page, setPage] = useState(1);
-  const [sortBy, setSortBy] = useState<SortKey>('balance');
+  const [liveSortBy, setSortBy] = useState<SortKey>('balance');
   const [sortDir, setSortDir] = useState<SortDirection>('desc');
+
+  const showTiers = useShowTiers();
+  const filters = showTiers ? liveFilters : withoutTier(liveFilters);
+  const queryFilters = useMemo(
+    () => (showTiers ? liveQueryFilters : withoutTier(liveQueryFilters)),
+    [showTiers, liveQueryFilters],
+  );
+  const sortBy: SortKey = !showTiers && liveSortBy === 'tier' ? 'balance' : liveSortBy;
+  const tierLabel = useTierLabel(queryFilters.tier);
 
   const { commit: commitSearch, cancelPending: cancelPendingSearch } = useDebouncedSearchCommit((search) =>
     setQueryFilters((current) => ({ ...current, search })),
@@ -59,7 +79,7 @@ export default function CustomersPage() {
   const isStoreEmpty = !customersQuery.isPending && totalItems === 0 && activeFilterCount === 0;
 
   // Labelled from `queryFilters`, the state that actually produced this response.
-  const suggestions = toFilterDropSuggestions(customersQuery.data?.suggestions ?? [], queryFilters);
+  const suggestions = toFilterDropSuggestions(customersQuery.data?.suggestions ?? [], queryFilters, tierLabel);
 
   function updateFilters(patch: Partial<CustomerListFilters>) {
     setFilters((current) => ({ ...current, ...patch }));
@@ -123,6 +143,8 @@ export default function CustomersPage() {
           queryFilters={queryFilters}
           sort={{ by: sortBy, dir: sortDir, onChange: handleSort }}
           pagination={{ page, pageCount, onChange: setPage }}
+          showTiers={showTiers}
+          tierLabel={tierLabel}
         />
       )}
       {/* The drawer route renders here, so the list stays mounted and keeps its state. */}

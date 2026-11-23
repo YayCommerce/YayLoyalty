@@ -1,7 +1,7 @@
 ---
 area: helpers
-updated: 2026-11-12
-updated_ref: 3f6424ea
+updated: 2026-11-23
+updated_ref: 255aa5c
 covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, includes/Access/, includes/Services/, includes/Controllers/AbstractRestController.php, includes/Engine/Earning/, includes/Engine/Expiry/ExpiryRunner.php, includes/Engine/Emails/Emails.php, includes/Engine/Storefront/, includes/Engine/Points/, apps/admin/src/lib/, apps/admin/src/hooks/, apps/admin/src/components/layout/]
 ---
 
@@ -15,9 +15,15 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 - `Utils\Sql::in_placeholders($values, '%d')` (`includes/Utils/Sql.php`): placeholders for a prepared `IN (…)`.
 - `Database\Transaction::run($fn)` / `after_commit($fn)` (`includes/Database/Transaction.php`): the only way to open a transaction; defer emails and actions until commit.
 - `Utils\Json::encode|decode|encode_list|decode_list` (`includes/Utils/Json.php`): versioned JSON columns; never throws on read.
-- `Services\LedgerService` (`includes/Services/LedgerService.php`): every points change. `adjust()` / `record()` for manual rows; `earn()`, `refund_earn()`, `restore_refund()`, `expire()`, `redeem()` for keyed system rows. Get an instance from an existing composition root, don't construct a new one.
-- `Engine\Earning\IdempotencyKey::compose|for_earn` (`includes/Engine/Earning/IdempotencyKey.php`): the key for any new ledger write.
+- `Utils\ConditionMatch::parse|decode|encode|assert_structure|fold` (`includes/Utils/ConditionMatch.php`): a campaign's or reward's `conditions` as `{ match, conditions }`; reads a flat list as `all`. `Campaign|Reward::has_conditions()` asks whether there is a condition.
+- Tier points: `LedgerType::counts_toward_tier()` (PHP) and `LedgerRepository::window_total()` (SQL, any date range; `created_by` for a closed period, `except_ref_*` for the total before one refund). Don't sum `lifetime_earned` for a tier.
+- `Services\LedgerService` (`includes/Services/LedgerService.php`): every points change. `adjust()` / `record()` for manual rows; `earn()`, `refund_earn()`, `restore_refund()`, `expire()`, `redeem()` for keyed system rows; `import()` for a CSV import row (keyed, so a re-upload is a duplicate). `adjust()`'s `$counts_toward_tier` stores a row's tier-points choice (null: by type). Get an instance from an existing composition root, don't construct a new one.
+- `Engine\Earning\IdempotencyKey::compose|for_earn|for_import` (`includes/Engine/Earning/IdempotencyKey.php`): the key for any new ledger write.
 - `Repositories\CustomerReader` (`includes/Repositories/CustomerReader.php`): depend on this when code may read a customer but must never write one.
+- `Database\Installer::install_locked($still_needed)` (`includes/Database/Installer.php`): run the idempotent install under the upgrade mutex; Pro's `ProInstaller` uses it.
+- `Repositories\CustomerRepository::find_user_by_referral_code($code)`: the existing user who owns a referral code.
+- `Repositories\CustomerRepository::assign_referral_code($user_id)`: a member's referral code, created when the row is created (Pro) or on first use (8 characters, no look-alikes, retried on a collision).
+- Pro `Repositories\ReferralListRepository::paginate|count_by_status|counts_for_advocate` (`includes/Pro/Repositories/ReferralListRepository.php`): the admin's referral list and one advocate's totals. `ReferralRepository::find_for_update()` locks a referral before an admin decision.
 
 ## Money, points and dates (PHP)
 
@@ -31,13 +37,16 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 - `Helpers\SettingsHelper::get_settings()` / `update_settings()` / `get_default_settings()`: the only way to read or save settings.
 - `Helpers\DesignHelper::get_design|update_design|surface_enabled|with_unsaved|reset` (`includes/Helpers/DesignHelper.php`): storefront design; `surface_enabled()` decides whether a storefront surface shows.
 - `Helpers\EmailsHelper::get_emails|update_emails|registered_emails` (`includes/Helpers/EmailsHelper.php`): loyalty email on/off state.
+- Pro `Referrals\ReferralSettings::get|invalid_field|update` (`includes/Pro/Referrals/ReferralSettings.php`): the referral program's settings; money as base-currency strings.
 - `Utils\ConfigSpec::matches|is_limit|within_bounds` and `Utils\ConditionValueRules` (`includes/Utils/`): validate campaign and reward config against a typed spec.
 
 ## Eligibility and earning (PHP)
 
 - `Engine\Earning\ProgramGate::program_enabled()` / `member_denial()` (`includes/Engine/Earning/ProgramGate.php`): is the program on, may this member earn or redeem.
 - `Engine\Earning\EarningService::build|gate_reason|points_left_today|is_awardable_order|is_missing_points` (`includes/Engine/Earning/EarningService.php`): a wired earning service and eligibility questions without re-implementing them.
-- `Engine\Points\ContextFactory::from_order|from_user|from_comment|from_product|from_cart|for_advert` (`includes/Engine/Points/ContextFactory.php`): always build scoring context here, never from "now".
+- `Engine\Points\ContextFactory::from_order|from_user|from_comment|from_product|from_cart|for_advert` (`includes/Engine/Points/ContextFactory.php`): always build scoring context here, never from "now". `from_user()` takes an optional order id for a user event tied to an order (a referral payout).
+- `Engine\Earning\EarningService::award_flat($trigger, $ctx, $points, $source, $reference_type, $reference_id)`: one keyed campaign-less EARN row through the gates, with no award filter and no pending points; Pro's referral payout.
+- `Models\LedgerEntry::get_own_order_id()`: the order a row is the customer's own earning for; null on a referral row, which carries the friend's order only so a refund claws it back. Use it, not `get_order_id()`, wherever a row's order is shown to its customer.
 - `Engine\Earning\PendingPoints::unreleased($order)` (`includes/Engine/Earning/PendingPoints.php`): points staged on an order.
 - `Engine\Points\Context::is_loyalty_code|loyalty_codes` (`includes/Engine/Points/Context.php`): recognise our virtual coupon codes.
 - `Engine\Earning\Listeners\ListenerGuard::run|for_order` (`includes/Engine/Earning/Listeners/ListenerGuard.php`): wrap every new WooCommerce hook handler.
@@ -52,7 +61,7 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 
 ## Escaping, text, capabilities, REST (PHP)
 
-- `Utils\Kses::svg|inline` (`includes/Utils/Kses.php`): allowlists for printed icons and number-wrapped sentences.
+- `Utils\Kses::svg|inline|storefront` (`includes/Utils/Kses.php`): allowlists for printed icons, number-wrapped sentences and whole storefront templates; every storefront echo or returned callback goes through `wp_kses( $html, Kses::storefront() )`, and the launcher adds `Kses::allow_color_mix` around its echo.
 - `Utils\Text::plain|store_name` (`includes/Utils/Text.php`): plain text for the SPA and shopper copy.
 - `Utils\IsoCodes::is_currency|is_country` (`includes/Utils/IsoCodes.php`).
 - `Utils\Log::error|warning|debug` (`includes/Utils/Log.php`).
@@ -62,19 +71,21 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 
 ## SPA (`apps/admin/src/`)
 
+- `toConditionList`, `hasConditions`, `conditionListSchema` (`lib/schema/condition-match.schema.ts`): read either `conditions` wire shape; `ConditionListEditor` and `mergeConditionErrors` (`pro/conditions/`) edit and validate one in a Pro form.
 - `api`, `toastApiError`, `getApiErrorMessage`, `isNotFoundError`, `isAbortError` (`lib/api/api.ts`): every REST call and failure toast.
 - `parsePaginated`, `paginatedSchema`, `fetchAllPages`, `MAX_PER_PAGE` (`lib/api/paginated.ts`): list responses.
 - `Can`, `can`, `useCapability`, `CAP` (`lib/access.tsx`): hide or disable by capability.
 - `IS_PRO_BUILD` (`lib/is-pro-build.ts`) and `ProGate` (`components/pro/ProGate.tsx`): edition gating and the upsell.
+- `MoneyInput`, `PointsInput` (`components/ui/custom/amount-inputs.tsx`): money in a currency and whole points with their unit; `MoneyInput` takes an `id` for its label.
 - `useEditorSave` (`hooks/useEditorSave.ts`) and `useRouteLeaveGuard` (`hooks/useRouteLeaveGuard.tsx`): save, draft and leave-with-unsaved-changes flow.
 - `resolveQueryLoad` (`components/layout/resolve-query-load.tsx`) and `PageLayout` (`components/layout/PageLayout.tsx`): page loading states and header.
 - `useDebouncedSearchCommit` (`hooks/useDebouncedSearchCommit.ts`): search inputs.
 - `formatWPDate`, `formatStoredDate`, `utcToDate`, `dateToStored`, `formatWPCurrency`, `formatStoreNumber` (`lib/helpers/format.helper.ts`): every date and money display.
 - `lib/points-math/points-math.ts`: client copy of `PointsMath`.
-- `settleInChunks` (`lib/helpers/settle-in-chunks.helper.ts`), `setPaginatedRow` (`lib/helpers/paginated-row.helper.ts`), `useCsvExport` (`hooks/`): bulk writes, cache patching, CSV.
+- `settleInChunks` (`lib/helpers/settle-in-chunks.helper.ts`), `setPaginatedRow` (`lib/helpers/paginated-row.helper.ts`), `useCsvExport` (`hooks/`): bulk writes, cache patching, CSV. Reading a CSV: `parseImportCsv`, `importIdForRows` (`pages/tools/tools-import.csv.ts`).
 
 ## Hooks the plugin exposes
 
 Public: `yayloyalty_points_awarded` (after commit), `yayloyalty_points_redeemed`, `yayloyalty_ledger_recorded`, `yayloyalty_pro_booted`, `yayloyalty_redeem_card` (renders the card), `yayloyalty_yaymail_register_emails`, `yayloyalty_yaymail_register_shortcodes`.
 
-Seams Pro attaches through (documented "Internal seam, not a public API"): `yayloyalty_earning_gates`, `yayloyalty_redemption_gates`, `yayloyalty_register_trigger_handlers`, `yayloyalty_register_reward_handlers`, `yayloyalty_award_points` (can only lower), `yayloyalty_points_left_today`, `yayloyalty_order_award_triggers`, `yayloyalty_campaign_conditions_evaluator`, `yayloyalty_rest_controllers`, `yayloyalty_rest_item_schema`, `yayloyalty_campaign_config_schema`, `yayloyalty_reward_config_schema`, `yayloyalty_localize_admin_data`, `yayloyalty_plugin_name`. Others: `yayloyalty_table_schemas`, `yayloyalty_run_migrations`, `yayloyalty_currency_rate`, `yayloyalty_context_to_base_factor`.
+Seams Pro attaches through (documented "Internal seam, not a public API"): `yayloyalty_earning_gates`, `yayloyalty_redemption_gates`, `yayloyalty_register_trigger_handlers`, `yayloyalty_register_reward_handlers`, `yayloyalty_award_points` (can only lower), `yayloyalty_points_left_today`, `yayloyalty_order_award_triggers`, `yayloyalty_order_awarded` (after a completed order's awards, not for a claimed guest order), `yayloyalty_order_reversed` (after a refund, cancel, trash or refunded status is reversed), `yayloyalty_campaign_conditions_evaluator`, `yayloyalty_reward_conditions_match`, `yayloyalty_rest_controllers`, `yayloyalty_rest_item_schema`, `yayloyalty_campaign_config_schema`, `yayloyalty_reward_config_schema`, `yayloyalty_localize_admin_data`, `yayloyalty_plugin_name`, `yayloyalty_cart_coupons_removed_all` (the Store API removed every coupon; `StoreApiAdapter`). Others: `yayloyalty_table_schemas`, `yayloyalty_run_migrations`, `yayloyalty_currency_rate`, `yayloyalty_context_to_base_factor`.

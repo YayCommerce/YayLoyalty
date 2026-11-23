@@ -28,7 +28,7 @@ class DesignHelper {
 
     /** Whether a storefront surface shows: the program is on and its Design → Visibility switch, such as `show_product_message`, is on. */
     public static function surface_enabled( array $design, string $flag ): bool {
-        return ProgramGate::program_enabled() && ! empty( $design['visibility'][ $flag ] );
+        return ProgramGate::storefront_enabled() && ! empty( $design['visibility'][ $flag ] );
     }
 
     /**

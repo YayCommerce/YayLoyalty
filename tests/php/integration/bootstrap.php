@@ -30,6 +30,9 @@ tests_add_filter(
 		WC_Install::install();
 		$GLOBALS['wp_roles'] = null; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- reload roles WooCommerce just added.
 		wp_roles();
+		// Pro hides the storefront without an activated key; tests that need it unlicensed remove these.
+		update_option( 'yayloyalty_license_key', 'tests-placeholder' );
+		update_option( 'yayloyalty_license_info', [ 'license' => 'valid', 'expires' => 'lifetime' ] );
 	}
 );
 

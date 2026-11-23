@@ -24,7 +24,7 @@ $yayloyalty_label    = SettingsHelper::points_label_plural();
         <h3 class="yayloyalty-account__title"><?php esc_html_e( 'Recent activity', 'yayloyalty' ); ?></h3>
         <a class="yayloyalty-account__activity-all" href="<?php echo esc_url( $view['history_url'] ); ?>"><?php esc_html_e( 'View all', 'yayloyalty' ); ?></a>
     </div>
-    <ul class="yayloyalty-account__activity-list" data-yl-activity-list<?php echo [] === $yayloyalty_activity ? ' hidden' : ''; ?>>
+    <ul class="yayloyalty-account__activity-list" data-yl-activity-list<?php echo esc_attr( [] === $yayloyalty_activity ? ' hidden' : '' ); ?>>
         <?php if ( null !== $yayloyalty_activity ) : ?>
             <?php foreach ( $yayloyalty_activity as $yayloyalty_item ) : ?>
                 <?php require __DIR__ . '/activity-row.php'; ?>
@@ -44,7 +44,7 @@ $yayloyalty_label    = SettingsHelper::points_label_plural();
         require __DIR__ . '/activity-row.php';
         ?>
     </template>
-    <div class="yayloyalty-account__activity-empty" data-yl-activity-empty<?php echo [] === $yayloyalty_activity ? '' : ' hidden'; ?>>
+    <div class="yayloyalty-account__activity-empty" data-yl-activity-empty<?php echo esc_attr( [] === $yayloyalty_activity ? '' : ' hidden' ); ?>>
         <span class="yayloyalty-account__activity-empty-icon"><?php echo wp_kses( AccountMyPointsIcon::empty_activity(), Kses::svg() ); ?></span>
         <p>
             <?php echo esc_html( LauncherCopy::no_activity() ); ?>

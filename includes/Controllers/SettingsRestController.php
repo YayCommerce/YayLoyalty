@@ -50,6 +50,11 @@ class SettingsRestController extends AbstractRestController {
     public function save_settings( \WP_REST_Request $request ) {
         $settings = $request->get_json_params();
 
+        if ( is_array( $settings ) ) {
+            // The tiers route writes these behind its own capability; manage_settings alone must not turn tiers on.
+            $settings = array_diff_key( $settings, array_flip( SettingsHelper::TIER_KEYS ) );
+        }
+
         if ( ! is_array( $settings ) || ! SettingsHelper::is_valid( $settings ) ) {
             return $this->error_invalid_arguments();
         }

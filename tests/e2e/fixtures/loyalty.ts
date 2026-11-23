@@ -9,6 +9,10 @@ export function userId( login: string ): number {
 	return Number( wp( 'user', 'get', login, '--field=ID' ) );
 }
 
+export function emailOf( login: string ): string {
+	return wp( 'user', 'get', login, '--field=user_email' );
+}
+
 /** A field of the customer's row, as the admin REST route reports it. */
 function customerField( user: number, field: 'balance' | 'pending_points' ): number {
 	return Number(
@@ -51,4 +55,11 @@ export function setBalance( user: number, points: number ): void {
 export function emptyCart( user: number ): void {
 	wp( 'user', 'meta', 'delete', String( user ), '_woocommerce_persistent_cart_1' );
 	wp( 'db', 'query', `DELETE FROM wp_woocommerce_sessions WHERE session_key = '${ user }'` );
+}
+
+/** A published page holding one shortcode, created once and reused on later runs. */
+export function shortcodePage( slug: string, shortcode: string ): void {
+	if ( wp( 'post', 'list', '--post_type=page', `--name=${ slug }`, '--format=count' ) === '0' ) {
+		wp( 'post', 'create', '--post_type=page', '--post_status=publish', `--post_name=${ slug }`, `--post_title=${ slug }`, `--post_content=[${ shortcode }]` );
+	}
 }

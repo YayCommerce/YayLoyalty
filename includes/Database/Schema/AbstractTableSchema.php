@@ -32,6 +32,15 @@ abstract class AbstractTableSchema {
         return Table::name( $this->slug() );
     }
 
+    /** Whether the table is installed. Asked on every call: an install can run mid-request. */
+    public function exists(): bool {
+        global $wpdb;
+
+        $table = $this->table_name();
+
+        return $table === $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a schema probe; WordPress has no API for it.
+    }
+
     public function charset_collate(): string {
         global $wpdb;
 

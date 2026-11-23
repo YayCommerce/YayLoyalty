@@ -3,11 +3,13 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
 import { formatWPDate, formatWPRelativeDate } from '@/lib/helpers/format.helper';
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PointsValue } from '@/components/ui/custom/points-value';
 import { TableCell, TableRow } from '@/components/ui/table';
+import { CustomersTierCell } from '@/pro';
 import { BalanceCell, customerDrawerPath, CustomerNameCell } from './CustomersTableCells';
 
 /**
@@ -17,11 +19,13 @@ import { BalanceCell, customerDrawerPath, CustomerNameCell } from './CustomersTa
 export function CustomerTableRow({
   customer,
   showSelection,
+  showTiers,
   selected,
   onToggle,
 }: {
   customer: CustomerListRow;
   showSelection: boolean;
+  showTiers: boolean;
   selected: boolean;
   onToggle: (userId: number) => void;
 }) {
@@ -55,6 +59,11 @@ export function CustomerTableRow({
       <TableCell>
         <CustomerNameCell customer={customer} search={search} />
       </TableCell>
+      {IS_PRO_BUILD && showTiers && (
+        <TableCell>
+          <CustomersTierCell tierId={customer.tier_id} />
+        </TableCell>
+      )}
       <TableCell className="text-right">
         <BalanceCell value={customer.balance} />
       </TableCell>

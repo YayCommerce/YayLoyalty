@@ -43,6 +43,10 @@ final class Log {
             return;
         }
 
+        if ( ! defined( 'WP_DEBUG' ) || ! WP_DEBUG ) {
+            return;
+        }
+
         error_log( '[' . self::SOURCE . '] ' . strtoupper( $level ) . ' ' . $line ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- the fallback until WooCommerce's logger loads.
     }
 }

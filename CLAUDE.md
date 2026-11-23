@@ -20,6 +20,7 @@ This repo uses the **yay** harness. Work through its skills so every developer a
 | Test build for QA | `/yay:release --bundle` | `release/bundles/<slug>-<x.y.z>-rc.<n>/` |
 | Ship | `/yay:release` → merge → `/yay:release --tag-only` | readme.txt changelog, `docs/releases/`, checked bundle, tag |
 | Keep docs true | `/yay:knowledge-update` | this file's project block, `docs/knowledge/` |
+| Share with the lead or team | `/yay:report` | `.yay/reports/` (never committed): a plain page link or paste-ready text |
 
 - A worked example from roadmap to release tag, with the exact prompts, is in `docs/yay-workflow.md`.
 - Each skill checks for the previous step's output and says when it's missing. You can still run any skill on its own.
@@ -44,7 +45,7 @@ A WooCommerce loyalty program: shoppers earn points for orders, sign-ups and rev
 | `includes/Services/`, `Repositories/`, `Models/`, `Database/` | Ledger and lots, one-table SQL, typed rows, schemas and `Installer` |
 | `includes/Controllers/` | REST `yayloyalty/v1` |
 | `includes/Utils/`, `includes/Helpers/` | Shared helpers, settings and design storage |
-| `includes/Integrations/` | YayMail, YayPricing, YayCurrency |
+| `includes/Integrations/` | YayMail, YayPricing, YayCurrency, page builders (Elementor, Bricks, Divi 4) |
 | `includes/Pro/` | Pro only; removed from the Lite zip |
 | `apps/admin/` | Admin SPA (React, Vite, TS); `src/pro/` is Pro only |
 | `tests/` | Test suites: `php/` and `js/` (current), `unit/` and `integration/` (older), `e2e/` (wp-env package) |
