@@ -38,11 +38,12 @@ Goal: Ship 1.1.0 (all six items built), then make every reward and campaign a me
 - merged: 2026-11-20
 
 ### R-7 Free shipping and free product rewards that redeem
-- status: todo
+- status: in-progress
 - size: M
 - editions: pro
 - why: known-issues.md: Pro offers free_shipping and free_product reward types but only coupon types have a redemption handler, so merchants can create rewards shoppers can't use
 - acceptance: A shopper redeems a free-shipping reward and shipping drops to zero, or a free-product reward and the product is added at no cost, on classic and block checkout; a refund or cancelled order gives the points back
+- started: 2026-11-23
 
 ### R-8 Launcher shows only the rewards a shopper qualifies for
 - status: todo
