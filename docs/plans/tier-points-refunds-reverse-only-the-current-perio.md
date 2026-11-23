@@ -1,7 +1,7 @@
 ---
 id: P-9
 title: Tier points: refunds reverse only the current period, adjustments choose
-status: in-progress
+status: done
 from: 
 roadmap: 
 design:
