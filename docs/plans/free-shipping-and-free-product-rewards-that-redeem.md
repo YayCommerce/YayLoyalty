@@ -1,7 +1,7 @@
 ---
 id: P-10
 title: Free shipping and free product rewards that redeem
-status: in-progress
+status: done
 from: BS-6
 roadmap: R-7
 design:
