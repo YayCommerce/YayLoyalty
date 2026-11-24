@@ -1,4 +1,4 @@
-<!-- Kit-managed by the yay plugin 0.16.0. Run /yay:harness-update instead of editing; put repo-specific notes in another docs/ file. -->
+<!-- Kit-managed by the yay plugin 0.18.0. Run /yay:harness-update instead of editing; put repo-specific notes in another docs/ file. -->
 # From roadmap to release
 
 A worked example: shipping **v1.0.0** of this plugin with three features, from the roadmap to the release tag. Lines starting with `/yay:` are typed into Claude Code; lines starting with `yayh` are run in the terminal.
@@ -27,6 +27,7 @@ Don't remember a command? Type `/yay:go` followed by what you want in plain word
 ```
 
 - Each item gets an `acceptance:` line: what a user can see or do when it's done. Its plan's Goal and Verify start from it.
+- **Briefs: what each item is, for the developers.** Once the roadmap is written, `/yay:roadmap` offers to brief the new items: it drafts each one from what it found, asks one round of questions on the gaps (edge cases, out of scope, how we know it's done), and writes `docs/briefs/R-<n>-<slug>.md`. Any time later: `/yay:roadmap --brief=R-2 "your notes"`, or `--brief "an idea"` to add the item and brief it at once. Developers' skills read the brief first; items without one work as before.
 - The release brief is written by hand and read by people: the goal, the release criteria `/yay:release` checks, what's out of scope (and what gets cut first if it runs late), the risks, and open questions with the proposal used until they're answered.
 
 - Plain words work too: `/yay:roadmap add X, Y and Z for 1.0.0`. `--target=minor` (or `patch`, `major`) means the next such version.
@@ -51,6 +52,8 @@ Two ways. Pick one.
 ```
 
 Do the same for R-2 and R-3. A small item can go straight to `/yay:implement R-2`; it picks the lane (tiny, small or standard) and says which.
+
+Each skill first **says the job back**: what it understood, what it assumed, what it won't do, what to watch for, and how we'll know it's done. On big work (brainstorm, design, a standard plan, debugging a long report) it stops there once, so you can correct it before any file is written. Add `--interview` to brainstorm, plan or `roadmap --brief` to be asked one question at a time instead.
 
 **B. The whole sprint in one run**
 
@@ -85,8 +88,9 @@ If it stops, run the same command again: it resumes from each item's brainstorm 
   /yay:report idea "your notes, in any order"   # an idea: the problem, the idea, what you need
   /yay:report done --from=P-1                   # what you finished, in what users will notice
   /yay:report feature "customers keep asking…"  # a feature pitch: who, what they'd see, why, size
+  /yay:report guide "how to set up gift wrap"   # a how-to with numbered steps (--for=devs allows commands)
   ```
-  One plain page (a private link) plus paste-ready text, under 300 words, with no code or jargon. Kept in `.yay/reports/`, never committed.
+  One plain page (a private link) plus paste-ready text, short, with no code or jargon. Kept in `.yay/reports/`, never committed. Add `--lang=vi` for a Vietnamese report, or set `language` once in `.yay/config.json`.
 
 ## 4. Release v1.0.0
 
@@ -105,6 +109,7 @@ Send the `release/bundles/<slug>-<version>/` folder to QA or the store. It holds
 | ID | What | Where |
 |---|---|---|
 | `R-<n>` | Roadmap item | `docs/roadmap/sprint-<n>.md` (one file per sprint; `v<x.y.z>.md` lists each version) |
+| `R-<n>` brief | What one item is, written by the product manager | `docs/briefs/R-<n>-<slug>.md` |
 | `BS-<n>` | Brainstorm | `docs/brainstorms/` |
 | `UX-<n>` | UI/UX design | `docs/designs/` |
 | `P-<n>` | Plan | `docs/plans/` |
