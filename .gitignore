@@ -34,3 +34,6 @@ CLAUDE.local.md
 .yay/runs/
 .yay/designs/
 .yay-release/
+# yay harness
+.yay/reports/
+.yay/briefs/
