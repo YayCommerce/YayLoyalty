@@ -8,7 +8,7 @@ design:
 trello:
 type: feat
 branch: feat/p-10-free-shipping-and-free-product-rewards-that-r
-pr:
+pr: 211
 editions: [pro, lite]
 created: 2026-11-23
 ---
