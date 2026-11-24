@@ -30,6 +30,20 @@ final class RewardShipping {
     public function register(): void {
         // After other plugins' rate changes at the default priority, so the original is what the shopper would pay.
         add_filter( 'woocommerce_shipping_packages', [ $this, 'adjust_packages' ], 100 );
+        add_action( 'woocommerce_checkout_create_order_shipping_item', [ $this, 'drop_unused_meta' ] );
+    }
+
+    /**
+     * Keeps the meta only on a shipping item a reward freed; every other order would carry it for nothing.
+     *
+     * @param \WC_Order_Item_Shipping $item
+     */
+    public function drop_unused_meta( $item ): void {
+        if ( $item instanceof \WC_Order_Item_Shipping && 0 === (int) $item->get_meta( self::META_REWARD ) ) {
+            foreach ( [ self::META_COST, self::META_TAXES, self::META_REWARD ] as $key ) {
+                $item->delete_meta_data( $key );
+            }
+        }
     }
 
     /**
