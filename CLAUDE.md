@@ -33,7 +33,7 @@ This repo uses the **yay** harness. Work through its skills so every developer a
 - Product PHP runs on PHP 7.4+. `.claude/rules/yay-wordpress.md` lists what that rules out.
 <!-- yay:managed:end -->
 
-<!-- yay:project:start ref=cc2a3e71 updated=2026-11-12 -->
+<!-- yay:project:start ref=e7ef27b updated=2026-11-25 -->
 ## What this is
 A WooCommerce loyalty program: shoppers earn points for orders, sign-ups and reviews, and spend them as a discount at checkout (classic and block). Merchants run it from a React admin SPA under the shared YayCommerce menu. One repo ships two editions: **Pro** (default) and **Lite**, which is Pro without `includes/Pro/` and with the SPA built as `lite`. Pro adds triggers, reward types, batch expiry, birthday points, a daily earning limit, segments and reports, all attached through filters.
 

@@ -1,7 +1,7 @@
 ---
 area: testing
-updated: 2026-11-23
-updated_ref: 4ad856a
+updated: 2026-11-25
+updated_ref: e7ef27b
 covers: [tests/php/, tests/js/, tests/unit/, tests/integration/, tests/bootstrap.php, phpunit.xml.dist, phpunit-integration.xml.dist, tests/e2e/.wp-env.json]
 ---
 
@@ -29,6 +29,7 @@ Run one test with `vendor/bin/phpunit -c tests/php/unit.xml.dist --filter <Name>
   - `given_settings( $saved )`: stubs the `yayloyalty_settings` option, `get_locale`, `rest_sanitize_boolean`, `sanitize_key`, `sanitize_text_field`, and clears `SettingsHelper`'s static cache. Anything that reads `SettingsHelper::get_settings()` or `ExpiryPolicy::current()` needs it.
   - `given_batch_mode_is_available()`: makes `batch` a runnable expiry mode, as Pro does through `yayloyalty_expiry_modes`.
 - `tests/php/integration/bootstrap.php`: loads WooCommerce and `yayloyalty.php` on `muplugins_loaded`, runs `WC_Install::install()`. The plugin's own `Installer` creates its tables on `plugins_loaded`, before any test transaction.
+- `tests/php/integration/Engine/Redemption/FreeRewardTestCase.php`: a signed-in customer with 1,000 points and an empty cart; `reward()` stores a live Pro reward, `product()`, `pick()` runs the totals as the redeem endpoints do, `order()` builds the order checkout leaves for a free product and free shipping (optionally with a paid line), `commit_writer()`.
 - `tests/js/vitest.config.mjs`: aliases `@` to `apps/admin/src`, so tests import SPA modules as the app does. Stub `window.yayLoyaltyMeta` with `vi.stubGlobal` for anything reading localized data.
 
 ## Gates and how tests get past them
@@ -78,7 +79,11 @@ Run one test with `vendor/bin/phpunit -c tests/php/unit.xml.dist --filter <Name>
 | `RewardCartLines` free product lines (add, lock at 0, remove) | integration | critical | `tests/php/integration/Engine/Redemption/RewardCartLinesTest.php` @P-10 | `includes/Engine/Redemption/RewardCartLines.php` |
 | `RewardShipping` rate restore and zeroing | integration | critical | `tests/php/integration/Engine/Redemption/RewardShippingTest.php` @P-10 | `includes/Engine/Redemption/RewardShipping.php` |
 | `CommitWriter` free reward value (`freed_value`) | integration | critical | `tests/php/integration/Engine/Redemption/FreeRewardCommitTest.php` @P-10 | `includes/Engine/Redemption/CommitWriter.php` |
-| `FreeProductRewardHandler::quote` | integration | important | `tests/php/integration/Pro/Services/FreeProductRewardHandlerTest.php` @P-10 | `includes/Pro/Services/FreeProductRewardHandler.php` |
+| `FreeProductRewardHandler::quote` | integration | important | `tests/php/integration/Pro/Services/FreeProductRewardHandlerTest.php` @P-10 @P-11 (stock counting the shopper's copies, sold individually) | `includes/Pro/Services/FreeProductRewardHandler.php` |
+| Flexible discount base with free rewards picked | integration | critical | `tests/php/integration/Engine/Redemption/FlexibleQuoteWithFreeRewardsTest.php` @B-3 | `includes/Engine/Redemption/RedemptionService.php` |
+| `Reversal::gift_target` (free reward refunds) | integration | critical | `tests/php/integration/Engine/Redemption/FreeRewardRefundTest.php` @P-11 | `includes/Engine/Redemption/Reversal.php` |
+| `Reward::config_conflict` (free product targets) | integration | important | `tests/php/integration/Models/RewardFreeProductValidationTest.php` @P-11 | `includes/Models/Reward.php` |
+| `CouponProvider::drop_stale_rewards` | integration | important | `tests/php/integration/Engine/Redemption/RewardShippingTest.php` @P-11 | `includes/Engine/Redemption/CouponProvider.php` |
 | `ToolsImportRestController` preview and apply | integration | critical | `tests/php/integration/Controllers/ToolsImportRestControllerTest.php` @P-8 | `includes/Controllers/ToolsImportRestController.php` |
 | `parseImportCsv`, `importIdForRows` | js | important | `tests/js/lib/tools-import.csv.test.ts` @P-8 | `apps/admin/src/pages/tools/tools-import.csv.ts` |
 | `LedgerService::refund_earn`, `expire`, `restore_refund` | integration | critical | candidate | `includes/Services/LedgerService.php` |

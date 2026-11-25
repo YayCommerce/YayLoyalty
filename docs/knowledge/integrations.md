@@ -1,7 +1,7 @@
 ---
 area: integrations
-updated: 2026-11-23
-updated_ref: 4ad856a
+updated: 2026-11-25
+updated_ref: e7ef27b
 covers: [includes/Integrations/, includes/Pro/Integrations/, includes/Pro/Renewals/, includes/Engine/ActDeact.php, includes/Engine/Redemption/Adapters/, includes/Utils/CurrencyRate.php, includes/Utils/WooOrders.php]
 ---
 

@@ -1,7 +1,7 @@
 ---
 area: conventions
-updated: 2026-11-23
-updated_ref: 4ad856a
+updated: 2026-11-25
+updated_ref: e7ef27b
 covers: [includes/Utils/, includes/Models/AbstractModel.php, includes/Helpers/SettingsHelper.php, includes/Controllers/BaseRestController.php, includes/Enums/]
 ---
 
@@ -53,3 +53,8 @@ covers: [includes/Utils/, includes/Models/AbstractModel.php, includes/Helpers/Se
 ## Tests
 
 Layers, helpers and the coverage map are in [testing.md](testing.md).
+
+## Checks
+
+Commands that prove a rule someone already broke twice; run them where the line says.
+- Before tagging a release, boot each zip headless so a Lite activation fatal can't pass: `YAYLOYALTY_WP_CLI="wp --path=<test site>" YAYLOYALTY_WP_CLI_ARGS="--skip-plugins=yayloyalty" php scripts/validate-build.php release/yayloyalty-lite-<v>.zip lite --require-boot` → exit 0 (same for the Pro zip). `run.sh release` skips the boot check without `YAYLOYALTY_WP_CLI` (lessons 2026-11-17, 2026-11-20: the Lite build implemented the stripped `LicenseConfigAdapter`, fixed in `a0e917f`).

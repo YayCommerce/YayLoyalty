@@ -1,7 +1,7 @@
 ---
 area: helpers
-updated: 2026-11-23
-updated_ref: 255aa5c
+updated: 2026-11-25
+updated_ref: e7ef27b
 covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, includes/Access/, includes/Services/, includes/Controllers/AbstractRestController.php, includes/Engine/Earning/, includes/Engine/Expiry/ExpiryRunner.php, includes/Engine/Emails/Emails.php, includes/Engine/Storefront/, includes/Engine/Points/, apps/admin/src/lib/, apps/admin/src/hooks/, apps/admin/src/components/layout/]
 ---
 
@@ -58,6 +58,10 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 - `Engine\Storefront\AccountMyPoints::url()` (`includes/Engine/Storefront/AccountMyPoints.php`): link to the My Points tab.
 - `Engine\Storefront\Launcher::asset_version($path)` (`includes/Engine/Storefront/Launcher.php`): cache-busting version for a storefront asset.
 - `Utils\WooOrders::is_hpos()` (`includes/Utils/WooOrders.php`): HPOS-aware admin order links only.
+- `Engine\Storefront\LauncherCopy::money($amount)` (`includes/Engine/Storefront/LauncherCopy.php`): storefront money through `wc_price()`, plain text, whole amounts without decimals; never converts currency.
+- `Engine\Redemption\RedemptionService::message_for($reason)` (`includes/Engine/Redemption/RedemptionService.php`): the shopper-facing sentence for a quote's denial reason or clamp bound; `min_order` leaves its amount to the caller.
+- `Engine\Redemption\RewardCoupons::displayed_subtotal($cart)` (`includes/Engine/Redemption/RewardCoupons.php`): the cart subtotal a minimum spend is checked against, rebuilt from the items (the stored one is reset mid-totals).
+- `Engine\Redemption\RewardCartLines::is_reward_line($line)` (`includes/Engine/Redemption/RewardCartLines.php`): whether a cart line is a free reward's line; skip it when counting or pricing the shopper's own items.
 
 ## Escaping, text, capabilities, REST (PHP)
 
@@ -72,6 +76,7 @@ covers: [includes/Utils/, includes/Helpers/, includes/Database/Transaction.php, 
 ## SPA (`apps/admin/src/`)
 
 - `toConditionList`, `hasConditions`, `conditionListSchema` (`lib/schema/condition-match.schema.ts`): read either `conditions` wire shape; `ConditionListEditor` and `mergeConditionErrors` (`pro/conditions/`) edit and validate one in a Pro form.
+- `isHttpUrl` (`lib/schema/campaign.schema.ts`): the form's side of `ConfigSpec`'s `url` type, so a save the server would refuse is blocked first.
 - `api`, `toastApiError`, `getApiErrorMessage`, `isNotFoundError`, `isAbortError` (`lib/api/api.ts`): every REST call and failure toast.
 - `parsePaginated`, `paginatedSchema`, `fetchAllPages`, `MAX_PER_PAGE` (`lib/api/paginated.ts`): list responses.
 - `Can`, `can`, `useCapability`, `CAP` (`lib/access.tsx`): hide or disable by capability.
