@@ -1,10 +1,11 @@
 <?php
 /**
  * The card's reward rows: one line per reward, its name, its cost and a checkbox, listed after the Points discount
- * row and ticked to apply. A row that can't be ticked, refused or unaffordable, is disabled and struck through.
+ * row and ticked to apply. A row that can't be ticked, refused or unaffordable, is disabled and struck through; a
+ * refused one says why.
  * No input has a `name`, so nothing here rides on the cart or checkout form it may sit in; redeem.js posts the ticked ids.
  *
- * @var array $view One row of RewardsPanel::row_views(): id, name, cost, is_applied, is_denied, is_short.
+ * @var array $view One row of RewardsPanel::row_views(): id, name, cost, is_applied, is_denied, is_short, reason.
  */
 
 use YayLoyalty\Helpers\SettingsHelper;
@@ -16,6 +17,9 @@ defined( 'ABSPATH' ) || exit;
         <span class="yayloyalty-redeem__option-body">
             <span class="yayloyalty-redeem__name"><?php echo esc_html( $view['name'] ); ?></span>
             <span class="yayloyalty-redeem__chip"><?php echo esc_html( SettingsHelper::points_text( $view['cost'] ) ); ?></span>
+            <?php if ( '' !== $view['reason'] ) : ?>
+                <span class="yayloyalty-redeem__reason"><?php echo esc_html( $view['reason'] ); ?></span>
+            <?php endif; ?>
         </span>
         <input
             type="checkbox"
