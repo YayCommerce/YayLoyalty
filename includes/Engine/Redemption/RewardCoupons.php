@@ -19,6 +19,10 @@ final class RewardCoupons {
     public const REASON_SALE_ITEMS = 'sale_items';
     public const REASON_NO_VALUE   = 'no_value';
 
+    /** A free product's denial reasons: not enough stock once the shopper's own copies count, or one per order and already in the cart. */
+    public const REASON_OUT_OF_STOCK      = 'out_of_stock';
+    public const REASON_SOLD_INDIVIDUALLY = 'sold_individually';
+
     /**
      * An unsaved virtual coupon for the reward.
      *

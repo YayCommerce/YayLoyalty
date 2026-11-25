@@ -23,25 +23,53 @@ final class FreeProductRewardHandler implements RewardHandler {
 
     /**
      * Without a cart (the commit, which checks the order's own line) the cost alone, at value 0. With one, denied
-     * REASON_NO_VALUE when the product (or its variation) is gone, can't be bought, lacks the stock for `qty` or
-     * costs nothing, else worth its price × qty.
+     * REASON_NO_VALUE when the product (or its variation) is gone, can't be bought or costs nothing;
+     * REASON_SOLD_INDIVIDUALLY when it sells one per order and the shopper already has it; REASON_OUT_OF_STOCK when
+     * the stock can't cover `qty` on top of the shopper's own copies; else worth its price × qty.
      */
     public function quote( Reward $reward, Context $ctx ): Result {
         $cost = (int) $reward->get_cost_points();
+        $cart = $ctx->get_cart();
 
-        if ( null === $ctx->get_cart() ) {
+        if ( null === $cart ) {
             return Result::allowed( $reward, $cost, $cost, 0.0, $ctx->get_currency(), 0.0 );
         }
 
         $item    = $this->coupon_props( $reward )['free_item'];
         $product = self::product_of( $item );
-        $value   = null === $product ? 0.0 : (float) $product->get_price() * RewardCartLines::quantity_of( $product, $item['qty'] );
+        $qty     = null === $product ? 0 : RewardCartLines::quantity_of( $product, $item['qty'] );
+        $value   = null === $product ? 0.0 : (float) $product->get_price() * $qty;
 
         if ( $value <= 0 ) {
             return Result::denied( RewardCoupons::REASON_NO_VALUE );
         }
 
+        if ( $product->is_sold_individually() && self::shopper_quantity( $cart, $product, false ) > 0 ) {
+            return Result::denied( RewardCoupons::REASON_SOLD_INDIVIDUALLY );
+        }
+
+        if ( ! $product->is_in_stock() || ! $product->has_enough_stock( self::shopper_quantity( $cart, $product, true ) + $qty ) ) {
+            return Result::denied( RewardCoupons::REASON_OUT_OF_STOCK );
+        }
+
         return Result::allowed( $reward, $cost, $cost, $value, $ctx->get_currency(), 0.0 );
+    }
+
+    /**
+     * How many of $product the shopper's own lines hold, reward lines left out: by the stock they draw on, as
+     * WooCommerce checks stock, or by the exact product or variation, as it checks sold-individually.
+     */
+    private static function shopper_quantity( \WC_Cart $cart, \WC_Product $product, bool $by_stock ): int {
+        $quantity = 0;
+        $key      = $by_stock ? $product->get_stock_managed_by_id() : $product->get_id();
+
+        foreach ( $cart->get_cart() as $line ) {
+            if ( ! RewardCartLines::is_reward_line( $line ) && isset( $line['data'] ) && $line['data'] instanceof \WC_Product && ( $by_stock ? $line['data']->get_stock_managed_by_id() : $line['data']->get_id() ) === $key ) {
+                $quantity += (int) $line['quantity'];
+            }
+        }
+
+        return $quantity;
     }
 
     /** A `fixed_cart` coupon at 0, carrying the product, variation and quantity of the free line. */
@@ -67,15 +95,15 @@ final class FreeProductRewardHandler implements RewardHandler {
     }
 
     /**
-     * The product the line would add, when it can be added now: it exists, can be bought, is not a variable parent
-     * without a variation nor a variation with an "Any" attribute the line couldn't pick, and has the stock for the quantity.
+     * The product the line would add, when it can be added now: it exists, can be bought, and is not a variable parent
+     * without a variation nor a variation with an "Any" attribute the line couldn't pick. Stock is quote()'s to judge.
      *
      * @param array{product_id: int, variation_id: ?int, qty: int} $item
      */
     private static function product_of( array $item ): ?\WC_Product {
         $product = wc_get_product( null === $item['variation_id'] ? $item['product_id'] : $item['variation_id'] );
 
-        if ( ! $product instanceof \WC_Product || $product->is_type( 'variable' ) || ! $product->is_purchasable() || ! $product->is_in_stock() || ! $product->has_enough_stock( RewardCartLines::quantity_of( $product, $item['qty'] ) ) ) {
+        if ( ! $product instanceof \WC_Product || $product->is_type( 'variable' ) || ! $product->is_purchasable() ) {
             return null;
         }
 

@@ -318,11 +318,12 @@ final class RedemptionService {
     }
 
     /**
-     * What a reward's quote reads from the cart: each item's key, quantity and price, and the merchant coupons.
-     * Not WC_Cart::get_cart_hash(), which folds in the total and so changes while the totals run.
+     * What a reward's quote reads from the cart: each item's key, quantity and price, the merchant coupons, and
+     * the shipping a free-shipping reward would free. Not WC_Cart::get_cart_hash(), which folds in the total and so
+     * changes while the totals run.
      */
     private static function cart_key( \WC_Cart $cart ): string {
-        $parts = [];
+        $parts = [ 'shipping:' . RewardShipping::cart_value() ];
 
         foreach ( $cart->get_cart() as $item_key => $item ) {
             $price   = isset( $item['data'] ) && $item['data'] instanceof \WC_Product ? $item['data']->get_price() : '';
@@ -571,6 +572,12 @@ final class RedemptionService {
 
             case RewardCoupons::REASON_NO_VALUE:
                 return __( 'Nothing in your cart qualifies', 'yayloyalty' );
+
+            case RewardCoupons::REASON_OUT_OF_STOCK:
+                return __( 'Not enough in stock', 'yayloyalty' );
+
+            case RewardCoupons::REASON_SOLD_INDIVIDUALLY:
+                return __( 'Only one per order, and it\'s already in your cart', 'yayloyalty' );
         }
 
         return __( 'Your points discount could not be applied. Review your order and try again.', 'yayloyalty' );

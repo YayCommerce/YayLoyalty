@@ -3,6 +3,8 @@ namespace YayTests\Integration\Engine\Redemption;
 
 use WP_UnitTestCase;
 use YayLoyalty\Engine\Redemption\CommitWriter;
+use YayLoyalty\Engine\Redemption\RewardCartLines;
+use YayLoyalty\Engine\Redemption\RewardShipping;
 use YayLoyalty\Engine\Redemption\Quoter;
 use YayLoyalty\Engine\Redemption\SessionIntent;
 use YayLoyalty\Engine\Rewards\ContextFactory;
@@ -86,5 +88,48 @@ abstract class FreeRewardTestCase extends WP_UnitTestCase {
 		$customers = new CustomerRepository();
 
 		return new CommitWriter( $this->ledger(), new RedemptionRepository(), $customers, new ContextFactory( $customers ), new Quoter( new RewardEngine( Registry::with_lite_handlers() ), [] ) );
+	}
+
+	/**
+	 * The order checkout leaves: the free line at 0 with its meta, a shipping line freed from 7, and both 0 coupon
+	 * lines; with $paid, a paid line of two of it first.
+	 */
+	protected function order( \WC_Product $product, Reward $item, Reward $shipping, ?\WC_Product $paid = null ): \WC_Order {
+		$order = wc_create_order( [ 'customer_id' => $this->user_id ] );
+
+		if ( null !== $paid ) {
+			$order->add_product( $paid, 2 );
+		}
+
+		$line = new \WC_Order_Item_Product();
+		$line->set_product( $product );
+		$line->set_quantity( 2 );
+		$line->set_subtotal( 0 );
+		$line->set_total( 0 );
+		$line->add_meta_data( RewardCartLines::META_REWARD, (int) $item->get_id(), true );
+		$line->add_meta_data( RewardCartLines::META_PRICE, '12.5', true );
+		$order->add_item( $line );
+
+		$rate = new \WC_Order_Item_Shipping();
+		$rate->set_method_title( 'Flat rate' );
+		$rate->set_total( 0 );
+		$rate->add_meta_data( RewardShipping::META_COST, '7', true );
+		$rate->add_meta_data( RewardShipping::META_TAXES, [], true );
+		$rate->add_meta_data( RewardShipping::META_REWARD, (int) $shipping->get_id(), true );
+		$order->add_item( $rate );
+
+		$this->add_marker( $order, $item );
+		$this->add_marker( $order, $shipping );
+		$order->calculate_totals( false );
+		$order->save();
+
+		return $order;
+	}
+
+	protected function add_marker( \WC_Order $order, Reward $reward ): void {
+		$coupon = new \WC_Order_Item_Coupon();
+		$coupon->set_code( $reward->get_coupon_code() );
+		$coupon->set_discount( 0 );
+		$order->add_item( $coupon );
 	}
 }

@@ -41,6 +41,17 @@ final class RewardCartLines {
         add_filter( 'woocommerce_get_item_data', [ $this, 'item_data' ], 10, 2 );
         add_action( 'woocommerce_cart_item_removed', [ $this, 'on_line_removed' ], 10, 2 );
         add_action( 'woocommerce_checkout_create_order_line_item', [ $this, 'copy_to_order_item' ], 10, 3 );
+        add_filter( 'woocommerce_hidden_order_itemmeta', [ $this, 'hide_meta' ] );
+    }
+
+    /**
+     * Keeps the free line's meta off the order screen.
+     *
+     * @param string[] $keys
+     * @return string[]
+     */
+    public function hide_meta( $keys ): array {
+        return array_merge( (array) $keys, [ self::META_REWARD, self::META_PRICE ] );
     }
 
     /**

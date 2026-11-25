@@ -315,9 +315,14 @@ class Reward extends AbstractModel {
 
     /**
      * Why a config that passes config_is_valid() still can't be saved, or null. Checks rules across keys:
-     * a flexible discount's minimum must be at least its redemption increment, read as Clamp reads them.
+     * a flexible discount's minimum must be at least its redemption increment, read as Clamp reads them, and a
+     * free product on a variable product must name one of its variations.
      */
     public static function config_conflict( string $type, array $config ): ?string {
+        if ( RewardType::FREE_PRODUCT === $type ) {
+            return self::free_product_conflict( $config );
+        }
+
         if ( RewardType::FLEXIBLE_DISCOUNT !== $type ) {
             return null;
         }
@@ -326,6 +331,39 @@ class Reward extends AbstractModel {
         $increment = max( 1, (int) ( $config['increment'] ?? 1 ) );
 
         return $min < $increment ? __( 'Minimum points must be at least the redemption increment.', 'yayloyalty' ) : null;
+    }
+
+    /**
+     * A grouped or external product never goes in a cart, and a variable one only as one of its variations.
+     * Skipped under plain PHPUnit, where WooCommerce is not loaded.
+     */
+    private static function free_product_conflict( array $config ): ?string {
+        if ( ! function_exists( 'wc_get_product' ) ) {
+            return null;
+        }
+
+        $product = wc_get_product( (int) ( $config['product_id'] ?? 0 ) );
+
+        if ( ! $product ) {
+            return null;
+        }
+
+        if ( $product->is_type( [ 'grouped', 'external' ] ) || ( $product->is_type( 'variable' ) && empty( $config['variation_id'] ) ) ) {
+            return __( 'Choose a simple product: a grouped, external or variable product can\'t be given as a reward.', 'yayloyalty' );
+        }
+
+        if ( empty( $config['variation_id'] ) ) {
+            return null;
+        }
+
+        $variation = wc_get_product( (int) $config['variation_id'] );
+
+        // An "Any" attribute leaves the free line nothing to pick.
+        if ( ! $variation instanceof \WC_Product_Variation || $variation->get_parent_id() !== $product->get_id() || in_array( '', $variation->get_variation_attributes(), true ) ) {
+            return __( 'Choose a variation of this product with every attribute set.', 'yayloyalty' );
+        }
+
+        return null;
     }
 
     /**
