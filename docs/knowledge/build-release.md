@@ -1,7 +1,7 @@
 ---
 area: build-release
-updated: 2026-11-18
-updated_ref: 8a91b12
+updated: 2026-11-25
+updated_ref: e7ef27b
 covers: [scripts/, .github/workflows/, composer.json, package.json, pnpm-workspace.yaml, .nvmrc, phpcs.xml.dist, scoper.inc.php, readme.txt]
 ---
 
@@ -34,15 +34,17 @@ covers: [scripts/, .github/workflows/, composer.json, package.json, pnpm-workspa
 1. Stamp the version (`Version:` header and `YAYLOYALTY_VERSION` in `yayloyalty.php`, `Stable tag:` in `readme.txt`) in the **working tree**. Run Pro first, then Lite with `--no-prompt`, so both carry the same number.
 2. Build the SPA for the edition.
 3. Stage a copy in `release/<folder>`: `yayloyalty-pro/` for Pro, `yayloyalty/` for Lite. Flip `YAYLOYALTY_IS_DEVELOPMENT` to `false` in the staged main file. Copy only `vendor/autoload.php` and `vendor/composer`. Rescope the shell into the stage (`vendor/bin/yaycommerce-prerelease`).
-4. Lite only: delete `includes/Pro/` (Pro's storefront CSS and JS live under `includes/Pro/Storefront/assets/`, enqueued with `plugins_url()`, so they leave with it; anything in `assets/storefront/` ships in Lite), drop " Pro" from the `Plugin Name:` header, apply `scripts/lite-admin-shell.patch` to the staged shell, delete the `LITE_SHELL_STRIP` paths (licensing, EDD updater, Recommended Plugins…), `php -l` the patched files. This is the WordPress.org-ready build (`40d6d9b1`).
+4. Lite only: delete `includes/Pro/` (Pro's storefront CSS and JS live under `includes/Pro/Storefront/assets/`, enqueued with `plugins_url()`, so they leave with it; anything in `assets/storefront/` ships in Lite), write the Lite `Plugin Name:` and `Description:` into the staged header (keep them in step with `readme.txt`), switch `YayLoyaltyPluginAdapter.php` from `implements …License\Contracts\LicenseConfigAdapter` to `…Contracts\PluginMenuAdapter` (the licence contract lives in the stripped `src/License/`, so Lite would fatal on activation; the build exits 1 if the class line no longer matches), apply `scripts/lite-admin-shell.patch` to the staged shell, delete the `LITE_SHELL_STRIP` paths (licensing, EDD updater, Recommended Plugins…), `php -l` the patched files. This is the WordPress.org-ready build (`40d6d9b1`).
 5. `composer dump-autoload --no-dev --classmap-authoritative`; rewrite the shell's text domain to `yayloyalty`; delete `RegisterDev.php`, source maps, `.vite`, `.DS_Store`, `.gitkeep`.
 6. Write the release manifest (SHA-256 per file), zip to `release/yayloyalty-pro-<v>.zip` or `release/yayloyalty-lite-<v>.zip`, run `php scripts/validate-build.php <zip> <edition>`. A failed validation renames the zip `*.zip.invalid` and exits 1.
+
+The WP and WC pins (`Requires at least`, `Tested up to`, `WC tested up to`) live in `yayloyalty.php`, `readme.txt` and `.yay/config.json`; bump them together. `readme.txt`'s "Source code" section is the WordPress.org reviewer's build recipe: `pnpm install --ignore-scripts` (the root `postinstall` runs a `composer install` that needs the private admin-shell repo), then `./scripts/run.sh build lite`; keep it in step with the scripts.
 
 The Lite patch registers the shell at version `0.0.1`, so a full shell from another active YayCommerce plugin wins the election. The patch is made against `vendor-prefixed/`; after `shell-update` it can stop applying and must be regenerated.
 
 ## `scripts/validate-build.php`
 
-Checks the zip, not the tree: root folder; manifest, versions and hashes; `includes/Pro/` absent (Lite) or present (Pro); one `assets/dist/admin/js/main.js` entry chunk; `PRO_BUNDLE_SENTINEL` absent from Lite and present in Pro; the Lite upsell copy kept; no Pro flag in localized data; `php -l` on every file; Lite names Pro only in the guarded seam in `includes/YayLoyalty.php`; shell licensing stripped; text domain; no dev artifacts; header names the edition; `YAYLOYALTY_IS_DEVELOPMENT` false; one hard-coded inline Pro field gate (`custom_pages` in `DesignVisibilitySection.tsx`). With `YAYLOYALTY_WP_CLI` set it also boots the build headless. The header of the script documents its env vars.
+Checks the zip, not the tree: root folder; manifest, versions and hashes; `includes/Pro/` absent (Lite) or present (Pro); one `assets/dist/admin/js/main.js` entry chunk; `PRO_BUNDLE_SENTINEL` absent from Lite and present in Pro; the Lite upsell copy kept; no Pro flag in localized data; `php -l` on every file; Lite names Pro only in the guarded seam in `includes/YayLoyalty.php`; shell licensing stripped; text domain; no dev artifacts; header names the edition; `YAYLOYALTY_IS_DEVELOPMENT` false; one hard-coded inline Pro field gate (`custom_pages` in `DesignVisibilitySection.tsx`). With `YAYLOYALTY_WP_CLI` set it also boots the build headless; without it the boot check is reported as skipped and the zip still passes, unless `--require-boot` is given, which `run.sh` doesn't pass. The header of the script documents its env vars.
 
 The sentinel only proves whole Pro sections were tree-shaken. A deep `@/pro/...` import or a bare `<ProGate>` around Pro JSX ships Pro code that the validator doesn't see; only review catches it.
 
