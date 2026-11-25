@@ -1,7 +1,7 @@
 ---
 area: testing
 updated: 2026-11-25
-updated_ref: e7ef27b
+updated_ref: 6766565
 covers: [tests/php/, tests/js/, tests/unit/, tests/integration/, tests/bootstrap.php, phpunit.xml.dist, phpunit-integration.xml.dist, tests/e2e/.wp-env.json]
 ---
 
@@ -64,6 +64,7 @@ Run one test with `vendor/bin/phpunit -c tests/php/unit.xml.dist --filter <Name>
 | `ConditionMatch` and `CampaignConditionSet` match rules, v1/v2 encoding | unit | critical | `tests/php/unit/Models/CampaignConditionSetTest.php` @P-1 | `includes/Utils/ConditionMatch.php`, `includes/Models/CampaignConditionSet.php` |
 | Pro `ConditionsEvaluator` all/any fold | unit | critical | `tests/php/unit/Pro/Services/ConditionsEvaluatorTest.php` @P-1 | `includes/Pro/Services/ConditionsEvaluator.php` |
 | Pro `RewardConditionsEvaluator`, lazy facts | unit | critical | `tests/php/unit/Pro/Services/RewardConditionsEvaluatorTest.php` @P-1 | `includes/Pro/Services/RewardConditionsEvaluator.php` |
+| Pro `RewardsPanel::redeem_offers` (who sees which reward) | integration | important | `tests/php/integration/Pro/Storefront/RewardsPanelTest.php` @P-12 | `includes/Pro/Storefront/RewardsPanel.php` |
 | SPA `toConditionList`, `conditionsLabel` | js | important | `tests/js/lib/schema/condition-match.schema.test.ts` @P-1 | `apps/admin/src/lib/schema/condition-match.schema.ts` |
 | Pro referral settings bounds, plain decimals only, defaults on bad stored values | unit | critical | `tests/php/unit/Pro/Referrals/ReferralSettingsTest.php` @P-3 | `includes/Pro/Referrals/ReferralSettings.php` |
 | Pro referral settings REST caps and refusals | integration | important | `tests/php/integration/Pro/Controllers/ReferralSettingsRestControllerTest.php` @P-3 | `includes/Pro/Controllers/ReferralSettingsRestController.php` |
