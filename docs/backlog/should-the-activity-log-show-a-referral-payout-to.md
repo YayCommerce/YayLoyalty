@@ -4,7 +4,7 @@ title: Should the activity log show a referral payout to the advocate?
 kind: deferred
 status: open
 from: P-4
-affects: []
+affects: [R-19]
 default: 
 decision:
 created: 2026-11-18

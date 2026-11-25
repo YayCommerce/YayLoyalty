@@ -1,6 +1,6 @@
 ---
 horizon: 2027-01-21
-capacity: 36.5
+capacity: 34
 sprint_length: 2w
 updated: 2026-11-25
 velocity: [8]
