@@ -69,7 +69,7 @@ The site runs this checkout with `YAYLOYALTY_IS_DEVELOPMENT` false, so it serves
 | Redeem points at classic cart and checkout | customer | critical | `specs/redeem-classic-checkout.spec.ts` @flow-redeem-classic-checkout | `includes/Engine/Redemption/Adapters/ClassicCheckoutAdapter.php` |
 | Earn on a completed order, seen in My Points | customer | critical | `specs/earn-on-completed-order.spec.ts` @flow-earn-on-completed-order | `includes/Engine/Earning/Listeners/OrderListener.php` |
 | Launcher opens, closes, hides for excluded roles | customer | important | `specs/launcher.spec.ts` @flow-launcher | `includes/Engine/Storefront/Launcher.php` |
-| Free shipping and free product rewards at block checkout | customer | critical | `specs/redeem-block-checkout.spec.ts` @P-10 @flow-redeem-block-checkout | `includes/Engine/Redemption/RewardCartLines.php`, `RewardShipping.php` |
+| Free shipping and free product rewards at block checkout, and removing the free line | customer | critical | `specs/redeem-block-checkout.spec.ts` @P-10 @flow-redeem-block-checkout | `includes/Engine/Redemption/RewardCartLines.php`, `RewardShipping.php` |
 | Redeem card below the minimum | customer | important | `specs/redeem-block-checkout.spec.ts` @flow-redeem-block-checkout | `includes/Engine/Storefront/RedeemCard.php` |
 | Redeem card for a guest | guest | minor | candidate | `includes/Engine/Storefront/templates/redeem-card.php` |
 | Setup wizard completes and goes live | admin | important | candidate | `apps/admin/src/components/setup-wizard/SetupWizardModal.tsx` |

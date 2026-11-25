@@ -136,4 +136,22 @@ test.describe( 'Free shipping and free product rewards at the block checkout', {
 		expect( wp( 'wc', 'shop_order', 'get', order, '--field=shipping_total', '--user=admin' ) ).toBe( '0.00' );
 		expect( balanceOf( customer ) ).toBe( 200 );
 	} );
+
+	test( 'removing the free line from the block cart unticks its reward', async ( { customerPage: page } ) => {
+		await page.goto( `/?add-to-cart=${ shirt }` );
+		await page.goto( '/cart/' );
+		const card = page.locator( '[data-yl-redeem]' );
+		const reward = card.getByRole( 'checkbox', { name: new RegExp( shirtName ) } );
+		const rows = page.locator( '.wc-block-cart-items__row' );
+
+		await reward.check();
+		await expect( rows ).toHaveCount( 2 );
+
+		await rows.filter( { hasText: `Reward: ${ shirtName }` } ).getByRole( 'button', { name: /Remove .* from cart/ } ).click();
+
+		await expect( rows ).toHaveCount( 1 );
+		await expect( reward ).not.toBeChecked();
+		await expect( page.getByRole( 'button', { name: `Remove coupon "${ shirtName }"` } ) ).toHaveCount( 0 );
+		expect( balanceOf( customer ) ).toBe( 500 );
+	} );
 } );
