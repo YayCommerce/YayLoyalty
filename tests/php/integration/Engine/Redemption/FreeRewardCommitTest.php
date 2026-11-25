@@ -41,6 +41,19 @@ final class FreeRewardCommitTest extends FreeRewardTestCase {
 		$this->assertSame( 1000, $this->balance() );
 	}
 
+	/** @group P-11 */
+	public function test_the_order_screen_hides_every_meta_a_free_reward_leaves() {
+		$product = $this->product( 12.5 );
+		$order   = $this->order( $product, $this->reward( RewardType::FREE_PRODUCT, [ 'product_id' => $product->get_id(), 'qty' => 2 ] ), $this->reward( RewardType::FREE_SHIPPING, [] ) );
+		$hidden  = apply_filters( 'woocommerce_hidden_order_itemmeta', [] );
+
+		foreach ( $order->get_items( [ 'line_item', 'shipping' ] ) as $item ) {
+			foreach ( $item->get_meta_data() as $meta ) {
+				$this->assertContains( $meta->key, $hidden );
+			}
+		}
+	}
+
 	public function test_a_free_product_order_without_its_line_debits_nothing() {
 		$product = $this->product( 12.5 );
 		$item    = $this->reward( RewardType::FREE_PRODUCT, [ 'product_id' => $product->get_id(), 'qty' => 1 ] );

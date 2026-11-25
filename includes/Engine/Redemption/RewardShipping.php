@@ -31,6 +31,17 @@ final class RewardShipping {
         // After other plugins' rate changes at the default priority, so the original is what the shopper would pay.
         add_filter( 'woocommerce_shipping_packages', [ $this, 'adjust_packages' ], 100 );
         add_action( 'woocommerce_checkout_create_order_shipping_item', [ $this, 'drop_unused_meta' ] );
+        add_filter( 'woocommerce_hidden_order_itemmeta', [ $this, 'hide_meta' ] );
+    }
+
+    /**
+     * Keeps the freed shipping line's meta off the order screen.
+     *
+     * @param string[] $keys
+     * @return string[]
+     */
+    public function hide_meta( $keys ): array {
+        return array_merge( (array) $keys, [ self::META_COST, self::META_TAXES, self::META_REWARD ] );
     }
 
     /**

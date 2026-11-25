@@ -2,12 +2,13 @@
 id: BL-35
 title: The order screen shows the free reward lines' internal meta (_yayloyalty_reward_id, _yayloyalty_original_price, _yayloyalty_original_cost…)
 kind: deferred
-status: open
+status: planned:P-11
 from: P-11
 affects: []
 default: 
 decision:
 created: 2026-11-25
+settled: 2026-11-25
 ---
 # BL-35 The order screen shows the free reward lines' internal meta (_yayloyalty_reward_id, _yayloyalty_original_price, _yayloyalty_original_cost…)
 

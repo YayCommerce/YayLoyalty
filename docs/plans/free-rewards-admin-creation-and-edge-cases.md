@@ -61,6 +61,10 @@ Model on: `includes/Engine/Redemption/CouponProvider.php:345-371` (resolve_rewar
 - [x] T6 Give back a free reward's points only for the gift a refund covers — `includes/Engine/Redemption/Reversal.php`
   - Reuse: `EarnReversal::refund_state()`, `RewardCartLines::META_REWARD`
 
+- [x] T7 Hide the free reward lines' internal meta on the order screen (found while testing BL-27) — `includes/Engine/Redemption/RewardCartLines.php`, `includes/Engine/Redemption/RewardShipping.php`
+  - Reuse: WooCommerce's `woocommerce_hidden_order_itemmeta`
+  - Callers: `RewardCartLines::hide_meta()`, `RewardShipping::hide_meta()` → that filter in each `register()`
+
 **Tests:** [integration] test_a_variable_product_is_refused_for_a_free_product_reward, test_a_grouped_or_external_product_is_refused (tests/php/integration/Models/RewardFreeProductValidationTest.php) — a reward that can never be added; [integration] test_free_product_is_denied_past_stock_counting_the_shoppers_copies and test_free_product_is_denied_for_a_sold_individually_product_in_the_cart (tests/php/integration/Pro/Services/FreeProductRewardHandlerTest.php) — overselling and the merchant's limit; [integration] test_free_shipping_is_dropped_on_the_run_its_rate_becomes_free (tests/php/integration/Engine/Redemption/RewardShippingTest.php) — a reward left ticked after it stopped applying; [integration] test_a_partial_refund_gives_back_free_reward_points_only_for_the_refunded_gift (tests/php/integration/Engine/Redemption/FreeRewardRefundTest.php) — points given back for gifts the shopper keeps
 
 **E2E:** Rewards → Add a reward → Free product: pick a product, save, reload, and the reward is in the list with its product
@@ -94,4 +98,4 @@ Model on: `includes/Engine/Redemption/CouponProvider.php:345-371` (resolve_rewar
 - T5: the minimum-spend reason fills in the missing amount (`message_for()` left it to the caller, and no caller did).
 - T6: the free reward is found by the meta its gift left on the order, so a reward deleted after checkout still refunds by its gift.
 - Test helpers: `order()` and `add_marker()` moved from FreeRewardCommitTest to FreeRewardTestCase so the refund test shares them.
-
+- T7: added after the plan, from the BL-27 check on the test site: the order screen showed `_yayloyalty_reward_id` and the other gift meta. Each class hides the keys it writes; [integration] test_the_order_screen_hides_every_meta_a_free_reward_leaves.
