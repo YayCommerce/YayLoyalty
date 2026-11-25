@@ -7,7 +7,7 @@ from: BS-7
 roadmap: R-8
 type: feat
 branch: feat/p-12-ways-to-redeem-lists-only-the-rewards-a-shopp
-pr:
+pr: 220
 editions: [pro]
 created: 2026-11-25
 ---
