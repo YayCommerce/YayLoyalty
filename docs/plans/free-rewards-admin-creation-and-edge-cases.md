@@ -8,7 +8,7 @@ design:
 trello:
 type: feat
 branch: feat/p-11-free-rewards-admin-creation-and-edge-cases
-pr:
+pr: 214
 editions: [pro, lite]
 created: 2026-11-25
 ---
