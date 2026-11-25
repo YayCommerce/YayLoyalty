@@ -2,12 +2,13 @@
 id: BL-1
 title: Launcher Ways to redeem lists conditional rewards to every shopper
 kind: deferred
-status: open
+status: planned:P-12
 from: P-1
 affects: [R-1, R-8]
 default:
 decision:
 created: 2026-11-13
+settled: 2026-11-25
 ---
 # BL-1 Launcher Ways to redeem lists conditional rewards to every shopper
 

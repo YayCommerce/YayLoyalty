@@ -1,7 +1,7 @@
 ---
 area: architecture
 updated: 2026-11-25
-updated_ref: e7ef27b
+updated_ref: 6766565
 covers: [yayloyalty.php, YayLoyaltyPluginAdapter.php, includes/YayLoyalty.php, includes/Access/, includes/Database/, includes/Models/, includes/Repositories/, includes/Services/, includes/Controllers/, includes/Engine/, includes/Enums/, includes/Pro/YayLoyaltyPro.php, includes/Pro/Referrals/, includes/Pro/Social/, includes/Pro/Repositories/, includes/Pro/Database/, includes/Pro/Controllers/, includes/Pro/Enums/, includes/Pro/Models/, includes/Pro/Birthday/, includes/Pro/Helpers/, includes/Pro/Emails/, includes/Pro/Services/, includes/Pro/Storefront/, assets/storefront/]
 ---
 
@@ -149,7 +149,7 @@ Lite is the Pro tree with `includes/Pro/` removed at release (see [build-release
 
 - **Add a seam, never a strip marker.** Pro widens Lite's lists through filters; Lite's `all_known()` lists stay unfiltered so a site downgraded to Lite still recognises stored Pro values (`Enums/CampaignTrigger.php`, `Enums/RewardType.php`).
 - Lite fails open without a conditions evaluator: a conditional campaign applies to everyone after a downgrade (`Engine/Points/PointsEngine.php`), and a conditional reward is redeemable by everyone (`yayloyalty_reward_conditions_match` defaults to true in `Engine/Redemption/RewardGate.php`; Pro answers it with `Pro/Services/RewardConditionsEvaluator.php`). A 1.0.0 reader reads a `schema_version` 2 tree as no conditions.
-- The rewards Context carries a lazy customer-facts loader shared by its copies (`Engine/Rewards/Context.php`), so facts are read only when a `lifetime_points` condition runs. The Pro redeem card hides a reward the shopper's conditions exclude (`Pro/Storefront/RewardsPanel.php`).
+- The rewards Context carries a lazy customer-facts loader shared by its copies (`Engine/Rewards/Context.php`), so facts are read only when a `lifetime_points` condition runs. The Pro redeem card hides a reward the shopper's conditions exclude (`Pro/Storefront/RewardsPanel.php`). "Ways to redeem" (launcher, My Points, the shortcode and block) asks the same filter with a cart-less Context at an unbounded balance (`RewardsPanel::redeem_offers()`), so the listing and the claim agree; a guest gets every reward, a conditional one with the fixed line "For selected customers", so a cached guest page is the same for everyone.
 - A downgraded site keeps a stored `batch` expiry mode but runs inactivity.
 
 The admin SPA's side of the split is in [admin-spa.md](admin-spa.md#editions).
