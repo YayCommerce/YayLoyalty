@@ -7,7 +7,7 @@ editions: [pro]
 found_in: 1.1.0-dev
 fixed_in:
 branch: fix/b-3-cart-discount-drops-to-0-points-when-a-free-pr
-pr:
+pr: 213
 created: 2026-11-25
 ---
 # B-3 Cart discount drops to 0 points when a free product reward is applied
