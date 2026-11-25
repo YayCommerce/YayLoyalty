@@ -49,13 +49,14 @@ Goal: Ship 1.1.0 (all six items built), then make every reward and campaign a me
 - target: 1.1.0
 
 ### R-8 Launcher shows only the rewards a shopper qualifies for
-- status: todo
+- status: in-progress
 - size: S
 - editions: pro
 - from: BL-1
 - why: BL-1 (deferred from P-1): the launcher's Ways to redeem lists conditional rewards to every shopper while cart and checkout hide them; open PR #183 may cover part of it
 - acceptance: A signed-in shopper sees in the launcher only the rewards whose conditions they meet; a guest sees conditional rewards labelled as for selected customers, and a cached page never shows one shopper's list to another
 - target: 1.1.1
+- started: 2026-11-25
 
 ### R-9 Privacy export and erase for loyalty data
 - status: todo
