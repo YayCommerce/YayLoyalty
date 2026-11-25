@@ -72,7 +72,7 @@ Model on: `includes/Engine/Redemption/CouponProvider.php:345-371` (resolve_rewar
 - `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` → exit 0
 - `vendor/bin/phpcs -q includes/Models/Reward.php includes/Pro/Services/FreeProductRewardHandler.php includes/Engine/Redemption/RewardCoupons.php includes/Engine/Redemption/RedemptionService.php includes/Engine/Redemption/CouponProvider.php includes/Pro/Storefront/RewardsPanel.php includes/Engine/Redemption/Reversal.php` → exit 0
 - `yayh code unused feat/p-10-free-shipping-and-free-product-rewards-that-r` → exit 0
-- Admin (Pro build): Rewards → Add a reward shows Free shipping and Free product; a free product reward saved with a simple product appears in the list after a reload; with a variable product the save shows the product field's error.
+- Admin (Pro build): Rewards → Add a reward shows Free shipping and Free product; a free product reward saved with a simple product appears in the list after a reload; with a variable product the save is refused with a toast naming the reason.
 - Cart: a disabled row (e.g. a coupon under its minimum) reads its reason under the name.
 - Cart with the shopper's own copy of a product whose stock is 1: the free product reward is disabled and reads "Not enough in stock"; same for a sold-individually product.
 - Checkout with a free-shipping reward applied: switch to a 0-cost method → on that same refresh the reward is unticked and "… was removed: …" shows; no points are debited.
@@ -88,6 +88,9 @@ Model on: `includes/Engine/Redemption/CouponProvider.php:345-371` (resolve_rewar
 - T2: the guard lives in `config_conflict()`, not `is_rewardable_product()`: a per-key failure answers "unknown key or wrong type", while the conflict gives the merchant one readable message; grouped and external are refused too.
 - T3+T4 share one commit: both edit `RedemptionService.php` and `CouponProvider.php`.
 - T4: `RedemptionService::cart_key()` now includes `RewardShipping::cart_value()`, or the per-request quote memo would hand the after-totals check the stale quote. The drop is told through the card's dropped line instead of `notice_removed()`: the block checkout shows WooCommerce's `notice` type only on the next page load (seen on the test site), the card is redrawn at once.
+- T5: a row denied for the balance reads "Not enough Points for this reward", not message_for()'s flexible-discount sentence (review).
+- T3: sold-individually counts the exact product or variation, the stock check the product the stock is managed on, as WooCommerce does (review).
+- T2: a `variation_id` must be a variation of `product_id` with every attribute set (review).
 - T5: the minimum-spend reason fills in the missing amount (`message_for()` left it to the caller, and no caller did).
 - T6: the free reward is found by the meta its gift left on the order, so a reward deleted after checkout still refunds by its gift.
 - Test helpers: `order()` and `add_marker()` moved from FreeRewardCommitTest to FreeRewardTestCase so the refund test shares them.

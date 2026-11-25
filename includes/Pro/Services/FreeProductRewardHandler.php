@@ -44,25 +44,27 @@ final class FreeProductRewardHandler implements RewardHandler {
             return Result::denied( RewardCoupons::REASON_NO_VALUE );
         }
 
-        $own = self::shopper_quantity( $cart, $product );
-
-        if ( $product->is_sold_individually() && $own > 0 ) {
+        if ( $product->is_sold_individually() && self::shopper_quantity( $cart, $product, false ) > 0 ) {
             return Result::denied( RewardCoupons::REASON_SOLD_INDIVIDUALLY );
         }
 
-        if ( ! $product->is_in_stock() || ! $product->has_enough_stock( $own + $qty ) ) {
+        if ( ! $product->is_in_stock() || ! $product->has_enough_stock( self::shopper_quantity( $cart, $product, true ) + $qty ) ) {
             return Result::denied( RewardCoupons::REASON_OUT_OF_STOCK );
         }
 
         return Result::allowed( $reward, $cost, $cost, $value, $ctx->get_currency(), 0.0 );
     }
 
-    /** How many of $product the shopper's own lines hold: every line but the reward lines, matched as WooCommerce matches stock. */
-    private static function shopper_quantity( \WC_Cart $cart, \WC_Product $product ): int {
+    /**
+     * How many of $product the shopper's own lines hold, reward lines left out: by the stock they draw on, as
+     * WooCommerce checks stock, or by the exact product or variation, as it checks sold-individually.
+     */
+    private static function shopper_quantity( \WC_Cart $cart, \WC_Product $product, bool $by_stock ): int {
         $quantity = 0;
+        $key      = $by_stock ? $product->get_stock_managed_by_id() : $product->get_id();
 
         foreach ( $cart->get_cart() as $line ) {
-            if ( ! RewardCartLines::is_reward_line( $line ) && isset( $line['data'] ) && $line['data'] instanceof \WC_Product && $line['data']->get_stock_managed_by_id() === $product->get_stock_managed_by_id() ) {
+            if ( ! RewardCartLines::is_reward_line( $line ) && isset( $line['data'] ) && $line['data'] instanceof \WC_Product && ( $by_stock ? $line['data']->get_stock_managed_by_id() : $line['data']->get_id() ) === $key ) {
                 $quantity += (int) $line['quantity'];
             }
         }

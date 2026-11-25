@@ -352,6 +352,17 @@ class Reward extends AbstractModel {
             return __( 'Choose a simple product: a grouped, external or variable product can\'t be given as a reward.', 'yayloyalty' );
         }
 
+        if ( empty( $config['variation_id'] ) ) {
+            return null;
+        }
+
+        $variation = wc_get_product( (int) $config['variation_id'] );
+
+        // An "Any" attribute leaves the free line nothing to pick.
+        if ( ! $variation instanceof \WC_Product_Variation || $variation->get_parent_id() !== $product->get_id() || in_array( '', $variation->get_variation_attributes(), true ) ) {
+            return __( 'Choose a variation of this product with every attribute set.', 'yayloyalty' );
+        }
+
         return null;
     }
 

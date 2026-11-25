@@ -9,6 +9,7 @@ use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\LauncherPayload;
 use YayLoyalty\Engine\Storefront\RedeemCard;
 use YayLoyalty\Enums\RewardType;
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Pro\Services\RewardTierCondition;
 use YayLoyalty\Repositories\RewardRepository;
@@ -137,6 +138,11 @@ final class RewardsPanel {
 
     /** Why the server refuses the reward, in words; a minimum spend says how much more the cart needs. */
     private static function reason( Result $quote, Reward $reward, RedemptionService $service, \WC_Cart $cart ): string {
+        if ( Result::REASON_INSUFFICIENT_BALANCE === $quote->get_reason() ) {
+            /* translators: %s: the store's points label, as "Points". */
+            return sprintf( __( 'Not enough %s for this reward', 'yayloyalty' ), SettingsHelper::points_label_plural() );
+        }
+
         $message = RedemptionService::message_for( $quote->get_reason() );
 
         if ( RewardCoupons::REASON_MIN_ORDER !== $quote->get_reason() ) {
