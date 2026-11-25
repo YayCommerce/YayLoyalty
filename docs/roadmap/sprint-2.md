@@ -1,6 +1,6 @@
 ## Sprint 2 (2026-11-27 → 2026-12-10)
 
-Goal: Ship 1.1.0 (all six items built), then make every reward and campaign a merchant can save actually pay: free shipping and free product redeem, milestone triggers fire, launcher filtering and privacy tools.
+Goal: Ship 1.1.0, then finish 1.1.1 (milestone triggers fire, privacy export and erase) and start the referral follow-ups: fraud flags and the monthly cap, referral emails with the advocate coupon, and the Lite upsell.
 
 ### R-2 VIP tiers
 - status: done
@@ -49,7 +49,7 @@ Goal: Ship 1.1.0 (all six items built), then make every reward and campaign a me
 - target: 1.1.0
 
 ### R-8 Launcher shows only the rewards a shopper qualifies for
-- status: in-progress
+- status: done
 - size: S
 - editions: pro
 - from: BL-1
@@ -58,6 +58,7 @@ Goal: Ship 1.1.0 (all six items built), then make every reward and campaign a me
 - target: 1.1.1
 - started: 2026-11-25
 - built: 2026-11-25
+- merged: 2026-11-25
 
 ### R-9 Privacy export and erase for loyalty data
 - status: todo
@@ -75,3 +76,30 @@ Goal: Ship 1.1.0 (all six items built), then make every reward and campaign a me
 - why: BL-6 (deferred from P-3): Pro offers first_order, order_count and spend_milestone campaigns but no handler awards them, so merchants can save campaigns that never pay
 - acceptance: A shopper earns a first-order, Nth-order or spend-milestone campaign's points once when the qualifying order completes, and a refund that takes them back under the milestone reverses them
 - target: 1.1.1
+
+### R-12 Referral fraud flags and monthly cap
+- status: todo
+- size: M
+- editions: pro
+- depends: R-4
+- why: requested 2026-11-17 in the referral wireframe (1a, 1c): shared email domains, matching IP hashes and a per-advocate monthly cap should hold a referral for review instead of paying it (BL-8)
+- acceptance: A referral whose friend shares the advocate's email domain or IP hash, or exceeds the advocate's monthly cap, is held as Flagged in Approvals with the matched checks spelled out, is excluded from bulk approve, and shows 'Under review' to the advocate
+- target: 1.1.2
+
+### R-13 Referral emails and advocate coupon reward
+- status: todo
+- size: M
+- editions: pro
+- depends: R-4
+- why: requested 2026-11-17 in the referral wireframe (1a): advocates and friends hear when a referral moves, and a merchant can reward the advocate with a coupon instead of points
+- acceptance: Settings → Emails lists referral emails (friend joined, reward on the way, reward paid) that send at those moments; Referral → Settings offers points or a coupon for the advocate, never both
+- target: 1.1.2
+
+### R-14 Referral upsell screen in Lite
+- status: todo
+- size: S
+- editions: lite
+- depends: R-4
+- why: requested 2026-11-17 in the referral wireframe (1f): Lite merchants should see what the Pro referral programme does
+- acceptance: In Lite the YayLoyalty header shows a locked Referral item that opens a Pro feature screen with example figures labelled as illustrative and one Upgrade button; the storefront shows nothing referral-related
+- target: 1.1.2

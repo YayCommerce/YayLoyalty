@@ -1,6 +1,6 @@
 ## Sprint 3 (2026-12-11 → 2026-12-24)
 
-Goal: The referral program grows up: fraud flags and the monthly cap, referral emails with the advocate coupon, the Lite upsell, the landing page with sharing and code at checkout, and the overview report.
+Goal: Referral growth: the landing page with sharing and code at checkout, and the overview report; plus referral events in the activity timeline, tier-point labels on adjustments, and balance export for the largest stores.
 
 ### R-3 Page builder widgets for Elementor, Bricks and Divi
 - status: done
@@ -12,33 +12,6 @@ Goal: The referral program grows up: fraud flags and the monthly cap, referral e
 - started: 2026-11-16
 - built: 2026-11-16
 - merged: 2026-11-16
-
-### R-12 Referral fraud flags and monthly cap
-- status: todo
-- size: M
-- editions: pro
-- depends: R-4
-- why: requested 2026-11-17 in the referral wireframe (1a, 1c): shared email domains, matching IP hashes and a per-advocate monthly cap should hold a referral for review instead of paying it (BL-8)
-- acceptance: A referral whose friend shares the advocate's email domain or IP hash, or exceeds the advocate's monthly cap, is held as Flagged in Approvals with the matched checks spelled out, is excluded from bulk approve, and shows 'Under review' to the advocate
-- target: 1.1.2
-
-### R-13 Referral emails and advocate coupon reward
-- status: todo
-- size: M
-- editions: pro
-- depends: R-4
-- why: requested 2026-11-17 in the referral wireframe (1a): advocates and friends hear when a referral moves, and a merchant can reward the advocate with a coupon instead of points
-- acceptance: Settings → Emails lists referral emails (friend joined, reward on the way, reward paid) that send at those moments; Referral → Settings offers points or a coupon for the advocate, never both
-- target: 1.1.2
-
-### R-14 Referral upsell screen in Lite
-- status: todo
-- size: S
-- editions: lite
-- depends: R-4
-- why: requested 2026-11-17 in the referral wireframe (1f): Lite merchants should see what the Pro referral programme does
-- acceptance: In Lite the YayLoyalty header shows a locked Referral item that opens a Pro feature screen with example figures labelled as illustrative and one Upgrade button; the storefront shows nothing referral-related
-- target: 1.1.2
 
 ### R-10 Referral overview report with click funnel
 - status: todo
@@ -57,3 +30,33 @@ Goal: The referral program grows up: fraud flags and the monthly cap, referral e
 - why: requested 2026-11-17 in the referral wireframe (1e, 1g): a friend should land on a page that explains the offer, advocates share from their phone, and a friend who lost the link can type the code
 - acceptance: A /r/CODE link opens a landing page with the advocate's offer and signup; My Account and the launcher show a referral card with share buttons and the native share sheet; a friend can enter the code at checkout (classic and block) and it overrides the cookie
 - target: 1.1.2
+
+### R-19 Referral events in the customer activity timeline
+- status: todo
+- size: S
+- editions: pro
+- from: BL-10
+- depends: R-4
+- why: Deferred from P-3 (BL-10): merchants can't see referral joins, payouts, rejections or reversals in a customer's history
+- acceptance: A customer's admin activity timeline shows when they joined through a referral and when a referral reward was paid, rejected or reversed; a site that never used referrals shows nothing new
+- target: 1.1.3
+
+### R-20 Label adjustments that don't count toward tier points
+- status: todo
+- size: S
+- editions: pro
+- from: BL-24
+- depends: R-2
+- why: Deferred from P-9 (BL-24): a staff adjustment kept out of tier points looks the same as one that counts in the drawer ledger and activity
+- acceptance: In the customer drawer's ledger and activity, a staff adjustment that doesn't count toward tier points is labelled so; adjustments that count look as they do today
+- target: 1.1.3
+
+### R-21 Export balances for stores above 50,000 customers
+- status: todo
+- size: M
+- editions: pro, lite
+- from: BL-20
+- depends: R-6
+- why: Deferred from P-8 (BL-20): Tools > Export balances fails above the 50,000-row fetch cap, so the largest stores can't export
+- acceptance: A store with 100,000 customers exports every balance from Tools in one CSV without a timeout or a missing row
+- target: 1.1.3
