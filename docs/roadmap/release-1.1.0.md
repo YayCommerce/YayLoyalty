@@ -6,7 +6,7 @@
 
 ## Goal
 <!-- One paragraph: what this release is for, who gets what, and why these items. -->
-1.1.0 turns YayLoyalty from a points-for-orders plugin into a full loyalty program. Merchants get finer targeting (AND/OR condition groups), VIP tiers that reward their best customers, a referral program that brings in new ones, and more ways to earn (social actions and subscription renewals). Store builders can place the points widgets in Elementor, Bricks and Divi, and stores moving from another loyalty plugin can bring their balances in with CSV import and adjust points in bulk.
+1.1.0 turns YayLoyalty from a points-for-orders plugin into a full loyalty program. Merchants get finer targeting (AND/OR condition groups), VIP tiers that reward their best customers, a referral program that brings in new ones, and more ways to earn (social actions and subscription renewals). Store builders can place the points widgets in Elementor, Bricks and Divi, stores moving from another loyalty plugin can bring their balances in with CSV import and adjust points in bulk, and the free shipping and free product rewards Pro already offered can now be redeemed.
 
 ## Release criteria
 <!-- Each line is something that must be true to ship, checked by /yay:release before it tags. Tick it when it's verified, with where (staging, a test site, the e2e run). -->
@@ -17,7 +17,9 @@
 - [ ] The widgets render in Elementor, Bricks and Divi the same as the shortcodes, and a site without those builders loads none of their code
 - [ ] A subscription renewal earns points once, and a refunded renewal takes them back
 - [ ] CSV import shows a preview and per-row errors before anything is written, and every imported or bulk change appears in the customer's history
-- [ ] Lite contains no Pro-only feature (tiers, referrals, condition groups, social/renewal earning), and the Lite zip passes the build validator
+- [ ] A merchant can add free shipping and free product rewards; a shopper redeems them on classic and block checkout, a reward the cart can't use says why, and cancelling or fully refunding the order gives the points back
+- [ ] Free rewards behave with YayPricing and YayCurrency active (the free line isn't priced by YayPricing; the freed value is stored in the order's currency)
+- [ ] Lite contains no Pro-only feature (tiers, referrals, condition groups, social/renewal earning, free shipping and free product rewards), and the Lite zip passes the build validator
 - [ ] Upgrading from 1.0.0 keeps every balance and ledger row
 
 ## Out of scope
@@ -46,3 +48,5 @@
 | 2 | What does "more ways to earn" cover? | Social follow/share and WooCommerce Subscriptions renewals (the triggers the code already reserves) | |
 | 3 | Do tiers count lifetime spend, lifetime points, or both? | Merchant picks one per program; lifetime spend is the default | Points earned in the qualifying period only (all time, last N months, or calendar period); spend isn't counted, and redeeming points never lowers a tier. Decided 2026-11-23. |
 | 4 | Should 1.1.0 avoid shipping across BFCM (late November)? | No freeze: work continues through BFCM and 1.1.0 ships after sprint 2 ends (2026-12-10) | |
+| 5 | Should the order screen and emails label a free product line with its reward (BL-26)? | No: only cart and checkout say "Reward: …"; the order shows the product at 0 and the reward's coupon row | |
+| 6 | When an admin removes a free reward's coupon from an order and restores the points, should the gift be charged (BL-27)? | No: the points come back and the order keeps the free line and free shipping, as for a coupon reward's discount | |
