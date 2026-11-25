@@ -57,6 +57,7 @@ Goal: Ship 1.1.0 (all six items built), then make every reward and campaign a me
 - acceptance: A signed-in shopper sees in the launcher only the rewards whose conditions they meet; a guest sees conditional rewards labelled as for selected customers, and a cached page never shows one shopper's list to another
 - target: 1.1.1
 - started: 2026-11-25
+- built: 2026-11-25
 
 ### R-9 Privacy export and erase for loyalty data
 - status: todo

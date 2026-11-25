@@ -1,7 +1,7 @@
 ---
 id: P-12
 title: Ways to redeem lists only the rewards a shopper qualifies for
-status: in-progress
+status: done
 lane: small
 from: BS-7
 roadmap: R-8
