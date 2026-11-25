@@ -1,9 +1,11 @@
 <?php
 namespace YayLoyalty\Pro\Storefront;
 
+use YayLoyalty\Engine\Points\ContextFactory as EarnContextFactory;
 use YayLoyalty\Engine\Redemption\ProgramGate;
 use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Redemption\RewardCoupons;
+use YayLoyalty\Engine\Rewards\Context;
 use YayLoyalty\Engine\Rewards\Result;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\LauncherPayload;
@@ -11,8 +13,8 @@ use YayLoyalty\Engine\Storefront\RedeemCard;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Reward;
-use YayLoyalty\Pro\Services\RewardTierCondition;
 use YayLoyalty\Repositories\RewardRepository;
+use YayLoyalty\Utils\CurrencyRate;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -22,9 +24,9 @@ defined( 'ABSPATH' ) || exit;
  * the server answers a new card. It also lists the same rewards, with a one-line description, under "Ways to
  * redeem" in the launcher and My Account.
  *
- * A reward whose minimum tier the shopper doesn't hold is hidden from both. The card learns that from the quote
+ * A reward whose conditions the shopper doesn't meet is hidden from both. The card learns that from the quote
  * (reward_options() drops it, unless it is already applied); the launcher and My Account have no quote, so
- * redeem_offers() asks RewardTierCondition::allows() directly.
+ * redeem_offers() asks the same `yayloyalty_reward_conditions_match` filter directly.
  */
 final class RewardsPanel {
 
@@ -35,8 +37,9 @@ final class RewardsPanel {
     }
 
     /**
-     * Appends every live catalog reward, in `sort_order`, that the member's tier
-     * allows, whatever their balance: there is no cart to check the rest against.
+     * Appends every live catalog reward, in `sort_order`, whose conditions the member meets, whatever their
+     * balance. A guest gets every reward, a conditional one with one fixed line, so a cached guest page is the
+     * same for everyone.
      *
      * @param array<int, array{name: string, cost: int, text: string}> $offers
      * @param string                                                   $now     UTC MySQL datetime.
@@ -44,15 +47,40 @@ final class RewardsPanel {
      * @return array<int, array{name: string, cost: int, text: string}>
      */
     public function redeem_offers( array $offers, string $now, ?int $user_id = null ): array {
-        $tiers = new RewardTierCondition();
+        $ctx = null === $user_id ? null : self::listing_context( $user_id, $now );
 
         foreach ( ( new RewardRepository() )->live_of_types( RewardType::catalog_types(), $now ) as $reward ) {
-            if ( $tiers->allows( $reward, $user_id ) ) {
+            if ( null === $ctx ) {
+                $offer = LauncherPayload::offer( $reward );
+
+                if ( $reward->has_conditions() ) {
+                    $offer['text'] = __( 'For selected customers', 'yayloyalty' );
+                }
+
+                $offers[] = $offer;
+            } elseif ( apply_filters( 'yayloyalty_reward_conditions_match', true, $reward, $ctx ) ) {
                 $offers[] = LauncherPayload::offer( $reward );
             }
         }
 
         return $offers;
+    }
+
+    /** A cart-less claim for $user_id with an unbounded balance, so only the conditions decide. */
+    private static function listing_context( int $user_id, string $now ): Context {
+        $currency = CurrencyRate::current();
+
+        return new Context(
+            $user_id,
+            PHP_INT_MAX,
+            null,
+            null,
+            $currency,
+            $now,
+            static fn() => EarnContextFactory::customer_facts( $user_id, $now ),
+            null,
+            CurrencyRate::rate( $currency )
+        );
     }
 
     /**

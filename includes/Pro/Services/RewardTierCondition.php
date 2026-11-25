@@ -14,8 +14,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Enforces a reward's TIER condition. "Minimum tier" (`gte`) needs the customer's live tier to rank at
  * or above the required one; "Only this tier" (`eq`) needs it to be that tier. It answers the claim
- * gate through `yayloyalty_reward_conditions_match`, and its allows() serves the listings that have no
- * quote (the launcher and My Account).
+ * gate and the launcher's listing through `yayloyalty_reward_conditions_match`.
  *
  * It fails closed: tiers off, a guest, a customer without a live tier, a required tier that is no
  * longer live and an unknown operator all refuse the reward. A reward with no TIER entry is always
