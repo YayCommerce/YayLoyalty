@@ -181,7 +181,7 @@ final class RedemptionService {
     /**
      * quote() and ceiling(): the Quoter's answer for $points_requested, or Result::denied( REASON_NO_REWARD ).
      * Picked rewards are paid for first, so the flexible discount quotes against the balance less their cost and the cart
-     * less their value; with none picked, or none allowed, it quotes against the whole of both.
+     * less the value of those that discount its items; with none picked, or none allowed, it quotes against the whole of both.
      */
     private function quote_for( \WC_Cart $cart, ?int $user_id, int $points_requested ): Result {
         $reward = $this->quoted_reward();
@@ -196,8 +196,13 @@ final class RedemptionService {
 
         foreach ( $this->quote_rewards( $cart, $user_id ) as $row ) {
             if ( self::applies( $row['quote'] ) ) {
-                $cost   += $row['quote']->get_points();
-                $amount += $row['quote']->get_value();
+                $cost += $row['quote']->get_points();
+                $props = null === $row['reward'] ? null : $this->coupon_props_of( $row['reward'] );
+
+                // A free line is already priced 0 in the cart, and freed shipping was never part of it.
+                if ( empty( $props['free_item'] ) && empty( $props['free_shipping'] ) ) {
+                    $amount += $row['quote']->get_value();
+                }
             }
         }
 
