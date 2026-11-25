@@ -145,7 +145,7 @@ final class RewardsPanel {
 
         $minimum = (float) ( $service->coupon_props_of( $reward )['minimum_amount'] ?? 0 );
 
-        return sprintf( $message, LauncherCopy::money( max( 0.0, $minimum - (float) $cart->get_displayed_subtotal() ) ) );
+        return sprintf( $message, LauncherCopy::money( max( 0.0, $minimum - RewardCoupons::displayed_subtotal( $cart ) ) ) );
     }
 
     private static function template( array $view ): string { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the included template reads $view.

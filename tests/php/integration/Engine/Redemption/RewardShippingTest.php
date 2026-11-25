@@ -69,7 +69,6 @@ final class RewardShippingTest extends FreeRewardTestCase {
 		WC()->cart->calculate_totals();
 		$this->pick( [ (int) $reward->get_id() ] );
 		$this->assertContains( $reward->get_coupon_code(), WC()->cart->get_applied_coupons() );
-		wc_clear_notices();
 
 		update_option(
 			'woocommerce_flat_rate_' . $this->instance_id . '_settings',
@@ -85,7 +84,7 @@ final class RewardShippingTest extends FreeRewardTestCase {
 
 		$this->assertNotContains( $reward->get_coupon_code(), WC()->cart->get_applied_coupons() );
 		$this->assertNotContains( (int) $reward->get_id(), $this->intent->rewards() );
-		$this->assertSame( 1, wc_notice_count( 'notice' ) );
+		$this->assertSame( [ $reward->get_name() ], $this->intent->dropped() );
 	}
 
 	public function test_a_second_free_shipping_reward_is_not_applied() {

@@ -275,11 +275,7 @@ final class CouponProvider {
         self::synced( $cart );
     }
 
-    /**
-     * sync_cart() quotes before WooCommerce calculates shipping, so a free-shipping reward whose rate became free on
-     * this run still read the last run's rates. Quoted again now, a picked reward denied for a dropping reason leaves the
-     * picked rewards and the cart's coupons, with its notice. Its coupon is worth 0, so the totals just run stay right.
-     */
+    /** Drops each picked reward this run's totals left worthless, told through the card, which every checkout redraws at once. */
     public function drop_stale_rewards( \WC_Cart $cart ): void {
         if ( [] === $this->intent->rewards() ) {
             return;
@@ -287,7 +283,7 @@ final class CouponProvider {
 
         $applied = $cart->get_applied_coupons();
 
-        foreach ( $this->service->quote_rewards( $cart, RedemptionService::shopper_id() ) as $reward_id => $row ) {
+        foreach ( $this->service->quote_rewards( $cart, RedemptionService::shopper_id() ) as $row ) {
             $quote = $row['quote'];
 
             if ( null === $row['reward'] || $quote->is_allowed() || ! in_array( $quote->get_reason(), self::DROPPING_REASONS, true ) ) {
@@ -297,9 +293,8 @@ final class CouponProvider {
             $code = $row['reward']->get_coupon_code();
 
             if ( in_array( $code, $applied, true ) ) {
-                $this->intent->remove_reward( (int) $reward_id );
                 $cart->remove_coupon( $code );
-                $this->notice_removed( $row['reward'] );
+                $this->intent->add_dropped( $row['reward']->get_name() );
             }
         }
     }

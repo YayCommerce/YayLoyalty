@@ -297,11 +297,7 @@ final class Reversal {
         }
     }
 
-    /**
-     * A free reward's restore, found by the gift it left on the order, or null for any other reward. A free product
-     * gives back its points for the refunded share of its free line, and a free shipping only once the order is fully
-     * refunded: its freed shipping is 0, so no refund can take it back alone. Refunding paid items gives back neither.
-     */
+    /** A free reward's restore, by the refunded share of the gift it left on the order; null for any other reward. */
     private static function gift_target( \WC_Order $order, Redemption $row, bool $is_fully_refunded ): ?int {
         $reward_id = $row->get_reward_id();
 
