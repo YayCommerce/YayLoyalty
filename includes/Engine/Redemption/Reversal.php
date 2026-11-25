@@ -281,6 +281,12 @@ final class Reversal {
             return 0;
         }
 
+        $gift = self::gift_target( $order, $row, $is_fully_refunded );
+
+        if ( null !== $gift ) {
+            return $gift;
+        }
+
         switch ( $this->policy_of( $row ) ) {
             case Reward::REFUND_POLICY_NONE:
                 return 0;
@@ -289,6 +295,32 @@ final class Reversal {
             default:
                 return ClawbackMath::owed( $row->get_points(), $refunded_total, (float) $order->get_total(), $is_fully_refunded );
         }
+    }
+
+    /**
+     * A free reward's restore, found by the gift it left on the order, or null for any other reward. A free product
+     * gives back its points for the refunded share of its free line, and a free shipping only once the order is fully
+     * refunded: its freed shipping is 0, so no refund can take it back alone. Refunding paid items gives back neither.
+     */
+    private static function gift_target( \WC_Order $order, Redemption $row, bool $is_fully_refunded ): ?int {
+        $reward_id = $row->get_reward_id();
+
+        foreach ( $order->get_items() as $item_id => $item ) {
+            if ( $item instanceof \WC_Order_Item_Product && $reward_id === (int) $item->get_meta( RewardCartLines::META_REWARD ) ) {
+                $qty      = max( 1, (int) $item->get_quantity() );
+                $refunded = min( $qty, (int) abs( $order->get_qty_refunded_for_item( (int) $item_id ) ) );
+
+                return $is_fully_refunded ? $row->get_points() : intdiv( $row->get_points() * $refunded, $qty );
+            }
+        }
+
+        foreach ( $order->get_items( 'shipping' ) as $item ) {
+            if ( $reward_id === (int) $item->get_meta( RewardShipping::META_REWARD ) ) {
+                return $is_fully_refunded ? $row->get_points() : 0;
+            }
+        }
+
+        return null;
     }
 
     /** The reward's `refund_policy` as it is now; `proportional` when the reward is gone or its config lacks the key. */
