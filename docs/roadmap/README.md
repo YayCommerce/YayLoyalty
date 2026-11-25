@@ -15,10 +15,10 @@ One file per sprint (`sprint-<n>.md`), `later.md` for unscheduled work, and a ge
 | Section | Dates | Goal | Items | Dev-days |
 |---|---|---|---|---|
 | [Sprint 1](sprint-1.md) | 2026-11-13 → 2026-11-26 | Merchants can match campaign and reward conditions by any or all (1.1.0). | 1 (1 done, 0 shipped) | 8 |
-| [Sprint 2](sprint-2.md) | 2026-11-27 → 2026-12-10 | Ship 1.1.0 (all six items built), then make every reward and campaign a merchant can save actually pay: free shipping and free product redeem, milestone triggers fire, launcher filtering and privacy tools. | 7 (4 done, 0 shipped) | 29.5 |
-| [Sprint 3](sprint-3.md) | 2026-12-11 → 2026-12-24 | The referral program grows up: fraud flags and the monthly cap, referral emails with the advocate coupon, the Lite upsell, the landing page with sharing and code at checkout, and the overview report. | 6 (1 done, 0 shipped) | 33.5 |
-| [Sprint 4](sprint-4.md) | 2026-12-25 → 2027-01-07 | Holiday sprint, kept light: referral events in the activity timeline, tier-point labels on adjustments, and balance export for the largest stores. | 4 (1 done, 0 shipped) | 15 |
-| [Sprint 5](sprint-5.md) | 2027-01-08 → 2027-01-21 | Elementor 4 atomic widgets; the rest is spare capacity for fixes and the next release. | 1 (0 shipped) | 4 |
+| [Sprint 2](sprint-2.md) | 2026-11-27 → 2026-12-10 | Ship 1.1.0, then finish 1.1.1 (milestone triggers fire, privacy export and erase) and start the referral follow-ups: fraud flags and the monthly cap, referral emails with the advocate coupon, and the Lite upsell. | 10 (5 done, 0 shipped) | 39 |
+| [Sprint 3](sprint-3.md) | 2026-12-11 → 2026-12-24 | Referral growth: the landing page with sharing and code at checkout, and the overview report; plus referral events in the activity timeline, tier-point labels on adjustments, and balance export for the largest stores. | 6 (1 done, 0 shipped) | 31 |
+| [Sprint 4](sprint-4.md) | 2026-12-25 → 2027-01-07 | Holiday sprint, kept light: Elementor 4 atomic widgets; the rest is spare capacity for fixes. | 2 (1 done, 0 shipped) | 12 |
+| [Sprint 5](sprint-5.md) | 2027-01-08 → 2027-01-21 | Spare capacity for fixes and the next release. | 0 (0 shipped) | 0 |
 | [Later](later.md) | - | - | 0 (0 shipped) | 0 |
 
 **Versions**
@@ -26,7 +26,7 @@ One file per sprint (`sprint-<n>.md`), `later.md` for unscheduled work, and a ge
 | Version | Items | Last open item |
 |---|---|---|
 | [1.1.0](v1.1.0.md) · [brief](release-1.1.0.md) | 7 items: 0 open, 0 in progress, 7 done, 0 shipped, 0 dropped | - |
-| [1.1.1](v1.1.1.md) | 3 items: 2 open, 1 in progress, 0 shipped, 0 dropped | [Sprint 2](sprint-2.md), ends 2026-12-10 |
+| [1.1.1](v1.1.1.md) | 3 items: 2 open, 0 in progress, 1 done, 0 shipped, 0 dropped | [Sprint 2](sprint-2.md), ends 2026-12-10 |
 | [1.1.2](v1.1.2.md) | 5 items: 5 open, 0 in progress, 0 shipped, 0 dropped | [Sprint 3](sprint-3.md), ends 2026-12-24 |
-| [1.1.3](v1.1.3.md) | 4 items: 4 open, 0 in progress, 0 shipped, 0 dropped | [Sprint 5](sprint-5.md), ends 2027-01-21 |
+| [1.1.3](v1.1.3.md) | 4 items: 4 open, 0 in progress, 0 shipped, 0 dropped | [Sprint 4](sprint-4.md), ends 2027-01-07 |
 <!-- yay:roadmap-index:end -->
