@@ -22,6 +22,7 @@ Goal: Holiday sprint, kept light: referral events in the activity timeline, tier
 - depends: R-4
 - why: Deferred from P-3 (BL-10): merchants can't see referral joins, payouts, rejections or reversals in a customer's history
 - acceptance: A customer's admin activity timeline shows when they joined through a referral and when a referral reward was paid, rejected or reversed; a site that never used referrals shows nothing new
+- target: 1.1.3
 
 ### R-20 Label adjustments that don't count toward tier points
 - status: todo
@@ -31,6 +32,7 @@ Goal: Holiday sprint, kept light: referral events in the activity timeline, tier
 - depends: R-2
 - why: Deferred from P-9 (BL-24): a staff adjustment kept out of tier points looks the same as one that counts in the drawer ledger and activity
 - acceptance: In the customer drawer's ledger and activity, a staff adjustment that doesn't count toward tier points is labelled so; adjustments that count look as they do today
+- target: 1.1.3
 
 ### R-21 Export balances for stores above 50,000 customers
 - status: todo
@@ -40,3 +42,4 @@ Goal: Holiday sprint, kept light: referral events in the activity timeline, tier
 - depends: R-6
 - why: Deferred from P-8 (BL-20): Tools > Export balances fails above the 50,000-row fetch cap, so the largest stores can't export
 - acceptance: A store with 100,000 customers exports every balance from Tools in one CSV without a timeout or a missing row
+- target: 1.1.3
