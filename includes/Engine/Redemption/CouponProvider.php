@@ -35,6 +35,8 @@ final class CouponProvider {
         RewardCoupons::REASON_MIN_ORDER,
         RewardCoupons::REASON_SALE_ITEMS,
         RewardCoupons::REASON_NO_VALUE,
+        RewardCoupons::REASON_OUT_OF_STOCK,
+        RewardCoupons::REASON_SOLD_INDIVIDUALLY,
         Result::REASON_NOT_LIVE,
         ...ProgramGate::REASONS,
     ];
@@ -56,9 +58,9 @@ final class CouponProvider {
     }
 
     /**
-     * Attaches the seven hooks. sync_cart() runs last on
+     * Attaches the eight hooks. sync_cart() runs last on
      * `woocommerce_before_calculate_totals`, after every other plugin's
-     * coupon logic, and sync_before_check() runs before WooCommerce's own
+     * coupon logic, drop_stale_rewards() once the totals are done, and sync_before_check() runs before WooCommerce's own
      * coupon check. only_redeemed_on_order() sits on `woocommerce_coupon_is_valid`:
      * the admin "Apply coupon" and REST v3 validate through WC_Discounts( $order ),
      * while checkout and recalculate_coupons() do not. Called once at boot by the plugin.
@@ -67,6 +69,7 @@ final class CouponProvider {
         add_filter( 'woocommerce_get_shop_coupon_data', [ $this, 'virtual_coupon_data' ], 10, 2 );
         add_filter( 'woocommerce_coupon_sort', [ $this, 'sort_weight' ], 10, 2 );
         add_action( 'woocommerce_before_calculate_totals', [ $this, 'sync_cart' ], PHP_INT_MAX );
+        add_action( 'woocommerce_after_calculate_totals', [ $this, 'drop_stale_rewards' ], PHP_INT_MAX );
         add_action( 'woocommerce_removed_coupon', [ $this, 'on_removed' ] );
         // Before WC_Cart::check_cart_coupons() at priority 1.
         add_action( 'woocommerce_check_cart_items', [ $this, 'sync_before_check' ], 0 );
@@ -270,6 +273,35 @@ final class CouponProvider {
         }
 
         self::synced( $cart );
+    }
+
+    /**
+     * sync_cart() quotes before WooCommerce calculates shipping, so a free-shipping reward whose rate became free on
+     * this run still read the last run's rates. Quoted again now, a picked reward denied for a dropping reason leaves the
+     * picked rewards and the cart's coupons, with its notice. Its coupon is worth 0, so the totals just run stay right.
+     */
+    public function drop_stale_rewards( \WC_Cart $cart ): void {
+        if ( [] === $this->intent->rewards() ) {
+            return;
+        }
+
+        $applied = $cart->get_applied_coupons();
+
+        foreach ( $this->service->quote_rewards( $cart, RedemptionService::shopper_id() ) as $reward_id => $row ) {
+            $quote = $row['quote'];
+
+            if ( null === $row['reward'] || $quote->is_allowed() || ! in_array( $quote->get_reason(), self::DROPPING_REASONS, true ) ) {
+                continue;
+            }
+
+            $code = $row['reward']->get_coupon_code();
+
+            if ( in_array( $code, $applied, true ) ) {
+                $this->intent->remove_reward( (int) $reward_id );
+                $cart->remove_coupon( $code );
+                $this->notice_removed( $row['reward'] );
+            }
+        }
     }
 
     private static function synced( \WC_Cart $cart ): void {

@@ -62,6 +62,32 @@ final class RewardShippingTest extends FreeRewardTestCase {
 		$this->assertSame( 27.0, (float) WC()->cart->get_total( 'edit' ) );
 	}
 
+	/** @group P-11 */
+	public function test_free_shipping_is_dropped_on_the_run_its_rate_becomes_free() {
+		$reward = $this->reward( RewardType::FREE_SHIPPING, [] );
+		WC()->cart->add_to_cart( $this->product( 20 )->get_id(), 1 );
+		WC()->cart->calculate_totals();
+		$this->pick( [ (int) $reward->get_id() ] );
+		$this->assertContains( $reward->get_coupon_code(), WC()->cart->get_applied_coupons() );
+		wc_clear_notices();
+
+		update_option(
+			'woocommerce_flat_rate_' . $this->instance_id . '_settings',
+			[
+				'title'      => 'Flat rate',
+				'tax_status' => 'none',
+				'cost'       => '0',
+			]
+		);
+		\WC_Cache_Helper::get_transient_version( 'shipping', true );
+		WC()->shipping()->load_shipping_methods();
+		WC()->cart->calculate_totals();
+
+		$this->assertNotContains( $reward->get_coupon_code(), WC()->cart->get_applied_coupons() );
+		$this->assertNotContains( (int) $reward->get_id(), $this->intent->rewards() );
+		$this->assertSame( 1, wc_notice_count( 'notice' ) );
+	}
+
 	public function test_a_second_free_shipping_reward_is_not_applied() {
 		$first  = $this->reward( RewardType::FREE_SHIPPING, [] );
 		$second = $this->reward( RewardType::FREE_SHIPPING, [] );
