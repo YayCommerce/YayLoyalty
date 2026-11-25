@@ -1,7 +1,7 @@
 ---
 area: architecture
 updated: 2026-11-23
-updated_ref: 255aa5c
+updated_ref: 4ad856a
 covers: [yayloyalty.php, YayLoyaltyPluginAdapter.php, includes/YayLoyalty.php, includes/Access/, includes/Database/, includes/Models/, includes/Repositories/, includes/Services/, includes/Controllers/, includes/Engine/, includes/Enums/, includes/Pro/YayLoyaltyPro.php, includes/Pro/Referrals/, includes/Pro/Social/, includes/Pro/Repositories/ReferralRepository.php]
 ---
 
@@ -69,13 +69,15 @@ A second copy of the plugin (both editions active) defines `plugin_init` first; 
 
 **Order meta:** `_yayloyalty_points_pending`, `_yayloyalty_points_released_at`, `_yayloyalty_points_earned`, `_yayloyalty_campaign_id` (`Engine/Earning/PendingPoints.php`); `_yayloyalty_points_redeemed`, `_yayloyalty_redeem_value` (`CommitWriter`).
 
+**Order item meta:** `_yayloyalty_reward_id`, `_yayloyalty_original_price` on a free product line (`RewardCartLines`); `_yayloyalty_free_shipping_reward`, `_yayloyalty_original_cost`, `_yayloyalty_original_taxes` on a shipping line (`RewardShipping`).
+
 **User meta:** `_yayloyalty_opted_out`, `_yayloyalty_email_sends` (`EmailThrottle`), `yayloyalty_dashboard_dismissed`, Pro's `yayloyalty_birthday_month` / `_day`.
 
 **Cookies:** Pro's `yayloyalty_ref` (`CODE.<visit unix time>` from a `?yl_ref=` link, so signup is checked against the current cookie window; HttpOnly, SameSite=Lax, cleared at signup) — `Pro/Referrals/ReferralAttribution.php`.
 
 **Transients:** `yayloyalty_dashboard_v2_<range>` (5 min, only above 10,000 members; flushed on every ledger and campaign write; bump the key when the payload shape changes) — `Services/Dashboard/DashboardCache.php`.
 
-**WC session:** `yayloyalty_redeem_points`, `yayloyalty_redeem_rewards`, `yayloyalty_redeem_dropped` (`Engine/Redemption/SessionIntent.php`).
+**WC session:** `yayloyalty_redeem_points`, `yayloyalty_redeem_rewards`, `yayloyalty_redeem_dropped` (`Engine/Redemption/SessionIntent.php`); `yayloyalty_shipping_before_reward` (`Engine/Redemption/RewardShipping.php`).
 
 ## REST
 
@@ -116,7 +118,7 @@ Points become a **virtual coupon**, never a `shop_coupon` post or a fee. `Coupon
 | Classic | `Redemption/Adapters/ClassicCheckoutAdapter.php` | `woocommerce_after_checkout_validation` / `woocommerce_checkout_order_processed` |
 | Block (Store API) | `Redemption/Adapters/StoreApiAdapter.php` + `assets/storefront/redeem-blocks.js` | `woocommerce_store_api_cart_errors` / `woocommerce_store_api_checkout_order_processed` |
 
-Lite has one reward handler, `FlexibleDiscountHandler`; `Rewards/Clamp.php` is the single source of every limit (balance, min, max, cart, step). Pro registers `DiscountRewardHandler` for fixed and percent coupons. A loyalty code can't be hand-applied in wp-admin or REST v3 (`CouponProvider::only_redeemed_on_order`).
+Lite has one reward handler, `FlexibleDiscountHandler`; `Rewards/Clamp.php` is the single source of every limit (balance, min, max, cart, step). Pro registers `DiscountRewardHandler` for fixed and percent coupons, and `FreeShippingRewardHandler` and `FreeProductRewardHandler` for the free types (`Pro/Services/`); both are spent as a 0 `fixed_cart` coupon (the marker) whose `coupon_props` carry `free_shipping` or `free_item`. Lite's `Engine/Redemption/RewardCartLines` (on `CouponProvider::SYNCED_ACTION`, `yayloyalty_reward_coupons_synced`) keeps one locked line at 0 per applied `free_item` marker and removes any other reward line (also after a Lite downgrade), copying `_yayloyalty_reward_id` / `_yayloyalty_original_price` to the order item. Lite's `RewardShipping` on `woocommerce_shipping_packages` (priority 100) restores each rate from its `_yayloyalty_original_cost` / `_yayloyalty_original_taxes` rate meta (WooCommerce caches rates in the session) and zeroes every rate while a `free_shipping` marker is applied, noting the chosen rates' original total in session key `yayloyalty_shipping_before_reward` for the quote. `CommitWriter` values a reward line as its coupon discount plus `freed_value()` (free lines' price × qty; shipping's original minus charged). A loyalty code can't be hand-applied in wp-admin or REST v3 (`CouponProvider::only_redeemed_on_order`).
 
 ## Expiry
 

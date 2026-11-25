@@ -24,6 +24,9 @@ defined( 'ABSPATH' ) || exit;
  */
 final class CouponProvider {
 
+    /** Fires with the cart once sync_cart() has settled the loyalty codes for this totals run. */
+    public const SYNCED_ACTION = 'yayloyalty_reward_coupons_synced';
+
     /**
      * Denial reasons that take a picked reward out of the session; any other leaves it there, unapplied. A program
      * gate's reasons hide the Rewards panel, so nothing else could take the reward out before checkout refuses it.
@@ -32,6 +35,8 @@ final class CouponProvider {
         RewardCoupons::REASON_MIN_ORDER,
         RewardCoupons::REASON_SALE_ITEMS,
         RewardCoupons::REASON_NO_VALUE,
+        RewardCoupons::REASON_OUT_OF_STOCK,
+        RewardCoupons::REASON_SOLD_INDIVIDUALLY,
         Result::REASON_NOT_LIVE,
         ...ProgramGate::REASONS,
     ];
@@ -53,9 +58,9 @@ final class CouponProvider {
     }
 
     /**
-     * Attaches the seven hooks. sync_cart() runs last on
+     * Attaches the eight hooks. sync_cart() runs last on
      * `woocommerce_before_calculate_totals`, after every other plugin's
-     * coupon logic, and sync_before_check() runs before WooCommerce's own
+     * coupon logic, drop_stale_rewards() once the totals are done, and sync_before_check() runs before WooCommerce's own
      * coupon check. only_redeemed_on_order() sits on `woocommerce_coupon_is_valid`:
      * the admin "Apply coupon" and REST v3 validate through WC_Discounts( $order ),
      * while checkout and recalculate_coupons() do not. Called once at boot by the plugin.
@@ -64,6 +69,7 @@ final class CouponProvider {
         add_filter( 'woocommerce_get_shop_coupon_data', [ $this, 'virtual_coupon_data' ], 10, 2 );
         add_filter( 'woocommerce_coupon_sort', [ $this, 'sort_weight' ], 10, 2 );
         add_action( 'woocommerce_before_calculate_totals', [ $this, 'sync_cart' ], PHP_INT_MAX );
+        add_action( 'woocommerce_after_calculate_totals', [ $this, 'drop_stale_rewards' ], PHP_INT_MAX );
         add_action( 'woocommerce_removed_coupon', [ $this, 'on_removed' ] );
         // Before WC_Cart::check_cart_coupons() at priority 1.
         add_action( 'woocommerce_check_cart_items', [ $this, 'sync_before_check' ], 0 );
@@ -132,7 +138,7 @@ final class CouponProvider {
     }
 
     /** "{name} was removed: this order no longer qualifies.", for a picked reward or the points discount. */
-    private static function notice_dropped( string $name ): void {
+    public static function notice_dropped( string $name ): void {
         /* translators: %s: the reward's name, as "$5 off". */
         self::add_notice( sprintf( __( '%s was removed: this order no longer qualifies.', 'yayloyalty' ), $name ) );
     }
@@ -246,6 +252,7 @@ final class CouponProvider {
 
         // Nothing asked and nothing to take off: the common case, answered without a quote.
         if ( ! $has_ours && 0 === $points && [] === $reward_ids ) {
+            self::synced( $cart );
             return;
         }
 
@@ -264,6 +271,41 @@ final class CouponProvider {
         if ( $next !== $applied ) {
             $cart->set_applied_coupons( $next );
         }
+
+        self::synced( $cart );
+    }
+
+    /** Drops each picked reward this run's totals left worthless, told through the card, which every checkout redraws at once. */
+    public function drop_stale_rewards( \WC_Cart $cart ): void {
+        if ( [] === $this->intent->rewards() ) {
+            return;
+        }
+
+        $applied = $cart->get_applied_coupons();
+
+        foreach ( $this->service->quote_rewards( $cart, RedemptionService::shopper_id() ) as $row ) {
+            $quote = $row['quote'];
+
+            if ( null === $row['reward'] || $quote->is_allowed() || ! in_array( $quote->get_reason(), self::DROPPING_REASONS, true ) ) {
+                continue;
+            }
+
+            $code = $row['reward']->get_coupon_code();
+
+            if ( in_array( $code, $applied, true ) ) {
+                $cart->remove_coupon( $code );
+                $this->intent->add_dropped( $row['reward']->get_name() );
+            }
+        }
+    }
+
+    private static function synced( \WC_Cart $cart ): void {
+        /**
+         * Fires once the loyalty codes for this totals run are on the cart, before WooCommerce totals it.
+         *
+         * @param \WC_Cart $cart
+         */
+        do_action( self::SYNCED_ACTION, $cart ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
     }
 
     /**

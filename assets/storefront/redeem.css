@@ -272,6 +272,13 @@
   text-decoration-thickness: 0.5px;
 }
 
+.yayloyalty-redeem .yayloyalty-redeem__reason {
+  flex-basis: 100%;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--yayloyalty-redeem-muted);
+}
+
 .yayloyalty-redeem .yayloyalty-redeem__chip {
   padding: 0 8px;
   border-radius: 999px;

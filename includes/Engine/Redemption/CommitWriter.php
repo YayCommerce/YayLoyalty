@@ -319,7 +319,7 @@ final class CommitWriter {
             }
 
             $quote = $this->quoter->quote( $reward, $this->contexts->from_order_line( $order, $reward, $balance ) );
-            $value = $this->contexts->line_discount_of( $order, (string) $code );
+            $value = $this->contexts->line_discount_of( $order, (string) $code ) + self::freed_value( $order, $reward );
 
             if ( ! $quote->is_allowed() || $value <= 0 ) {
                 return Outcome::skipped( RedemptionService::REASON_REWARD_UNAVAILABLE, $quote );
@@ -330,6 +330,13 @@ final class CommitWriter {
         }
 
         return $cost > $balance ? Outcome::skipped( RedemptionService::REASON_REWARDS_BALANCE ) : null;
+    }
+
+    /** What a reward's 0 coupon stands for on the order: its free item lines and the shipping it freed. 0 for a coupon reward. */
+    private static function freed_value( \WC_Order $order, Reward $reward ): float {
+        $reward_id = (int) $reward->get_id();
+
+        return RewardCartLines::order_value( $order, $reward_id ) + RewardShipping::order_value( $order, $reward_id );
     }
 
     /**

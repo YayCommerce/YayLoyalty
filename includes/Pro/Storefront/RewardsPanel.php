@@ -3,10 +3,13 @@ namespace YayLoyalty\Pro\Storefront;
 
 use YayLoyalty\Engine\Redemption\ProgramGate;
 use YayLoyalty\Engine\Redemption\RedemptionService;
+use YayLoyalty\Engine\Redemption\RewardCoupons;
 use YayLoyalty\Engine\Rewards\Result;
+use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\LauncherPayload;
 use YayLoyalty\Engine\Storefront\RedeemCard;
 use YayLoyalty\Enums\RewardType;
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Pro\Services\RewardTierCondition;
 use YayLoyalty\Repositories\RewardRepository;
@@ -32,7 +35,7 @@ final class RewardsPanel {
     }
 
     /**
-     * Appends every live `fixed_coupon` / `percent_coupon` reward, in `sort_order`, that the member's tier
+     * Appends every live catalog reward, in `sort_order`, that the member's tier
      * allows, whatever their balance: there is no cart to check the rest against.
      *
      * @param array<int, array{name: string, cost: int, text: string}> $offers
@@ -43,7 +46,7 @@ final class RewardsPanel {
     public function redeem_offers( array $offers, string $now, ?int $user_id = null ): array {
         $tiers = new RewardTierCondition();
 
-        foreach ( ( new RewardRepository() )->live_of_types( [ RewardType::FIXED_COUPON, RewardType::PERCENT_COUPON ], $now ) as $reward ) {
+        foreach ( ( new RewardRepository() )->live_of_types( RewardType::catalog_types(), $now ) as $reward ) {
             if ( $tiers->allows( $reward, $user_id ) ) {
                 $offers[] = LauncherPayload::offer( $reward );
             }
@@ -82,7 +85,7 @@ final class RewardsPanel {
             return $rows;
         }
 
-        foreach ( self::row_views( $options, $service->applied_reward_costs( $cart, $user_id ), $balance ) as $row ) {
+        foreach ( self::row_views( $options, $service->applied_reward_costs( $cart, $user_id ), $balance, $service, $cart ) as $row ) {
             $rows[] = self::template( $row );
         }
 
@@ -102,14 +105,14 @@ final class RewardsPanel {
     }
 
     /**
-     * What each row prints. A row the server refuses is `denied`. A row that is not applied and would take the
-     * applied rewards past the balance is `is_short`, re-enabled by redeem.js as other ticks drop.
+     * What each row prints. A row the server refuses is `denied`, with its `reason` in words. A row that is not
+     * applied and would take the applied rewards past the balance is `is_short`, re-enabled by redeem.js as other ticks drop.
      *
      * @param array<int, array{reward: Reward, quote: Result}> $options
      * @param array<int, int>                                  $applied RedemptionService::applied_reward_costs().
-     * @return array<int, array{id: int, name: string, cost: int, is_applied: bool, is_denied: bool, is_short: bool}>
+     * @return array<int, array{id: int, name: string, cost: int, is_applied: bool, is_denied: bool, is_short: bool, reason: string}>
      */
-    private static function row_views( array $options, array $applied, int $balance ): array {
+    private static function row_views( array $options, array $applied, int $balance, RedemptionService $service, \WC_Cart $cart ): array {
         $rows  = [];
         $spent = array_sum( $applied );
 
@@ -126,10 +129,29 @@ final class RewardsPanel {
                 'is_applied' => $is_applied,
                 'is_denied'  => $is_denied,
                 'is_short'   => ! $is_denied && ! $is_applied && $spent + $cost > $balance,
+                'reason'     => $is_denied ? self::reason( $option['quote'], $reward, $service, $cart ) : '',
             ];
         }
 
         return $rows;
+    }
+
+    /** Why the server refuses the reward, in words; a minimum spend says how much more the cart needs. */
+    private static function reason( Result $quote, Reward $reward, RedemptionService $service, \WC_Cart $cart ): string {
+        if ( Result::REASON_INSUFFICIENT_BALANCE === $quote->get_reason() ) {
+            /* translators: %s: the store's points label, as "Points". */
+            return sprintf( __( 'Not enough %s for this reward', 'yayloyalty' ), SettingsHelper::points_label_plural() );
+        }
+
+        $message = RedemptionService::message_for( $quote->get_reason() );
+
+        if ( RewardCoupons::REASON_MIN_ORDER !== $quote->get_reason() ) {
+            return $message;
+        }
+
+        $minimum = (float) ( $service->coupon_props_of( $reward )['minimum_amount'] ?? 0 );
+
+        return sprintf( $message, LauncherCopy::money( max( 0.0, $minimum - RewardCoupons::displayed_subtotal( $cart ) ) ) );
     }
 
     private static function template( array $view ): string { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the included template reads $view.

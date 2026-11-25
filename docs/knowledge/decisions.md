@@ -1,7 +1,7 @@
 ---
 area: decisions
-updated: 2026-11-19
-updated_ref: b45b3f3
+updated: 2026-11-25
+updated_ref: dd5c69a
 covers: [includes/YayLoyalty.php, includes/Services/LedgerService.php, includes/Database/, includes/Engine/Redemption/, includes/Engine/Earning/, apps/admin/src/main.tsx, apps/admin/src/pro/index.ts, scripts/run.sh]
 ---
 
@@ -40,6 +40,15 @@ covers: [includes/YayLoyalty.php, includes/Services/LedgerService.php, includes/
 **Why:** nothing to clean up if the cart changes or checkout fails; the amount always matches the current cart. Only the WC session intent persists before the order; the value is frozen at commit.
 **Rejected:** fees and real `shop_coupon` posts.
 **Evidence:** `includes/Engine/Redemption/CouponProvider.php`, `CommitWriter.php`.
+
+### Free shipping and free product rewards ride on a 0 coupon
+**Why:** the 0 coupon is the marker: the free cart line (`RewardCartLines`) and the zeroed rates (`RewardShipping`) exist only while it is applied, so commit, reversal, order screen and emails keep keying on the reward's code, and a downgrade or a dropped reward leaves nothing free behind. The value is what the order freed, read from the line and shipping item meta at commit. Modelled on YayPricing's free gift lines and shipping rule.
+**Rejected:** WooCommerce's own free-shipping coupon flag (needs a merchant-configured method), a 100% product coupon on the shopper's own copy, and a separate non-coupon redemption path (BS-6).
+**Evidence:** `includes/Engine/Redemption/RewardCartLines.php`, `RewardShipping.php`, `CommitWriter.php` (`freed_value()`).
+
+### 2026-11-25 A refund gives back a free reward's points only for its gift
+**Why:** a product decision (BL-30): refunding paid items must not return points for a gift the shopper keeps. A free product gives back its points for the refunded units of its free line, free shipping only once the order is fully refunded (the freed shipping is 0, so no refund can take it back alone). Coupon rewards keep their `refund_policy`.
+**Evidence:** `includes/Engine/Redemption/Reversal.php` (`gift_target()`), `tests/php/integration/Engine/Redemption/FreeRewardRefundTest.php`.
 
 ### Only `completed` orders award points
 **Why:** a product decision stated on the class; `pending` and `on-hold` only stage points.

@@ -24,7 +24,7 @@ interface RewardHandler {
      * Lite builds and validates the coupon (Engine\Redemption\RewardCoupons) and WooCommerce does the discount
      * maths. `max_discount` is not a coupon property: it caps the line, lowering the percent until it takes off the cap.
      *
-     * @return array{discount_type: string, amount: float, minimum_amount: ?float, exclude_sale_items: bool, max_discount: ?float}|null
+     * @return array{discount_type: string, amount: float, minimum_amount: ?float, exclude_sale_items: bool, max_discount: ?float, free_shipping?: bool, free_item?: array{product_id: int, variation_id: ?int, qty: int}}|null
      */
     public function coupon_props( Reward $reward ): ?array;
 }

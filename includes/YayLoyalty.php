@@ -11,6 +11,8 @@ use YayLoyalty\Engine\Earning\Reversal;
 use YayLoyalty\Engine\Redemption\Adapters\ClassicCheckoutAdapter;
 use YayLoyalty\Engine\Redemption\Adapters\StoreApiAdapter;
 use YayLoyalty\Engine\Redemption\CouponProvider;
+use YayLoyalty\Engine\Redemption\RewardCartLines;
+use YayLoyalty\Engine\Redemption\RewardShipping;
 use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Redemption\Reversal as RedemptionReversal;
 use YayLoyalty\Engine\Redemption\SessionIntent;
@@ -106,6 +108,8 @@ class YayLoyalty {
      */
     private function register_redemption( RedemptionService $service, SessionIntent $intent ): void {
         ( new CouponProvider( $service, $intent, new RedemptionRepository() ) )->register();
+        ( new RewardCartLines( $service, $intent ) )->register();
+        ( new RewardShipping( $service ) )->register();
 
         $card = new RedeemCard( $service, $intent, new CustomerRepository() );
         $card->register();

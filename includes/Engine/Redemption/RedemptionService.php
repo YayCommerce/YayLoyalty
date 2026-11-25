@@ -181,7 +181,7 @@ final class RedemptionService {
     /**
      * quote() and ceiling(): the Quoter's answer for $points_requested, or Result::denied( REASON_NO_REWARD ).
      * Picked rewards are paid for first, so the flexible discount quotes against the balance less their cost and the cart
-     * less their value; with none picked, or none allowed, it quotes against the whole of both.
+     * less the value of those that discount its items; with none picked, or none allowed, it quotes against the whole of both.
      */
     private function quote_for( \WC_Cart $cart, ?int $user_id, int $points_requested ): Result {
         $reward = $this->quoted_reward();
@@ -196,8 +196,13 @@ final class RedemptionService {
 
         foreach ( $this->quote_rewards( $cart, $user_id ) as $row ) {
             if ( self::applies( $row['quote'] ) ) {
-                $cost   += $row['quote']->get_points();
-                $amount += $row['quote']->get_value();
+                $cost += $row['quote']->get_points();
+                $props = null === $row['reward'] ? null : $this->coupon_props_of( $row['reward'] );
+
+                // A free line is already priced 0 in the cart, and freed shipping was never part of it.
+                if ( empty( $props['free_item'] ) && empty( $props['free_shipping'] ) ) {
+                    $amount += $row['quote']->get_value();
+                }
             }
         }
 
@@ -313,11 +318,12 @@ final class RedemptionService {
     }
 
     /**
-     * What a reward's quote reads from the cart: each item's key, quantity and price, and the merchant coupons.
-     * Not WC_Cart::get_cart_hash(), which folds in the total and so changes while the totals run.
+     * What a reward's quote reads from the cart: each item's key, quantity and price, the merchant coupons, and
+     * the shipping a free-shipping reward would free. Not WC_Cart::get_cart_hash(), which folds in the total and so
+     * changes while the totals run.
      */
     private static function cart_key( \WC_Cart $cart ): string {
-        $parts = [];
+        $parts = [ 'shipping:' . RewardShipping::cart_value() ];
 
         foreach ( $cart->get_cart() as $item_key => $item ) {
             $price   = isset( $item['data'] ) && $item['data'] instanceof \WC_Product ? $item['data']->get_price() : '';
@@ -384,7 +390,7 @@ final class RedemptionService {
         $ctx     = null;
         $on_cart = array_map( 'strval', $cart->get_applied_coupons() );
 
-        foreach ( $this->rewards->live_of_types( [ RewardType::FIXED_COUPON, RewardType::PERCENT_COUPON ], Dates::now() ) as $reward ) {
+        foreach ( $this->rewards->live_of_types( RewardType::catalog_types(), Dates::now() ) as $reward ) {
             if ( ! $this->is_reward_offered( $reward ) ) {
                 continue;
             }
@@ -566,6 +572,12 @@ final class RedemptionService {
 
             case RewardCoupons::REASON_NO_VALUE:
                 return __( 'Nothing in your cart qualifies', 'yayloyalty' );
+
+            case RewardCoupons::REASON_OUT_OF_STOCK:
+                return __( 'Not enough in stock', 'yayloyalty' );
+
+            case RewardCoupons::REASON_SOLD_INDIVIDUALLY:
+                return __( 'Only one per order, and it\'s already in your cart', 'yayloyalty' );
         }
 
         return __( 'Your points discount could not be applied. Review your order and try again.', 'yayloyalty' );
@@ -714,7 +726,7 @@ final class RedemptionService {
      * The coupon the reward's handler describes, in the currency the request charges in; null for the flexible discount's
      * type, or a type with no handler (Lite).
      */
-    private function coupon_props_of( Reward $reward ): ?array {
+    public function coupon_props_of( Reward $reward ): ?array {
         $props = $this->registry->has( $reward->get_type() ) ? $this->registry->get( $reward->get_type() )->coupon_props( $reward ) : null;
 
         return null === $props ? null : RewardCoupons::in_currency( $props, CurrencyRate::rate( CurrencyRate::current() ) );

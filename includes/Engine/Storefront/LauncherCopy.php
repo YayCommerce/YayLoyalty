@@ -72,11 +72,19 @@ final class LauncherCopy {
     }
 
     /**
-     * A `fixed_coupon` / `percent_coupon` reward's one line: what it takes off, or the minimum it needs.
+     * A catalog reward's one line: what it takes off, or the minimum it needs; what it gives for free shipping and a free product.
      * The config's amounts are in the base currency, so each converts to the shopper's before money().
      */
     public static function coupon_reward_line( Reward $reward ): string {
         $config = $reward->get_config();
+
+        if ( RewardType::FREE_SHIPPING === $reward->get_type() ) {
+            return __( 'Free shipping on your order', 'yayloyalty' );
+        }
+
+        if ( RewardType::FREE_PRODUCT === $reward->get_type() ) {
+            return self::free_product_line( $config );
+        }
 
         if ( RewardType::PERCENT_COUPON === $reward->get_type() ) {
             if ( isset( $config['max_discount'] ) ) {
@@ -95,6 +103,22 @@ final class LauncherCopy {
 
         /* translators: %s: money amount, as "$5". */
         return sprintf( __( '%s off your order', 'yayloyalty' ), self::money( self::from_base( (float) ( $config['amount'] ?? 0 ) ) ) );
+    }
+
+    /** "Free Beanie", or "Free Beanie × 2" for more than one; "Free product" when the product is gone. */
+    private static function free_product_line( array $config ): string {
+        $id      = (int) ( $config['variation_id'] ?? 0 );
+        $product = wc_get_product( $id > 0 ? $id : (int) ( $config['product_id'] ?? 0 ) );
+        $name    = $product instanceof \WC_Product ? Text::plain( $product->get_name() ) : __( 'product', 'yayloyalty' );
+        $qty     = max( 1, (int) ( $config['qty'] ?? 1 ) );
+
+        if ( $qty > 1 ) {
+            /* translators: 1: product name, 2: how many, as "Free Beanie × 2". */
+            return sprintf( __( 'Free %1$s × %2$d', 'yayloyalty' ), $name, $qty );
+        }
+
+        /* translators: %s: product name, as "Free Beanie". */
+        return sprintf( __( 'Free %s', 'yayloyalty' ), $name );
     }
 
     /** "$98.50", or "$1" for a whole amount. Formats an amount already in the current currency; never converts. */
