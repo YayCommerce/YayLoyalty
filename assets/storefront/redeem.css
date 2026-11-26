@@ -10,14 +10,15 @@
  */
 @import url("storefront-tokens.css");
 
+/* A flat section of the order summary: no box of its own, the header above the list. */
 .yayloyalty-redeem {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  border: 1px solid var(--yayloyalty-redeem-border);
-  border-radius: calc(var(--yayloyalty-redeem-radius) + 2px);
-  background: var(--yayloyalty-redeem-field);
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   font-size: 13px;
   font-weight: 400;
   line-height: 1.45;
@@ -43,14 +44,27 @@
   opacity: 0.6;
 }
 
-/* Header: icon, title, then the balance and its worth pushed right, above the list with a line between. */
+/*
+ * Header: the gift in a soft accent tile, the title, then on the right the balance pill ("1,310 pts ⇄ $13.10"),
+ * or, while something is applied and the list is closed, "✓ 2 selected" and the chevron that opens it.
+ */
 
 .yayloyalty-redeem .yayloyalty-redeem__header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--yayloyalty-redeem-border);
+  gap: 10px;
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__tile {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--yayloyalty-redeem-radius);
+  background: var(--yayloyalty-redeem-accent-soft);
+  color: var(--yayloyalty-redeem-accent);
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__icon {
@@ -64,37 +78,66 @@
   display: flex;
   flex: 1;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 4px 8px;
   min-width: 0;
   padding: 0;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
-  line-height: 1.45;
+  line-height: 1.4;
   color: var(--yayloyalty-redeem-text);
 }
 
-.yayloyalty-redeem .yayloyalty-redeem__balance {
+/* It opens with the merchant's points label, which may be lowercase. */
+.yayloyalty-redeem .yayloyalty-redeem__title::first-letter {
+  text-transform: uppercase;
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
   margin-left: auto;
-  font-size: 13px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--yayloyalty-redeem-chip);
+  white-space: nowrap;
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__balance {
+  font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
   color: var(--yayloyalty-redeem-text);
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__unit {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 400;
   color: var(--yayloyalty-redeem-muted);
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__worth {
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 400;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
   color: var(--yayloyalty-redeem-muted);
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__summary {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--yayloyalty-redeem-success-bg);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
+  color: var(--yayloyalty-redeem-success);
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__tick {
+  margin-right: 4px;
 }
 
 @media (max-width: 360px) {
@@ -102,7 +145,7 @@
     flex-basis: 100%;
   }
 
-  .yayloyalty-redeem .yayloyalty-redeem__balance {
+  .yayloyalty-redeem .yayloyalty-redeem__pill {
     margin-left: 0;
   }
 }
@@ -110,6 +153,8 @@
 /* Guest: one row, a black badge, the title over the sign-in line, and a small Sign in button. */
 
 .yayloyalty-redeem[data-state="guest"] {
+  border: 1px solid var(--yayloyalty-redeem-border);
+  border-radius: calc(var(--yayloyalty-redeem-radius) + 2px);
   background: var(--yayloyalty-redeem-surface);
 }
 
@@ -173,13 +218,13 @@
   color: var(--yayloyalty-redeem-text);
 }
 
-/* The list: rows with no dividers, 8px apart; a ticked row gets a rounded grey highlight. */
+/* The list: each row a white box 10px apart, its border dark while ticked; then the full-width button. */
 
 .yayloyalty-redeem .yayloyalty-redeem__list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  gap: 10px;
+  padding: 0;
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__option {
@@ -187,15 +232,17 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  padding: 10px 12px;
-  border-radius: var(--yayloyalty-redeem-radius);
-  font-size: 13px;
+  padding: 12px 16px;
+  font-size: 14px;
   font-weight: 400;
   cursor: pointer;
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__item {
+  border: 1px solid var(--yayloyalty-redeem-border);
   border-radius: var(--yayloyalty-redeem-radius);
+  background: var(--yayloyalty-redeem-field);
+  transition: border-color 0.15s;
 }
 
 /*
@@ -207,7 +254,7 @@
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__item:has(.yayloyalty-redeem__check:checked) {
-  background: var(--yayloyalty-redeem-selected);
+  border-color: var(--yayloyalty-redeem-check);
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__option:has(.yayloyalty-redeem__check:disabled) {
@@ -216,7 +263,7 @@
 }
 
 /*
- * Drawn, not the browser's: a rounded square, filled with the accent and a white tick when checked. Themes style
+ * Drawn, not the browser's: a rounded square, filled black with a white tick when checked. Themes style
  * every checkbox too (Brandy: `input[type=checkbox]:not(…)` at 0,2,1 with a tick in `:checked:after` at 0,3,2), so
  * these selectors name the element and its type to outrank them: 0,3,1 for the box, 0,4,2 for its pseudo-elements.
  */
@@ -226,10 +273,10 @@
   display: inline-block;
   flex-shrink: 0;
   position: relative;
-  width: 16px;
-  min-width: 16px;
-  height: 16px;
-  min-height: 16px;
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  min-height: 18px;
   margin: 0;
   padding: 0;
   border: 1px solid var(--yayloyalty-redeem-check-border);
@@ -242,8 +289,8 @@
 }
 
 .yayloyalty-redeem input.yayloyalty-redeem__check[type="checkbox"]:checked {
-  border-color: var(--yayloyalty-redeem-accent);
-  background-color: var(--yayloyalty-redeem-accent);
+  border-color: var(--yayloyalty-redeem-check);
+  background-color: var(--yayloyalty-redeem-check);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 6.2l2.3 2.3 4.7-4.9'/%3E%3C/svg%3E");
 }
 
@@ -290,13 +337,16 @@
   color: var(--yayloyalty-redeem-muted);
 }
 
-/* The Points discount row's body: limits at both ends, then the field and the preview; or, in auto max, one line. */
+/*
+ * The Points discount row's body: limits at both ends, the slider, then the field and the preview; or, in auto
+ * max, one line.
+ */
 
 .yayloyalty-redeem .yayloyalty-redeem__body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 0 12px 12px;
+  gap: 10px;
+  padding: 0 16px 16px;
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__body[hidden] {
@@ -310,6 +360,52 @@
   gap: 8px;
   font-size: 11px;
   color: var(--yayloyalty-redeem-muted);
+}
+
+/* The slider: the track filled with the accent up to the thumb (`--yl-range-fill`, set by redeem.js). */
+.yayloyalty-redeem input.yayloyalty-redeem__range[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.yayloyalty-redeem input.yayloyalty-redeem__range[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--yayloyalty-redeem-accent) var(--yl-range-fill, 0%), var(--yayloyalty-redeem-track) var(--yl-range-fill, 0%));
+}
+
+.yayloyalty-redeem input.yayloyalty-redeem__range[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--yayloyalty-redeem-accent) var(--yl-range-fill, 0%), var(--yayloyalty-redeem-track) var(--yl-range-fill, 0%));
+}
+
+.yayloyalty-redeem input.yayloyalty-redeem__range[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--yayloyalty-redeem-accent);
+}
+
+.yayloyalty-redeem input.yayloyalty-redeem__range[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--yayloyalty-redeem-accent);
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__controls {
@@ -487,156 +583,73 @@
 }
 
 /*
- * Checkout mode (data-mode, set by redeem.js), per the "checkout_applied" and "Points selected _ edit" frames:
- * a grey header with the black badge, "Points & rewards", "✓ N rewards selected" and Change while something is
- * applied (data-applied) and the list is closed; Update in Change's place while it is open. With nothing applied
- * the list is open and the balance sits under the title. Outside checkout none of this shows.
+ * Collapsed while something is applied (data-applied) and the chevron has not opened it (data-expanded): the
+ * header is the whole section, with "✓ N selected" and the chevron in the balance's place. Otherwise the balance
+ * shows only while nothing is applied.
  */
 
-.yayloyalty-redeem:not([data-mode="checkout"])
-  :is(
-    .yayloyalty-redeem__title-checkout,
-    .yayloyalty-redeem__summary,
-    .yayloyalty-redeem__change,
-    .yayloyalty-redeem__update
-  ) {
+.yayloyalty-redeem:not([data-applied]) .yayloyalty-redeem__summary,
+.yayloyalty-redeem:is(:not([data-applied]), [data-expanded]) :is(.yayloyalty-redeem__summary, .yayloyalty-redeem__change),
+.yayloyalty-redeem[data-applied] .yayloyalty-redeem__pill,
+.yayloyalty-redeem[data-applied]:not([data-expanded]) .yayloyalty-redeem__list {
   display: none;
 }
 
-.yayloyalty-redeem[data-mode="checkout"] .yayloyalty-redeem__header .yayloyalty-redeem__title {
-  display: none;
-}
-
-.yayloyalty-redeem[data-mode="checkout"] .yayloyalty-redeem__header {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 2px 12px;
-  padding: 14px 16px;
-  background: var(--yayloyalty-redeem-surface);
-}
-
-.yayloyalty-redeem[data-mode="checkout"] .yayloyalty-redeem__icon {
-  grid-row: 1 / span 2;
-  width: 40px;
-  height: 40px;
-  padding: 11px;
-  border-radius: 50%;
-  background: var(--yayloyalty-redeem-badge);
-  color: #ffffff;
-}
-
-.yayloyalty-redeem[data-mode="checkout"] .yayloyalty-redeem__heading {
-  grid-column: 2;
-  grid-row: 1;
-  font-size: 15px;
-}
-
-.yayloyalty-redeem[data-mode="checkout"] .yayloyalty-redeem__title-checkout {
-  flex-basis: 100%;
-}
-
-/* It opens with the merchant's points label, which may be lowercase. */
-.yayloyalty-redeem .yayloyalty-redeem__title-checkout::first-letter {
-  text-transform: uppercase;
-}
-
-.yayloyalty-redeem[data-mode="checkout"] .yayloyalty-redeem__balance {
-  margin-left: 0;
-}
-
-.yayloyalty-redeem[data-mode="checkout"][data-applied] :is(.yayloyalty-redeem__balance, .yayloyalty-redeem__worth) {
-  display: none;
-}
-
-.yayloyalty-redeem[data-mode="checkout"] .yayloyalty-redeem__summary {
-  grid-column: 2;
-  grid-row: 2;
-  font-size: 13px;
-  color: var(--yayloyalty-redeem-success);
-}
-
-.yayloyalty-redeem[data-mode="checkout"] :is(.yayloyalty-redeem__change, .yayloyalty-redeem__update) {
-  grid-column: 3;
-  grid-row: 1 / span 2;
-}
-
-/* Collapsed: the grey header is the whole card. */
-
-.yayloyalty-redeem[data-mode="checkout"][data-applied]:not([data-expanded]) {
-  background: var(--yayloyalty-redeem-surface);
-}
-
-.yayloyalty-redeem[data-mode="checkout"][data-applied]:not([data-expanded]) .yayloyalty-redeem__header {
-  border-bottom: 0;
-}
-
-.yayloyalty-redeem[data-mode="checkout"][data-applied]:not([data-expanded]) .yayloyalty-redeem__list {
-  display: none;
-}
-
-/* With the list hidden, the notice is the card's last row. */
-.yayloyalty-redeem[data-mode="checkout"][data-applied]:not([data-expanded]) .yayloyalty-redeem__alert {
-  margin-bottom: 12px;
-}
-
-/*
- * Open: Update in Change's place. Both share one grid cell and the hidden one keeps its box, so the column
- * stays as wide as the wider label and the header does not shift when they swap.
- */
-
-.yayloyalty-redeem[data-mode="checkout"][data-applied]:not([data-expanded]) .yayloyalty-redeem__update,
-.yayloyalty-redeem[data-mode="checkout"]:is(:not([data-applied]), [data-expanded]) .yayloyalty-redeem__change {
-  visibility: hidden;
-}
-
-.yayloyalty-redeem :is(.yayloyalty-redeem__change, .yayloyalty-redeem__update) {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: auto;
-  min-width: 0;
-  height: 36px;
-  min-height: 0;
-  padding: 0 16px;
-  border: 1px solid transparent;
-  border-radius: var(--yayloyalty-redeem-radius);
-  box-shadow: none;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.2;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background-color 0.15s;
+/* With the list hidden, the notice is the section's last row. */
+.yayloyalty-redeem[data-applied]:not([data-expanded]) .yayloyalty-redeem__alert {
+  margin-bottom: 0;
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__change {
-  border-color: var(--yayloyalty-redeem-border);
-  background: var(--yayloyalty-redeem-field) none;
-  color: var(--yayloyalty-redeem-text);
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  min-width: 0;
+  height: 24px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent none;
+  box-shadow: none;
+  line-height: 0;
+  color: var(--yayloyalty-redeem-muted);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__change:hover {
-  background: var(--yayloyalty-redeem-selected) none;
+  background: var(--yayloyalty-redeem-chip) none;
   color: var(--yayloyalty-redeem-text);
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__update {
-  background: var(--yayloyalty-redeem-accent) none;
-  color: var(--yayloyalty-redeem-accent-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  min-height: 0;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--yayloyalty-redeem-radius);
+  background: var(--yayloyalty-redeem-button) none;
+  box-shadow: none;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--yayloyalty-redeem-button-text);
+  cursor: pointer;
+  transition: background-color 0.15s;
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__update:hover {
-  background: var(--yayloyalty-redeem-accent-hover) none;
-  color: var(--yayloyalty-redeem-accent-text);
-}
-
-@media (max-width: 360px) {
-  .yayloyalty-redeem[data-mode="checkout"] :is(.yayloyalty-redeem__change, .yayloyalty-redeem__update) {
-    grid-column: 2;
-    grid-row: 3;
-    justify-self: start;
-  }
+  background: var(--yayloyalty-redeem-button-hover) none;
+  color: var(--yayloyalty-redeem-button-text);
 }
 
 /* Focus and disabled states. */
@@ -644,6 +657,7 @@
 .yayloyalty-redeem
   :is(
     .yayloyalty-redeem__points,
+    .yayloyalty-redeem__range,
     .yayloyalty-redeem__signin,
     .yayloyalty-redeem__change,
     .yayloyalty-redeem__update

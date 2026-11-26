@@ -3,10 +3,9 @@
  * The points card, in one of its shapes: a sign-in card for a guest (`guest`), or for a customer the header and
  * one list (`flexible` or `hidden`): the Points discount row, then the rows RedeemCard::ROWS_FILTER adds. The row
  * opens by `mode`: into a points field (`free_input`), or onto the most the cart allows, with no field (`auto_max`).
- * A customer's card also carries the checkout title, summary ("✓ 2 rewards selected"), Change and Update. The server
- * draws one markup for every page, because the blocks' card is shared by Cart and Checkout: redeem.js sets
- * `data-mode` from the page, and redeem.css shows those three only in checkout mode. `data-applied` marks a card
- * with something applied, which checkout shows collapsed.
+ * A customer's card also carries the summary ("✓ 2 selected"), the chevron that opens the list, and the button
+ * that sends the picks ("Add rewards", or "Update rewards" once something is applied). Cart and checkout share
+ * this markup. `data-applied` marks a card with something applied, which shows collapsed.
  * No input has a `name`, so nothing here rides on the cart or checkout form it may sit in; redeem.js posts the request.
  * Styled by assets/storefront/redeem.css alone: the Design tab's colours belong to the launcher.
  *
@@ -69,19 +68,20 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
         </div>
     <?php else : ?>
         <div class="yayloyalty-redeem__header">
-            <?php echo wp_kses( $yayloyalty_icon, Kses::svg() ); ?>
+            <span class="yayloyalty-redeem__tile"><?php echo wp_kses( $yayloyalty_icon, Kses::svg() ); ?></span>
             <h3 class="yayloyalty-redeem__heading"><?php echo wp_kses( RedeemCard::heading( $view['heading_balance'], $view['worth'] ), Kses::inline() ); ?></h3>
             <?php if ( $yayloyalty_is_applied ) : ?>
                 <p class="yayloyalty-redeem__summary" data-yl-summary>
                     <span class="yayloyalty-redeem__tick" aria-hidden="true">✓</span>
                     <?php
                     /* translators: %s: how many rewards are applied, the points discount counting as one. */
-                    echo esc_html( sprintf( _n( '%s reward selected', '%s rewards selected', $view['summary']['count'], 'yayloyalty' ), number_format_i18n( $view['summary']['count'] ) ) );
+                    echo esc_html( sprintf( __( '%s selected', 'yayloyalty' ), number_format_i18n( $view['summary']['count'] ) ) );
                     ?>
                 </p>
-                <button type="button" class="yayloyalty-redeem__change" data-yl-change aria-expanded="false" aria-controls="<?php echo esc_attr( $yayloyalty_list_id ); ?>"><?php esc_html_e( 'Change', 'yayloyalty' ); ?></button>
+                <button type="button" class="yayloyalty-redeem__change" data-yl-change aria-expanded="false" aria-controls="<?php echo esc_attr( $yayloyalty_list_id ); ?>" aria-label="<?php esc_attr_e( 'Change', 'yayloyalty' ); ?>">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
             <?php endif; ?>
-            <button type="button" class="yayloyalty-redeem__update" data-yl-update aria-controls="<?php echo esc_attr( $yayloyalty_list_id ); ?>" <?php disabled( ! $yayloyalty_is_applied ); ?>><?php esc_html_e( 'Update', 'yayloyalty' ); ?></button>
         </div>
 
         <?php if ( ! empty( $view['dropped'] ) ) : ?>
@@ -147,11 +147,22 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
                                 </span>
                                 <span>
                                     <?php
-                                    /* translators: 1: points amount with the store's label, as "2,450 Points", 2: what they take off, as "$24.50". */
-                                    echo esc_html( sprintf( __( 'Use up to %1$s (= %2$s)', 'yayloyalty' ), SettingsHelper::points_text( $view['max'] ), LauncherCopy::money( $view['max_value'] ) ) );
+                                    /* translators: %s: points amount with the store's label, as "2,450 Points". */
+                                    echo esc_html( sprintf( __( 'Max %s', 'yayloyalty' ), SettingsHelper::points_text( $view['max'] ) ) );
                                     ?>
                                 </span>
                             </div>
+                            <input
+                                type="range"
+                                class="yayloyalty-redeem__range"
+                                data-yl-range
+                                min="<?php echo esc_attr( (string) $view['min'] ); ?>"
+                                max="<?php echo esc_attr( (string) $view['max'] ); ?>"
+                                step="<?php echo esc_attr( (string) $view['effective_step'] ); ?>"
+                                value="<?php echo esc_attr( (string) $yayloyalty_value ); ?>"
+                                aria-label="<?php echo esc_attr( $yayloyalty_aria ); ?>"
+                                <?php disabled( $yayloyalty_is_stuck ); ?>
+                            >
                             <div class="yayloyalty-redeem__controls">
                                 <span class="yayloyalty-redeem__stepper">
                                     <input
@@ -194,6 +205,10 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
             <?php foreach ( $view['rows'] as $yayloyalty_row ) : ?>
                 <?php echo wp_kses( $yayloyalty_row, Kses::storefront() ); ?>
             <?php endforeach; ?>
+
+            <button type="button" class="yayloyalty-redeem__update" data-yl-update <?php disabled( ! $yayloyalty_is_applied ); ?>>
+                <?php $yayloyalty_is_applied ? esc_html_e( 'Update rewards', 'yayloyalty' ) : esc_html_e( 'Add rewards', 'yayloyalty' ); ?>
+            </button>
         </div>
     <?php endif; ?>
 </div>

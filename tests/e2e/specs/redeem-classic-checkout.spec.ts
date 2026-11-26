@@ -25,7 +25,9 @@ test.describe( 'Redeem points at the classic checkout', { tag: '@flow-redeem-cla
 		await page.goto( `/?add-to-cart=${ product }` );
 		await page.goto( '/e2e-classic-cart/' );
 
-		await page.locator( '.yayloyalty-redeem-row' ).getByRole( 'checkbox', { name: /Points discount/ } ).check();
+		const card = page.locator( '.yayloyalty-redeem-row' );
+		await card.getByRole( 'checkbox', { name: /Points discount/ } ).check();
+		await card.getByRole( 'button', { name: 'Add rewards' } ).click();
 		await expect( page.locator( '.cart_totals tr.cart-discount' ) ).toContainText( 'Points discount' );
 		await expect( page.locator( '.cart_totals .order-total' ) ).toContainText( '$5.00' );
 
