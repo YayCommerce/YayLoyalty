@@ -86,21 +86,21 @@ A Pro merchant can create two new campaign kinds. **Social** is "Follow us on In
 **E2E:** Campaign create, edit, pause: a Social campaign saves and reloads with its network, action, URL and points; Social claim: a click pays once and redirects to the stored URL, Earned afterwards, a bad nonce pays nothing, a guest gets a plain link, conditions and pause hide the row (`specs/social-claim.spec.ts`); Renewal campaign: the card shows with WooCommerce Subscriptions (an mu-plugin stand-in), a renewal earns on top of or instead of order points, full and partial refunds claw back, the card is gone without it (`specs/renewal-campaign.spec.ts`)
 
 ## Verify
-- `yayh test run unit --id=P-7` → exit 0 (unit)
-- `yayh test run integration --id=P-7` → exit 0 (integration)
-- `yayh test run js --id=P-7` → exit 0 (js)
-- `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` → exit 0
-- `pnpm --filter @yayloyalty/admin-page lint` → exit 0
-- `./scripts/run.sh build lite` → exit 0
-- `./scripts/run.sh build pro` → exit 0
-- After the lite build, `grep -rl "share link for my store" assets/dist/admin/js` → exit 1 (no Pro copy in Lite)
-- `wp eval 'echo in_array("social", \YayLoyalty\Enums\CampaignTrigger::all(), true) ? "yes" : "no";'` → yes
-- With WooCommerce Subscriptions inactive: `wp eval 'echo in_array("renewal", \YayLoyalty\Enums\CampaignTrigger::all(), true) ? "yes" : "no";'` → no
-- With WooCommerce Subscriptions active: YayLoyalty → Campaigns → Add shows "Subscription renewal". Create one (50 points, on top of order points), complete a renewal order, and the customer's ledger shows a `renewal` row of 50 next to the order's purchase row (`wp db query "SELECT type,source,points FROM wp_yayloyalty_ledger WHERE order_id=<id>"`). Refund the order in full, and a `refund_earn` row of -50 appears (integration).
-- Pro: create a Social campaign (Instagram, follow, `https://instagram.com/<shop>`, 20 points). My Points → Ways to earn shows "Follow us on Instagram +20". Click it, and the browser lands on Instagram. Back in My Points the row says "Earned" and the balance is +20. Clicking again adds nothing (integration).
-- Pro: as a guest the same row links straight to Instagram and says to sign in. With the program paused the row isn't shown.
-- Lite (built zip): the Campaigns list still renders a stored social campaign (created in Pro, then downgraded) without an error, and offers no Social or Renewal card.
-- `yayh code unused` → reports none of the symbols this plan adds
+- ✅ `yayh test run unit --id=P-7` → exit 0 (unit)
+- ✅ `yayh test run integration --id=P-7` → exit 0 (integration)
+- ✅ `yayh test run js --id=P-7` → exit 0 (js)
+- ✅ `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` → exit 0
+- ✅ `pnpm --filter @yayloyalty/admin-page lint` → exit 0
+- ✅ `./scripts/run.sh build lite` → exit 0
+- ✅ `./scripts/run.sh build pro` → exit 0
+- ✅ After the lite build, `grep -rl "share link for my store" assets/dist/admin/js` → exit 1 (no Pro copy in Lite)
+- ✅ `wp eval 'echo in_array("social", \YayLoyalty\Enums\CampaignTrigger::all(), true) ? "yes" : "no";'` → yes
+- ✅ With WooCommerce Subscriptions inactive: `wp eval 'echo in_array("renewal", \YayLoyalty\Enums\CampaignTrigger::all(), true) ? "yes" : "no";'` → no
+- ✅ With WooCommerce Subscriptions active: YayLoyalty → Campaigns → Add shows "Subscription renewal". Create one (50 points, on top of order points), complete a renewal order, and the customer's ledger shows a `renewal` row of 50 next to the order's purchase row (`wp db query "SELECT type,source,points FROM wp_yayloyalty_ledger WHERE order_id=<id>"`). Refund the order in full, and a `refund_earn` row of -50 appears (integration).
+- ✅ Pro: create a Social campaign (Instagram, follow, `https://instagram.com/<shop>`, 20 points). My Points → Ways to earn shows "Follow us on Instagram +20". Click it, and the browser lands on Instagram. Back in My Points the row says "Earned" and the balance is +20. Clicking again adds nothing (integration).
+- ✅ Pro: as a guest the same row links straight to Instagram and says to sign in. With the program paused the row isn't shown.
+- ✅ Lite (built zip): the Campaigns list still renders a stored social campaign (created in Pro, then downgraded) without an error, and offers no Social or Renewal card.
+- ✅ `yayh code unused` → reports none of the symbols this plan adds
 
 ## Risks
 - **Honor-system farming:** bounded by one payment per campaign per customer, and by the daily limit. Rollback: pause the campaign.

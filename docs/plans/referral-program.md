@@ -111,25 +111,25 @@ R-4's acceptance (copy the link, discount on the first order, points after the h
 **E2E:** referral-settings: Referral → Settings saves $10 fixed, $50 minimum, 30 days, 1,000 points and a 14-day hold, the values survive a reload, and the preview reads "Give $10.00, get 1,000 points" (new flow, tag `@P-3 @flow-referral-settings`).
 
 ## Verify
-- `yayh test run unit --id=P-3` → OK (unit)
-- `yayh test run integration --id=P-3` → OK (integration)
-- `yayh test run js` → passed (js)
-- `yayh e2e run --grep @P-3` → passed (e2e)
-- `yayh e2e cli wp db query "SHOW TABLES LIKE '%yayloyalty_referrals'"` → wp_yayloyalty_referrals
-- `yayh e2e cli wp db query "SHOW INDEX FROM wp_yayloyalty_referrals WHERE Key_name='friend_user_id'"` → friend_user_id
-- `yayh e2e cli wp eval 'echo get_option("yayloyalty_pro_db_version") === YAYLOYALTY_VERSION ? "stamped" : "missing";'` → stamped
-- `yayh e2e cli wp eval 'wp_set_current_user(1); echo wp_json_encode( rest_do_request( new WP_REST_Request( "GET", "/yayloyalty/v1/referral/settings" ) )->get_data() );'` → "hold_days":14
-- `vendor/bin/phpcs includes/Pro/Referrals includes/Pro/Database includes/Pro/Models/Referral.php includes/Pro/Repositories/ReferralRepository.php includes/Pro/Enums includes/Pro/Controllers/ReferralSettingsRestController.php` → exit 0
-- `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` → exit 0
-- `pnpm --filter @yayloyalty/admin-page exec eslint src/pro/referral src/pages/referral src/router.tsx src/components/layout/HeaderMenu.tsx src/components/ui/custom/amount-inputs.tsx src/pro/index.ts` → exit 0
-- `./scripts/run.sh build pro` → exit 0
-- `./scripts/run.sh release lite 1.0.0 --no-prompt` → passed
-- `unzip -l release/yayloyalty-lite-1.0.0.zip | grep -i referral` → exit 1
-- wp-admin → YayLoyalty → Referral → Settings, as UX-2 Acceptance: set $10 fixed, $50 minimum, 30 days, 1,000 points, 14-day hold, Save, reload. The values are kept and the preview card reads "Give $10.00, get 1,000 points". Percentage 150 shows "Percentage must be 1 to 100." and Save is blocked. `wp option get yayloyalty_referral_settings --format=json` shows `"advocate_points":1000` (e2e).
-- As a shop manager without `yayloyalty_manage_campaigns`, the Settings fields are disabled and there's no Save.
-- Attribution: give a customer a code (`wp db query "UPDATE $(wp db prefix)yayloyalty_customers SET referral_code='TESTREF' WHERE user_id=<id>"`), switch the program live, open `/?yl_ref=TESTREF` in a private window, and register. Then `wp db query "SELECT status, advocate_user_id, friend_user_id, coupon_expires_at FROM $(wp db prefix)yayloyalty_referrals ORDER BY id DESC LIMIT 1"` → `pending` with the new user as friend and an expiry 30 days out (integration).
-- Lite build on a fresh site: `wp db query "SHOW TABLES LIKE '%yayloyalty_referrals'"` prints nothing, there's no Referral menu item, and `#/referral/settings` shows the 404 page.
-- Fresh Pro activation, and Lite → Pro at the same version: after one page load the table exists (Finding 4).
+- ✅ `yayh test run unit --id=P-3` → OK (unit)
+- ✅ `yayh test run integration --id=P-3` → OK (integration)
+- ✅ `yayh test run js` → passed (js)
+- ✅ `yayh e2e run --grep @P-3` → passed (e2e)
+- ✅ `yayh e2e cli wp db query "SHOW TABLES LIKE '%yayloyalty_referrals'"` → wp_yayloyalty_referrals
+- ✅ `yayh e2e cli wp db query "SHOW INDEX FROM wp_yayloyalty_referrals WHERE Key_name='friend_user_id'"` → friend_user_id
+- ✅ `yayh e2e cli wp eval 'echo get_option("yayloyalty_pro_db_version") === YAYLOYALTY_VERSION ? "stamped" : "missing";'` → stamped
+- ✅ `yayh e2e cli wp eval 'wp_set_current_user(1); echo wp_json_encode( rest_do_request( new WP_REST_Request( "GET", "/yayloyalty/v1/referral/settings" ) )->get_data() );'` → "hold_days":14
+- ✅ `vendor/bin/phpcs includes/Pro/Referrals includes/Pro/Database includes/Pro/Models/Referral.php includes/Pro/Repositories/ReferralRepository.php includes/Pro/Enums includes/Pro/Controllers/ReferralSettingsRestController.php` → exit 0
+- ✅ `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` → exit 0
+- ✅ `pnpm --filter @yayloyalty/admin-page exec eslint src/pro/referral src/pages/referral src/router.tsx src/components/layout/HeaderMenu.tsx src/components/ui/custom/amount-inputs.tsx src/pro/index.ts` → exit 0
+- ✅ `./scripts/run.sh build pro` → exit 0
+- ✅ `./scripts/run.sh release lite 1.0.0 --no-prompt` → passed
+- ✅ `unzip -l release/yayloyalty-lite-1.0.0.zip | grep -i referral` → exit 1
+- ✅ wp-admin → YayLoyalty → Referral → Settings, as UX-2 Acceptance: set $10 fixed, $50 minimum, 30 days, 1,000 points, 14-day hold, Save, reload. The values are kept and the preview card reads "Give $10.00, get 1,000 points". Percentage 150 shows "Percentage must be 1 to 100." and Save is blocked. `wp option get yayloyalty_referral_settings --format=json` shows `"advocate_points":1000` (e2e).
+- ✅ As a shop manager without `yayloyalty_manage_campaigns`, the Settings fields are disabled and there's no Save.
+- ✅ Attribution: give a customer a code (`wp db query "UPDATE $(wp db prefix)yayloyalty_customers SET referral_code='TESTREF' WHERE user_id=<id>"`), switch the program live, open `/?yl_ref=TESTREF` in a private window, and register. Then `wp db query "SELECT status, advocate_user_id, friend_user_id, coupon_expires_at FROM $(wp db prefix)yayloyalty_referrals ORDER BY id DESC LIMIT 1"` → `pending` with the new user as friend and an expiry 30 days out (integration).
+- ✅ Lite build on a fresh site: `wp db query "SHOW TABLES LIKE '%yayloyalty_referrals'"` prints nothing, there's no Referral menu item, and `#/referral/settings` shows the 404 page.
+- ✅ Fresh Pro activation, and Lite → Pro at the same version: after one page load the table exists (Finding 4).
 
 ## Risks
 - **Table missing on some install path:** `ProInstaller`'s stamp re-runs the idempotent install on the next load. Rollback: `wp option delete yayloyalty_pro_db_version` forces a re-run. Dropping the table loses only pending referrals, which pay nothing in this slice.

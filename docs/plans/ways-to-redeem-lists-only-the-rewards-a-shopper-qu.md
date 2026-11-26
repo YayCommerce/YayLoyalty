@@ -27,17 +27,17 @@ created: 2026-11-25
 **Tests:** [integration] test_member_sees_only_rewards_whose_conditions_hold (tests/php/integration/Pro/Storefront/RewardsPanelTest.php) — a role-, customer-list- or lifetime-points-gated reward still listed to a member who fails it; [integration] test_tier_gated_reward_follows_member_tier (same file) — regression of the tier check moving onto the filter; [integration] test_guest_sees_conditional_rewards_labelled (same file) — guest list must keep conditional rewards with the fixed line, unconditioned ones unchanged, and be identical for two guest calls
 
 ## Verify
-- `yayh test run integration --id=P-12` → exit 0 (integration)
-- `yayh test run unit` → exit 0
-- `vendor/bin/phpcs includes/Pro/Storefront/RewardsPanel.php includes/Pro/Services/RewardTierCondition.php` → exit 0
-- `git diff --quiet dev -- includes ':!includes/Pro' apps assets` → exit 0 (Lite unchanged)
-- `yayh code unused` → exit 0
-- Member meets conditions: as a customer with the role a "Wholesale only" reward requires, open the launcher → Ways to redeem and My Account → My Points → the reward is listed with its normal line (integration)
-- Member fails conditions: as a customer without that role, the same two places → the reward is not listed; the cart/checkout card doesn't offer it either (integration)
-- Guest: logged out, open a page with `[yayloyalty_ways_to_redeem]` → the conditional reward shows "For selected customers" under its name and its cost; a reward with no conditions shows its usual line (integration)
-- Cached guest page: `curl -s <page with the shortcode> | grep -c "For selected customers"` from two fresh sessions → the same count and the same markup
-- Design → Panel → "Show reward catalog" off → the launcher lists no offers; My Points still lists them
-- Design tab preview, member sample → still shows the sample rewards (it replaces offers with samples, `LauncherPreview.php:49`)
+- ✅ `yayh test run integration --id=P-12` → exit 0 (integration)
+- ✅ `yayh test run unit` → exit 0
+- ✅ `vendor/bin/phpcs includes/Pro/Storefront/RewardsPanel.php includes/Pro/Services/RewardTierCondition.php` → exit 0
+- ✅ `git diff --quiet dev -- includes ':!includes/Pro' apps assets` → exit 0 (Lite unchanged)
+- ✅ `yayh code unused` → exit 0
+- ✅ Member meets conditions: as a customer with the role a "Wholesale only" reward requires, open the launcher → Ways to redeem and My Account → My Points → the reward is listed with its normal line (integration)
+- ✅ Member fails conditions: as a customer without that role, the same two places → the reward is not listed; the cart/checkout card doesn't offer it either (integration)
+- ✅ Guest: logged out, open a page with `[yayloyalty_ways_to_redeem]` → the conditional reward shows "For selected customers" under its name and its cost; a reward with no conditions shows its usual line (integration)
+- ✅ Cached guest page: `curl -s <page with the shortcode> | grep -c "For selected customers"` from two fresh sessions → the same count and the same markup
+- ✅ Design → Panel → "Show reward catalog" off → the launcher lists no offers; My Points still lists them
+- ✅ Design tab preview, member sample → still shows the sample rewards (it replaces offers with samples, `LauncherPreview.php:49`)
 
 ## Decided
 - Small lane: one Pro file plus a test, no stored data, no new screen.

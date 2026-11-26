@@ -62,17 +62,17 @@ In Elementor, Bricks and Divi a merchant finds a "YayLoyalty" group with four el
 **E2E:** `tests/e2e/specs/page-builder-elementor.spec.ts` @flow-page-builder-elementor @P-2 — the Elementor editor lists the four widgets and previews them (real output, or the placeholder for an empty cart), and a customer's Elementor page prints what the shortcodes print. Elementor is in the e2e dev site only, inactive except during this spec.
 
 ## Verify
-- `yayh test run unit` → exit 0 (unit)
-- `vendor/bin/phpcs includes/Integrations/PageBuilders/` → exit 0 (`composer lint` as a whole still fails on the `dev` baseline, see known-issues)
-- `php -l` on every new file → exit 0
-- `wp eval 'do_action("init"); echo class_exists("YayLoyalty\\Integrations\\PageBuilders\\Elementor\\PlacementWidget", false) || class_exists("YayLoyalty\\Integrations\\PageBuilders\\Divi\\PlacementModule", false) || class_exists("YayLoyalty\\Integrations\\PageBuilders\\Bricks\\PlacementElement", false) ? "loaded" : "none";'` with Elementor deactivated and a non-Divi, non-Bricks theme → none
-- Elementor (4.4.0, local): edit a page → panel search "points" shows the four elements under YayLoyalty → drag each in → Points balance, Ways to earn and Ways to redeem show real output for the admin (or the placeholder when the admin is outside the program); Redeem card shows the placeholder with an empty cart and the real card with items in the cart → update the page.
-- Elementor front end: the same page and a page holding the four shortcodes, both signed in as a customer with points and a cart → `curl -s` of each (with the customer's cookie) shows the same `.yayloyalty-placement` / redeem card markup; no placeholder card (its hint text) on the live page.
-- Divi 4.27.1 (local): Visual Builder → Add module → the four YayLoyalty modules → each renders (real or placeholder) and keeps its styles after a module settings change → save → front end matches the shortcodes as above.
-- Bricks (2.4.5, local; activate the Bricks theme): edit a page with Bricks → elements panel → YayLoyalty category with the four elements → drag each in → real output or the placeholder, styled, and still styled after a settings change re-renders it → save → front end matches the shortcodes as above.
-- Program paused (General settings off): every element prints nothing on the live page and the placeholder in each builder.
-- Lite: `./scripts/run.sh release lite <version> --no-prompt` → the validator passes; the four elements work the same in a Lite install (Ways to redeem and Redeem card without Pro's reward rows).
-- Pro: with an active Pro reward, Redeem card in each builder's live page lists the reward row, as `[yayloyalty_redeem]` does.
+- ✅ `yayh test run unit` → exit 0 (unit)
+- ✅ `vendor/bin/phpcs includes/Integrations/PageBuilders/` → exit 0 (`composer lint` as a whole still fails on the `dev` baseline, see known-issues)
+- ✅ `php -l` on every new file → exit 0
+- ✅ `wp eval 'do_action("init"); echo class_exists("YayLoyalty\\Integrations\\PageBuilders\\Elementor\\PlacementWidget", false) || class_exists("YayLoyalty\\Integrations\\PageBuilders\\Divi\\PlacementModule", false) || class_exists("YayLoyalty\\Integrations\\PageBuilders\\Bricks\\PlacementElement", false) ? "loaded" : "none";'` with Elementor deactivated and a non-Divi, non-Bricks theme → none
+- ✅ Elementor (4.4.0, local): edit a page → panel search "points" shows the four elements under YayLoyalty → drag each in → Points balance, Ways to earn and Ways to redeem show real output for the admin (or the placeholder when the admin is outside the program); Redeem card shows the placeholder with an empty cart and the real card with items in the cart → update the page.
+- ✅ Elementor front end: the same page and a page holding the four shortcodes, both signed in as a customer with points and a cart → `curl -s` of each (with the customer's cookie) shows the same `.yayloyalty-placement` / redeem card markup; no placeholder card (its hint text) on the live page.
+- ✅ Divi 4.27.1 (local): Visual Builder → Add module → the four YayLoyalty modules → each renders (real or placeholder) and keeps its styles after a module settings change → save → front end matches the shortcodes as above.
+- ✅ Bricks (2.4.5, local; activate the Bricks theme): edit a page with Bricks → elements panel → YayLoyalty category with the four elements → drag each in → real output or the placeholder, styled, and still styled after a settings change re-renders it → save → front end matches the shortcodes as above.
+- ✅ Program paused (General settings off): every element prints nothing on the live page and the placeholder in each builder.
+- ✅ Lite: `./scripts/run.sh release lite <version> --no-prompt` → the validator passes; the four elements work the same in a Lite install (Ways to redeem and Redeem card without Pro's reward rows).
+- ✅ Pro: with an active Pro reward, Redeem card in each builder's live page lists the reward row, as `[yayloyalty_redeem]` does.
 
 ## Risks
 - A builder changes its element API (Elementor 4's atomic editor, Divi 5): the elements stop registering, the pages show the builder's own "missing widget" state, and the shortcodes still work. Rollback: remove the `PageBuildersIntegration::get_instance()` line in `YayLoyalty.php`.

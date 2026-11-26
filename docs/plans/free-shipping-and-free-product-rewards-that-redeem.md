@@ -95,21 +95,21 @@ Model on: `RewardHandler::coupon_props()` → `RewardCoupons` (`includes/Engine/
 **E2E:** Redeem points at block cart and checkout: ticking a free-shipping reward shows shipping at 0, and ticking a free-product reward adds a 0 line labelled with the reward, then the order is placed and the points are debited; removing the free line from the block cart unticks its reward
 
 ## Verify
-- `yayh test run unit` → exit 0
-- `yayh test run integration` → exit 0 (integration: the four tests above)
-- `yayh e2e run --grep @P-10` → exit 0 (e2e)
-- `vendor/bin/phpcs -q includes/Engine/Redemption/RewardCartLines.php includes/Engine/Redemption/RewardShipping.php includes/Engine/Redemption/CouponProvider.php includes/Engine/Redemption/CommitWriter.php includes/Pro/Services/FreeShippingRewardHandler.php includes/Pro/Services/FreeProductRewardHandler.php includes/Integrations/YayPricing/YayPricingIntegration.php includes/Engine/Storefront/LauncherCopy.php includes/Enums/RewardType.php` → exit 0 (`composer lint` fails on `dev` with its known baseline; the new test files share the existing tests' tabs style)
-- `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` → exit 0
-- `yayh code unused dev` → exit 0
-- `grep -rn "YayLoyaltyPro\|Pro\\\\" includes/Engine/Redemption/RewardCartLines.php includes/Engine/Redemption/RewardShipping.php` → exit 1 (Lite names no Pro)
-- Classic checkout (Pro, a store with a flat-rate method, customer with enough points): tick the free-shipping reward on the cart's redeem card → shipping reads 0 and a row named after the reward shows $0. Place the order → `wp db query "SELECT points, value FROM wp_yayloyalty_redemptions ORDER BY id DESC LIMIT 1"` shows the reward's cost and the flat rate's cost.
-- Classic checkout: tick the free-product reward with that product already in the cart → a second line of the product at $0 with "Reward: <name>", no remove link, fixed qty; the shopper's own line is unchanged. Untick → the free line is gone.
-- Block checkout: the same two flows (e2e), plus removing the free line from the block cart → the reward is unticked on the card.
-- Cancel one of those orders in wp-admin → the customer's balance goes back up by the reward's cost (`wp eval 'echo (new \YayLoyalty\Repositories\CustomerRepository())->find_by_user_id( <id> )->get_balance();'`).
-- Refund a free-product order fully → points restored under the reward's `refund_policy` (default proportional = all on a full refund).
-- With YayPricing active and a "buy 2 get 10% off" rule on the product: the free line doesn't count toward the 2, and YayPricing doesn't remove it.
-- Lite build (`./scripts/run.sh build lite`, Lite zip installed over Pro with a free line in a cart) → the reward isn't on the card and the free line is gone on the next cart load.
-- A virtual-only cart → the free-shipping row is disabled ("Nothing in your cart qualifies"), and no marker is applied.
+- ✅ `yayh test run unit` → exit 0
+- ✅ `yayh test run integration` → exit 0 (integration: the four tests above)
+- ✅ `yayh e2e run --grep @P-10` → exit 0 (e2e)
+- ✅ `vendor/bin/phpcs -q includes/Engine/Redemption/RewardCartLines.php includes/Engine/Redemption/RewardShipping.php includes/Engine/Redemption/CouponProvider.php includes/Engine/Redemption/CommitWriter.php includes/Pro/Services/FreeShippingRewardHandler.php includes/Pro/Services/FreeProductRewardHandler.php includes/Integrations/YayPricing/YayPricingIntegration.php includes/Engine/Storefront/LauncherCopy.php includes/Enums/RewardType.php` → exit 0 (`composer lint` fails on `dev` with its known baseline; the new test files share the existing tests' tabs style)
+- ✅ `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` → exit 0
+- ✅ `yayh code unused dev` → exit 0
+- ✅ `grep -rn "YayLoyaltyPro\|Pro\\\\" includes/Engine/Redemption/RewardCartLines.php includes/Engine/Redemption/RewardShipping.php` → exit 1 (Lite names no Pro)
+- ✅ Classic checkout (Pro, a store with a flat-rate method, customer with enough points): tick the free-shipping reward on the cart's redeem card → shipping reads 0 and a row named after the reward shows $0. Place the order → `wp db query "SELECT points, value FROM wp_yayloyalty_redemptions ORDER BY id DESC LIMIT 1"` shows the reward's cost and the flat rate's cost.
+- ✅ Classic checkout: tick the free-product reward with that product already in the cart → a second line of the product at $0 with "Reward: <name>", no remove link, fixed qty; the shopper's own line is unchanged. Untick → the free line is gone.
+- ✅ Block checkout: the same two flows (e2e), plus removing the free line from the block cart → the reward is unticked on the card.
+- ✅ Cancel one of those orders in wp-admin → the customer's balance goes back up by the reward's cost (`wp eval 'echo (new \YayLoyalty\Repositories\CustomerRepository())->find_by_user_id( <id> )->get_balance();'`).
+- ✅ Refund a free-product order fully → points restored under the reward's `refund_policy` (default proportional = all on a full refund).
+- ✅ With YayPricing active and a "buy 2 get 10% off" rule on the product: the free line doesn't count toward the 2, and YayPricing doesn't remove it.
+- ✅ Lite build (`./scripts/run.sh build lite`, Lite zip installed over Pro with a free line in a cart) → the reward isn't on the card and the free line is gone on the next cart load.
+- ✅ A virtual-only cart → the free-shipping row is disabled ("Nothing in your cart qualifies"), and no marker is applied.
 
 ## Risks
 - **A free line that stays free without a debit, or a debit without the line.** The marker coupon is the single source of truth: `RewardCartLines` adds lines only for applied markers and removes all others on every totals pass, and the commit re-quotes from the order. Rollback: remove the two handler registrations in T5. The mechanics then do nothing, since no marker can apply.
