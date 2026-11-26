@@ -33,7 +33,7 @@ class CampaignPerformanceRepository {
         list( $issued, $types ) = LedgerRepository::issued_row_sql();
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $issued carries a "%s, %s" list; every value is bound.
-        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $row = $wpdb->get_row( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT COALESCE(SUM(points), 0) AS points_issued,
                         COUNT(*) AS entries_total,
@@ -86,11 +86,11 @@ class CampaignPerformanceRepository {
         $users     = esc_sql( $wpdb->users );
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- $where fragments are each already prepared above; identifiers are escaped above; only LIMIT/OFFSET are bound here.
-        $total = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $total = (int) $wpdb->get_var( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             'SELECT COUNT(*) FROM `' . $table . '` l LEFT JOIN `' . $users . '` u ON u.ID = l.user_id' . $where_sql
         );
 
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $rows = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT l.id, l.user_id, u.display_name AS customer_name, l.points, l.created_at, l.reference_type, l.reference_id
                  FROM `' . $table . '` l LEFT JOIN `' . $users . '` u ON u.ID = l.user_id'
