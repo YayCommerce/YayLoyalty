@@ -287,6 +287,7 @@ final class LauncherPayload {
              * - period:        ?string, the calendar period whose points count ('month', 'quarter' or 'year'); null
              *                  outside Calendar.
              * - held_until:    ?string, UTC MySQL datetime the tier is kept until; null when not held.
+             * - achieved_at:   optional ?string, UTC MySQL datetime the member reached the tier.
              *
              * @param array|null $tier    Null.
              * @param int|null   $user_id The member; null for the Design preview.
@@ -321,6 +322,7 @@ final class LauncherPayload {
             'window_months' => $tier['window_months'],
             'period'        => $tier['period'],
             'held_until'    => $tier['held_until'],
+            'achieved_at'   => is_string( $tier['achieved_at'] ?? null ) && Dates::is_valid( $tier['achieved_at'] ) ? $tier['achieved_at'] : null,
         ];
     }
 
