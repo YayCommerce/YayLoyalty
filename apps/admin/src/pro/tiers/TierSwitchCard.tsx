@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { InfoIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
 import { formatCount } from '@/lib/helpers/points.helper';
@@ -99,8 +99,10 @@ export function TierSwitchCard() {
             title={__('Turn on tiers?', 'yayloyalty')}
             description={sprintf(
               /* translators: %s: the number of customers. */
-              __(
+              _n(
+                '%s customer will be placed into the tier their earned points qualify for. No entry bonus is paid for this placement.',
                 '%s customers will be placed into the tier their earned points qualify for. No entry bonus is paid for this placement.',
+                settings.customer_count,
                 'yayloyalty',
               ),
               formatCount(settings.customer_count),
