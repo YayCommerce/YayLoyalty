@@ -4,7 +4,6 @@ import { ProGate } from '@/components/pro/ProGate';
 
 /**
  * One tab, with its count beside the label in a smaller, lighter weight.
- * The classes replace the shared TabsTrigger's pill look with an underline at the call site.
  */
 export function DrawerTab({
   value,
@@ -19,20 +18,13 @@ export function DrawerTab({
   proGated?: boolean;
 }) {
   return (
-    <TabsTrigger
-      value={value}
-      // `-mb-px` pulls the active tab's 2px underline over the list's 1px rule, so they do not stack.
-      // That needs the list to stay `overflow: visible`.
-      className="data-[state=active]:border-primary data-[state=active]:text-primary group -mb-px h-auto flex-none rounded-none border-0 border-b-2 border-transparent px-0 py-2.5 font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-    >
+    <TabsTrigger value={value} className="data-[state=active]:text-foreground group h-7 flex-none px-2.5 font-medium">
       {label}
 
       {proGated ? (
         <ProGate inline />
       ) : (
-        <span className="text-muted-foreground group-data-[state=active]:text-primary text-xs font-normal tabular-nums">
-          {formatCount(count)}
-        </span>
+        <span className="text-muted-foreground text-xs font-normal tabular-nums">{formatCount(count)}</span>
       )}
     </TabsTrigger>
   );

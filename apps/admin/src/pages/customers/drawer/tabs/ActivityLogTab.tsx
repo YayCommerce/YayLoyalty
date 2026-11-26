@@ -48,10 +48,9 @@ export function ActivityLogTab({ userId }: { userId: number }) {
         search={state.search}
         onSearchChange={state.setSearch}
         searchPlaceholder={ACTIVITY_SEARCH_PLACEHOLDER()}
+        layout="toolbar"
       />
-      <div className="overflow-x-auto rounded-md border">
-        <ActivityLogTabRows rows={rows} isLoading={query.isPending} isFiltered={state.isFiltered} />
-      </div>
+      <ActivityLogTabRows rows={rows} isLoading={query.isPending} isFiltered={state.isFiltered} />
       <DrawerTabPager
         page={state.page}
         perPage={DRAWER_PAGE_SIZE}

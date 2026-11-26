@@ -3,9 +3,10 @@ import { __, sprintf } from '@wordpress/i18n';
 import { formatStoredDate } from '@/lib/helpers/format.helper';
 import { describeLedgerEntry, formatSignedPoints } from '@/lib/helpers/ledger.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
-import type { LedgerEntry } from '@/lib/schema/ledger.schema';
+import type { LedgerEntry, LedgerType } from '@/lib/schema/ledger.schema';
 
 export type LedgerRow = {
+  type: LedgerType;
   date: string;
   description: string;
   subLine: string | null;
@@ -26,6 +27,7 @@ export function toLedgerRow(
   causeLedgerId: number | null = null,
 ): LedgerRow {
   return {
+    type: entry.type,
     date: formatStoredDate(entry.created_at),
     description: describeLedgerEntry(entry),
     subLine: customerNoteSubLine(entry) ?? campaignSubLine(entry, campaignNames),

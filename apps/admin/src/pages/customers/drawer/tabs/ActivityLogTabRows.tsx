@@ -1,19 +1,40 @@
-import { Mail } from 'lucide-react';
-
-import { Badge } from '@/components/ui/badge';
-import { TableCell, TableHead, TableRow } from '@/components/ui/table';
-import type { ActivityRow } from '../customer-drawer.activity-rows';
-import { COLUMN_BY, COLUMN_EVENT, STAFF_ONLY_LABEL } from '../customer-drawer.activity.copy';
+import type { ComponentType } from 'react';
 import {
-  COLUMN_DATE,
+  CrownIcon,
+  GaugeIcon,
+  GiftIcon,
+  HourglassIcon,
+  MailIcon,
+  SlidersHorizontalIcon,
+  UserMinusIcon,
+  UserPlusIcon,
+} from 'lucide-react';
+
+import type { ActivityEventType } from '@/lib/schema/activity.schema';
+import { Badge } from '@/components/ui/badge';
+import type { ActivityRow } from '../customer-drawer.activity-rows';
+import { STAFF_ONLY_LABEL } from '../customer-drawer.activity.copy';
+import {
   EMPTY_ACTIVITY_BODY,
   EMPTY_ACTIVITY_TITLE,
   EMPTY_FILTERED_BODY,
   EMPTY_FILTERED_TITLE,
 } from '../customer-drawer.copy';
-import { DRAWER_ROW_CLASS, drawerCell, DrawerTable } from './DrawerTable';
+import { DrawerTimeline } from './DrawerTimeline';
 
-/** Activity rows, with a STAFF ONLY badge on rows that quote an admin note and an envelope on email rows. */
+const EVENT_ICONS: Record<ActivityEventType, ComponentType<{ className?: string }>> = {
+  membership_started: UserPlusIcon,
+  points_adjusted: SlidersHorizontalIcon,
+  tier_changed: CrownIcon,
+  expiry_reset: HourglassIcon,
+  reward_redeemed: GiftIcon,
+  balance_email_sent: MailIcon,
+  expiring_soon_email_sent: MailIcon,
+  earning_limited: GaugeIcon,
+  account_deleted: UserMinusIcon,
+};
+
+/** Activity as a timeline: time and actor under each event, with a STAFF ONLY badge on rows that quote an admin note. */
 export function ActivityLogTabRows({
   rows,
   isLoading,
@@ -24,47 +45,22 @@ export function ActivityLogTabRows({
   isFiltered: boolean;
 }) {
   return (
-    <DrawerTable
-      columnCount={3}
+    <DrawerTimeline
       isLoading={isLoading}
-      isEmpty={rows.length === 0}
       emptyTitle={isFiltered ? EMPTY_FILTERED_TITLE() : EMPTY_ACTIVITY_TITLE()}
       emptyBody={isFiltered ? EMPTY_FILTERED_BODY() : EMPTY_ACTIVITY_BODY()}
-      head={
-        <TableRow>
-          <TableHead>{COLUMN_DATE()}</TableHead>
-          <TableHead>{COLUMN_EVENT()}</TableHead>
-          <TableHead className="text-right">{COLUMN_BY()}</TableHead>
-        </TableRow>
-      }
-    >
-      {rows.map((row, index) => (
-        <TableRow key={index} className={DRAWER_ROW_CLASS}>
-          <TableCell className={drawerCell(1)}>
-            <span className="flex flex-col gap-0.5">
-              <span className="text-muted-foreground">{row.date}</span>
-              <span className="text-muted-foreground text-xs">{row.time}</span>
-            </span>
-          </TableCell>
-          <TableCell className={drawerCell(2, 'w-full')}>
-            <span className="flex flex-col gap-0.5">
-              <span>{row.title}</span>
-              <span className="text-muted-foreground text-xs">{row.subLine}</span>
-            </span>
-          </TableCell>
-          <TableCell className={drawerCell(3, 'w-full text-right')}>
-            <span className="flex items-center justify-end gap-1.5">
-              {row.isEmail && <Mail className="text-muted-foreground size-3.5" />}
-              {row.isStaffOnly && (
-                <Badge variant="outline" className="text-[10px] tracking-wide">
-                  {STAFF_ONLY_LABEL()}
-                </Badge>
-              )}
-              <span className="text-muted-foreground text-xs">{row.actorLabel}</span>
-            </span>
-          </TableCell>
-        </TableRow>
-      ))}
-    </DrawerTable>
+      items={rows.map((row, index) => ({
+        key: index,
+        date: row.date,
+        icon: EVENT_ICONS[row.eventType],
+        title: row.title,
+        subLines: [row.subLine, `${row.time} · ${row.actorLabel}`],
+        trailing: row.isStaffOnly && (
+          <Badge variant="outline" className="text-[10px] tracking-wide">
+            {STAFF_ONLY_LABEL()}
+          </Badge>
+        ),
+      }))}
+    />
   );
 }

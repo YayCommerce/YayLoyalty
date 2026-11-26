@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 
-import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { DRAWER_PAGE_SIZE } from './DrawerTabPager';
@@ -30,7 +29,7 @@ export function DrawerTable({
 }) {
   return (
     <Table className="block sm:table sm:min-w-max">
-      <TableHeader className="hidden sm:table-header-group">{head}</TableHeader>
+      <TableHeader className="bg-muted/50 hidden sm:table-header-group">{head}</TableHeader>
       <TableBody className="block sm:table-row-group">
         {isLoading ? (
           Array.from({ length: DRAWER_PAGE_SIZE }, (_, index) => (
@@ -57,22 +56,3 @@ export function DrawerTable({
 
 /** A data row: stacks below `sm`, a real table row above. */
 export const DRAWER_ROW_CLASS = 'flex flex-wrap sm:table-row';
-
-// Full literals so Tailwind's scanner sees every class; `order-${n}` would be dropped.
-const CELL_ORDER = {
-  1: 'order-1',
-  2: 'order-2',
-  3: 'order-3',
-  4: 'order-4',
-  5: 'order-5',
-  6: 'order-6',
-} as const;
-
-/** A cell that is half a line below `sm`, in `order` position, and a normal cell above. `extra` can override as well as add. */
-export function drawerCell(order: keyof typeof CELL_ORDER, extra?: string): string {
-  return cn(
-    CELL_ORDER[order],
-    'w-1/2 whitespace-normal sm:order-0 sm:table-cell sm:w-auto sm:whitespace-nowrap',
-    extra,
-  );
-}

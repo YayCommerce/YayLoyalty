@@ -6,16 +6,17 @@ import { toastApiError } from '@/lib/api/api';
 import { useAdjustPointsMutation, useCustomerQuery } from '@/lib/queries/customer.queries';
 import type { Customer } from '@/lib/schema/customer.schema';
 import { Button } from '@/components/ui/button';
+import { YayLoyaltyToolTip } from '@/components/ui/custom/tooltip';
 import { ADJUST_POINTS_ERROR_FALLBACK, adjustPointsSuccessToast } from '../components/customers-adjust-points.copy';
 import { CustomersAdjustPointsDialog } from '../components/CustomersAdjustPointsDialog';
 import { ACTION_ADJUST_POINTS, DELETED_ACCOUNT_ACTION_REASON } from './customer-drawer.copy';
 import { CustomerDrawerExportLedgerButton } from './CustomerDrawerExportLedgerButton';
 
 /**
- * The drawer's actions. Adjust points and Export ledger are live; Adjust points' invalidations refresh the drawer.
- * On a deleted account a line under the row says why Adjust points is off. Export works for a deleted account too.
+ * The ledger toolbar's actions: Adjust points and an icon-only Export ledger. Adjust points' invalidations refresh
+ * the drawer. On a deleted account its tooltip says why Adjust points is off. Export works for a deleted account too.
  */
-export function CustomerDrawerActions({ customer, isLoading }: { customer: Customer; isLoading: boolean }) {
+export function CustomerDrawerActions({ customer }: { customer: Customer }) {
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
   const adjustMutation = useAdjustPointsMutation(customer.user_id);
   const isDeleted = !!customer.deleted_at;
@@ -24,16 +25,24 @@ export function CustomerDrawerActions({ customer, isLoading }: { customer: Custo
   const customerQuery = useCustomerQuery(customer.user_id);
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-        <Can cap={CAP.MANAGE_POINTS} disable>
-          <Button disabled={isLoading || isDeleted} onClick={() => setIsAdjustOpen(true)}>
+    <>
+      <Can cap={CAP.MANAGE_POINTS} disable>
+        {isDeleted ? (
+          <YayLoyaltyToolTip
+            content={DELETED_ACCOUNT_ACTION_REASON()}
+            trigger={
+              <span className="inline-flex">
+                <Button disabled>{ACTION_ADJUST_POINTS()}</Button>
+              </span>
+            }
+          />
+        ) : (
+          <Button disabled={customerQuery.isFetching} onClick={() => setIsAdjustOpen(true)}>
             {ACTION_ADJUST_POINTS()}
           </Button>
-        </Can>
-        <CustomerDrawerExportLedgerButton userId={customer.user_id} />
-      </div>
-      {isDeleted && <p className="text-muted-foreground text-xs">{DELETED_ACCOUNT_ACTION_REASON()}</p>}
+        )}
+      </Can>
+      <CustomerDrawerExportLedgerButton userId={customer.user_id} iconOnly />
 
       <CustomersAdjustPointsDialog
         open={isAdjustOpen}
@@ -53,6 +62,6 @@ export function CustomerDrawerActions({ customer, isLoading }: { customer: Custo
         }
         target={{ kind: 'single', customer: customerQuery }}
       />
-    </div>
+    </>
   );
 }

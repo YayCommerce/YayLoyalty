@@ -27,29 +27,27 @@ import {
 } from './customer-drawer.activity.copy';
 
 export type ActivityRow = {
+  eventType: ActivityEventType;
   date: string;
   time: string;
   title: string;
   subLine: string;
   actorLabel: string;
   isStaffOnly: boolean;
-  isEmail: boolean;
 };
-
-const EMAIL_EVENT_TYPES = new Set<ActivityEventType>(['balance_email_sent', 'expiring_soon_email_sent']);
 
 /** Maps an activity entry to its table row. Every sentence is composed here from `event_type` and `data`. */
 export function toActivityRow(entry: ActivityEntry): ActivityRow {
   const occurred = utcToDate(entry.occurred_at);
 
   return {
+    eventType: entry.event_type,
     date: formatWPDate(occurred),
     time: formatWPTime(occurred),
     title: titleFor(entry.event_type),
     subLine: subLineFor(entry),
     actorLabel: actorLabelFor(entry),
     isStaffOnly: entry.staff_only,
-    isEmail: EMAIL_EVENT_TYPES.has(entry.event_type),
   };
 }
 

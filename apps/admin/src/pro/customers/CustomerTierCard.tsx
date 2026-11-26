@@ -5,15 +5,16 @@ import { __, sprintf } from '@wordpress/i18n';
 import { Can, CAP } from '@/lib/access';
 import { toastApiError } from '@/lib/api/api';
 import { formatStoredDate } from '@/lib/helpers/format.helper';
-import { formatPoints, shortPoints } from '@/lib/helpers/points.helper';
+import { formatPoints } from '@/lib/helpers/points.helper';
 import type { Customer } from '@/lib/schema/customer.schema';
 import type { TiersCalendarPeriod } from '@/lib/schema/tier.schema';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import TierCrownIcon from '@/components/icons/TierCrownIcon';
 import { DELETED_ACCOUNT_ACTION_REASON } from '@/pages/customers/drawer/customer-drawer.copy';
-import { CustomerDrawerStat } from '@/pages/customers/drawer/CustomerDrawerStat';
 import { TierBadge } from '../tiers/TierBadge';
 import { useCustomerTierQuery, useRemoveCustomerTierMutation, useTiersEnabled } from '../tiers/tiers.queries';
 
@@ -54,43 +55,95 @@ export function CustomerTierCard({ customer }: { customer: Customer }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="rounded-md border">
-        <div className="grid grid-cols-2 gap-4 p-4">
-          <CustomerDrawerStat
-            label={__('Tier', 'yayloyalty')}
-            size="lg"
-            value={tier ? <TierBadge name={tier.name} color={tier.color} /> : __('No tier', 'yayloyalty')}
-            subLine={tier && achievedAt ? tierSince(achievedAt, showsHold ? heldUntil : null) : undefined}
-          />
-          <div className="flex min-w-0 flex-col gap-2">
-            <CustomerDrawerStat
-              label={__('Next tier', 'yayloyalty')}
-              value={
-                next
-                  ? sprintf(
-                      /* translators: 1: points still to earn, such as "500 pts"; 2: the next tier's name. */
-                      __('%1$s to %2$s', 'yayloyalty'),
-                      shortPoints(Math.max(0, next.threshold - progress)),
-                      next.name,
-                    )
-                  : __('Top tier', 'yayloyalty')
+      <div className="rounded-lg border">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <span
+              className="bg-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-md"
+              style={
+                tier
+                  ? { backgroundColor: `color-mix(in srgb, ${tier.color} 15%, transparent)`, color: tier.color }
+                  : undefined
               }
-            />
-            {next && (
-              <div className="flex flex-col gap-1">
-                <div className="bg-muted h-1.5 overflow-hidden rounded-full">
-                  <div
-                    className="bg-primary h-full rounded-full"
-                    style={{ width: `${progressPercent(progress, next.threshold)}%` }}
-                  />
-                </div>
-                <span className="text-muted-foreground text-xs tabular-nums">
-                  {progressCaption(progress, next.threshold, mode === 'calendar' ? period : null, windowMonths)}
+              aria-hidden
+            >
+              <TierCrownIcon className="size-5" />
+            </span>
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-base font-semibold">
+                {tier
+                  ? sprintf(
+                      /* translators: %s: the tier's name, such as Silver. */
+                      __('%s tier', 'yayloyalty'),
+                      tier.name,
+                    )
+                  : __('No tier', 'yayloyalty')}
+              </span>
+              {tier && achievedAt && (
+                <span className="text-muted-foreground text-xs">
+                  {sprintf(
+                    /* translators: %s: the date the customer reached the tier. */
+                    __('Since %s', 'yayloyalty'),
+                    formatStoredDate(achievedAt),
+                  )}
+                </span>
+              )}
+            </div>
+          </div>
+          {tier && showsHold && heldUntil && (
+            <Badge variant="secondary">
+              {sprintf(
+                /* translators: %s: the date the customer's tier hold ends. */
+                __('Held until %s', 'yayloyalty'),
+                formatStoredDate(heldUntil),
+              )}
+            </Badge>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2 p-4">
+          <div className="flex items-end justify-between gap-3">
+            <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+              {tierPointsLabel(mode === 'calendar' ? period : null, windowMonths)}
+            </span>
+            <span className="text-2xl font-semibold tabular-nums">
+              {sprintf(
+                /* translators: %s: the customer's tier points. */
+                __('%s pts', 'yayloyalty'),
+                formatPoints(progress),
+              )}
+            </span>
+          </div>
+          {next ? (
+            <>
+              <div className="bg-muted h-2 overflow-hidden rounded-full">
+                <div
+                  className="bg-primary h-full rounded-full"
+                  style={{ width: `${progressPercent(progress, next.threshold)}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-3 text-xs">
+                <span className="font-medium">
+                  {sprintf(
+                    /* translators: %s: the next tier's name. */
+                    __('Progress to %s', 'yayloyalty'),
+                    next.name,
+                  )}
+                </span>
+                <span className="text-muted-foreground tabular-nums">
+                  {sprintf(
+                    /* translators: %s: points still to earn. */
+                    __('%s pts to go', 'yayloyalty'),
+                    formatPoints(Math.max(0, next.threshold - progress)),
+                  )}
                 </span>
               </div>
-            )}
-          </div>
+            </>
+          ) : (
+            <span className="text-muted-foreground text-xs">{__('Top tier reached.', 'yayloyalty')}</span>
+          )}
         </div>
+
         {manual && (
           <div className="flex flex-col gap-2 border-t px-4 py-3">
             <span className="text-muted-foreground flex flex-wrap items-center gap-1 text-xs">
@@ -121,59 +174,29 @@ export function CustomerTierCard({ customer }: { customer: Customer }) {
   );
 }
 
-/** The bar's caption: this period's total in Calendar, the window's in Rolling, else the plain total. */
-function progressCaption(
-  progress: number,
-  threshold: number,
-  period: TiersCalendarPeriod | null,
-  windowMonths: number | null,
-): string {
-  const earned = formatPoints(progress);
-  const needed = formatPoints(threshold);
-
+/** The TIER POINTS label: names Calendar's period or Rolling's window, since the figure counts only those points. */
+function tierPointsLabel(period: TiersCalendarPeriod | null, windowMonths: number | null): string {
   if (period === 'month') {
-    /* translators: 1: points earned this period, 2: points the next tier needs. */
-    return sprintf(__('%1$s / %2$s this month', 'yayloyalty'), earned, needed);
+    return __('Tier points this month', 'yayloyalty');
   }
 
   if (period === 'quarter') {
-    /* translators: 1: points earned this period, 2: points the next tier needs. */
-    return sprintf(__('%1$s / %2$s this quarter', 'yayloyalty'), earned, needed);
+    return __('Tier points this quarter', 'yayloyalty');
   }
 
   if (period === 'year') {
-    /* translators: 1: points earned this period, 2: points the next tier needs. */
-    return sprintf(__('%1$s / %2$s this year', 'yayloyalty'), earned, needed);
+    return __('Tier points this year', 'yayloyalty');
   }
 
   if (windowMonths !== null) {
     return sprintf(
-      /* translators: 1: points earned in the window, 2: points the next tier needs, 3: the window's length in months. */
-      __('%1$s / %2$s in the last %3$s months', 'yayloyalty'),
-      earned,
-      needed,
+      /* translators: %s: the rolling window's length in months. */
+      __('Tier points, last %s months', 'yayloyalty'),
       String(windowMonths),
     );
   }
 
-  /* translators: 1: points earned, 2: points the next tier needs. */
-  return sprintf(__('%1$s / %2$s', 'yayloyalty'), earned, needed);
-}
-
-/** The TIER sub-line; a running Rolling or Calendar hold adds its end. */
-function tierSince(achievedAt: string, heldUntil: string | null): string {
-  return heldUntil
-    ? sprintf(
-        /* translators: 1: the date the customer reached the tier, 2: the date their tier hold ends. */
-        __('Since %1$s · held until %2$s', 'yayloyalty'),
-        formatStoredDate(achievedAt),
-        formatStoredDate(heldUntil),
-      )
-    : sprintf(
-        /* translators: %s: the date the customer reached the tier. */
-        __('Since %s', 'yayloyalty'),
-        formatStoredDate(achievedAt),
-      );
+  return __('Tier points', 'yayloyalty');
 }
 
 /** The bar's fill, 0–100. A next tier at 0 points is already reached. */
