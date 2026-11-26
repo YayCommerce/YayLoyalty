@@ -147,7 +147,13 @@ final class ToolsImportRestController extends AbstractRestController {
         $row    = (array) $row;
         $number = (int) ( $row['row'] ?? 0 );
         $points = trim( (string) ( $row['points'] ?? '' ) );
-        $user   = get_user_by( 'email', sanitize_email( (string) ( $row['email'] ?? '' ) ) );
+        $email  = sanitize_email( (string) ( $row['email'] ?? '' ) );
+
+        if ( ! is_email( $email ) ) {
+            return self::error( $number, 'invalid_email' );
+        }
+
+        $user = get_user_by( 'email', $email );
 
         if ( ! $user instanceof \WP_User ) {
             return self::error( $number, 'unknown_email' );

@@ -64,6 +64,8 @@ export const statusImportedBefore = (importedAt: string | null | undefined) =>
 
 export function rowError(reason: string | null | undefined): string {
   switch (reason) {
+    case 'invalid_email':
+      return __('Not a valid email address', 'yayloyalty');
     case 'unknown_email':
       return __('No customer with this email', 'yayloyalty');
     case 'invalid_points':
