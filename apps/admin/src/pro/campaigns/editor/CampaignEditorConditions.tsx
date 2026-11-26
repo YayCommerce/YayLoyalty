@@ -8,7 +8,7 @@ export function CampaignEditorConditions() {
   return (
     <ConditionListEditor
       types={CAMPAIGN_CONDITION_TYPES}
-      emptyTitle={__('No conditions — this applies to every order in the date range', 'yayloyalty')}
+      emptyTitle={__('No conditions — this applies to every customer in the date range', 'yayloyalty')}
       emptyDescription={__('Add one to narrow it, for example to a country or a minimum lifetime spend.', 'yayloyalty')}
     />
   );
