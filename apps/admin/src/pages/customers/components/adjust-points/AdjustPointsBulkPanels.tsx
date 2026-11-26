@@ -6,6 +6,7 @@ import { MAX_MATCHING_ROWS } from '../../customers-page.matching-customers';
 import {
   acknowledgeLiability,
   bulkFilterLine,
+  bulkLiabilityAddsUpTo,
   bulkLiabilityReducesUpTo,
   bulkNotShownOnPage,
   bulkSummaryTitle,
@@ -15,7 +16,6 @@ import {
   pointsTotalBadge,
   reverseHint,
 } from '../customers-adjust-points.bulk.copy';
-import { addsToLiability } from '../customers-adjust-points.copy';
 import {
   bulkLiabilityProjection,
   bulkTotalPoints,
@@ -52,6 +52,7 @@ export function AdjustPointsBulkPanels({
   tierLabel,
   notShownOnPage,
   liabilityPoints,
+  hasNegative,
   hasPreviewError,
   isOverLimit,
   acknowledged,
@@ -67,6 +68,8 @@ export function AdjustPointsBulkPanels({
   /** Rows the filter matches beyond the current page; 0 when none. */
   notShownOnPage: number;
   liabilityPoints: number | null;
+  /** Some selected balance is below zero, so an addition can only be shown as an upper bound. */
+  hasNegative: boolean;
   /** The preview errored: `liabilityPoints` can't be trusted, so the liability figures are hidden rather than guessed at. */
   hasPreviewError: boolean;
   isOverLimit: boolean;
@@ -75,7 +78,7 @@ export function AdjustPointsBulkPanels({
 }) {
   const summary = selectionMode === 'all' ? filterSummary(filters, tierLabel) : null;
   const total = bulkTotalPoints(state, effectiveCount);
-  const projection = bulkLiabilityProjection(state.direction, total, liabilityPoints);
+  const projection = bulkLiabilityProjection(state.direction, total, liabilityPoints, hasNegative);
   const amount = formatPoints(state.amount);
   const hasAmount = state.amount > 0 && !isOverLimit;
   const signedTotal = signedPoints({ direction: state.direction, amount: total });
@@ -103,7 +106,7 @@ export function AdjustPointsBulkPanels({
         <p className="text-muted-foreground m-0 text-xs">
           {state.direction === 'remove'
             ? bulkLiabilityReducesUpTo(formatPoints(projection.delta))
-            : addsToLiability(formatPoints(projection.delta))}
+            : bulkLiabilityAddsUpTo(formatPoints(projection.delta))}
         </p>
       )}
 

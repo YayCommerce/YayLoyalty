@@ -82,9 +82,12 @@ final class CustomerAdjustPreviewRestController extends AbstractRestController {
         $exclude_ids = self::ids( $request->get_param( 'exclude_ids' ) );
         $criteria    = is_array( $filters ) && empty( $user_ids ) ? $this->criteria( $filters ) : null;
 
+        $selection = $this->customers->selection_liability( $criteria, $user_ids, $exclude_ids );
+
         return [
             'count'                     => null === $criteria ? null : $this->customers->count_list( $criteria ),
-            'selected_liability_points' => $this->customers->selection_liability( $criteria, $user_ids, $exclude_ids ),
+            'selected_liability_points' => $selection['liability'],
+            'selected_has_negative'     => $selection['has_negative'],
         ];
     }
 

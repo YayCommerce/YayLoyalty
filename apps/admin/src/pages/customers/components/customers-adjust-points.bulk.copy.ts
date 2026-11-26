@@ -81,6 +81,15 @@ export function reverseHint(direction: 'add' | 'remove', amount: string): string
       );
 }
 
+/** Add is an upper bound while a selected balance is below zero: points count only once it passes 0. */
+export function bulkLiabilityAddsUpTo(points: string): string {
+  return sprintf(
+    /* translators: %s: number of points, formatted. */
+    __('Adds up to %s points to your outstanding liability.', 'yayloyalty'),
+    points,
+  );
+}
+
 /** Remove is always an upper bound: a balance that crosses zero stops counting as liability. */
 export function bulkLiabilityReducesUpTo(points: string): string {
   return sprintf(
@@ -134,7 +143,10 @@ export function bulkSubmitLabel(direction: 'add' | 'remove', amount: string, cou
 export function bulkTooLargeSelection(limit: number): string {
   return sprintf(
     /* translators: %d: the most customers one bulk action can process. */
-    __('This selection matches too many customers to process in the browser (over %d). Narrow the filters and try again.', 'yayloyalty'),
+    __(
+      'This selection matches too many customers to process in the browser (over %d). Narrow the filters and try again.',
+      'yayloyalty',
+    ),
     limit,
   );
 }
@@ -143,7 +155,10 @@ export function bulkTooLargeSelection(limit: number): string {
 export function bulkSelectionChanged(latestCount: number, acknowledgedCount: number): string {
   return sprintf(
     /* translators: 1: number of customers matching now; 2: the number the admin acknowledged. */
-    __('The selection changed while you were filling this in: %1$d customers now match, not %2$d. Review and confirm again.', 'yayloyalty'),
+    __(
+      'The selection changed while you were filling this in: %1$d customers now match, not %2$d. Review and confirm again.',
+      'yayloyalty',
+    ),
     latestCount,
     acknowledgedCount,
   );

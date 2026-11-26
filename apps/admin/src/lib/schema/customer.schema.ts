@@ -160,6 +160,8 @@ export const adjustPointsPreviewSchema = z.object({
   count: z.number().int().nullable(),
   /** Positive balances the selection holds; balances below zero are not liability. */
   selected_liability_points: z.number().int(),
+  /** Whether any selected balance is below zero: points added there only count once the balance passes 0. */
+  selected_has_negative: z.boolean(),
 });
 
 export type AdjustPointsPreview = z.infer<typeof adjustPointsPreviewSchema>;

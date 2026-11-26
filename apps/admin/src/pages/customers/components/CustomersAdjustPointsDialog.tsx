@@ -280,6 +280,7 @@ export function CustomersAdjustPointsDialog({
               tierLabel={tierLabel}
               notShownOnPage={bulk.notShownOnPage}
               liabilityPoints={previewData?.selected_liability_points ?? null}
+              hasNegative={previewData?.selected_has_negative ?? false}
               hasPreviewError={!!source.error}
               isOverLimit={bulk.isOverLimit}
               acknowledged={bulk.acknowledged}

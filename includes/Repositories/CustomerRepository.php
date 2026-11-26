@@ -731,23 +731,26 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
     }
 
     /**
-     * Points an adjust selection still holds: the positive balances of `$user_ids`, or of the rows
-     * `$criteria` matches when no ids are given, minus `$exclude_ids`. Balances below zero are not liability.
+     * What an adjust selection holds: the points still owed (positive balances only; balances below zero are not
+     * liability) and whether any balance is below zero, of `$user_ids`, or of the rows `$criteria` matches when no
+     * ids are given, minus `$exclude_ids`.
      *
      * @param array<string, mixed>|null $criteria    CustomerRowFilters::to_criteria()'s shape, or null for a ticked list.
      * @param int[]                     $user_ids    A ticked list; empty for "select all matching".
      * @param int[]                     $exclude_ids Rows unticked after "select all matching".
+     * @return array{liability: int, has_negative: bool}
      */
-    public function selection_liability( ?array $criteria, array $user_ids, array $exclude_ids ): int {
+    public function selection_liability( ?array $criteria, array $user_ids, array $exclude_ids ): array {
         global $wpdb;
 
         if ( null === $criteria && empty( $user_ids ) ) {
-            return 0;
+            return [
+                'liability'    => 0,
+                'has_negative' => false,
+            ];
         }
 
         $where = null === $criteria ? [] : $this->where_fragments( $criteria );
-
-        $where[] = 'c.balance > 0';
 
         if ( ! empty( $user_ids ) ) {
             $where[] = $wpdb->prepare( 'c.user_id IN (' . Sql::in_placeholders( $user_ids, '%d' ) . ')', ...$user_ids ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders -- the IN list is placeholders only.
@@ -758,14 +761,21 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         }
 
         $table = esc_sql( $this->table() );
-        $users = esc_sql( $wpdb->users );
+        // Only the filters' search reads the users table; a ticked list needs no join.
+        $join = null === $criteria ? '' : ' LEFT JOIN `' . esc_sql( $wpdb->users ) . '` u ON u.ID = c.user_id';
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- every fragment is prepared above or a literal; identifiers are escaped.
-        return (int) $wpdb->get_var( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
-            'SELECT COALESCE(SUM(c.balance), 0) FROM `' . $table . '` c LEFT JOIN `' . $users . '` u ON u.ID = c.user_id WHERE '
-            . implode( ' AND ', $where )
+        $row = $wpdb->get_row( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            'SELECT COALESCE(SUM(CASE WHEN c.balance > 0 THEN c.balance ELSE 0 END), 0) AS liability, COALESCE(MAX(c.balance < 0), 0) AS has_negative FROM `' . $table . '` c' . $join
+            . ( empty( $where ) ? '' : ' WHERE ' . implode( ' AND ', $where ) ),
+            ARRAY_A
         );
         // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared
+
+        return [
+            'liability'    => (int) ( $row['liability'] ?? 0 ),
+            'has_negative' => ! empty( $row['has_negative'] ),
+        ];
     }
 
     private function list_where_sql( array $criteria ): string {
