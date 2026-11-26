@@ -58,7 +58,7 @@ final class TierRepository extends AbstractRepository {
         $in    = Sql::in_placeholders( $ids, '%d' );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $in is a placeholder list; every id is bound below, and the table name is escaped.
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $rows = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare( "SELECT * FROM `{$table}` WHERE id IN ({$in})", $ids ),
             ARRAY_A
         );
