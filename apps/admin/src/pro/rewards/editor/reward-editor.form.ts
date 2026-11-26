@@ -76,7 +76,7 @@ function seedConfig(type: CatalogRewardType, currency: string): Record<string, u
         exclude_sale_items: false,
       };
     case 'free_shipping':
-      return { min_order: 25, currency };
+      return { min_order: null, currency };
     case 'free_product':
       return { product_id: null, variation_id: null, qty: 1 };
   }
