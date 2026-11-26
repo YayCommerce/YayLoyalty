@@ -1,3 +1,4 @@
+import { Megaphone } from 'lucide-react';
 import { Link } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
@@ -46,7 +47,12 @@ export function DashboardTopCampaigns({
         ) : (
           campaigns.map((c, i) => (
             <li key={c.campaign_id} className="m-0 flex items-center gap-3 py-2.5 text-sm">
-              <DashboardInitialsAvatar name={c.name} label={String(i + 1).padStart(2, '0')} />
+              <DashboardInitialsAvatar
+                name={c.name}
+                label={String(i + 1).padStart(2, '0')}
+                rank={i + 1}
+                badgeIcon={<Megaphone />}
+              />
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <Can cap={CAP.MANAGE_CAMPAIGNS} fallback={<span className="truncate font-medium">{c.name}</span>}>
                   <Link

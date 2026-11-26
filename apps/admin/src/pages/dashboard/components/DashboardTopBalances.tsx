@@ -4,6 +4,7 @@ import { __ } from '@wordpress/i18n';
 import type { DashboardTopBalance } from '@/lib/schema/dashboard.schema';
 import { PointsValue } from '@/components/ui/custom/points-value';
 import { Skeleton } from '@/components/ui/skeleton';
+import TierCrownIcon from '@/components/icons/TierCrownIcon';
 import { DashboardInitialsAvatar } from './DashboardInitialsAvatar';
 import { DashboardPanel, DashboardPanelLink } from './DashboardPanel';
 
@@ -27,13 +28,13 @@ export function DashboardTopBalances({ balances }: { balances: DashboardTopBalan
       {balances.length === 0 ? (
         <li className="text-muted-foreground m-0 py-3 text-sm">{__('No members yet.', 'yayloyalty')}</li>
       ) : (
-        balances.slice(0, ROWS).map((row) => (
+        balances.slice(0, ROWS).map((row, i) => (
           <li key={row.user_id} className="m-0 flex items-center justify-between gap-3 py-2.5 text-sm">
             <Link
               to={`/customers/${row.user_id}`}
               className="text-foreground flex min-w-0 items-center gap-3 font-medium hover:underline"
             >
-              <DashboardInitialsAvatar name={row.name} className="size-9" />
+              <DashboardInitialsAvatar name={row.name} rank={i + 1} badgeIcon={<TierCrownIcon />} className="size-9" />
               <span className="truncate">{row.name}</span>
             </Link>
             <PointsValue value={row.balance} className="font-semibold tabular-nums" />
