@@ -67,7 +67,7 @@ final class ReferralRepository extends AbstractRepository {
 
         $column = 'hold_until' === $date_column ? 'hold_until' : 'coupon_expires_at';
         $passed = null === $date_column ? '' : $wpdb->prepare( " AND `{$column}` <= %s", Dates::now() ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the column is one of two fixed names.
-        $rows   = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $rows   = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE status = %s' . $passed . ' AND id > %d ORDER BY id LIMIT %d', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $passed is prepared above.
                 $status,

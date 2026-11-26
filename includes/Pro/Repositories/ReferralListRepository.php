@@ -55,8 +55,8 @@ final class ReferralListRepository {
             . ' LEFT JOIN `' . esc_sql( $wpdb->users ) . '` f ON f.ID = r.friend_user_id';
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- each $where fragment is prepared; identifiers are escaped; $order_sql is one of two fixed strings; only LIMIT/OFFSET are bound here.
-        $total = (int) $wpdb->get_var( 'SELECT COUNT(*)' . $from . $where_sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
-        $rows  = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $total = (int) $wpdb->get_var( 'SELECT COUNT(*)' . $from . $where_sql ); // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $rows  = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT r.*, a.display_name AS advocate_name, a.user_email AS advocate_email, f.display_name AS friend_name, f.user_email AS friend_email'
                 . $from . $where_sql . " ORDER BY {$order_sql} LIMIT %d OFFSET %d",

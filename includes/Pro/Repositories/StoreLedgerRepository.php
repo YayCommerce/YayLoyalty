@@ -60,11 +60,11 @@ class StoreLedgerRepository {
         $join      = ' LEFT JOIN `' . esc_sql( $wpdb->users ) . '` u ON u.ID = l.user_id';
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $where fragments are each already prepared; identifiers are escaped; $order is whitelisted; only LIMIT/OFFSET are bound here.
-        $total = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $total = (int) $wpdb->get_var( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             'SELECT COUNT(*) FROM `' . $table . '` l' . ( '' !== $search ? $join : '' ) . $where_sql
         );
 
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $rows = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT l.*, u.display_name AS customer_name, u.user_email AS customer_email FROM `' . $table . '` l' . $join
                 . $where_sql . " ORDER BY l.id {$order} LIMIT %d OFFSET %d",

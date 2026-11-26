@@ -4,7 +4,7 @@ Tags: loyalty, points, rewards, woocommerce, discount
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -101,6 +101,22 @@ The admin app, the block editor script and the storefront stylesheet are compile
 To build them: install Node 22 and pnpm 11, then in the repository root run `pnpm install --ignore-scripts` and `./scripts/run.sh build lite`. The PHP dependencies already ship in the plugin, in `vendor/` and `vendor-prefixed/`.
 
 == Changelog ==
+
+= 1.1.0 =
+* New: VIP tiers (Pro). Customers move up tiers by the points they earn, over their lifetime, a rolling window or each calendar month, quarter or year. Each tier can multiply earned points and pay a one-time entry bonus, and customers see their tier and progress in My Account and the launcher.
+* New: Referral program (Pro). Each customer gets a referral link; a referred friend gets a discount on their first order, and the referrer earns points once that order completes and an optional hold period ends. Review and approve referrals from the new Referral screen, and customers follow theirs on a Referrals tab in My Account.
+* New: Campaigns and rewards can apply when any of their conditions match, not only all of them (Pro).
+* New: Social campaigns (Pro). Award points once for following or sharing your store on Instagram, Facebook, X, TikTok, YouTube, LinkedIn or Pinterest.
+* New: Subscription renewal campaigns (Pro). Award points for each WooCommerce Subscriptions renewal order; a refunded renewal takes them back.
+* New: Free shipping and free product rewards can now be redeemed in the cart and checkout, classic and block (Pro). The cart explains why a reward can't be used, and cancelling or refunding the order returns the points.
+* New: Elementor widgets, Bricks elements and Divi modules for the points balance, ways to earn, ways to redeem and the redeem card.
+* New: Tools page to import point balances from a CSV, with a preview and per-row errors before anything is saved, and to export every customer's balance.
+* Improved: Storefront output and emails are escaped more strictly.
+* Improved: The plugin stops with a notice on WordPress versions it doesn't support.
+* Improved: Pro keeps the loyalty storefront (launcher, My Account tabs, redeem card) hidden until the license is activated; customers still earn points.
+* Fixed: Removing all coupons from a block cart now also removes the points discount.
+* Fixed: A date filter with an impossible date (such as 30 February) no longer filters from the following month.
+* Fixed: The free version's admin page no longer shows the Pro name.
 
 = 1.0.0 =
 * Initial release.
