@@ -13,8 +13,11 @@ class YayLoyaltyPluginAdapter implements \YayLoyaltyScoped\YayCommerce\AdminShel
         return 'YayLoyalty';
     }
 
+    /** The plugin header's name, which the Lite build rewrites, so each edition titles its page with its own name. */
     public function get_page_title(): string {
-        return 'YayLoyalty — Points, Rewards, Referral & VIP for WooCommerce';
+        $header = get_file_data( YAYLOYALTY_FILE, [ 'name' => 'Plugin Name' ] );
+
+        return '' !== $header['name'] ? $header['name'] : 'YayLoyalty';
     }
 
     public function get_menu_slug(): string {
