@@ -4,6 +4,7 @@ import { formatStoreDecimal, formatWPDay, formatWPTime, utcToDate } from '@/lib/
 import { formatCount, formatPoints } from '@/lib/helpers/points.helper';
 import { pctDelta } from '@/lib/points-math/points-math';
 import type { DashboardRange, DashboardSeriesPoint } from '@/lib/schema/dashboard.schema';
+import type { DashboardTileNote } from './components/DashboardStatTile';
 
 /**
  * The dashboard's sentence builders, pure. A count of 0 renders "0"; a
@@ -104,21 +105,30 @@ export function noticeTileOverrides(
   range: DashboardRange,
   pointsJump: { yesterday_points: number } | null,
   defaultCampaignPaused: boolean,
-): Partial<Record<'points_issued' | 'liability' | 'redemption_rate', string>> {
+): Partial<Record<'points_issued' | 'liability' | 'redemption_rate', DashboardTileNote>> {
   if (pointsJump) {
     return {
-      points_issued: sprintf(
-        /* translators: %s: points issued yesterday, formatted. */
-        __('▲ %s of it yesterday', 'yayloyalty'),
-        formatPoints(pointsJump.yesterday_points),
-      ),
-      liability: sprintf(
-        /* translators: %s: points issued yesterday, formatted. */
-        __('▲ %s pts overnight', 'yayloyalty'),
-        formatPoints(pointsJump.yesterday_points),
-      ),
+      points_issued: {
+        text: sprintf(
+          /* translators: %s: points issued yesterday, formatted. */
+          __('▲ %s of it yesterday', 'yayloyalty'),
+          formatPoints(pointsJump.yesterday_points),
+        ),
+        direction: 'up',
+      },
+      liability: {
+        text: sprintf(
+          /* translators: %s: points issued yesterday, formatted. */
+          __('▲ %s pts overnight', 'yayloyalty'),
+          formatPoints(pointsJump.yesterday_points),
+        ),
+        direction: 'up',
+      },
       // Not "unchanged": the delta may be non-zero; the jump just cannot have moved it.
-      redemption_rate: __('not moved by the jump — this rate counts orders, not points', 'yayloyalty'),
+      redemption_rate: {
+        text: __('not moved by the jump — this rate counts orders, not points', 'yayloyalty'),
+        direction: 'none',
+      },
     };
   }
 
@@ -127,11 +137,14 @@ export function noticeTileOverrides(
 
     if (collapse !== null) {
       return {
-        points_issued: sprintf(
-          /* translators: %s: the percentage fall, a whole number. */
-          __('▼ %s%% in the last 7 days', 'yayloyalty'),
-          formatStoreDecimal(collapse, 0),
-        ),
+        points_issued: {
+          text: sprintf(
+            /* translators: %s: the percentage fall, a whole number. */
+            __('▼ %s%% in the last 7 days', 'yayloyalty'),
+            formatStoreDecimal(collapse, 0),
+          ),
+          direction: 'down',
+        },
       };
     }
   }

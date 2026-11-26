@@ -17,17 +17,13 @@ function pageItems(page: number, pageCount: number): (number | null)[] {
 export function NumberedPagination({
   page,
   pageCount,
-  isLoading,
-  onPrevious,
-  onNext,
+  isLoading = false,
   onPageChange,
   className,
 }: {
   page: number;
   pageCount: number;
-  isLoading: boolean;
-  onPrevious: () => void;
-  onNext: () => void;
+  isLoading?: boolean;
   onPageChange: (page: number) => void;
   className?: string;
 }) {
@@ -37,7 +33,7 @@ export function NumberedPagination({
 
   return (
     <nav aria-label={__('Pagination', 'yayloyalty')} className={cn('flex items-center gap-1', className)}>
-      <Button variant="ghost" disabled={page <= 1} onClick={onPrevious}>
+      <Button variant="ghost" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
         <ChevronLeft />
         {__('Previous', 'yayloyalty')}
       </Button>
@@ -58,7 +54,7 @@ export function NumberedPagination({
           </Button>
         ),
       )}
-      <Button variant="ghost" disabled={page >= pageCount} onClick={onNext}>
+      <Button variant="ghost" disabled={page >= pageCount} onClick={() => onPageChange(page + 1)}>
         {__('Next', 'yayloyalty')}
         <ChevronRight />
       </Button>

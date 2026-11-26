@@ -7,8 +7,8 @@ import { FILTER_TYPE_ALL, FILTER_TYPE_LABEL, SEARCH_PLACEHOLDER } from '../custo
 import { toLedgerRow } from '../customer-drawer.ledger-rows';
 import { useDrawerTabQueryState } from '../customer-drawer.tab-query-state';
 import { CustomerDrawerActions } from '../CustomerDrawerActions';
-import { DrawerTabFilters } from './DrawerTabFilters';
 import { DRAWER_PAGE_SIZE, DrawerTabPager } from './DrawerTabPager';
+import { DrawerTabToolbar } from './DrawerTabToolbar';
 import { LedgerTabRows } from './LedgerTabRows';
 
 const TYPE_LABELS: Record<LedgerFilterType, () => string> = {
@@ -37,7 +37,7 @@ export function LedgerTab({ customer, customerFirstName }: { customer: Customer;
 
   return (
     <div className="flex flex-col gap-3">
-      <DrawerTabFilters
+      <DrawerTabToolbar
         options={LEDGER_FILTER_TYPES.map((type) => ({
           value: type,
           label: TYPE_LABELS[type](),
@@ -51,7 +51,6 @@ export function LedgerTab({ customer, customerFirstName }: { customer: Customer;
         search={state.search}
         onSearchChange={state.setSearch}
         searchPlaceholder={SEARCH_PLACEHOLDER()}
-        layout="toolbar"
         extra={<CustomerDrawerActions customer={customer} />}
       />
       <LedgerTabRows

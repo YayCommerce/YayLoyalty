@@ -620,6 +620,12 @@
   transition: background-color 0.15s, color 0.15s;
 }
 
+.yayloyalty-redeem .yayloyalty-redeem__change svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
 .yayloyalty-redeem .yayloyalty-redeem__change:hover {
   background: var(--yayloyalty-redeem-chip) none;
   color: var(--yayloyalty-redeem-text);

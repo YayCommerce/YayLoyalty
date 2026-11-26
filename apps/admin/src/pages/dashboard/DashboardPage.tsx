@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
@@ -19,6 +19,7 @@ import { DashboardRangeControl } from './components/DashboardRangeControl';
 import { DashboardRecentActivity } from './components/DashboardRecentActivity';
 import { DashboardSkeleton } from './components/DashboardSkeleton';
 import { DashboardStatsGrid } from './components/DashboardStatsGrid';
+import type { DashboardTileNote } from './components/DashboardStatTile';
 import { DashboardTopBalances } from './components/DashboardTopBalances';
 import { noticeTileOverrides, rangeSubline, seriesSpan } from './dashboard-page.copy';
 import type { DashboardProSlots } from './dashboard-page.pro-slots';
@@ -41,6 +42,8 @@ export default function DashboardPage() {
       )
     : {};
   const isDimmed = query.isPlaceholderData || (query.isFetching && !query.isPending);
+  const body = (slots: DashboardProSlots) =>
+    data && <DashboardBody data={data} tileOverrides={tileOverrides} slots={slots} pointsJump={pointsJump} />;
 
   return (
     <PageLayout
@@ -88,16 +91,10 @@ export default function DashboardPage() {
           {/* Both sides hand the same slots to the same layout; Lite never imports from @/pro. */}
           {IS_PRO_BUILD ? (
             <DashboardProPanels range={range} stats={data.stats}>
-              {(slots) => (
-                <DashboardBody data={data} tileOverrides={tileOverrides} slots={slots} pointsJump={pointsJump} />
-              )}
+              {body}
             </DashboardProPanels>
           ) : (
-            <DashboardProTeasers>
-              {(slots) => (
-                <DashboardBody data={data} tileOverrides={tileOverrides} slots={slots} pointsJump={pointsJump} />
-              )}
-            </DashboardProTeasers>
+            <DashboardProTeasers>{body}</DashboardProTeasers>
           )}
         </div>
       )}
@@ -113,13 +110,13 @@ function DashboardBody({
   pointsJump,
 }: {
   data: DashboardResponse;
-  tileOverrides: Partial<Record<keyof DashboardStats, ReactNode>>;
+  tileOverrides: Partial<Record<keyof DashboardStats, DashboardTileNote>>;
   slots: DashboardProSlots;
   pointsJump: ReturnType<typeof findPointsJump>;
 }) {
   return (
     <>
-      <DashboardStatsGrid stats={data.stats} series={data.series} range={data.range} deltaOverrides={tileOverrides} />
+      <DashboardStatsGrid stats={data.stats} series={data.series} range={data.range} notes={tileOverrides} />
 
       <div className={DASHBOARD_ROW}>
         <DashboardPointsChart series={data.series} extraSeries={slots.extraSeries}>

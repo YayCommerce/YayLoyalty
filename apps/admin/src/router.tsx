@@ -17,7 +17,6 @@ import CustomerDrawer from './pages/customers/drawer/CustomerDrawer';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import LedgerPage from './pages/ledger/LedgerPage';
 import ReferralPage from './pages/referral/ReferralPage';
-import RewardAddPage from './pages/rewards/RewardAddPage';
 import RewardCreatePage from './pages/rewards/RewardCreatePage';
 import RewardEditorPage from './pages/rewards/RewardEditorPage';
 import RewardsPage from './pages/rewards/RewardsPage';
@@ -93,7 +92,8 @@ export function getManagerRouter() {
           element: guarded(CAP.MANAGE_REWARDS, <RewardsPage />),
           // The editor is a modal over the list; the parent's `guarded()` already checks CAP.MANAGE_REWARDS.
           children: [
-            { path: 'new', element: <RewardAddPage /> },
+            // The modal picks the type itself, so it opens on the first one.
+            { path: 'new', loader: () => redirect('/rewards/new/fixed_coupon') },
             { path: 'new/:type', element: <RewardCreatePage /> },
             { path: ':id/edit', element: <RewardEditorPage /> },
           ],

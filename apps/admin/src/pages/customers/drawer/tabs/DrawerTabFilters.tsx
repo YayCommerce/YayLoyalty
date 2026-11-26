@@ -7,13 +7,11 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Input } from '@/components/ui/input';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { DATE_RANGE_LABEL } from '../customer-drawer.copy';
-import { DrawerTabToolbar } from './DrawerTabToolbar';
 
 /**
  * The filter row shared by the paged, filterable tabs: a segmented control
  * (optionally with a per-option count on each segment), then search and a
- * date range together. `layout="toolbar"` packs it into one row: a select, a search toggle, then `extra` and an
- * icon-only date range on the right.
+ * date range together.
  */
 export function DrawerTabFilters<F extends string>({
   options,
@@ -26,7 +24,6 @@ export function DrawerTabFilters<F extends string>({
   onSearchChange,
   searchPlaceholder,
   extra,
-  layout = 'stacked',
 }: {
   options: { value: F; label: string; count?: number }[];
   value: F;
@@ -40,25 +37,7 @@ export function DrawerTabFilters<F extends string>({
   searchPlaceholder: string;
   /** More controls after the date range. */
   extra?: ReactNode;
-  layout?: 'stacked' | 'toolbar';
 }) {
-  if (layout === 'toolbar') {
-    return (
-      <DrawerTabToolbar
-        options={options}
-        value={value}
-        onChange={onChange}
-        ariaLabel={ariaLabel}
-        range={range}
-        onRangeChange={onRangeChange}
-        search={search}
-        onSearchChange={onSearchChange}
-        searchPlaceholder={searchPlaceholder}
-        extra={extra}
-      />
-    );
-  }
-
   return (
     <div className="flex flex-col gap-2">
       {/* Scrolling belongs to this wrapper, not `Segmented`: it is a fixed

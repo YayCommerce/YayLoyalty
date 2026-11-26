@@ -7,7 +7,12 @@ import type { DashboardRange, DashboardSeriesPoint, DashboardStats } from '@/lib
 import { PointsValue } from '@/components/ui/custom/points-value';
 import { ordersSubline, perDayAverage, perMemberAverage } from '../dashboard-page.copy';
 import { DashboardSparkline } from './DashboardSparkline';
-import { DashboardStatTile, DashboardStatTileSkeleton, type DashboardStatTone } from './DashboardStatTile';
+import {
+  DashboardStatTile,
+  DashboardStatTileSkeleton,
+  type DashboardStatTone,
+  type DashboardTileNote,
+} from './DashboardStatTile';
 
 /** Label order is fixed; the skeleton reuses it so both states share one grid. */
 const TILES = (): { label: string; icon: ReactNode; tone: DashboardStatTone }[] => [
@@ -21,17 +26,17 @@ const TILES = (): { label: string; icon: ReactNode; tone: DashboardStatTone }[] 
 /** auto-fit / minmax(200px, 1fr): five tiles on one row at 1440, wrapping as equals below. */
 const GRID = 'grid gap-4 grid-cols-[repeat(auto-fit,minmax(200px,1fr))]';
 
-/** The five stat tiles. `deltaOverrides` are the notice strip's lines under a tile. */
+/** The five stat tiles. `notes` are the notice strip's lines under a tile. */
 export function DashboardStatsGrid({
   stats,
   series,
   range,
-  deltaOverrides = {},
+  notes = {},
 }: {
   stats: DashboardStats;
   series: DashboardSeriesPoint[];
   range: DashboardRange;
-  deltaOverrides?: Partial<Record<keyof DashboardStats, ReactNode>>;
+  notes?: Partial<Record<keyof DashboardStats, DashboardTileNote>>;
 }) {
   const [members, issued, redeemed, unspent, rate] = TILES();
 
@@ -43,34 +48,34 @@ export function DashboardStatsGrid({
         subline={
           stats.members.value === 0 ? __('no one has joined yet', 'yayloyalty') : __('total enrolled', 'yayloyalty')
         }
-        note={deltaOverrides.members}
+        note={notes.members}
       />
       <DashboardStatTile
         {...issued}
         value={<PointsValue value={stats.points_issued.value} />}
         subline={perDayAverage(stats.points_issued.value, range)}
         trend={<DashboardSparkline values={series.map((p) => p.issued)} />}
-        note={deltaOverrides.points_issued}
+        note={notes.points_issued}
       />
       <DashboardStatTile
         {...redeemed}
         value={<PointsValue value={stats.points_redeemed.value} />}
         subline={perDayAverage(stats.points_redeemed.value, range)}
         trend={<DashboardSparkline values={series.map((p) => p.redeemed)} />}
-        note={deltaOverrides.points_redeemed}
+        note={notes.points_redeemed}
       />
       <DashboardStatTile
         {...unspent}
         value={<PointsValue value={stats.liability.points} />}
         subline={perMemberAverage(stats.liability.points, stats.members.value)}
-        note={deltaOverrides.liability}
+        note={notes.liability}
       />
       <DashboardStatTile
         {...rate}
         value={stats.redemption_rate.rate === null ? '—' : formatPercent(stats.redemption_rate.rate, 1)}
         subline={ordersSubline(stats.redemption_rate.orders_with_redemption, stats.redemption_rate.orders_total)}
         trend={<RateMeter rate={stats.redemption_rate.rate} />}
-        note={deltaOverrides.redemption_rate}
+        note={notes.redemption_rate}
       />
     </div>
   );

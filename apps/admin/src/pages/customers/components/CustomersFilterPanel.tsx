@@ -3,30 +3,24 @@ import { __ } from '@wordpress/i18n';
 
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  BALANCE_RANGE_OPTIONS,
-  EXPIRING_SOON_OPTIONS,
-  type BalanceRangeValue,
-  type CustomerListFilters,
-  type ExpiringSoonValue,
-} from '../customers-page.filters';
+import { BALANCE_RANGE_OPTIONS, EXPIRING_SOON_OPTIONS, type CustomerListFilters } from '../customers-page.filters';
 
 /**
  * The filters the Filter button opens, each labelled above its control.
- * `extraFilters` sits after the built-in filters; Pro puts the Tier filter there.
+ * `tierFilter` sits after the built-in filters; Pro fills it.
  */
 export function CustomersFilterPanel({
   filters,
   onFiltersChange,
   /** Empty store: controls go inert but stay in place, so the table does not shift. */
   disabled,
-  extraFilters,
+  tierFilter,
   onClear,
 }: {
   filters: CustomerListFilters;
   onFiltersChange: (patch: Partial<CustomerListFilters>) => void;
   disabled: boolean;
-  extraFilters?: ReactNode;
+  tierFilter?: ReactNode;
   /** Present while any panel filter is set. */
   onClear?: () => void;
 }) {
@@ -37,7 +31,7 @@ export function CustomersFilterPanel({
           <FilterSelect
             label={__('Balance range', 'yayloyalty')}
             value={filters.balanceRange}
-            onValueChange={(value) => onFiltersChange({ balanceRange: value as BalanceRangeValue })}
+            onValueChange={(value) => onFiltersChange({ balanceRange: value })}
             options={BALANCE_RANGE_OPTIONS}
             disabled={disabled}
           />
@@ -46,12 +40,12 @@ export function CustomersFilterPanel({
           <FilterSelect
             label={__('Expiring soon', 'yayloyalty')}
             value={filters.expiringSoon}
-            onValueChange={(value) => onFiltersChange({ expiringSoon: value as ExpiringSoonValue })}
+            onValueChange={(value) => onFiltersChange({ expiringSoon: value })}
             options={EXPIRING_SOON_OPTIONS}
             disabled={disabled}
           />
         </LabeledFilter>
-        {extraFilters && <LabeledFilter label={__('Tier', 'yayloyalty')}>{extraFilters}</LabeledFilter>}
+        {tierFilter && <LabeledFilter label={__('Tier', 'yayloyalty')}>{tierFilter}</LabeledFilter>}
       </div>
       {onClear && (
         <Button variant="link" size="sm" className="self-end" disabled={disabled} onClick={onClear}>

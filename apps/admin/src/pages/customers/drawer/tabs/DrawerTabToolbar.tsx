@@ -1,14 +1,12 @@
-import { useState, type ReactNode } from 'react';
-import { SearchIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import type { DateRange } from 'react-day-picker';
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { ExpandingSearch } from '@/components/ui/custom/expanding-search';
 import { Select, SelectContent, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DrawerDateRangeButton } from './DrawerDateRangeButton';
 import { DrawerFilterSelectItem } from './DrawerFilterSelectItem';
 
-/** The one-row filter layout of DrawerTabFilters: a select, a search toggle, then `extra` and a date range button. */
+/** The drawer tabs' one-row filters: a select, a search toggle, then `extra` and a date range button. */
 export function DrawerTabToolbar<F extends string>({
   options,
   value,
@@ -32,9 +30,6 @@ export function DrawerTabToolbar<F extends string>({
   searchPlaceholder: string;
   extra?: ReactNode;
 }) {
-  // A search that is already set stays open, so the filter never hides behind the toggle.
-  const [searchOpen, setSearchOpen] = useState(search !== '');
-
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Select value={value} onValueChange={(next) => onChange(next as F)}>
@@ -47,20 +42,7 @@ export function DrawerTabToolbar<F extends string>({
           ))}
         </SelectContent>
       </Select>
-      {searchOpen ? (
-        <Input
-          autoFocus
-          className="w-48 min-w-0"
-          placeholder={searchPlaceholder}
-          value={search}
-          onChange={(event) => onSearchChange(event.target.value)}
-          onBlur={() => search === '' && setSearchOpen(false)}
-        />
-      ) : (
-        <Button variant="outline" size="icon" aria-label={searchPlaceholder} onClick={() => setSearchOpen(true)}>
-          <SearchIcon />
-        </Button>
-      )}
+      <ExpandingSearch value={search} onChange={onSearchChange} placeholder={searchPlaceholder} />
       <div className="ml-auto flex items-center gap-2">
         {extra}
         {onRangeChange && <DrawerDateRangeButton value={range} onValueChange={onRangeChange} />}

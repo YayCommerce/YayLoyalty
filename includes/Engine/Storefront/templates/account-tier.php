@@ -8,8 +8,10 @@
  * @var array|null $yayloyalty_tier AccountMyPoints::view()['tier'].
  */
 
+use YayLoyalty\Engine\Storefront\AccountMyPointsIcon;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Utils\Kses;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -18,9 +20,9 @@ if ( null === $yayloyalty_tier ) {
 }
 
 $yayloyalty_tier_icons  = [
-    'achieved' => '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
-    'current'  => '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg>',
-    'locked'   => '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+    'achieved' => 'clock',
+    'current'  => 'check',
+    'locked'   => 'lock',
 ];
 $yayloyalty_tier_labels = [
     'achieved' => __( 'Achieved', 'yayloyalty' ),
@@ -29,13 +31,7 @@ $yayloyalty_tier_labels = [
 ];
 
 // Tiers arrive in rank order, so every tier before the member's is one they have passed.
-$yayloyalty_tier_current = null;
-
-foreach ( $yayloyalty_tier['tiers'] as $yayloyalty_tier_index => $yayloyalty_tier_row ) {
-    if ( $yayloyalty_tier_row['is_current'] ) {
-        $yayloyalty_tier_current = $yayloyalty_tier_index;
-    }
-}
+$yayloyalty_tier_current = array_search( true, array_column( $yayloyalty_tier['tiers'], 'is_current' ), true );
 ?>
 <section class="yayloyalty-account__section yayloyalty-account__tiers">
     <h3 class="yayloyalty-account__title"><?php esc_html_e( 'Your tier', 'yayloyalty' ); ?></h3>
@@ -67,7 +63,7 @@ foreach ( $yayloyalty_tier['tiers'] as $yayloyalty_tier_index => $yayloyalty_tie
                             $yayloyalty_tier_perks[] = sprintf( __( '%s bonus', 'yayloyalty' ), SettingsHelper::points_text( $yayloyalty_tier_row['entry_bonus'] ) );
                         }
 
-                        if ( null === $yayloyalty_tier_current || $yayloyalty_tier_index > $yayloyalty_tier_current ) {
+                        if ( false === $yayloyalty_tier_current || $yayloyalty_tier_index > $yayloyalty_tier_current ) {
                             $yayloyalty_tier_status = 'locked';
                         } elseif ( $yayloyalty_tier_index === $yayloyalty_tier_current ) {
                             $yayloyalty_tier_status = 'current';
@@ -78,9 +74,7 @@ foreach ( $yayloyalty_tier['tiers'] as $yayloyalty_tier_index => $yayloyalty_tie
                         <tr class="yayloyalty-account__tiers-row is-<?php echo esc_attr( $yayloyalty_tier_status ); ?>"<?php echo 'current' === $yayloyalty_tier_status ? ' aria-current="true"' : ''; ?>>
                             <td>
                                 <span class="yayloyalty-account__tiers-row-name">
-                                    <span class="yayloyalty-account__tiers-crown" style="<?php echo esc_attr( $yayloyalty_tier_crown_style( $yayloyalty_tier_row['color'] ) ); ?>">
-                                        <?php echo $yayloyalty_tier_crown; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG literal. ?>
-                                    </span>
+                                    <?php echo wp_kses( AccountMyPointsIcon::tier_crown( $yayloyalty_tier_row['color'] ), Kses::storefront() ); ?>
                                     <?php echo esc_html( $yayloyalty_tier_row['name'] ); ?>
                                 </span>
                             </td>
@@ -97,7 +91,7 @@ foreach ( $yayloyalty_tier['tiers'] as $yayloyalty_tier_index => $yayloyalty_tie
                             </td>
                             <td>
                                 <span class="yayloyalty-account__tiers-status is-<?php echo esc_attr( $yayloyalty_tier_status ); ?>">
-                                    <?php echo $yayloyalty_tier_icons[ $yayloyalty_tier_status ]; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- fixed SVG literals. ?>
+                                    <?php echo wp_kses( AccountMyPointsIcon::get( $yayloyalty_tier_icons[ $yayloyalty_tier_status ] ), Kses::svg() ); ?>
                                     <?php echo esc_html( $yayloyalty_tier_labels[ $yayloyalty_tier_status ] ); ?>
                                 </span>
                             </td>

@@ -15,6 +15,9 @@ const TONES = {
 
 export type DashboardStatTone = keyof typeof TONES;
 
+/** A notice's line under a tile, coloured by which way it points. */
+export type DashboardTileNote = { text: string; direction: 'up' | 'down' | 'none' };
+
 /**
  * One stat tile. The value is a node, so this never formats a number
  * itself. `trend` sits beside the value (a sparkline or a meter); `note` is a notice's line under it.
@@ -34,10 +37,8 @@ export function DashboardStatTile({
   value: ReactNode;
   subline: ReactNode;
   trend?: ReactNode;
-  note?: ReactNode;
+  note?: DashboardTileNote;
 }) {
-  const direction = noteDirection(note);
-
   return (
     <Card className="gap-3 p-5">
       <TileHeader label={label} icon={icon} tone={tone} />
@@ -51,12 +52,12 @@ export function DashboardStatTile({
       {note ? (
         <div
           className={cn('text-xs', {
-            'text-success': direction === 'up',
-            'text-destructive': direction === 'down',
-            'text-muted-foreground': direction === 'none',
+            'text-success': note.direction === 'up',
+            'text-destructive': note.direction === 'down',
+            'text-muted-foreground': note.direction === 'none',
           })}
         >
-          {note}
+          {note.text}
         </div>
       ) : null}
     </Card>
@@ -72,13 +73,6 @@ function TileHeader({ label, icon, tone }: { label: string; icon: ReactNode; ton
       </span>
     </div>
   );
-}
-
-function noteDirection(note: ReactNode): 'up' | 'down' | 'none' {
-  if (typeof note !== 'string') return 'none';
-  if (note.startsWith('▲')) return 'up';
-  if (note.startsWith('▼')) return 'down';
-  return 'none';
 }
 
 /** Same box, same heights, placeholder bars — so data landing never reflows the grid. */

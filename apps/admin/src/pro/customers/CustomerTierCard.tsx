@@ -5,7 +5,7 @@ import { __, sprintf } from '@wordpress/i18n';
 import { Can, CAP } from '@/lib/access';
 import { toastApiError } from '@/lib/api/api';
 import { formatStoredDate } from '@/lib/helpers/format.helper';
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { shortPoints } from '@/lib/helpers/points.helper';
 import type { Customer } from '@/lib/schema/customer.schema';
 import type { TiersCalendarPeriod } from '@/lib/schema/tier.schema';
 import { Badge } from '@/components/ui/badge';
@@ -13,9 +13,9 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
-import TierCrownIcon from '@/components/icons/TierCrownIcon';
 import { DELETED_ACCOUNT_ACTION_REASON } from '@/pages/customers/drawer/customer-drawer.copy';
 import { TierBadge } from '../tiers/TierBadge';
+import { TierIconChip } from '../tiers/TierIconChip';
 import { useCustomerTierQuery, useRemoveCustomerTierMutation, useTiersEnabled } from '../tiers/tiers.queries';
 
 /**
@@ -58,17 +58,7 @@ export function CustomerTierCard({ customer }: { customer: Customer }) {
       <div className="rounded-lg border">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4">
           <div className="flex min-w-0 items-center gap-3">
-            <span
-              className="bg-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-md"
-              style={
-                tier
-                  ? { backgroundColor: `color-mix(in srgb, ${tier.color} 15%, transparent)`, color: tier.color }
-                  : undefined
-              }
-              aria-hidden
-            >
-              <TierCrownIcon className="size-5" />
-            </span>
+            <TierIconChip color={tier ? tier.color : null} size="lg" />
             <div className="flex min-w-0 flex-col gap-0.5">
               <span className="text-base font-semibold">
                 {tier
@@ -106,13 +96,7 @@ export function CustomerTierCard({ customer }: { customer: Customer }) {
             <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
               {tierPointsLabel(mode === 'calendar' ? period : null, windowMonths)}
             </span>
-            <span className="text-2xl font-semibold tabular-nums">
-              {sprintf(
-                /* translators: %s: the customer's tier points. */
-                __('%s pts', 'yayloyalty'),
-                formatPoints(progress),
-              )}
-            </span>
+            <span className="text-2xl font-semibold tabular-nums">{shortPoints(progress)}</span>
           </div>
           {next ? (
             <>
@@ -132,9 +116,9 @@ export function CustomerTierCard({ customer }: { customer: Customer }) {
                 </span>
                 <span className="text-muted-foreground tabular-nums">
                   {sprintf(
-                    /* translators: %s: points still to earn. */
-                    __('%s pts to go', 'yayloyalty'),
-                    formatPoints(Math.max(0, next.threshold - progress)),
+                    /* translators: %s: points still to earn, as "1,200 pts". */
+                    __('%s to go', 'yayloyalty'),
+                    shortPoints(Math.max(0, next.threshold - progress)),
                   )}
                 </span>
               </div>

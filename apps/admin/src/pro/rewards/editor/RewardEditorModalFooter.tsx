@@ -70,7 +70,7 @@ export function RewardEditorModalFooter({
             <LoadingButton
               type="submit"
               data-intent="draft"
-              className="bg-foreground text-background hover:bg-foreground/85"
+              variant="inverse"
               loading={busy && pressed === 'draft'}
               disabled={busy || !canSave}
               onClick={() => {

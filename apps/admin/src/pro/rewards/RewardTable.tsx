@@ -174,9 +174,6 @@ export function RewardTable() {
                 <NumberedPagination
                   page={currentPage}
                   pageCount={pageCount}
-                  isLoading={false}
-                  onPrevious={() => setPage(Math.max(1, currentPage - 1))}
-                  onNext={() => setPage(Math.min(pageCount, currentPage + 1))}
                   onPageChange={setPage}
                   className="ms-auto"
                 />

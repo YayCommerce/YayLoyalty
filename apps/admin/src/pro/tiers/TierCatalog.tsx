@@ -5,7 +5,7 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
 import { formatStoreDecimal } from '@/lib/helpers/format.helper';
-import { formatCount, formatPoints } from '@/lib/helpers/points.helper';
+import { formatCount, formatPoints, shortPoints } from '@/lib/helpers/points.helper';
 import { Tier, TIER_LIMITS, TierInUse } from '@/lib/schema/tier.schema';
 import { Badge } from '@/components/ui/badge';
 import { Button, LoadingButton } from '@/components/ui/button';
@@ -171,13 +171,7 @@ function TierRow({
         </Badge>
       </TableCell>
       <TableCell className="text-center tabular-nums">
-        {tier.entry_bonus > 0
-          ? sprintf(
-              /* translators: %s: the tier's entry bonus, in points. */
-              __('+%s pts', 'yayloyalty'),
-              formatPoints(tier.entry_bonus),
-            )
-          : __('0 pts', 'yayloyalty')}
+        {(tier.entry_bonus > 0 ? '+' : '') + shortPoints(tier.entry_bonus)}
       </TableCell>
       <TableCell className="text-center tabular-nums">{showMembers ? formatCount(tier.member_count) : '—'}</TableCell>
       <TableCell>

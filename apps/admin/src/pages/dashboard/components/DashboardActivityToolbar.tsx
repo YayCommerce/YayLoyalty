@@ -1,13 +1,10 @@
-import { useState } from 'react';
-import { SearchIcon } from 'lucide-react';
 import { __ } from '@wordpress/i18n';
 
 import { ledgerFilterLabel } from '@/lib/helpers/ledger.helper';
 import { formatCount } from '@/lib/helpers/points.helper';
 import { LEDGER_FILTER_TYPES, type LedgerFilterType } from '@/lib/schema/ledger.schema';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { ExpandingSearch } from '@/components/ui/custom/expanding-search';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 
 /** Type tabs with a count pill each, and a search that opens from an icon button on the right. */
@@ -24,9 +21,6 @@ export function DashboardActivityToolbar({
   search: string;
   onSearchChange: (search: string) => void;
 }) {
-  const [searchOpen, setSearchOpen] = useState(search !== '');
-  const placeholder = __('Search customer or event', 'yayloyalty');
-
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="overflow-x-auto">
@@ -55,20 +49,12 @@ export function DashboardActivityToolbar({
         </Segmented>
       </div>
       <div className="ml-auto">
-        {searchOpen ? (
-          <Input
-            autoFocus
-            className="h-8 w-56 min-w-0"
-            placeholder={placeholder}
-            value={search}
-            onChange={(event) => onSearchChange(event.target.value)}
-            onBlur={() => search === '' && setSearchOpen(false)}
-          />
-        ) : (
-          <Button variant="outline" size="icon-sm" aria-label={placeholder} onClick={() => setSearchOpen(true)}>
-            <SearchIcon />
-          </Button>
-        )}
+        <ExpandingSearch
+          value={search}
+          onChange={onSearchChange}
+          placeholder={__('Search customer or event', 'yayloyalty')}
+          size="sm"
+        />
       </div>
     </div>
   );

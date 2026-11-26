@@ -62,7 +62,7 @@ export function AdjustPointsFooter({
           loading={isBusy}
           onClick={onSubmit}
           disabled={isBusy || isPreviewLoading || blockers.length > 0}
-          className="bg-foreground text-background hover:bg-foreground/85"
+          variant="inverse"
         >
           {isSingle
             ? submitLabel(state.direction, formatPoints(state.amount), state.amount === 0)

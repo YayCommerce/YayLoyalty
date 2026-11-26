@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export const REWARD_MODAL_DESCRIPTION = () => __('Set the discount, points cost, and who can redeem it.', 'yayloyalty');
+const REWARD_MODAL_DESCRIPTION = () => __('Set the discount, points cost, and who can redeem it.', 'yayloyalty');
 
 /**
  * The add/edit reward modal over the Rewards list. Closing goes back to /rewards, so the route leave guard

@@ -214,6 +214,12 @@
   white-space: nowrap;
 }
 
+.yayloyalty-account .yayloyalty-account__tiers-status svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+
 .yayloyalty-account .yayloyalty-account__tiers-status.is-achieved {
   color: var(--yayloyalty-account-muted);
 }

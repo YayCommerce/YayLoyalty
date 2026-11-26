@@ -17,6 +17,7 @@
 use YayLoyalty\Engine\Redemption\ProgramGate;
 use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Rewards\Clamp;
+use YayLoyalty\Engine\Storefront\AccountMyPointsIcon;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\RedeemCard;
 use YayLoyalty\Helpers\SettingsHelper;
@@ -75,11 +76,11 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
                     <span class="yayloyalty-redeem__tick" aria-hidden="true">✓</span>
                     <?php
                     /* translators: %s: how many rewards are applied, the points discount counting as one. */
-                    echo esc_html( sprintf( __( '%s selected', 'yayloyalty' ), number_format_i18n( $view['summary']['count'] ) ) );
+                    echo esc_html( sprintf( _n( '%s selected', '%s selected', $view['summary']['count'], 'yayloyalty' ), number_format_i18n( $view['summary']['count'] ) ) );
                     ?>
                 </p>
                 <button type="button" class="yayloyalty-redeem__change" data-yl-change aria-expanded="false" aria-controls="<?php echo esc_attr( $yayloyalty_list_id ); ?>" aria-label="<?php esc_attr_e( 'Change', 'yayloyalty' ); ?>">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 18 6-6-6-6"/></svg>
+                    <?php echo wp_kses( AccountMyPointsIcon::get( 'next' ), Kses::svg() ); ?>
                 </button>
             <?php endif; ?>
         </div>

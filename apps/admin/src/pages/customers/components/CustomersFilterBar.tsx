@@ -65,7 +65,8 @@ export function CustomersFilterBar({
             disabled={exportDisabled}
             queryFilters={queryFilters}
             sort={sort}
-            className="bg-foreground text-background hover:bg-foreground/85 hover:text-background h-9 border-transparent px-4"
+            variant="inverse"
+            className="h-9 px-4"
           />
           <Button
             variant="outline"
@@ -89,7 +90,7 @@ export function CustomersFilterBar({
           filters={filters}
           onFiltersChange={onFiltersChange}
           disabled={disabled}
-          extraFilters={
+          tierFilter={
             IS_PRO_BUILD && showTiers ? (
               <CustomersTierFilter
                 value={filters.tier}

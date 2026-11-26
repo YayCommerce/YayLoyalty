@@ -177,8 +177,6 @@ export function CustomersScreen({
               page={page}
               pageCount={pageCount}
               isLoading={isLoading}
-              onPrevious={() => onPageChange(Math.max(1, page - 1))}
-              onNext={() => onPageChange(Math.min(pageCount, page + 1))}
               onPageChange={onPageChange}
               className="sm:ms-auto"
             />

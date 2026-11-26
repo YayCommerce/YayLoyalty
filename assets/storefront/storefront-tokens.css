@@ -81,7 +81,7 @@
   --yayloyalty-redeem-track: var(--yayloyalty-border);
   --yayloyalty-redeem-button: var(--yayloyalty-text);
   --yayloyalty-redeem-button-hover: #000000;
-  --yayloyalty-redeem-button-text: #ffffff;
+  --yayloyalty-redeem-button-text: var(--yayloyalty-accent-text);
   --yayloyalty-redeem-success: var(--yayloyalty-positive);
   --yayloyalty-redeem-success-bg: var(--yayloyalty-positive-bg);
   --yayloyalty-redeem-error: var(--yayloyalty-error);
