@@ -1,7 +1,7 @@
 # YayLoyalty — Points,  Rewards,  Referral & VIP for WooCommerce
 
-<!-- yay:managed:start v=0.20.0 -->
-<!-- Kit-managed by the yay plugin 0.20.0. Don't edit this block; run /yay:harness-update. Project knowledge goes in the yay:project block below. -->
+<!-- yay:managed:start v=0.21.0 -->
+<!-- Kit-managed by the yay plugin 0.21.0. Don't edit this block; run /yay:harness-update. Project knowledge goes in the yay:project block below. -->
 ## How we work here
 
 This repo uses the **yay** harness. Work through its skills so every developer and every Claude session follows the same flow:
