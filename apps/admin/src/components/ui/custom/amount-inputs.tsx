@@ -11,14 +11,22 @@ export const AMOUNT_INPUT_WIDTH = 'w-44';
 export function PointsInput({
   value,
   min,
+  className,
   onValueChange,
 }: {
   value: number;
   min: number;
+  className?: string;
   onValueChange: (value: number) => void;
 }) {
   return (
-    <NumberInputRoot size="small" className={AMOUNT_INPUT_WIDTH} min={min} value={value} onValueChange={onValueChange}>
+    <NumberInputRoot
+      size="small"
+      className={cn(AMOUNT_INPUT_WIDTH, className)}
+      min={min}
+      value={value}
+      onValueChange={onValueChange}
+    >
       <NumberInputInput />
       <NumberInputUnit unit={_n('point', 'points', value, 'yayloyalty')} />
     </NumberInputRoot>
