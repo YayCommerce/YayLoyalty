@@ -235,7 +235,7 @@ function RewardCreatorForm({ type, duplicateFrom }: { type: CatalogRewardType; d
     return () => subscription.unsubscribe();
   }, [form, type, duplicateFrom]);
 
-  const { handleSave, markDraftIntent, leaveDialogProps } = useEditorSave(
+  const { handleSave, markDraftIntent, bypassNext, leaveDialogProps } = useEditorSave(
     form,
     async (values, intent) => {
       try {
@@ -270,7 +270,14 @@ function RewardCreatorForm({ type, duplicateFrom }: { type: CatalogRewardType; d
             <Segmented
               shape="square"
               value={type}
-              onValueChange={(next) => next && navigate(`/rewards/new/${next}`, { replace: true })}
+              onValueChange={(next) => {
+                if (!next) {
+                  return;
+                }
+                // A switch starts the new type afresh: it is not leaving the form, so it never asks to save.
+                bypassNext();
+                navigate(`/rewards/new/${next}`, { replace: true });
+              }}
               className="w-full"
             >
               {CREATABLE_REWARD_TYPES.map((option) => (
