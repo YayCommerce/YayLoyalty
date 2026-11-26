@@ -1,53 +1,32 @@
 import { useState } from 'react';
 import { closestCenter, DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Lock } from 'lucide-react';
+import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { GripVertical, InfoIcon, Plus, Search } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import { toast } from 'sonner';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
-import {
-  useReorderRewardsMutation,
-  useRewardsQuery,
-  useUpdateRewardStatusMutation,
-} from '@/lib/queries/reward.queries';
-import { resolveRewardDisplayStatus, Reward } from '@/lib/schema/reward.schema';
-import { Badge } from '@/components/ui/badge';
+import { useReorderRewardsMutation, useRewardsQuery } from '@/lib/queries/reward.queries';
+import { Reward } from '@/lib/schema/reward.schema';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ErrorState } from '@/components/ui/custom/error-state';
-import { YayLoyaltyToolTip } from '@/components/ui/custom/tooltip';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { NumberedPagination } from '@/components/ui/custom/numbered-pagination';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import EllipsisIcon from '@/components/icons/EllipsisIcon';
-import { CampaignStatusBadge } from '@/pro/campaigns/CampaignStatusBadge';
 import { RewardArchiveDialog } from './archive/RewardArchiveDialog';
-import {
-  availabilityLabel,
-  costLabel,
-  headerSubtitle,
-  isCreatableRewardType,
-  resolveRewardsScreen,
-  RewardsScreen,
-  rewardSubtitle,
-  typeLabel,
-} from './reward-labels';
+import { resolveRewardsScreen, RewardsScreen } from './reward-labels';
+import { RewardTableRow } from './RewardTableRow';
+
+const PER_PAGE = 10;
 
 /**
  * Pro's Rewards screen: the launcher catalog in display order, plus an
- * Archived view reached from the header. Rows open the reward editor, their
- * switch pauses or resumes, and the ⋯ menu duplicates, archives, restores
- * or deletes.
+ * Archived view reached from the header. Rows open the reward editor modal,
+ * and the ⋯ menu pauses, resumes, duplicates, archives, restores or deletes.
+ * Search and paging are client-side over the one loaded list.
  */
 export function RewardTable() {
   const navigate = useNavigate();
@@ -68,6 +47,19 @@ export function RewardTable() {
   const showArchived = view === 'archived' && screen.archivedRows.length > 0;
   // The row the dialog acts on; a snapshot, so a refetch while it is open cannot change it.
   const [archiveTarget, setArchiveTarget] = useState<Reward>();
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+
+  const needle = search.trim().toLowerCase();
+  const viewRows = (showArchived ? screen.archivedRows : screen.rows).filter(
+    (row) => !needle || row.name.toLowerCase().includes(needle),
+  );
+  const pageCount = Math.max(1, Math.ceil(viewRows.length / PER_PAGE));
+  // A search or a view switch can leave `page` past the end; clamp rather than show an empty page.
+  const currentPage = Math.min(page, pageCount);
+  const pageRows = viewRows.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
+  // Dragging a filtered list would save an order the merchant cannot see.
+  const dragDisabled = needle !== '';
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
@@ -103,12 +95,29 @@ export function RewardTable() {
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             {isPending ? (
-              <Skeleton className="h-4 w-64" />
+              <Skeleton className="h-5 w-40" />
             ) : (
-              <RewardTableSubtitle screen={screen} showArchived={showArchived} onViewChange={setView} />
+              <RewardTableTitle screen={screen} showArchived={showArchived} onViewChange={setView} />
             )}
-            <div className="flex items-center gap-3">
-              <Button onClick={() => navigate('/rewards/new')}>{__('Add reward', 'yayloyalty')}</Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <InputGroup className="w-60">
+                <InputGroupAddon>
+                  <Search className="size-4" />
+                </InputGroupAddon>
+                <InputGroupInput
+                  placeholder={__('Search', 'yayloyalty')}
+                  aria-label={__('Search rewards', 'yayloyalty')}
+                  value={search}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setPage(1);
+                  }}
+                />
+              </InputGroup>
+              <Button onClick={() => navigate('/rewards/new')}>
+                <Plus />
+                {__('Add reward', 'yayloyalty')}
+              </Button>
             </div>
           </div>
 
@@ -129,24 +138,49 @@ export function RewardTable() {
                   <Table>
                     <RewardTableHeader />
                     <TableBody>
-                      {showArchived ? (
-                        screen.archivedRows.map((row) => (
-                          <RewardRow key={row.id} reward={row} onArchiveOrDelete={setArchiveTarget} />
-                        ))
-                      ) : (
-                        <SortableContext
-                          items={screen.rows.map((row) => row.id)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          {screen.rows.map((row) => (
-                            <RewardRow key={row.id} reward={row} onArchiveOrDelete={setArchiveTarget} />
-                          ))}
-                        </SortableContext>
+                      {pageRows.length === 0 && (
+                        <TableRow className="hover:bg-transparent">
+                          <TableCell colSpan={8} className="text-muted-foreground py-8 text-center">
+                            {__('No rewards match this search.', 'yayloyalty')}
+                          </TableCell>
+                        </TableRow>
                       )}
+                      <SortableContext items={pageRows.map((row) => row.id)} strategy={verticalListSortingStrategy}>
+                        {pageRows.map((row) => (
+                          <RewardTableRow
+                            key={row.id}
+                            reward={row}
+                            dragDisabled={dragDisabled}
+                            onArchiveOrDelete={setArchiveTarget}
+                          />
+                        ))}
+                      </SortableContext>
                     </TableBody>
                   </Table>
                 </DndContext>
               </div>
+            </div>
+          )}
+
+          {ready && (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              {!showArchived && (
+                <p className="text-muted-foreground m-0 flex items-center gap-1.5 text-xs">
+                  <InfoIcon className="size-3.5" />
+                  {__('Drag rewards to change the order customers see. Cart discount stays first.', 'yayloyalty')}
+                </p>
+              )}
+              {pageCount > 1 && (
+                <NumberedPagination
+                  page={currentPage}
+                  pageCount={pageCount}
+                  isLoading={false}
+                  onPrevious={() => setPage(Math.max(1, currentPage - 1))}
+                  onNext={() => setPage(Math.min(pageCount, currentPage + 1))}
+                  onPageChange={setPage}
+                  className="ms-auto"
+                />
+              )}
             </div>
           )}
         </CardContent>
@@ -163,8 +197,8 @@ export function RewardTable() {
   );
 }
 
-/** The line above the table: catalog count with an "{n} archived" link, or the Archived view's way back. */
-function RewardTableSubtitle({
+/** "All rewards" with an "{n} archived" link, or the Archived view's title and its way back. */
+function RewardTableTitle({
   screen,
   showArchived,
   onViewChange,
@@ -175,240 +209,53 @@ function RewardTableSubtitle({
 }) {
   const archivedCount = screen.archivedRows.length;
 
-  if (showArchived) {
-    return (
-      <p className="text-foreground flex-1 text-sm">
-        {sprintf(
-          /* translators: %d: number of archived rewards. */
-          _n('%d archived reward.', '%d archived rewards.', archivedCount, 'yayloyalty'),
-          archivedCount,
-        )}{' '}
-        <button type="button" className="text-foreground underline" onClick={() => onViewChange('catalog')}>
+  return (
+    <div className="flex flex-wrap items-baseline gap-2">
+      <h2 className="m-0 text-base font-semibold">
+        {showArchived ? __('Archived rewards', 'yayloyalty') : __('All rewards', 'yayloyalty')}
+      </h2>
+      {showArchived ? (
+        <button
+          type="button"
+          className="text-muted-foreground cursor-pointer text-sm hover:underline"
+          onClick={() => onViewChange('catalog')}
+        >
           {__('Back to rewards', 'yayloyalty')}
         </button>
-      </p>
-    );
-  }
-
-  const { count, detail } = headerSubtitle(screen);
-
-  return (
-    <p className="text-foreground flex-1 text-sm">
-      {count}
-      {archivedCount > 0 && (
-        <>
-          {' - '}
-          <button type="button" className="text-foreground hover:underline" onClick={() => onViewChange('archived')}>
+      ) : (
+        archivedCount > 0 && (
+          <button
+            type="button"
+            className="text-muted-foreground cursor-pointer text-sm hover:underline"
+            onClick={() => onViewChange('archived')}
+          >
             {sprintf(
               /* translators: %d: number of archived rewards. */
-              __('%d archived', 'yayloyalty'),
+              _n('%d archived', '%d archived', archivedCount, 'yayloyalty'),
               archivedCount,
             )}
           </button>
-        </>
+        )
       )}
-      {`. ${detail}`}
-    </p>
+    </div>
   );
 }
 
 /** Shared between the real table and its loading skeleton, so column widths never drift between the two. */
 function RewardTableHeader() {
   return (
-    <TableHeader>
+    <TableHeader className="bg-muted/50">
       <TableRow>
-        <TableHead className="w-6" />
+        <TableHead className="w-8" />
         <TableHead>{__('Reward', 'yayloyalty')}</TableHead>
-        <TableHead>{__('Type', 'yayloyalty')}</TableHead>
-        <TableHead>{__('Costs', 'yayloyalty')}</TableHead>
+        <TableHead className="text-center">{__('Type', 'yayloyalty')}</TableHead>
+        <TableHead className="text-center">{__('Points cost', 'yayloyalty')}</TableHead>
         <TableHead>{__('Availability', 'yayloyalty')}</TableHead>
-        <TableHead className="text-right">{__('Redeemed', 'yayloyalty')}</TableHead>
+        <TableHead className="text-center">{__('Redeemed', 'yayloyalty')}</TableHead>
         <TableHead>{__('Status', 'yayloyalty')}</TableHead>
         <TableHead className="w-1" />
       </TableRow>
     </TableHeader>
-  );
-}
-
-/**
- * One reward row, sortable via dnd-kit; RewardTable saves a drop as the new
- * display order. The built-in row is locked first; an archived row is never
- * dragged. The name opens the editor and the switch writes active/paused.
- */
-function RewardRow({
-  reward,
-  onArchiveOrDelete,
-}: {
-  reward: Reward;
-  /** Opens RewardArchiveDialog, which picks archive or delete from is_deletable. */
-  onArchiveOrDelete: (reward: Reward) => void;
-}) {
-  const navigate = useNavigate();
-  const statusMutation = useUpdateRewardStatusMutation(reward.id);
-  const isArchived = reward.status === 'archived';
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: reward.id,
-    disabled: reward.is_builtin || isArchived,
-  });
-  const displayStatus = resolveRewardDisplayStatus(reward.status, reward.starts_at, reward.ends_at);
-
-  async function toggle(isOn: boolean) {
-    try {
-      await statusMutation.mutateAsync(isOn ? 'active' : 'paused');
-    } catch (error) {
-      await toastApiError(error, __('Could not change the reward’s status.', 'yayloyalty'));
-    }
-  }
-
-  // Back as paused, never active: going live again is the merchant's own switch.
-  async function restore() {
-    try {
-      await statusMutation.mutateAsync('paused');
-      toast.success(__('Reward restored as paused.', 'yayloyalty'));
-    } catch (error) {
-      await toastApiError(error, __('Could not restore the reward.', 'yayloyalty'));
-    }
-  }
-
-  return (
-    <TableRow
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
-      data-state={isDragging ? 'selected' : undefined}
-    >
-      <TableCell className="px-1">
-        <DragHandle reward={reward} isArchived={isArchived} attributes={attributes} listeners={listeners} />
-      </TableCell>
-      <TableCell>
-        <div className="flex flex-col gap-0.5">
-          <div className="flex items-center gap-1.5">
-            <Button
-              variant="link"
-              size="sm"
-              className="h-auto p-0 font-semibold"
-              onClick={() => navigate(`/rewards/${reward.id}/edit`)}
-            >
-              {reward.name}
-            </Button>
-            {reward.is_builtin && (
-              <YayLoyaltyToolTip
-                trigger={<Lock className="text-muted-foreground size-3" />}
-                content={__('The built-in reward cannot be archived.', 'yayloyalty')}
-              />
-            )}
-          </div>
-          <span className="text-muted-foreground text-xs">{rewardSubtitle(reward)}</span>
-        </div>
-      </TableCell>
-      <TableCell>
-        <Badge variant="outline">{typeLabel(reward.type)}</Badge>
-      </TableCell>
-      <TableCell className="text-sm font-semibold tabular-nums">{costLabel(reward)}</TableCell>
-      <TableCell className="text-muted-foreground text-xs">{availabilityLabel(reward)}</TableCell>
-      {/* TODO(redemption): em dash until redemption defines "redeemed"; the count then reads reward.redemption_summary, never a second query. */}
-      <TableCell className="text-muted-foreground text-right text-xs">—</TableCell>
-      <TableCell>
-        {displayStatus === 'active' || displayStatus === 'paused' ? (
-          <div className="flex items-center gap-2">
-            <Switch
-              size="sm"
-              checked={displayStatus === 'active'}
-              disabled={statusMutation.isPending}
-              onCheckedChange={toggle}
-            />
-            <span className="text-muted-foreground text-xs">
-              {displayStatus === 'active' ? __('Active', 'yayloyalty') : __('Paused', 'yayloyalty')}
-            </span>
-          </div>
-        ) : (
-          <CampaignStatusBadge status={displayStatus} />
-        )}
-      </TableCell>
-      <TableCell className="text-right">
-        {/* The built-in can be neither duplicated (its type is never created) nor archived, so it has no menu. */}
-        {!reward.is_builtin && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="text-muted-foreground mx-auto flex size-6 items-center justify-center"
-                aria-label={sprintf(
-                  /* translators: %s: the reward's name. */
-                  __('“%s” actions', 'yayloyalty'),
-                  reward.name,
-                )}
-              >
-                <EllipsisIcon />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {isArchived ? (
-                <>
-                  <DropdownMenuItem disabled={statusMutation.isPending} onSelect={restore}>
-                    {__('Restore', 'yayloyalty')}
-                  </DropdownMenuItem>
-                  {reward.is_deletable && (
-                    <DropdownMenuItem variant="destructive" onSelect={() => onArchiveOrDelete(reward)}>
-                      {__('Delete permanently', 'yayloyalty')}
-                    </DropdownMenuItem>
-                  )}
-                </>
-              ) : (
-                <>
-                  {/* Create mode, seeded from this reward; nothing is written until Save. */}
-                  {isCreatableRewardType(reward.type) && (
-                    <DropdownMenuItem onSelect={() => navigate(`/rewards/new/${reward.type}?from=${reward.id}`)}>
-                      {__('Duplicate', 'yayloyalty')}
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem variant="destructive" onSelect={() => onArchiveOrDelete(reward)}>
-                    {__('Archive', 'yayloyalty')}
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </TableCell>
-    </TableRow>
-  );
-}
-
-/** Nothing for an archived row, a locked grip for the built-in, a live grip otherwise. */
-function DragHandle({
-  reward,
-  isArchived,
-  attributes,
-  listeners,
-}: {
-  reward: Reward;
-  isArchived: boolean;
-  attributes: ReturnType<typeof useSortable>['attributes'];
-  listeners: ReturnType<typeof useSortable>['listeners'];
-}) {
-  if (isArchived) {
-    return null;
-  }
-
-  if (reward.is_builtin) {
-    return (
-      <YayLoyaltyToolTip
-        trigger={<GripVertical className="text-muted-foreground/40 size-4 cursor-not-allowed" />}
-        content={__('The default reward always comes first.', 'yayloyalty')}
-      />
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      className="text-muted-foreground flex cursor-grab touch-none items-center active:cursor-grabbing"
-      aria-label={__('Drag to reorder', 'yayloyalty')}
-      {...attributes}
-      {...listeners}
-    >
-      <GripVertical className="size-4" />
-    </button>
   );
 }
 

@@ -3,9 +3,6 @@ import type { Resolver } from 'react-hook-form';
 import { z } from 'zod';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { formatWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
-import { pointsPhrase } from '@/lib/helpers/points.helper';
-import { numberConfig } from '@/lib/helpers/reward.helper';
 import { isScheduleInOrder } from '@/lib/schema/campaign.schema';
 import { ConditionList, emptyConditionList, toConditionList } from '@/lib/schema/condition-match.schema';
 import {
@@ -88,36 +85,6 @@ const SEED_COST_POINTS: Record<CatalogRewardType, number> = {
   free_shipping: 800,
   free_product: 3000,
 };
-
-/** A worked example of a catalog type's starting point, read from the seed it opens with. */
-export function templateExample(type: CatalogRewardType): string {
-  const config = seedConfig(type, storeCurrency());
-  const cost = pointsPhrase(SEED_COST_POINTS[type]);
-
-  switch (type) {
-    case 'fixed_coupon':
-      return sprintf(
-        /* translators: 1: discount amount, 2: minimum order amount, 3: points cost, e.g. "500 points". */
-        __('Example: %1$s off orders over %2$s, for %3$s', 'yayloyalty'),
-        formatWPCurrency(numberConfig(config, 'amount') ?? 0),
-        formatWPCurrency(numberConfig(config, 'min_order') ?? 0),
-        cost,
-      );
-    case 'percent_coupon':
-      return sprintf(
-        /* translators: 1: discount percent, 2: points cost, e.g. "1,500 points". */
-        __('Example: %1$s%% off, for %2$s', 'yayloyalty'),
-        String(numberConfig(config, 'percent') ?? 0),
-        cost,
-      );
-    case 'free_shipping':
-      /* translators: %s: points cost, e.g. "800 points". */
-      return sprintf(__('Example: free shipping on one order, for %s', 'yayloyalty'), cost);
-    case 'free_product':
-      /* translators: %s: points cost, e.g. "3,000 points". */
-      return sprintf(__('Example: a free product, for %s', 'yayloyalty'), cost);
-  }
-}
 
 /** A new reward's starting values; nothing is persisted until Save or Save draft. */
 export function rewardCreateSeed(type: CatalogRewardType, currency: string): RewardFormValues {

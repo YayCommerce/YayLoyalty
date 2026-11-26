@@ -1,8 +1,6 @@
-import { IS_PRO_BUILD } from '@/lib/is-pro-build';
-import { RewardTemplatePicker } from '@/pro';
-import NotFoundPage from '../404';
+import { Navigate } from 'react-router';
 
-/** Lite-safe entry for rewards/new. Lite has no catalog to add to, so the route 404s there. */
+/** rewards/new: the modal picks the type itself, so it opens on the first one. Lite's list ignores child routes. */
 export default function RewardAddPage() {
-  return IS_PRO_BUILD ? <RewardTemplatePicker /> : <NotFoundPage />;
+  return <Navigate to="/rewards/new/fixed_coupon" replace />;
 }

@@ -14,7 +14,7 @@ function pageItems(page: number, pageCount: number): (number | null)[] {
 }
 
 /** Previous, numbered pages and Next. Pages are 1-based. */
-export function CustomersPagination({
+export function NumberedPagination({
   page,
   pageCount,
   isLoading,

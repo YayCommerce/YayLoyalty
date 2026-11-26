@@ -1,59 +1,74 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Controller, FormProvider, useForm, useFormContext, UseFormReturn, useWatch } from 'react-hook-form';
-import { useNavigate } from 'react-router';
+import { FormProvider, useForm, UseFormReturn } from 'react-hook-form';
+import { Navigate, useNavigate } from 'react-router';
 import { toast } from 'sonner';
-import { __, sprintf } from '@wordpress/i18n';
+import { __ } from '@wordpress/i18n';
 
-import { toastApiError } from '@/lib/api/api';
+import { isNotFoundError, toastApiError } from '@/lib/api/api';
 import { storeCurrency } from '@/lib/helpers/format.helper';
 import { useCreateRewardMutation, useRewardQuery, useUpdateRewardMutation } from '@/lib/queries/reward.queries';
 import { CatalogRewardType, resolveRewardDisplayStatus, Reward } from '@/lib/schema/reward.schema';
-import { EditorSaveIntent, useEditorSave } from '@/hooks/useEditorSave';
+import { useEditorSave } from '@/hooks/useEditorSave';
 import { Badge } from '@/components/ui/badge';
-import { Button, LoadingButton } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BackLink } from '@/components/ui/custom/back-link';
-import { ScheduleFields } from '@/components/ui/custom/schedule-fields';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
-import { Field, FieldContent, FieldLabel } from '@/components/ui/field';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
-import PageLayout from '@/components/layout/PageLayout';
-import { resolveQueryLoad } from '@/components/layout/resolve-query-load';
-import NotFoundPage from '@/pages/404';
-import { statusLabel } from '@/pro/campaigns/campaign-labels';
 import { CampaignStatusBadge } from '@/pro/campaigns/CampaignStatusBadge';
 import { RewardArchiveDialog } from '../archive/RewardArchiveDialog';
-import { defaultRewardName, isCreatableRewardType, templateTitle, typeLabel } from '../reward-labels';
+import {
+  CREATABLE_REWARD_TYPES,
+  defaultRewardName,
+  isCreatableRewardType,
+  templateTitle,
+  typeLabel,
+} from '../reward-labels';
 import {
   duplicateToFormValues,
-  EDITABLE_REWARD_STATUSES,
   formValuesToCreateInput,
   formValuesToUpdateInput,
   rewardCreateSeed,
-  rewardEditorActions,
   rewardFormResolver,
   RewardFormValues,
   rewardToFormValues,
 } from './reward-editor.form';
+import { RewardEditorModal, RewardEditorModalHeader, RewardEditorModalState } from './RewardEditorModal';
+import { RewardEditorModalFooter } from './RewardEditorModalFooter';
 import { RewardEditorSections } from './RewardEditorSections';
-import { RewardEditorSkeleton } from './RewardEditorSkeleton';
 
-/** Edit-mode entry for `rewards/:id/edit`: every non-content state, then the form. */
+const EDIT_TITLE = () => __('Edit reward', 'yayloyalty');
+const ADD_TITLE = () => __('Add a reward', 'yayloyalty');
+
+/** Edit-mode entry for `rewards/:id/edit`: one modal, holding the loading and error states, then the form. */
 export function RewardEditor({ id }: { id: number }) {
+  return (
+    <RewardEditorModal>
+      <RewardEditorContent id={id} />
+    </RewardEditorModal>
+  );
+}
+
+function RewardEditorContent({ id }: { id: number }) {
   const rewardQuery = useRewardQuery(id);
 
   // An invalid id never enables the query, which would leave isPending true forever.
-  if (!(id > 0)) {
-    return <NotFoundPage />;
+  if (!(id > 0) || (rewardQuery.isError && isNotFoundError(rewardQuery.error))) {
+    return <RewardEditorModalState title={EDIT_TITLE()} error={__('This reward does not exist.', 'yayloyalty')} />;
   }
 
-  const loaded = resolveQueryLoad(rewardQuery, {
-    skeleton: <RewardEditorSkeleton />,
-    title: __('Reward', 'yayloyalty'),
-    errorMessage: __('Could not load this reward.', 'yayloyalty'),
-  });
+  if (rewardQuery.isError) {
+    return (
+      <RewardEditorModalState
+        title={EDIT_TITLE()}
+        error={__('Could not load this reward.', 'yayloyalty')}
+        onRetry={() => rewardQuery.refetch()}
+      />
+    );
+  }
 
-  return 'screen' in loaded ? loaded.screen : <RewardEditorForm reward={loaded.data} />;
+  if (rewardQuery.isPending) {
+    return <RewardEditorModalState title={EDIT_TITLE()} />;
+  }
+
+  return <RewardEditorForm reward={rewardQuery.data} />;
 }
 
 function RewardEditorForm({ reward }: { reward: Reward }) {
@@ -80,8 +95,7 @@ function RewardEditorForm({ reward }: { reward: Reward }) {
         return false;
       }
     },
-    // Saving an existing reward stays on it, as creating one opens its editor.
-    { listPath: null, onInvalid: toastInvalidFields },
+    { listPath: '/rewards', onInvalid: toastInvalidFields },
   );
 
   function leaveAfterArchiveOrDelete() {
@@ -92,7 +106,7 @@ function RewardEditorForm({ reward }: { reward: Reward }) {
 
   return (
     <>
-      <RewardEditorLayout
+      <RewardEditorFrame
         form={form}
         onSubmit={handleSave}
         title={
@@ -111,6 +125,11 @@ function RewardEditorForm({ reward }: { reward: Reward }) {
         }
         reward={reward}
         type={reward.type}
+        typePicker={
+          <Badge variant="outline" className="self-start">
+            {typeLabel(reward.type)}
+          </Badge>
+        }
         busy={mutation.isPending}
         onDraftIntent={markDraftIntent}
         onArchive={() => setArchiveOpen(true)}
@@ -137,40 +156,52 @@ function RewardEditorForm({ reward }: { reward: Reward }) {
  * starts from that reward instead of the type's seed.
  */
 export function RewardCreator({ type, duplicateFromId }: { type: string; duplicateFromId?: number }) {
+  if (!isCreatableRewardType(type)) {
+    return <Navigate to="/rewards" replace />;
+  }
+
+  return (
+    <RewardEditorModal>
+      <RewardCreatorContent type={type} duplicateFromId={duplicateFromId} />
+    </RewardEditorModal>
+  );
+}
+
+function RewardCreatorContent({ type, duplicateFromId }: { type: CatalogRewardType; duplicateFromId?: number }) {
   // enabled: id > 0 inside the hook means an absent duplicateFromId never fetches.
   const sourceQuery = useRewardQuery(duplicateFromId ?? 0);
-
-  if (!isCreatableRewardType(type)) {
-    return <NotFoundPage />;
-  }
 
   if (!duplicateFromId) {
     return <RewardCreatorForm type={type} />;
   }
 
-  const loaded = resolveQueryLoad(sourceQuery, {
-    skeleton: <RewardEditorSkeleton />,
-    title: __('New reward', 'yayloyalty'),
-    errorMessage: __('Could not load the reward to duplicate.', 'yayloyalty'),
-  });
+  if (sourceQuery.isError) {
+    return (
+      <RewardEditorModalState
+        title={ADD_TITLE()}
+        error={__('Could not load the reward to duplicate.', 'yayloyalty')}
+        onRetry={() => sourceQuery.refetch()}
+      />
+    );
+  }
 
-  if ('screen' in loaded) {
-    return loaded.screen;
+  if (sourceQuery.isPending) {
+    return <RewardEditorModalState title={ADD_TITLE()} />;
   }
 
   // A hand-edited URL naming another type would seed a form whose fields don't match the copied config.
-  if (loaded.data.type !== type) {
-    return <NotFoundPage />;
+  if (sourceQuery.data.type !== type) {
+    return <Navigate to="/rewards" replace />;
   }
 
-  return <RewardCreatorForm type={type} duplicateFrom={loaded.data} />;
+  return <RewardCreatorForm type={type} duplicateFrom={sourceQuery.data} />;
 }
 
 function RewardCreatorForm({ type, duplicateFrom }: { type: CatalogRewardType; duplicateFrom?: Reward }) {
   const navigate = useNavigate();
   const mutation = useCreateRewardMutation();
 
-  // Stable for this visit: type and duplicateFrom are each fixed while the form is mounted.
+  // Changes only when the type is switched in the modal; a duplicate never switches type.
   const seed = useMemo(
     () =>
       duplicateFrom ? duplicateToFormValues(duplicateFrom, storeCurrency()) : rewardCreateSeed(type, storeCurrency()),
@@ -179,6 +210,12 @@ function RewardCreatorForm({ type, duplicateFrom }: { type: CatalogRewardType; d
   const resolver = useMemo(() => rewardFormResolver(type), [type]);
   const form = useForm<RewardFormValues>({ resolver, values: seed, resetOptions: { keepDirtyValues: true } });
   const autoName = useRef(seed.name);
+
+  // Switching type in the modal keeps the modal mounted and starts the new type's form afresh, edits included.
+  useEffect(() => {
+    autoName.current = seed.name;
+    form.reset(seed);
+  }, [form, seed]);
 
   // A new reward's name follows its offer until the merchant types their own; a duplicate keeps "(copy)".
   useEffect(() => {
@@ -202,12 +239,11 @@ function RewardCreatorForm({ type, duplicateFrom }: { type: CatalogRewardType; d
     form,
     async (values, intent) => {
       try {
-        const created = await mutation.mutateAsync(formValuesToCreateInput(values, type, intent));
-        // The baseline must stop counting as unsaved, or the redirect re-trips the leave guard.
+        await mutation.mutateAsync(formValuesToCreateInput(values, type, intent));
+        // The baseline must stop counting as unsaved, or closing re-trips the leave guard.
         form.reset(values);
         toast.success(__('Reward created.', 'yayloyalty'));
-        // Replaces the create URL, so Back never reopens a blank form for a reward that now exists.
-        return `/rewards/${created.id}/edit`;
+        return true;
       } catch (error) {
         await toastApiError(error, __('Could not create the reward.', 'yayloyalty'));
         return false;
@@ -218,16 +254,33 @@ function RewardCreatorForm({ type, duplicateFrom }: { type: CatalogRewardType; d
 
   return (
     <>
-      <RewardEditorLayout
+      <RewardEditorFrame
         form={form}
         onSubmit={handleSave}
-        title={sprintf(
-          /* translators: %s: the reward type's title, e.g. "Free shipping". */
-          __('New reward: %s', 'yayloyalty'),
-          templateTitle(type),
-        )}
+        title={ADD_TITLE()}
         reward={null}
         type={type}
+        typePicker={
+          // A duplicate keeps its source's type: its copied config only fits that type's fields.
+          duplicateFrom ? (
+            <Badge variant="outline" className="self-start">
+              {templateTitle(type)}
+            </Badge>
+          ) : (
+            <Segmented
+              shape="square"
+              value={type}
+              onValueChange={(next) => next && navigate(`/rewards/new/${next}`, { replace: true })}
+              className="w-full"
+            >
+              {CREATABLE_REWARD_TYPES.map((option) => (
+                <SegmentedItem key={option} value={option} className="flex-1">
+                  {templateTitle(option)}
+                </SegmentedItem>
+              ))}
+            </Segmented>
+          )
+        }
         busy={mutation.isPending}
         onDraftIntent={markDraftIntent}
         onCancel={() => navigate('/rewards')}
@@ -238,13 +291,14 @@ function RewardCreatorForm({ type, duplicateFrom }: { type: CatalogRewardType; d
   );
 }
 
-/** Shared page frame for both modes: back link, header, sections on the left, status, schedule and actions on the right. */
-function RewardEditorLayout({
+/** Both modes' rows inside the modal: header, the scrolling sections, then the preview and actions. */
+function RewardEditorFrame({
   form,
   onSubmit,
   title,
   reward,
   type,
+  typePicker,
   busy,
   onDraftIntent,
   onArchive,
@@ -256,168 +310,40 @@ function RewardEditorLayout({
   /** Null while creating. */
   reward: Reward | null;
   type: Reward['type'];
+  typePicker: React.ReactNode;
   busy: boolean;
   onDraftIntent: () => void;
   onArchive?: () => void;
   onCancel: () => void;
 }) {
   return (
-    <FormProvider {...form}>
-      <form onSubmit={onSubmit}>
-        <BackLink to="/rewards" label={__('Rewards', 'yayloyalty')} />
-
-        <PageLayout
-          className="max-w-6xl"
-          title={title}
-          description={<Badge variant="outline">{typeLabel(type)}</Badge>}
-        >
-          <div className="flex flex-col items-start gap-5 lg:flex-row">
-            <div className="min-w-0 flex-1">
-              <RewardEditorSections type={type} couponCode={reward?.coupon_code} />
-            </div>
-
-            <RewardEditorActions
-              reward={reward}
-              busy={busy || form.formState.isSubmitting}
-              onDraftIntent={onDraftIntent}
-              onArchive={onArchive}
-              onCancel={onCancel}
+    <>
+      <RewardEditorModalHeader title={title} />
+      <FormProvider {...form}>
+        {/* `contents`: the body and the footer stay rows of the modal's grid. */}
+        <form onSubmit={onSubmit} className="contents">
+          <div className="overflow-y-auto px-6 py-5">
+            <RewardEditorSections
+              type={type}
+              typePicker={typePicker}
+              couponCode={reward?.coupon_code}
+              isBuiltin={reward?.is_builtin ?? false}
             />
           </div>
-        </PageLayout>
-      </form>
-    </FormProvider>
+          <RewardEditorModalFooter
+            reward={reward}
+            busy={busy || form.formState.isSubmitting}
+            onDraftIntent={onDraftIntent}
+            onArchive={onArchive}
+            onCancel={onCancel}
+          />
+        </form>
+      </FormProvider>
+    </>
   );
 }
 
-/**
- * The side area: status and schedule in one card, then Save, Save draft,
- * Archive and Cancel. Both saves are type="submit" so the resolver runs for a
- * draft too; data-intent says which was pressed.
- */
-function RewardEditorActions({
-  reward,
-  busy,
-  onDraftIntent,
-  onArchive,
-  onCancel,
-}: {
-  reward: Reward | null;
-  busy: boolean;
-  onDraftIntent: () => void;
-  onArchive?: () => void;
-  onCancel: () => void;
-}) {
-  const { formState } = useFormContext<RewardFormValues>();
-  const { canSave, canSaveDraft, showArchive } = rewardEditorActions(reward, formState.isDirty);
-  // Which save was pressed, so only that button spins. The leave dialog's save counts as Save.
-  const [pressed, setPressed] = useState<EditorSaveIntent>('save');
-
-  return (
-    <div className="flex w-full flex-col gap-4 lg:sticky lg:top-6 lg:w-85 lg:shrink-0">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{__('Status and schedule', 'yayloyalty')}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <RewardEditorStatus isBuiltin={reward?.is_builtin ?? false} />
-          <RewardEditorSchedule />
-        </CardContent>
-      </Card>
-
-      <div className="flex flex-col gap-2">
-        <LoadingButton
-          type="submit"
-          loading={busy && pressed === 'save'}
-          disabled={busy || !canSave}
-          onClick={() => setPressed('save')}
-        >
-          {__('Save reward', 'yayloyalty')}
-        </LoadingButton>
-        {canSaveDraft && (
-          <LoadingButton
-            type="submit"
-            variant="outline"
-            data-intent="draft"
-            loading={busy && pressed === 'draft'}
-            disabled={busy || !canSave}
-            onClick={() => {
-              setPressed('draft');
-              onDraftIntent();
-            }}
-          >
-            {__('Save as draft', 'yayloyalty')}
-          </LoadingButton>
-        )}
-        <div className="flex items-center justify-center gap-2">
-          {showArchive && onArchive && (
-            // type="button": archiving is the dialog's decision, never a form save.
-            <Button
-              type="button"
-              variant="link"
-              className="text-destructive hover:text-destructive-accent"
-              disabled={busy}
-              onClick={onArchive}
-            >
-              {__('Archive reward', 'yayloyalty')}
-            </Button>
-          )}
-          <Button type="button" variant="link" disabled={busy} onClick={onCancel}>
-            {__('Cancel', 'yayloyalty')}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function RewardEditorStatus({ isBuiltin }: { isBuiltin: boolean }) {
-  const { control } = useFormContext<RewardFormValues>();
-  // The built-in is switched off by pausing, never drafted.
-  const statuses = isBuiltin
-    ? EDITABLE_REWARD_STATUSES.filter((status) => status !== 'draft')
-    : EDITABLE_REWARD_STATUSES;
-
-  return (
-    <Field>
-      <FieldLabel>{__('Status', 'yayloyalty')}</FieldLabel>
-      <FieldContent>
-        <Controller
-          control={control}
-          name="status"
-          render={({ field }) => (
-            // Re-clicking the active item yields an empty string; never write that back.
-            <Segmented value={field.value} onValueChange={(value) => value && field.onChange(value)}>
-              {statuses.map((status) => (
-                <SegmentedItem key={status} value={status}>
-                  {statusLabel(status)}
-                </SegmentedItem>
-              ))}
-            </Segmented>
-          )}
-        />
-      </FieldContent>
-    </Field>
-  );
-}
-
-function RewardEditorSchedule() {
-  const { control, setValue, formState } = useFormContext<RewardFormValues>();
-  const startsAt = useWatch({ control, name: 'starts_at' });
-  const endsAt = useWatch({ control, name: 'ends_at' });
-
-  return (
-    <ScheduleFields
-      startsAt={startsAt}
-      endsAt={endsAt}
-      onStartsAtChange={(next) => setValue('starts_at', next, { shouldDirty: true, shouldValidate: true })}
-      onEndsAtChange={(next) => setValue('ends_at', next, { shouldDirty: true, shouldValidate: true })}
-      endsAtError={formState.errors.ends_at}
-    />
-  );
-}
-
-/** The buttons sit in the side area, often far from the field that failed. */
+/** The buttons sit below a long form, often far from the field that failed. */
 function toastInvalidFields() {
   toast.error(__('Please fix the highlighted fields before saving.', 'yayloyalty'));
 }

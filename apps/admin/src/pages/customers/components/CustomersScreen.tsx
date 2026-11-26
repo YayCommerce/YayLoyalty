@@ -4,6 +4,7 @@ import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useAdjustPointsPreviewQuery, useCustomerQuery } from '@/lib/queries/customer.queries';
 import type { AdjustPointsPreviewInput, CustomerListRow } from '@/lib/schema/customer.schema';
 import { Card, CardContent } from '@/components/ui/card';
+import { NumberedPagination } from '@/components/ui/custom/numbered-pagination';
 import { useCustomersBulkActions } from '../customers-page.bulk-actions';
 import {
   countActiveFilters,
@@ -17,7 +18,6 @@ import { CustomersAdjustPointsDialog } from './CustomersAdjustPointsDialog';
 import { CustomersBulkActionBar } from './CustomersBulkActionBar';
 import { CustomersFilterBar } from './CustomersFilterBar';
 import { CustomersNoMatchState } from './CustomersNoMatchState';
-import { CustomersPagination } from './CustomersPagination';
 import { CustomersTable } from './CustomersTable';
 
 /**
@@ -173,7 +173,7 @@ export function CustomersScreen({
                 isExporting={isBulkExporting}
               />
             )}
-            <CustomersPagination
+            <NumberedPagination
               page={page}
               pageCount={pageCount}
               isLoading={isLoading}

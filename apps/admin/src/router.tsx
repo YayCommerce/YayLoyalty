@@ -91,18 +91,12 @@ export function getManagerRouter() {
         {
           path: 'rewards',
           element: guarded(CAP.MANAGE_REWARDS, <RewardsPage />),
-        },
-        {
-          path: 'rewards/new',
-          element: guarded(CAP.MANAGE_REWARDS, <RewardAddPage />),
-        },
-        {
-          path: 'rewards/new/:type',
-          element: guarded(CAP.MANAGE_REWARDS, <RewardCreatePage />),
-        },
-        {
-          path: 'rewards/:id/edit',
-          element: guarded(CAP.MANAGE_REWARDS, <RewardEditorPage />),
+          // The editor is a modal over the list; the parent's `guarded()` already checks CAP.MANAGE_REWARDS.
+          children: [
+            { path: 'new', element: <RewardAddPage /> },
+            { path: 'new/:type', element: <RewardCreatePage /> },
+            { path: ':id/edit', element: <RewardEditorPage /> },
+          ],
         },
         {
           path: 'tiers',

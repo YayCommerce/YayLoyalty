@@ -8,6 +8,7 @@ import {
   splitStoredDateTime,
   utcToDate,
 } from '@/lib/helpers/format.helper';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Field, FieldContent, FieldError, FieldLabel } from '@/components/ui/field';
@@ -25,17 +26,19 @@ export function ScheduleFields({
   onStartsAtChange,
   onEndsAtChange,
   endsAtError,
+  className,
 }: {
   startsAt: string | null;
   endsAt: string | null;
   onStartsAtChange: (next: string | null) => void;
   onEndsAtChange: (next: string | null) => void;
   endsAtError?: { message?: string };
+  className?: string;
 }) {
   const zoneLabel = siteTimezoneLabel();
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={cn('flex flex-col gap-4', className)}>
       <ScheduleBoundField label={__('Starts', 'yayloyalty')} value={startsAt} onChange={onStartsAtChange} />
 
       <div className="flex flex-col gap-1.5">

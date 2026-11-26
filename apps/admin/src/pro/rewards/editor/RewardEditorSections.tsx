@@ -1,5 +1,5 @@
-import { ReactNode, useEffect, useState } from 'react';
-import { InfoIcon, Package, TriangleAlert } from 'lucide-react';
+import { ReactNode, useState } from 'react';
+import { Package } from 'lucide-react';
 import { FieldError as HookFieldError, useFormContext, useWatch } from 'react-hook-form';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
@@ -7,57 +7,74 @@ import { numberConfig } from '@/lib/helpers/reward.helper';
 import { useProductSummaryQuery } from '@/lib/queries/lookup.queries';
 import { isCatalogRewardType, REWARD_CONDITION_TYPES, RewardType } from '@/lib/schema/reward.schema';
 import { cn } from '@/lib/utils';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { MoneyInput, OptionalMoneyInput, PointsInput } from '@/components/ui/custom/amount-inputs';
-import { EditorSection } from '@/components/ui/custom/editor-section';
-import { ErrorState } from '@/components/ui/custom/error-state';
 import { LookupMultiSelect } from '@/components/ui/custom/lookup-multi-select';
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { FlexibleDiscountConfig, FlexibleDiscountFields } from '@/pages/rewards/FlexibleDiscountFields';
 import { rewardCouponCodeCopy } from '@/pages/rewards/reward-coupon-code.copy';
 import { ConditionListEditor } from '../../conditions/ConditionListEditor';
-import { TierBadge } from '../../tiers/TierBadge';
-import { useTiersEnabled, useTiersQuery } from '../../tiers/tiers.queries';
-import { RewardFormValues, TierRule } from './reward-editor.form';
+import { RewardFormValues } from './reward-editor.form';
+import { RewardEditorStatusFields } from './RewardEditorStatusFields';
+import { RewardEditorTier } from './RewardEditorTier';
+import { RewardModalSection } from './RewardModalSection';
 
 /**
- * The editor's sections for one reward type: the built-in's rate settings, or a catalog reward's cost and value and who can redeem it.
- * Status and schedule live in the side area. `couponCode` is the saved reward's, absent while creating.
+ * The modal's sections for one reward type: basics, the built-in's rate or a catalog reward's cost and value,
+ * who can redeem it, then status and schedule. `typePicker` sits beside the name; `couponCode` is the saved
+ * reward's, absent while creating.
  */
-export function RewardEditorSections({ type, couponCode }: { type: RewardType; couponCode?: string }) {
+export function RewardEditorSections({
+  type,
+  typePicker,
+  couponCode,
+  isBuiltin,
+}: {
+  type: RewardType;
+  typePicker: ReactNode;
+  couponCode?: string;
+  isBuiltin: boolean;
+}) {
   const isCatalog = isCatalogRewardType(type);
 
   return (
-    <div className="flex flex-col gap-4">
-      <EditorSection contentClassName="gap-5" step={1} title={__('Basics', 'yayloyalty')}>
+    <div className="flex flex-col divide-y">
+      <RewardModalSection title={__('Basics', 'yayloyalty')}>
+        <Field>
+          <FieldLabel>{__('Type', 'yayloyalty')}</FieldLabel>
+          {typePicker}
+        </Field>
         <RewardEditorBasics />
         {couponCode && <RewardEditorCouponCode code={couponCode} />}
-      </EditorSection>
+      </RewardModalSection>
 
-      <EditorSection
-        contentClassName="gap-5"
-        step={2}
-        title={isCatalog ? __('Cost and value', 'yayloyalty') : __('The rate', 'yayloyalty')}
-      >
+      <RewardModalSection title={isCatalog ? __('Cost and value', 'yayloyalty') : __('The rate', 'yayloyalty')}>
         {isCatalog ? <RewardEditorValue type={type} /> : <RewardEditorFlexibleDiscount />}
-      </EditorSection>
+      </RewardModalSection>
+
+      {(type === 'fixed_coupon' || type === 'percent_coupon') && (
+        <RewardModalSection title={__('Tier eligibility', 'yayloyalty')}>
+          <RewardEditorTier />
+        </RewardModalSection>
+      )}
 
       {isCatalog && (
-        <EditorSection contentClassName="gap-5" step={3} title={__('Who can redeem', 'yayloyalty')}>
-          {(type === 'fixed_coupon' || type === 'percent_coupon') && <RewardEditorTier />}
+        <RewardModalSection title={__('Who can redeem', 'yayloyalty')}>
           <ConditionListEditor
             types={REWARD_CONDITION_TYPES}
             emptyTitle={__('No conditions — every customer can redeem this reward', 'yayloyalty')}
             emptyDescription={__('Add one to limit it, for example to a customer role.', 'yayloyalty')}
           />
-        </EditorSection>
+        </RewardModalSection>
       )}
+
+      <RewardModalSection title={__('Status and schedule', 'yayloyalty')}>
+        <RewardEditorStatusFields isBuiltin={isBuiltin} />
+      </RewardModalSection>
     </div>
   );
 }
@@ -87,8 +104,8 @@ function RewardEditorBasics() {
   const { register, formState } = useFormContext<RewardFormValues>();
 
   return (
-    <Field orientation="responsive">
-      <FieldLabel htmlFor="reward-basics-name">{__('Name', 'yayloyalty')}</FieldLabel>
+    <Field>
+      <FieldLabel htmlFor="reward-basics-name">{__('Reward name', 'yayloyalty')}</FieldLabel>
       <FieldContent>
         <Input id="reward-basics-name" aria-invalid={!!formState.errors.name} {...register('name')} />
         <FieldError errors={[formState.errors.name]} />
@@ -104,7 +121,7 @@ function RewardEditorCouponCode({ code }: { code: string }) {
   const copy = rewardCouponCodeCopy();
 
   return (
-    <Field orientation="responsive">
+    <Field>
       <FieldLabel htmlFor="reward-basics-coupon-code">{copy.label}</FieldLabel>
       <FieldContent>
         <Input id="reward-basics-coupon-code" value={code} readOnly className="font-mono" />
@@ -133,91 +150,93 @@ function RewardEditorValue({ type }: { type: RewardType }) {
   const { config, patchConfig, configErrors } = useRewardConfig();
   const currency = String(config.currency ?? '');
 
+  const full = 'w-full max-w-none';
+
   return (
     <>
       {type === 'free_product' && <RewardEditorProduct />}
 
-      <RewardField
-        label={__('Costs the customer', 'yayloyalty')}
-        error={formState.errors.cost_points}
-        description={__('Points are spent when the customer claims the reward.', 'yayloyalty')}
-      >
-        <PointsInput value={costPoints ?? 0} min={0} onValueChange={(next) => setValue('cost_points', next, EDIT)} />
-      </RewardField>
-
-      {type === 'fixed_coupon' && (
-        <RewardField label={__('Discount amount', 'yayloyalty')} error={configErrors.amount}>
-          <MoneyInput
-            value={numberConfig(config, 'amount') ?? 0}
-            currency={currency}
-            onValueChange={(amount) => patchConfig({ amount })}
+      <div className="grid gap-4 sm:grid-cols-[repeat(auto-fit,minmax(170px,1fr))]">
+        <RewardField label={__('Points cost', 'yayloyalty')} error={formState.errors.cost_points}>
+          <PointsInput
+            className={full}
+            value={costPoints ?? 0}
+            min={0}
+            onValueChange={(next) => setValue('cost_points', next, EDIT)}
           />
         </RewardField>
-      )}
 
-      {type === 'percent_coupon' && (
-        <>
-          <RewardField
-            label={__('Discount', 'yayloyalty')}
-            error={configErrors.percent}
-            description={__('Off the order subtotal. Shipping and tax are excluded.', 'yayloyalty')}
-          >
-            <NumberInputRoot
-              size="small"
-              className="w-28"
-              min={0}
-              max={100}
-              value={numberConfig(config, 'percent') ?? 0}
-              onValueChange={(percent) => patchConfig({ percent })}
-            >
-              <NumberInputInput />
-              <NumberInputUnit unit="%" />
-            </NumberInputRoot>
-          </RewardField>
-          <RewardField
-            label={__('Cap the discount at', 'yayloyalty')}
-            error={configErrors.max_discount}
-            description={__(
-              'Without a cap a percentage reward is unbounded on a large order. Leave empty for no cap.',
-              'yayloyalty',
-            )}
-          >
-            <OptionalMoneyInput
-              value={numberConfig(config, 'max_discount')}
+        {type === 'fixed_coupon' && (
+          <RewardField label={__('Discount amount', 'yayloyalty')} error={configErrors.amount}>
+            <MoneyInput
+              className={full}
+              value={numberConfig(config, 'amount') ?? 0}
               currency={currency}
-              onValueChange={(max_discount) => patchConfig({ max_discount })}
+              onValueChange={(amount) => patchConfig({ amount })}
             />
           </RewardField>
-        </>
-      )}
+        )}
 
-      {type !== 'free_product' && (
-        <RewardField
-          label={__('Minimum order', 'yayloyalty')}
-          error={configErrors.min_order}
-          description={__('The coupon will not apply below this. Leave empty for no minimum.', 'yayloyalty')}
-        >
-          <OptionalMoneyInput
-            value={numberConfig(config, 'min_order')}
-            currency={currency}
-            placeholder={__('No minimum', 'yayloyalty')}
-            onValueChange={(min_order) => patchConfig({ min_order })}
-          />
-        </RewardField>
-      )}
+        {type === 'percent_coupon' && (
+          <>
+            <RewardField
+              label={__('Discount', 'yayloyalty')}
+              error={configErrors.percent}
+              description={__('Off the order subtotal. Shipping and tax are excluded.', 'yayloyalty')}
+            >
+              <NumberInputRoot
+                size="small"
+                className={full}
+                min={0}
+                max={100}
+                value={numberConfig(config, 'percent') ?? 0}
+                onValueChange={(percent) => patchConfig({ percent })}
+              >
+                <NumberInputInput />
+                <NumberInputUnit unit="%" />
+              </NumberInputRoot>
+            </RewardField>
+            <RewardField
+              label={__('Cap the discount at', 'yayloyalty')}
+              error={configErrors.max_discount}
+              description={__('Leave empty for no cap.', 'yayloyalty')}
+            >
+              <OptionalMoneyInput
+                className={full}
+                value={numberConfig(config, 'max_discount')}
+                currency={currency}
+                onValueChange={(max_discount) => patchConfig({ max_discount })}
+              />
+            </RewardField>
+          </>
+        )}
+
+        {type !== 'free_product' && (
+          <RewardField label={__('Minimum order', 'yayloyalty')} error={configErrors.min_order}>
+            <OptionalMoneyInput
+              className={full}
+              value={numberConfig(config, 'min_order')}
+              currency={currency}
+              placeholder={__('No minimum', 'yayloyalty')}
+              onValueChange={(min_order) => patchConfig({ min_order })}
+            />
+          </RewardField>
+        )}
+      </div>
 
       {(type === 'fixed_coupon' || type === 'percent_coupon') && (
-        <RewardField
-          label={__('Exclude sale items', 'yayloyalty')}
-          error={configErrors.exclude_sale_items}
-          description={__('The coupon is refused on orders containing discounted products.', 'yayloyalty')}
-        >
+        <label className="flex items-center justify-between gap-4 rounded-lg border p-4">
+          <span className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium">{__('Exclude sale items', 'yayloyalty')}</span>
+            <span className="text-muted-foreground text-xs">
+              {__('The coupon is refused on orders containing discounted products.', 'yayloyalty')}
+            </span>
+          </span>
           <Switch
-            className="mt-2"
             checked={config.exclude_sale_items === true}
             onCheckedChange={(exclude_sale_items) => patchConfig({ exclude_sale_items })}
           />
-        </RewardField>
+        </label>
       )}
     </>
   );
@@ -379,124 +398,6 @@ function productStockLabel(status: string, quantity: number | null): { label: st
   return { label: __('In stock', 'yayloyalty'), isAvailable: true };
 }
 
-// Tier
-
-const TIER_RULE_LABELS: Record<TierRule, string> = {
-  any: __('Any tier', 'yayloyalty'),
-  gte: __('Minimum tier', 'yayloyalty'),
-  eq: __('Only this tier', 'yayloyalty'),
-};
-
-const TIER_RULE_DESCRIPTIONS: Partial<Record<TierRule, string>> = {
-  gte: __('Only customers in this tier or a higher one see and can claim this reward.', 'yayloyalty'),
-  eq: __('Only customers in this tier see and can claim this reward.', 'yayloyalty'),
-};
-
-function RewardEditorTier() {
-  const { control, setValue, formState } = useFormContext<RewardFormValues>();
-  const tierRule = useWatch({ control, name: 'tier_rule' });
-  const tierId = useWatch({ control, name: 'tier_id' });
-  const tiersQuery = useTiersQuery();
-  const tiersEnabled = useTiersEnabled();
-  const tiers = tiersQuery.data;
-  const isRemoved = tiers !== undefined && tierId !== null && !tiers.some((tier) => tier.id === tierId);
-  const storedId = formState.defaultValues?.tier_id ?? null;
-  const wasRemoved = tiers !== undefined && storedId !== null && !tiers.some((tier) => tier.id === storedId);
-  const description = TIER_RULE_DESCRIPTIONS[tierRule];
-
-  // The server refuses a save naming a deleted tier, so a removed one is cleared; dirtying it lets Save write that.
-  useEffect(() => {
-    if (isRemoved) {
-      setValue('tier_rule', 'any', EDIT);
-      setValue('tier_id', null, EDIT);
-    }
-  }, [isRemoved, setValue]);
-
-  const changeRule = (next: TierRule) => {
-    setValue('tier_rule', next, EDIT);
-
-    if (next === 'any') {
-      setValue('tier_id', null, EDIT);
-    }
-  };
-
-  return (
-    <>
-      {!tiersEnabled && (
-        <Alert variant="outline">
-          <InfoIcon />
-          <AlertDescription>
-            {__(
-              'Tiers are off. Rewards that require a tier are hidden from every customer until you turn tiers on.',
-              'yayloyalty',
-            )}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <Field orientation="responsive">
-        <FieldLabel htmlFor="reward-tier-rule">{__('Tier rule', 'yayloyalty')}</FieldLabel>
-        <FieldContent>
-          <Select
-            value={tierRule}
-            onValueChange={(next) => changeRule(next as TierRule)}
-            disabled={tiersQuery.isPending || tiersQuery.isError}
-          >
-            <SelectTrigger id="reward-tier-rule" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {(Object.keys(TIER_RULE_LABELS) as TierRule[]).map((rule) => (
-                <SelectItem key={rule} value={rule}>
-                  {TIER_RULE_LABELS[rule]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {tiersQuery.isError && (
-            <ErrorState
-              message={__('Could not load the tiers.', 'yayloyalty')}
-              onRetry={() => void tiersQuery.refetch()}
-            />
-          )}
-          {wasRemoved && tierRule === 'any' && (
-            <Alert variant="warning">
-              <TriangleAlert />
-              <AlertDescription>{__('The tier this reward required was removed.', 'yayloyalty')}</AlertDescription>
-            </Alert>
-          )}
-        </FieldContent>
-      </Field>
-
-      {tierRule !== 'any' && (
-        <Field orientation="responsive">
-          <FieldLabel htmlFor="reward-tier-id">{__('Tier', 'yayloyalty')}</FieldLabel>
-          <FieldContent>
-            <Select
-              value={tierId === null ? '' : String(tierId)}
-              onValueChange={(next) => setValue('tier_id', Number(next), EDIT)}
-              disabled={tiersQuery.isPending || tiersQuery.isError}
-            >
-              <SelectTrigger id="reward-tier-id" className="w-full" aria-invalid={!!formState.errors.tier_id}>
-                <SelectValue placeholder={__('Select a tier', 'yayloyalty')} />
-              </SelectTrigger>
-              <SelectContent>
-                {tiers?.map((tier) => (
-                  <SelectItem key={tier.id} value={String(tier.id)}>
-                    <TierBadge name={tier.name} color={tier.color} />
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FieldError errors={[formState.errors.tier_id]} />
-            {description && <FieldDescription>{description}</FieldDescription>}
-          </FieldContent>
-        </Field>
-      )}
-    </>
-  );
-}
-
 /* ─── field atoms ────────────────────────────────────────────────────── */
 
 function RewardField({
@@ -511,7 +412,7 @@ function RewardField({
   children: ReactNode;
 }) {
   return (
-    <Field orientation="responsive">
+    <Field>
       <FieldLabel>{label}</FieldLabel>
       <FieldContent>
         {children}

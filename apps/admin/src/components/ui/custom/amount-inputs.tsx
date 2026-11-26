@@ -39,16 +39,18 @@ export function MoneyInput({
   value,
   currency,
   onValueChange,
+  className,
 }: {
   id?: string;
   value: number;
   currency: string;
   onValueChange: (value: number) => void;
+  className?: string;
 }) {
   return (
     <NumberInputRoot
       size="small"
-      className={AMOUNT_INPUT_WIDTH}
+      className={cn(AMOUNT_INPUT_WIDTH, className)}
       min={0}
       decimalScale={decimalsFor(currency)}
       value={value}
@@ -69,16 +71,18 @@ export function OptionalMoneyInput({
   currency,
   placeholder,
   onValueChange,
+  className,
 }: {
   value: number | null;
   currency: string;
   placeholder?: string;
   onValueChange: (value: number | null) => void;
+  className?: string;
 }) {
   return (
     <NumberInputRoot
       size="small"
-      className={AMOUNT_INPUT_WIDTH}
+      className={cn(AMOUNT_INPUT_WIDTH, className)}
       nullable
       min={0.01}
       decimalScale={decimalsFor(currency)}
