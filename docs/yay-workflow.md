@@ -1,4 +1,4 @@
-<!-- Kit-managed by the yay plugin 0.19.0. Run /yay:harness-update instead of editing; put repo-specific notes in another docs/ file. -->
+<!-- Kit-managed by the yay plugin 0.20.0. Run /yay:harness-update instead of editing; put repo-specific notes in another docs/ file. -->
 # From roadmap to release
 
 A worked example: shipping **v1.0.0** of this plugin with three features, from the roadmap to the release tag. Lines starting with `/yay:` are typed into Claude Code; lines starting with `yayh` are run in the terminal.
@@ -52,8 +52,6 @@ Two ways. Pick one.
 ```
 
 Do the same for R-2 and R-3. A small item can go straight to `/yay:implement R-2`; it picks the lane (tiny, small or standard) and says which.
-
-Each skill first **says the job back**: what it understood, what it assumed, what it won't do, what to watch for, and how we'll know it's done. On big work (brainstorm, design, a standard plan, debugging a long report) it stops there once, so you can correct it before any file is written. Add `--interview` to brainstorm, plan or `roadmap --brief` to be asked one question at a time instead.
 
 **B. The whole sprint in one run**
 
