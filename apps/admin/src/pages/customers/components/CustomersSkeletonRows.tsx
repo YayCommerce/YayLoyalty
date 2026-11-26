@@ -9,6 +9,7 @@ export function CustomersSkeletonRows({ columnCount }: { columnCount: number }) 
         <TableRow key={index}>
           <TableCell colSpan={columnCount}>
             <div className="flex items-center gap-6">
+              <Skeleton className="size-8 shrink-0 rounded-full" />
               <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                 <Skeleton className="h-3 w-36" />
                 <Skeleton className="h-2.5 w-48" />

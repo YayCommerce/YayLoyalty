@@ -107,10 +107,13 @@ export function CustomersScreen({
   const customerQuery = useCustomerQuery(singleId);
 
   // 'all' mode asks the server to COUNT the filter; a tick list knows its own
-  // count, so it sends no filters and reads only liability and rate.
+  // count, so it sends only its ids. Both get back the points their selection holds.
   const previewInput = useMemo<AdjustPointsPreviewInput>(
-    () => (selection.mode === 'all' ? { filters: queryFilters } : {}),
-    [selection.mode, queryFilters],
+    () =>
+      selection.mode === 'all'
+        ? { filters: queryFilters, excludeIds: [...selection.excludedIds] }
+        : { userIds: [...selection.ids] },
+    [selection, queryFilters],
   );
   const preview = useAdjustPointsPreviewQuery(previewInput, isAdjustDialogOpen && singleId === 0);
 
@@ -129,6 +132,7 @@ export function CustomersScreen({
             onFiltersChange={onFiltersChange}
             queryFilters={queryFilters}
             sort={sort}
+            showTiers={showTiers}
           />
 
           <CustomersTable

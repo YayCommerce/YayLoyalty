@@ -23,13 +23,11 @@ import { AdjustPointsNegativeBalancePanel } from './adjust-points/AdjustPointsNe
 import { AdjustPointsOptions } from './adjust-points/AdjustPointsOptions';
 import { AdjustPointsReasonField } from './adjust-points/AdjustPointsReasonField';
 import { AdjustPointsStaleBalanceBanner } from './adjust-points/AdjustPointsStaleBalanceBanner';
-import { AMOUNT_EACH_LABEL, bulkNotifyByEmailCount } from './customers-adjust-points.bulk.copy';
+import { bulkNotifyByEmailCount } from './customers-adjust-points.bulk.copy';
 import {
-  AMOUNT_LABEL,
   COULD_NOT_VERIFY_BODY,
   COULD_NOT_VERIFY_TITLE,
   DEFAULT_REASON,
-  FOOTER_NOTICE,
   RETRY_LABEL,
 } from './customers-adjust-points.copy';
 import {
@@ -220,102 +218,102 @@ export function CustomersAdjustPointsDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[90vh] sm:max-w-lg">
-        <AdjustPointsHeader
-          isSingle={isSingle}
-          isLoading={source.isLoading}
-          singleCustomer={singleCustomer}
-          isStale={isStale}
-          openedBalance={openedBalance}
-          bulkEffectiveCount={bulk.effectiveCount}
-        />
-
-        {isUnverified && (
-          <Alert variant="outline" destructive>
-            <AlertTitle>{COULD_NOT_VERIFY_TITLE()}</AlertTitle>
-            <AlertDescription>
-              <p>{COULD_NOT_VERIFY_BODY()}</p>
-              <Button variant="outline" size="sm" onClick={() => source.refetch()}>
-                {RETRY_LABEL()}
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {isStale && singleCustomer && openedBalance !== null && (
-          <AdjustPointsStaleBalanceBanner
-            customerName={singleCustomer.name}
+      <DialogContent className="max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-xl">
+        <div className="border-b px-6 py-4">
+          <AdjustPointsHeader
+            isSingle={isSingle}
+            isLoading={source.isLoading}
+            singleCustomer={singleCustomer}
+            isStale={isStale}
             openedBalance={openedBalance}
-            latestBalance={singleCustomer.balance}
-            onReload={baseline.handleReload}
-            isReloading={source.isFetching}
+            bulkEffectiveCount={bulk.effectiveCount}
           />
-        )}
+        </div>
 
-        {isNegativeStart && singleCustomer && (
-          <AdjustPointsNegativeBalancePanel
+        <div className="flex flex-col gap-5 overflow-y-auto px-6 py-5">
+          {isUnverified && (
+            <Alert variant="outline" destructive>
+              <AlertTitle>{COULD_NOT_VERIFY_TITLE()}</AlertTitle>
+              <AlertDescription>
+                <p>{COULD_NOT_VERIFY_BODY()}</p>
+                <Button variant="outline" size="sm" onClick={() => source.refetch()}>
+                  {RETRY_LABEL()}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {isStale && singleCustomer && openedBalance !== null && (
+            <AdjustPointsStaleBalanceBanner
+              customerName={singleCustomer.name}
+              openedBalance={openedBalance}
+              latestBalance={singleCustomer.balance}
+              onReload={baseline.handleReload}
+              isReloading={source.isFetching}
+            />
+          )}
+
+          {isNegativeStart && singleCustomer && (
+            <AdjustPointsNegativeBalancePanel
+              state={state}
+              customerName={singleCustomer.name}
+              balance={singleCustomer.balance}
+            />
+          )}
+
+          {isSingle && singleCustomer && (
+            <AdjustPointsFields
+              state={state}
+              customerName={singleCustomer.name}
+              balance={singleCustomer.balance}
+              showResultPanel={!isNegativeStart || balanceAfter >= 0}
+            />
+          )}
+
+          {!isSingle && (
+            <AdjustPointsBulkPanels
+              state={state}
+              effectiveCount={bulk.effectiveCount}
+              isCountLoading={bulk.usedFilters && source.isLoading}
+              selectionMode={selectionMode}
+              filters={filters ?? DEFAULT_CUSTOMER_LIST_FILTERS}
+              tierLabel={tierLabel}
+              notShownOnPage={bulk.notShownOnPage}
+              liabilityPoints={previewData?.selected_liability_points ?? null}
+              hasPreviewError={!!source.error}
+              isOverLimit={bulk.isOverLimit}
+              acknowledged={bulk.acknowledged}
+              onAcknowledgedChange={bulk.setAcknowledged}
+            />
+          )}
+
+          <AdjustPointsAmountField state={state} onChange={patchState} />
+
+          <AdjustPointsReasonField reason={state.reason} onChange={(reason) => patchState({ reason })} />
+
+          <AdjustPointsOptions
             state={state}
-            customerName={singleCustomer.name}
-            balance={singleCustomer.balance}
+            onChange={patchState}
+            notifyCountLabel={!isSingle ? bulkNotifyByEmailCount(bulk.effectiveCount) : undefined}
+            showTier={showTier}
           />
-        )}
 
-        <AdjustPointsAmountField
-          state={state}
-          onChange={patchState}
-          label={isSingle ? AMOUNT_LABEL() : AMOUNT_EACH_LABEL()}
-        />
+          {validationError && <FieldError>{validationError}</FieldError>}
+        </div>
 
-        {isSingle && singleCustomer && (
-          <AdjustPointsFields
-            state={state}
-            customerName={singleCustomer.name}
-            balance={singleCustomer.balance}
-            showResultPanel={!isNegativeStart || balanceAfter >= 0}
-          />
-        )}
-
-        {!isSingle && (
-          <AdjustPointsBulkPanels
+        <div className="border-t px-6 py-4">
+          <AdjustPointsFooter
+            isSingle={isSingle}
             state={state}
             effectiveCount={bulk.effectiveCount}
-            isCountLoading={bulk.usedFilters && source.isLoading}
-            selectionMode={selectionMode}
-            filters={filters ?? DEFAULT_CUSTOMER_LIST_FILTERS}
-            tierLabel={tierLabel}
-            notShownOnPage={bulk.notShownOnPage}
-            liabilityPoints={previewData?.liability_points ?? null}
-            hasPreviewError={!!source.error}
-            isOverLimit={bulk.isOverLimit}
-            acknowledged={bulk.acknowledged}
-            onAcknowledgedChange={bulk.setAcknowledged}
+            isSubmitting={isSubmitting}
+            isCheckingBeforeSubmit={isCheckingBeforeSubmit}
+            isPreviewLoading={source.isLoading}
+            blockers={blockers}
+            onCancel={() => handleOpenChange(false)}
+            onSubmit={handleSubmit}
           />
-        )}
-
-        <AdjustPointsReasonField reason={state.reason} onChange={(reason) => patchState({ reason })} />
-
-        <AdjustPointsOptions
-          state={state}
-          onChange={patchState}
-          notifyCountLabel={!isSingle ? bulkNotifyByEmailCount(bulk.effectiveCount) : undefined}
-          showTier={showTier}
-        />
-
-        {validationError && <FieldError>{validationError}</FieldError>}
-
-        <p className="text-muted-foreground text-xs">{FOOTER_NOTICE()}</p>
-
-        <AdjustPointsFooter
-          isSingle={isSingle}
-          state={state}
-          effectiveCount={bulk.effectiveCount}
-          isSubmitting={isSubmitting}
-          isCheckingBeforeSubmit={isCheckingBeforeSubmit}
-          isPreviewLoading={source.isLoading}
-          blockers={blockers}
-          onCancel={() => handleOpenChange(false)}
-          onSubmit={handleSubmit}
-        />
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -158,16 +158,19 @@ export type AdjustPointsInput = z.infer<typeof adjustPointsSchema>;
 /** Mirrors CustomerAdjustPreviewRestController::preview(), the source of truth. `count` is null unless filters were sent. */
 export const adjustPointsPreviewSchema = z.object({
   count: z.number().int().nullable(),
-  liability_points: z.number().int(),
+  /** Positive balances the selection holds; balances below zero are not liability. */
+  selected_liability_points: z.number().int(),
 });
 
 export type AdjustPointsPreview = z.infer<typeof adjustPointsPreviewSchema>;
 
 /**
- * `filters` only for "select all matching" (a ticked list knows its own
- * count). Typed structurally, not as `CustomerListFilters`, so this lib-level module
+ * `filters` + `excludeIds` for "select all matching"; `userIds` for a ticked list, which knows its own
+ * count. Typed structurally, not as `CustomerListFilters`, so this lib-level module
  * never imports from `pages/customers/`.
  */
 export type AdjustPointsPreviewInput = {
   filters?: { search: string; balanceRange: string; expiringSoon: string; tier: string };
+  userIds?: number[];
+  excludeIds?: number[];
 };

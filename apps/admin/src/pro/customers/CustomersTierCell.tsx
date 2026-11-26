@@ -1,4 +1,4 @@
-import { TierBadge } from '../tiers/TierBadge';
+import { TierIconChip } from '../tiers/TierIconChip';
 import { useTiersQuery } from '../tiers/tiers.queries';
 
 /** A Customers row's tier. A deleted tier or no tier reads "—". */
@@ -9,5 +9,10 @@ export function CustomersTierCell({ tierId }: { tierId: number | null }) {
     return <span className="text-muted-foreground">—</span>;
   }
 
-  return <TierBadge name={tier.name} color={tier.color} />;
+  return (
+    <span className="flex items-center gap-2.5">
+      <TierIconChip color={tier.color} />
+      {tier.name}
+    </span>
+  );
 }

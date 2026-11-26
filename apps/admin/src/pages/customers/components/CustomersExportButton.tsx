@@ -14,10 +14,12 @@ export function CustomersExportButton({
   disabled,
   queryFilters,
   sort,
+  className,
 }: {
   disabled: boolean;
   queryFilters: CustomerListFilters;
   sort: { by: SortKey; dir: SortDirection };
+  className?: string;
 }) {
   const { isExporting, start } = useCsvExport({
     fetchRows: (signal) => fetchAllMatchingCustomers(queryFilters, sort, signal),
@@ -28,7 +30,7 @@ export function CustomersExportButton({
 
   return (
     <Can cap={CAP.VIEW} disable>
-      <Button variant="outline" size="sm" disabled={disabled || isExporting} onClick={start}>
+      <Button variant="outline" size="sm" className={className} disabled={disabled || isExporting} onClick={start}>
         {isExporting ? EXPORTING_LABEL() : __('Export CSV', 'yayloyalty')}
       </Button>
     </Can>

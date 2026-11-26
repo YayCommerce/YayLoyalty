@@ -29,8 +29,8 @@ import {
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import TierCrownIcon from '@/components/icons/TierCrownIcon';
 import { TierFormDialog, TierFormTarget } from './TierFormDialog';
+import { TierIconChip } from './TierIconChip';
 import { readTierInUse } from './tiers.api';
 import { useDeleteTierMutation, useTiersEnabled, useTiersQuery } from './tiers.queries';
 
@@ -156,13 +156,7 @@ function TierRow({
     <TableRow>
       <TableCell>
         <button type="button" className="flex items-center gap-3 font-medium hover:underline" onClick={onEdit}>
-          <span
-            className="flex size-7 shrink-0 items-center justify-center rounded-md"
-            style={{ backgroundColor: `color-mix(in srgb, ${tier.color} 15%, transparent)`, color: tier.color }}
-            aria-hidden
-          >
-            <TierCrownIcon className="size-4" />
-          </span>
+          <TierIconChip color={tier.color} />
           {tier.name}
         </button>
       </TableCell>

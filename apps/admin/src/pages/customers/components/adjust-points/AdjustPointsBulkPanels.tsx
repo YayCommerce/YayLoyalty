@@ -6,19 +6,24 @@ import { MAX_MATCHING_ROWS } from '../../customers-page.matching-customers';
 import {
   acknowledgeLiability,
   bulkFilterLine,
-  bulkLiabilityRange,
   bulkLiabilityReducesUpTo,
   bulkNotShownOnPage,
-  bulkSelectionCount,
+  bulkSummaryTitle,
   bulkTooLargeSelection,
-  bulkTotalPointsLine,
-  bulkTotalsLine,
-  NO_UNDO_TITLE,
-  noUndoBody,
-  writtenToLedgers,
+  OUTSTANDING_POINTS_LABEL,
+  perCustomerLine,
+  pointsTotalBadge,
+  reverseHint,
 } from '../customers-adjust-points.bulk.copy';
 import { addsToLiability } from '../customers-adjust-points.copy';
-import { bulkLiabilityProjection, bulkTotalPoints, type AdjustFormState } from '../customers-adjust-points.form-state';
+import {
+  bulkLiabilityProjection,
+  bulkTotalPoints,
+  signedPoints,
+  type AdjustFormState,
+} from '../customers-adjust-points.form-state';
+import { AdjustPointsBeforeAfter } from './AdjustPointsBeforeAfter';
+import { AdjustPointsSummaryCard } from './AdjustPointsSummaryCard';
 
 /** The active filters as text. */
 function filterSummary(filters: CustomerListFilters, tierLabel: string | null): string | null {
@@ -37,7 +42,7 @@ function filterSummary(filters: CustomerListFilters, tierLabel: string | null): 
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 
-/** Bulk-only: the selection summary, the totals, and the no-undo notice with its acknowledgement. */
+/** Bulk-only summary card: who, how much, the liability before → after, and the acknowledgement. */
 export function AdjustPointsBulkPanels({
   state,
   effectiveCount,
@@ -62,7 +67,7 @@ export function AdjustPointsBulkPanels({
   /** Rows the filter matches beyond the current page; 0 when none. */
   notShownOnPage: number;
   liabilityPoints: number | null;
-  /** The preview errored: `liabilityPoints` can't be trusted, so the liability line is hidden rather than guessed at. */
+  /** The preview errored: `liabilityPoints` can't be trusted, so the liability figures are hidden rather than guessed at. */
   hasPreviewError: boolean;
   isOverLimit: boolean;
   acknowledged: boolean;
@@ -71,65 +76,46 @@ export function AdjustPointsBulkPanels({
   const summary = selectionMode === 'all' ? filterSummary(filters, tierLabel) : null;
   const total = bulkTotalPoints(state, effectiveCount);
   const projection = bulkLiabilityProjection(state.direction, total, liabilityPoints);
+  const amount = formatPoints(state.amount);
+  const hasAmount = state.amount > 0 && !isOverLimit;
+  const signedTotal = signedPoints({ direction: state.direction, amount: total });
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <div className="text-sm font-medium">
-          {isCountLoading ? <Skeleton className="h-4 w-28" /> : bulkSelectionCount(effectiveCount)}
-        </div>
-        {summary && <p className="text-muted-foreground text-xs">{bulkFilterLine(summary)}</p>}
-        {selectionMode === 'all' && notShownOnPage > 0 && (
-          <p className="text-muted-foreground text-xs">{bulkNotShownOnPage(notShownOnPage)}</p>
-        )}
-        {isOverLimit && <p className="text-destructive text-xs">{bulkTooLargeSelection(MAX_MATCHING_ROWS)}</p>}
-      </div>
-
-      {state.amount > 0 && !isOverLimit && (
-        <div className="flex flex-col gap-1">
-          <p className="text-sm font-medium">{bulkTotalsLine(effectiveCount, formatPoints(state.amount))}</p>
-          <p className="text-sm">{bulkTotalPointsLine(formatPoints(total))}</p>
-          {!hasPreviewError && liabilityLine(projection, state.direction)}
+    <AdjustPointsSummaryCard
+      title={isCountLoading ? <Skeleton className="h-5 w-48" /> : bulkSummaryTitle(state.direction, effectiveCount)}
+      subtitle={perCustomerLine(amount)}
+      badge={hasAmount ? pointsTotalBadge(`${signedTotal > 0 ? '+' : ''}${formatPoints(signedTotal)}`) : undefined}
+    >
+      {(summary || (selectionMode === 'all' && notShownOnPage > 0) || isOverLimit) && (
+        <div className="flex flex-col gap-1 text-xs">
+          {summary && <p className="text-muted-foreground m-0">{bulkFilterLine(summary)}</p>}
+          {selectionMode === 'all' && notShownOnPage > 0 && (
+            <p className="text-muted-foreground m-0">{bulkNotShownOnPage(notShownOnPage)}</p>
+          )}
+          {isOverLimit && <p className="text-destructive m-0">{bulkTooLargeSelection(MAX_MATCHING_ROWS)}</p>}
         </div>
       )}
 
-      <div className="flex flex-col gap-2 rounded-md border px-3.5 py-3 text-xs">
-        <p className="text-sm font-medium">{NO_UNDO_TITLE()}</p>
-        <p className="text-muted-foreground">{noUndoBody(effectiveCount)}</p>
-        <p className="text-muted-foreground">{writtenToLedgers(effectiveCount)}</p>
+      {hasAmount && !hasPreviewError && projection.kind === 'range' && (
+        <AdjustPointsBeforeAfter caption={OUTSTANDING_POINTS_LABEL()} before={projection.from} after={projection.to} />
+      )}
+      {hasAmount && !hasPreviewError && projection.kind === 'delta' && (
+        <p className="text-muted-foreground m-0 text-xs">
+          {state.direction === 'remove'
+            ? bulkLiabilityReducesUpTo(formatPoints(projection.delta))
+            : addsToLiability(formatPoints(projection.delta))}
+        </p>
+      )}
 
-        {state.amount > 0 && !isOverLimit && (
-          <label className="flex items-start gap-2.5 pt-1">
+      {hasAmount && (
+        <>
+          <p className="text-muted-foreground m-0 text-xs">{reverseHint(state.direction, amount)}</p>
+          <label className="flex items-start gap-2.5 border-t pt-3 text-sm">
             <Checkbox checked={acknowledged} onCheckedChange={(checked) => onAcknowledgedChange(checked === true)} />
-            <span className="text-foreground">
-              {acknowledgeLiability(state.direction, formatPoints(total), effectiveCount)}
-            </span>
+            <span>{acknowledgeLiability(state.direction, formatPoints(total), effectiveCount)}</span>
           </label>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function liabilityLine(
-  projection: ReturnType<typeof bulkLiabilityProjection>,
-  direction: AdjustFormState['direction'],
-) {
-  if (projection.kind === 'none') return null;
-
-  if (projection.kind === 'range') {
-    return (
-      <p className="text-muted-foreground text-xs">
-        {bulkLiabilityRange(formatPoints(projection.from), formatPoints(projection.to))}
-      </p>
-    );
-  }
-
-  const deltaPoints = formatPoints(projection.delta);
-
-  return (
-    <p className="text-muted-foreground text-xs">
-      {direction === 'remove' ? bulkLiabilityReducesUpTo(deltaPoints) : addsToLiability(deltaPoints)}
-    </p>
+        </>
+      )}
+    </AdjustPointsSummaryCard>
   );
 }

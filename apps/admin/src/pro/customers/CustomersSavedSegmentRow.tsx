@@ -45,11 +45,11 @@ export function CustomersSavedSegmentRow({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-muted-foreground text-xs">{__('Saved segment', 'yayloyalty')}</span>
+      <span className="text-base font-semibold">{__('Saved segment', 'yayloyalty')}</span>
       {/* Locked during a remove: the pending remove's onSuccess resets `selected` to "All
           customers", over whatever the user picked meanwhile. */}
       <Select value={selected} onValueChange={onSelect} disabled={disabled || isRemoving}>
-        <SelectTrigger size="sm">
+        <SelectTrigger className="min-w-36">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

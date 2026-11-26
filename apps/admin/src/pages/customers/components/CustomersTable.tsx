@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react';
 import { __ } from '@wordpress/i18n';
 
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
@@ -81,12 +81,12 @@ export function CustomersTable({
       </div>
       <div
         className={cn(
-          'hidden overflow-x-auto rounded-md border transition-opacity sm:block',
+          'hidden overflow-x-auto rounded-lg border transition-opacity sm:block',
           isFetching && !isLoading && 'opacity-60',
         )}
       >
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-muted/50">
             <TableRow>
               {showSelection && (
                 <TableHead>
@@ -119,7 +119,7 @@ export function CustomersTable({
               <SortableHead
                 sortKey="balance"
                 label={__('Balance', 'yayloyalty')}
-                align="right"
+                align="center"
                 sortBy={sortBy}
                 sortDir={sortDir}
                 onSort={onSort}
@@ -128,7 +128,7 @@ export function CustomersTable({
               <SortableHead
                 sortKey="pending"
                 label={__('Pending', 'yayloyalty')}
-                align="right"
+                align="center"
                 sortBy={sortBy}
                 sortDir={sortDir}
                 onSort={onSort}
@@ -137,7 +137,7 @@ export function CustomersTable({
               <SortableHead
                 sortKey="lifetime"
                 label={__('Lifetime earned', 'yayloyalty')}
-                align="right"
+                align="center"
                 sortBy={sortBy}
                 sortDir={sortDir}
                 onSort={onSort}
@@ -146,7 +146,7 @@ export function CustomersTable({
               <SortableHead
                 sortKey="last_activity"
                 label={__('Last activity', 'yayloyalty')}
-                align="right"
+                align="center"
                 sortBy={sortBy}
                 sortDir={sortDir}
                 onSort={onSort}
@@ -155,7 +155,7 @@ export function CustomersTable({
               <SortableHead
                 sortKey="expires"
                 label={__('Expires', 'yayloyalty')}
-                align="right"
+                align="center"
                 sortBy={sortBy}
                 sortDir={sortDir}
                 onSort={onSort}
@@ -210,44 +210,41 @@ function SortableHead({
 }: {
   sortKey: SortKey;
   label: string;
-  align?: 'right';
+  align?: 'center';
   sortBy: SortKey;
   sortDir: SortDirection;
   onSort: (key: SortKey) => void;
   disabled?: boolean;
 }) {
+  const alignClass = align === 'center' ? 'text-center' : undefined;
+
   if (disabled) {
     return (
-      <TableHead className={align === 'right' ? 'text-right' : undefined}>
-        <span className="text-muted-foreground text-xs tracking-wide uppercase">{label}</span>
+      <TableHead className={alignClass}>
+        <span className="text-muted-foreground text-sm font-medium">{label}</span>
       </TableHead>
     );
   }
 
   const active = sortBy === sortKey;
-  const Icon = active ? (sortDir === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
+  const Icon = active ? (sortDir === 'asc' ? ArrowUp : ArrowDown) : ChevronsUpDown;
 
   return (
-    <TableHead className={align === 'right' ? 'text-right' : undefined}>
+    <TableHead className={alignClass}>
       {/* `flex h-full w-full`, not inline-flex: Chromium centres an inline-flex button 2px
           higher in a table cell when its first child is an SVG, so icon-first headers sat high. */}
       <button
         type="button"
         onClick={() => onSort(sortKey)}
-        className={`hover:text-foreground flex h-full w-full cursor-pointer items-center gap-1 text-xs font-medium tracking-wide uppercase ${align === 'right' ? 'justify-end' : 'justify-start'} ${active ? 'text-primary' : 'text-muted-foreground'}`}
+        className={cn(
+          'hover:text-foreground flex size-full cursor-pointer items-center gap-1 text-sm font-medium',
+          align === 'center' ? 'justify-center' : 'justify-start',
+          active ? 'text-foreground' : 'text-muted-foreground',
+        )}
         aria-label={label}
       >
-        {align === 'right' ? (
-          <>
-            {label}
-            <Icon className="size-3" />
-          </>
-        ) : (
-          <>
-            <Icon className="size-3" />
-            {label}
-          </>
-        )}
+        {label}
+        <Icon className="size-3.5" />
       </button>
     </TableHead>
   );

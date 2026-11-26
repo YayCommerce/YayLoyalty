@@ -64,20 +64,20 @@ export function CustomerTableRow({
           <CustomersTierCell tierId={customer.tier_id} />
         </TableCell>
       )}
-      <TableCell className="text-right">
+      <TableCell className="text-center">
         <BalanceCell value={customer.balance} />
       </TableCell>
-      <TableCell className="text-muted-foreground text-right tabular-nums">
+      <TableCell className="text-center tabular-nums">
         <PointsValue value={customer.pending_points} />
       </TableCell>
-      <TableCell className="text-muted-foreground text-right tabular-nums">
+      <TableCell className="text-center tabular-nums">
         <PointsValue value={customer.lifetime_earned} />
       </TableCell>
-      <TableCell className="text-muted-foreground text-right">
+      <TableCell className="text-center">
         {customer.last_activity_at ? formatWPRelativeDate(customer.last_activity_at) : '—'}
       </TableCell>
-      <TableCell className="text-muted-foreground text-right">
-        {!negative && customer.expires_at ? formatWPDate(customer.expires_at) : '—'}
+      <TableCell className="text-center">
+        {!negative && customer.expires_at ? formatWPDate(customer.expires_at, 'j F Y') : '—'}
       </TableCell>
     </TableRow>
   );
