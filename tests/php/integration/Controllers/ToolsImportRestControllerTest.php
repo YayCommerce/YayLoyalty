@@ -43,6 +43,7 @@ final class ToolsImportRestControllerTest extends WP_UnitTestCase {
 				$this->row( 4, 'ann@example.com', '1.5' ),
 				$this->row( 5, 'ann@example.com', '0' ),
 				$this->row( 6, 'ann@example.com', '-5' ),
+				$this->row( 7, 'bad-email', 'abc' ),
 			]
 		);
 		$rows     = array_column( $response->get_data()['rows'], null, 'row' );
@@ -54,6 +55,7 @@ final class ToolsImportRestControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 'invalid_points', $rows[4]['reason'] );
 		$this->assertSame( 'invalid_points', $rows[5]['reason'] );
 		$this->assertSame( 'would_go_negative', $rows[6]['reason'] );
+		$this->assertSame( 'invalid_email', $rows[7]['reason'] );
 		$this->assertSame( 0, $this->balance() );
 	}
 
