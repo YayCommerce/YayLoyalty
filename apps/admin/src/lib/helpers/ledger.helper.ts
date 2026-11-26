@@ -1,6 +1,6 @@
 import { __, sprintf } from '@wordpress/i18n';
 
-import type { LedgerEntry, LedgerType } from '@/lib/schema/ledger.schema';
+import type { LedgerEntry, LedgerFilterType, LedgerType } from '@/lib/schema/ledger.schema';
 
 /** A human description for a ledger row. Built here, not stored, so system rows stay translatable. */
 export function describeLedgerEntry(entry: LedgerEntry): string {
@@ -114,6 +114,26 @@ const LEDGER_TYPE_LABELS: Record<LedgerType, () => string> = {
 /** The display name of a ledger type: the Ledger tab's filter and the ledger CSV's Type column. */
 export function ledgerTypeLabel(type: LedgerType): string {
   return LEDGER_TYPE_LABELS[type]();
+}
+
+/** The filter group a ledger type falls under; mirrors `LedgerQueryArgs::filter_types()`. */
+const LEDGER_FILTER_OF: Record<LedgerType, Exclude<LedgerFilterType, 'all'>> = {
+  earn: 'earn',
+  refund_earn: 'earn',
+  redeem: 'redeem',
+  refund_redeem: 'redeem',
+  adjust: 'adjust',
+  correction: 'adjust',
+  expire: 'expire',
+};
+
+export function ledgerFilterOf(type: LedgerType): Exclude<LedgerFilterType, 'all'> {
+  return LEDGER_FILTER_OF[type];
+}
+
+/** The display name of a ledger filter option: "All", or its type's label. */
+export function ledgerFilterLabel(filter: LedgerFilterType): string {
+  return filter === 'all' ? __('All', 'yayloyalty') : ledgerTypeLabel(filter);
 }
 
 /** Signed display, so a clawback reads as -30 rather than 30. */

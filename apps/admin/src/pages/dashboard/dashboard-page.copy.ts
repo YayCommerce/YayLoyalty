@@ -1,13 +1,13 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { formatPercent, formatStoreDecimal, formatWPTime, utcToDate } from '@/lib/helpers/format.helper';
+import { formatStoreDecimal, formatWPDay, formatWPTime, utcToDate } from '@/lib/helpers/format.helper';
 import { formatCount, formatPoints } from '@/lib/helpers/points.helper';
 import { pctDelta } from '@/lib/points-math/points-math';
 import type { DashboardRange, DashboardSeriesPoint } from '@/lib/schema/dashboard.schema';
 
 /**
  * The dashboard's sentence builders, pure. A count of 0 renders "0"; a
- * ratio with no denominator "—"; no previous period reads as such, never 0%.
+ * ratio with no denominator "—".
  */
 
 export const RANGE_LABEL = (range: DashboardRange) =>
@@ -26,35 +26,6 @@ export function rangeSubline(range: DashboardRange): string {
   );
 }
 
-/** "▲ 3.2% vs prev 30 days" | "▼ 0.9% vs prev 30 days" | "no previous period" */
-export function deltaLine(
-  delta: number | null,
-  range: DashboardRange,
-): { text: string; direction: 'up' | 'down' | 'flat' | 'none' } {
-  if (delta === null) {
-    return { text: __('no previous period', 'yayloyalty'), direction: 'none' };
-  }
-
-  const vs = sprintf(
-    /* translators: %s: the range's length, e.g. "30 days". */
-    __('vs prev %s', 'yayloyalty'),
-    RANGE_LABEL(range),
-  );
-  const pct = formatPercent(Math.abs(delta), 1);
-
-  if (delta > 0) return { text: `▲ ${pct} ${vs}`, direction: 'up' };
-  if (delta < 0) return { text: `▼ ${pct} ${vs}`, direction: 'down' };
-
-  return {
-    text: sprintf(
-      /* translators: %s: the period compared against, e.g. "vs prev 30 days". */
-      __('unchanged %s', 'yayloyalty'),
-      vs,
-    ),
-    direction: 'flat',
-  };
-}
-
 /** "212 of 1,190 orders" */
 export function ordersSubline(withRedemption: number, total: number): string {
   return sprintf(
@@ -62,6 +33,33 @@ export function ordersSubline(withRedemption: number, total: number): string {
     __('%1$s of %2$s orders', 'yayloyalty'),
     formatCount(withRedemption),
     formatCount(total),
+  );
+}
+
+/** "18 Oct – 16 Nov 2026": the first and last day of the series. */
+export function seriesSpan(series: DashboardSeriesPoint[]): string {
+  if (series.length === 0) return '';
+
+  return `${formatWPDay(series[0].date, 'j M')} – ${formatWPDay(series[series.length - 1].date, 'j M Y')}`;
+}
+
+/** "453.2 / day avg." */
+export function perDayAverage(total: number, range: DashboardRange): string {
+  return sprintf(
+    /* translators: %s: the average per day, formatted. */
+    __('%s / day avg.', 'yayloyalty'),
+    formatStoreDecimal(total / range, 1),
+  );
+}
+
+/** "2,664 / member avg."; "no members yet" when there is no one to divide by. */
+export function perMemberAverage(points: number, members: number): string {
+  if (members === 0) return __('no members yet', 'yayloyalty');
+
+  return sprintf(
+    /* translators: %s: the average points per member, formatted. */
+    __('%s / member avg.', 'yayloyalty'),
+    formatCount(Math.round(points / members)),
   );
 }
 
