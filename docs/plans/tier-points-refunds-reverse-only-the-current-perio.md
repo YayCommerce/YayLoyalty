@@ -93,20 +93,20 @@ Done means, with Silver 800 and Gold 3,000 (and Gold raised to 5,000 where state
 **E2E:** none
 
 ## Verify
-- `composer test` → exit 0 (unit)
-- `cd tests/e2e && ./node_modules/.bin/wp-env run tests-cli --env-cwd=wp-content/plugins/yayloyalty env YAYLOYALTY_WP_ROOT=/var/www/html vendor/bin/phpunit -c phpunit-integration.xml.dist tests/integration/Repositories/LedgerWindowTotalTest.php` → OK (integration)
-- `cd tests/e2e && ./node_modules/.bin/wp-env run tests-cli --env-cwd=wp-content/plugins/yayloyalty env YAYLOYALTY_WP_ROOT=/var/www/html vendor/bin/phpunit -c phpunit-integration.xml.dist tests/integration/Services/TierEvaluatorTest.php` → OK (integration)
-- `yayh test run js` → exit 0 (js)
-- `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` → exit 0
-- `pnpm --filter @yayloyalty/admin-page lint` → exit 0
-- `./scripts/run.sh build lite` → exit 0
-- `./scripts/run.sh build pro` → exit 0
-- `cd tests/e2e && ./node_modules/.bin/wp-env run cli wp db query "SHOW COLUMNS FROM wp_yayloyalty_ledger LIKE 'counts_toward_tier'"` → counts_toward_tier
-- Pro, tiers on: Customers → a customer → Adjust points shows "Count toward tier points", ticked, under "Adjust lifetime totals too". Add 1,000 points with it unticked. Then `wp db query "SELECT type, counts_toward_tier FROM wp_yayloyalty_ledger ORDER BY id DESC LIMIT 1"` shows `adjust 0`, and the drawer's tier card progress is unchanged.
-- Pro, tiers off, and Lite: the Adjust dialog shows no tier option. An adjustment writes `counts_toward_tier` NULL.
-- Pro, Lifetime, Gold raised from 3,000 to 5,000: refund 10 points of an order for a Gold customer at 3,500. They stay Gold, and the activity log shows no `TIER_CHANGED` row (integration).
-- Pro, Calendar yearly: refund last year's order for a customer holding Gold from last year. They stay Gold, with the same "held until" date in the drawer (integration).
-- `yayh code unused jason/feat/tiers` → exit 0
+- ✅ `composer test` → exit 0 (unit)
+- ✅ `cd tests/e2e && ./node_modules/.bin/wp-env run tests-cli --env-cwd=wp-content/plugins/yayloyalty env YAYLOYALTY_WP_ROOT=/var/www/html vendor/bin/phpunit -c phpunit-integration.xml.dist tests/integration/Repositories/LedgerWindowTotalTest.php` → OK (integration)
+- ✅ `cd tests/e2e && ./node_modules/.bin/wp-env run tests-cli --env-cwd=wp-content/plugins/yayloyalty env YAYLOYALTY_WP_ROOT=/var/www/html vendor/bin/phpunit -c phpunit-integration.xml.dist tests/integration/Services/TierEvaluatorTest.php` → OK (integration)
+- ✅ `yayh test run js` → exit 0 (js)
+- ✅ `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` → exit 0
+- ✅ `pnpm --filter @yayloyalty/admin-page lint` → exit 0
+- ✅ `./scripts/run.sh build lite` → exit 0
+- ✅ `./scripts/run.sh build pro` → exit 0
+- ✅ `cd tests/e2e && ./node_modules/.bin/wp-env run cli wp db query "SHOW COLUMNS FROM wp_yayloyalty_ledger LIKE 'counts_toward_tier'"` → counts_toward_tier
+- ✅ Pro, tiers on: Customers → a customer → Adjust points shows "Count toward tier points", ticked, under "Adjust lifetime totals too". Add 1,000 points with it unticked. Then `wp db query "SELECT type, counts_toward_tier FROM wp_yayloyalty_ledger ORDER BY id DESC LIMIT 1"` shows `adjust 0`, and the drawer's tier card progress is unchanged.
+- ✅ Pro, tiers off, and Lite: the Adjust dialog shows no tier option. An adjustment writes `counts_toward_tier` NULL.
+- ✅ Pro, Lifetime, Gold raised from 3,000 to 5,000: refund 10 points of an order for a Gold customer at 3,500. They stay Gold, and the activity log shows no `TIER_CHANGED` row (integration).
+- ✅ Pro, Calendar yearly: refund last year's order for a customer holding Gold from last year. They stay Gold, with the same "held until" date in the drawer (integration).
+- ✅ `yayh code unused jason/feat/tiers` → exit 0
 
 ## Risks
 - **Tier points and `lifetime_earned` diverge on purpose.** Reports and the reward `lifetime_points` condition still read `lifetime_earned`. Support may see a customer whose lifetime total passes Gold while they aren't Gold. The drawer's tier card shows the tier total, which explains it. Rollback: drop the column read (the predicate falls back to type), and NULL rows behave as today.

@@ -115,23 +115,23 @@ Done means R-4's "discount applied automatically on a qualifying first order; on
 **E2E:** referral-checkout: a referred friend with a $60 cart sees "Referral discount −$10.00" in classic and block checkout, and with a $40 cart doesn't (new flow, tag `@P-4 @flow-referral-checkout`; extends the redeem-checkout fixtures).
 
 ## Verify
-- `yayh test run unit --id=P-4` → OK (unit)
-- `yayh test run integration --id=P-4` → OK (integration)
-- `yayh test run integration` → OK (the existing earning and reversal suites still pass with the T1 seams)
-- `yayh e2e run --grep @P-4` → passed (e2e)
-- `yayh e2e run --grep @flow-earn-on-completed-order` → passed (purchase earning unchanged)
-- `yayh e2e cli wp eval 'echo has_action( "yayloyalty_order_awarded" ) ? "hooked" : "none";'` → hooked
-- `yayh e2e cli wp action-scheduler action list --hook=yayloyalty_referral_run --status=pending --format=count` → 1
-- `vendor/bin/phpcs includes/Pro/Referrals includes/Engine/Earning/EarningService.php includes/Engine/Points/ContextFactory.php includes/Engine/Earning/Listeners/OrderListener.php includes/Engine/Earning/Listeners/OrderReversalListener.php` → exit 0
-- `./scripts/run.sh release lite 1.0.0 --no-prompt` → passed (no `Referral` class named in the Lite zip)
-- `unzip -l release/yayloyalty-lite-1.0.0.zip | grep -i referral` → exit 1
-- Walk-through on the Pro e2e site with UX-2's values ($10 fixed, $50 minimum, 1,000 points, 14-day hold):
-  - A referred friend registers. With a $60 cart, classic and block checkout show "Referral discount −$10.00". With $40 they don't (e2e).
-  - Complete the order: `wp db query "SELECT status, first_order_id, hold_until FROM $(wp db prefix)yayloyalty_referrals ORDER BY id DESC LIMIT 1"` → `on_hold` with that order and a date 14 days out (integration).
-  - `wp db query "UPDATE $(wp db prefix)yayloyalty_referrals SET hold_until=UTC_TIMESTAMP() WHERE status='on_hold'"`, then `wp action-scheduler run --hooks=yayloyalty_referral_run`. The status is `rewarded`, the advocate's balance rose 1,000, and the friend's order meta `_yayloyalty_points_earned` holds only the friend's purchase points (integration).
-  - Refund that order fully: the advocate loses the 1,000 points and the status is `reversed` (integration).
-- A second friend refunds during the hold: the status is `rejected`, `reject_reason` is `refunded_during_hold`, and `wp db query "SELECT COUNT(*) FROM $(wp db prefix)yayloyalty_ledger WHERE source='referral'"` doesn't rise (integration).
-- Lite on a fresh site: a completed order earns its purchase points exactly as before, and there's no referral coupon line at checkout.
+- ✅ `yayh test run unit --id=P-4` → OK (unit)
+- ✅ `yayh test run integration --id=P-4` → OK (integration)
+- ✅ `yayh test run integration` → OK (the existing earning and reversal suites still pass with the T1 seams)
+- ✅ `yayh e2e run --grep @P-4` → passed (e2e)
+- ✅ `yayh e2e run --grep @flow-earn-on-completed-order` → passed (purchase earning unchanged)
+- ✅ `yayh e2e cli wp eval 'echo has_action( "yayloyalty_order_awarded" ) ? "hooked" : "none";'` → hooked
+- ✅ `yayh e2e cli wp action-scheduler action list --hook=yayloyalty_referral_run --status=pending --format=count` → 1
+- ✅ `vendor/bin/phpcs includes/Pro/Referrals includes/Engine/Earning/EarningService.php includes/Engine/Points/ContextFactory.php includes/Engine/Earning/Listeners/OrderListener.php includes/Engine/Earning/Listeners/OrderReversalListener.php` → exit 0
+- ✅ `./scripts/run.sh release lite 1.0.0 --no-prompt` → passed (no `Referral` class named in the Lite zip)
+- ✅ `unzip -l release/yayloyalty-lite-1.0.0.zip | grep -i referral` → exit 1
+- ✅ Walk-through on the Pro e2e site with UX-2's values ($10 fixed, $50 minimum, 1,000 points, 14-day hold):
+  - ✅ A referred friend registers. With a $60 cart, classic and block checkout show "Referral discount −$10.00". With $40 they don't (e2e).
+  - ✅ Complete the order: `wp db query "SELECT status, first_order_id, hold_until FROM $(wp db prefix)yayloyalty_referrals ORDER BY id DESC LIMIT 1"` → `on_hold` with that order and a date 14 days out (integration).
+  - ✅ `wp db query "UPDATE $(wp db prefix)yayloyalty_referrals SET hold_until=UTC_TIMESTAMP() WHERE status='on_hold'"`, then `wp action-scheduler run --hooks=yayloyalty_referral_run`. The status is `rewarded`, the advocate's balance rose 1,000, and the friend's order meta `_yayloyalty_points_earned` holds only the friend's purchase points (integration).
+  - ✅ Refund that order fully: the advocate loses the 1,000 points and the status is `reversed` (integration).
+- ✅ A second friend refunds during the hold: the status is `rejected`, `reject_reason` is `refunded_during_hold`, and `wp db query "SELECT COUNT(*) FROM $(wp db prefix)yayloyalty_ledger WHERE source='referral'"` doesn't rise (integration).
+- ✅ Lite on a fresh site: a completed order earns its purchase points exactly as before, and there's no referral coupon line at checkout.
 
 ## Risks
 - **Paying twice or the wrong person:** the ledger key `earn:{advocate}:referral:{id}:referral` and the conditional status update stop a double pay from the job and Approve together. The payout user is always the referral's advocate. Rollback: switch Program live off (no new holds or coupons). Held referrals still release, so to stop them, unschedule `yayloyalty_referral_run`. Points already paid can be adjusted by hand.

@@ -116,28 +116,28 @@ A merchant builds a campaign's or a reward's conditions as groups joined by AND/
 **E2E:** campaign-condition-groups: seed a draft campaign with country US (billing) through REST, then in the campaign editor build country US (billing) AND (lifetime spend at least 500 OR order count at least 5), save, reload, and the two groups come back with Group 1 "all", Group 2 "any" and the top "all"
 
 ## Verify
-- `yayh test run unit --id=P-1` → exit 0 (unit)
-- `yayh test run js --id=P-1` → exit 0 (js)
-- `composer test` → exit 0
-- `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` → exit 0
-- `pnpm --filter @yayloyalty/admin-page lint` → exit 0
-- `./scripts/run.sh build lite` → exit 0
-- `grep -rl 'YayLoyalty\\Pro' includes | grep -v '^includes/Pro/' | grep -v '^includes/YayLoyalty.php$'` → exit 1
-- `yayh e2e cli wp eval 'echo YayLoyalty\Utils\ConditionGroups::encode( [ [ "type" => "user_role", "operator" => "in", "value" => [ "customer" ] ] ], 1 );'` → "items"
-- `yayh e2e cli wp eval 'echo YayLoyalty\Utils\ConditionGroups::encode( [ "match" => "all", "groups" => [ [ "match" => "all", "conditions" => [ [ "type" => "user_role", "operator" => "in", "value" => [ "customer" ] ] ] ], [ "match" => "any", "conditions" => [ [ "type" => "order_count", "operator" => "gte", "value" => 5 ] ] ] ] ], 1 );'` → "schema_version":2
-- `yayh e2e cli wp eval --user=admin '$q = new WP_REST_Request( "POST", "/yayloyalty/v1/campaigns" ); $q->set_body_params( [ "name" => "P-1 verify", "trigger" => "purchase", "status" => "draft", "config" => [ "points_per_unit" => 1 ], "conditions" => [ "match" => "all", "groups" => [ [ "match" => "all", "conditions" => [ [ "type" => "country", "operator" => "in", "value" => [ "countries" => [ "US" ], "source" => "billing" ] ] ] ], [ "match" => "any", "conditions" => [ [ "type" => "lifetime_spend", "operator" => "gte", "value" => [ "amount" => 500, "currency" => "USD" ] ], [ "type" => "order_count", "operator" => "gte", "value" => 5 ] ] ] ] ] ] ); $d = rest_do_request( $q )->get_data(); $g = rest_do_request( new WP_REST_Request( "GET", "/yayloyalty/v1/campaigns/" . $d["id"] ) )->get_data(); rest_do_request( new WP_REST_Request( "DELETE", "/yayloyalty/v1/campaigns/" . $d["id"] ) ); echo wp_json_encode( $g["conditions"] );'` → "match":"any"
-- `yayh e2e cli wp eval --user=admin '$q = new WP_REST_Request( "POST", "/yayloyalty/v1/campaigns" ); $q->set_body_params( [ "name" => "P-1 cap", "trigger" => "purchase", "status" => "draft", "config" => [ "points_per_unit" => 1 ], "conditions" => [ "match" => "any", "groups" => array_fill( 0, 11, [ "match" => "all", "conditions" => [ [ "type" => "order_count", "operator" => "gte", "value" => 1 ] ] ] ) ] ] ); echo rest_do_request( $q )->get_status();'` → 400
-- Earning, Pro (acceptance 1): create the UX-1 example campaign as the top purchase campaign. Complete an order for a US-billing customer with 5 earlier paid orders, and another for a US-billing customer with no history and lifetime spend under 500. The first order gets the campaign's points and the second falls through to the next campaign. Check with `yayh e2e cli wp eval 'echo wc_get_order( <id> )->get_meta( "_yayloyalty_campaign_id" );'` → the new campaign's id for the first order only. (unit covers the matrix)
-- Upgrade (acceptance 3): on a site with 1.0.0 campaigns that have flat conditions, update to this branch and open the campaigns list. Each shows the same Conditions label as before. `yayh e2e cli wp db query "SELECT conditions FROM wp_yayloyalty_campaigns WHERE conditions LIKE '%items%'" --skip-column-names` returns the same rows before and after the upgrade. Opening one shows the one-group layout with "Match [all]".
-- Reward, Pro (acceptance 2): make a fixed-coupon reward with "Who can redeem" = Specific customers [customer]. Signed in as `customer`, the classic and block redeem cards list it. Signed in as another shopper, it isn't listed. A shopper who applied it and then stopped qualifying is refused at checkout with "Your account cannot spend Points on this order." Check the stored row with `yayh e2e cli wp db query "SELECT conditions FROM wp_yayloyalty_rewards WHERE name='<name>'" --skip-column-names` → `"items"` (one all group).
-- UX-1 acceptance (manual, admin):
-  - With one group, "Match [all] of these conditions" shows and there's no group card.
-  - With 10 groups, "Add group" is disabled and "Up to 10 groups." shows.
-  - An empty group is gone after save and reload, with no error.
-  - "Points discount" has no "Who can redeem" step.
-  - A reward with conditions shows "Selected customers" in Availability.
-  - Campaigns table shows "Country AND (Lifetime spend OR Order count)". (e2e covers save and reload)
-- Lite (acceptance 4): build Lite (`./scripts/run.sh build lite`) and run it with the grouped campaign stored. The campaign awards everyone who meets its trigger (fails open), and `GET /yayloyalty/v1/campaigns/<id>` returns the tree unchanged.
+- ✅ `yayh test run unit --id=P-1` → exit 0 (unit)
+- ✅ `yayh test run js --id=P-1` → exit 0 (js)
+- ✅ `composer test` → exit 0
+- ✅ `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` → exit 0
+- ✅ `pnpm --filter @yayloyalty/admin-page lint` → exit 0
+- ✅ `./scripts/run.sh build lite` → exit 0
+- ✅ `grep -rl 'YayLoyalty\\Pro' includes | grep -v '^includes/Pro/' | grep -v '^includes/YayLoyalty.php$'` → exit 1
+- ✅ `yayh e2e cli wp eval 'echo YayLoyalty\Utils\ConditionGroups::encode( [ [ "type" => "user_role", "operator" => "in", "value" => [ "customer" ] ] ], 1 );'` → "items"
+- ✅ `yayh e2e cli wp eval 'echo YayLoyalty\Utils\ConditionGroups::encode( [ "match" => "all", "groups" => [ [ "match" => "all", "conditions" => [ [ "type" => "user_role", "operator" => "in", "value" => [ "customer" ] ] ] ], [ "match" => "any", "conditions" => [ [ "type" => "order_count", "operator" => "gte", "value" => 5 ] ] ] ] ], 1 );'` → "schema_version":2
+- ✅ `yayh e2e cli wp eval --user=admin '$q = new WP_REST_Request( "POST", "/yayloyalty/v1/campaigns" ); $q->set_body_params( [ "name" => "P-1 verify", "trigger" => "purchase", "status" => "draft", "config" => [ "points_per_unit" => 1 ], "conditions" => [ "match" => "all", "groups" => [ [ "match" => "all", "conditions" => [ [ "type" => "country", "operator" => "in", "value" => [ "countries" => [ "US" ], "source" => "billing" ] ] ] ], [ "match" => "any", "conditions" => [ [ "type" => "lifetime_spend", "operator" => "gte", "value" => [ "amount" => 500, "currency" => "USD" ] ], [ "type" => "order_count", "operator" => "gte", "value" => 5 ] ] ] ] ] ] ); $d = rest_do_request( $q )->get_data(); $g = rest_do_request( new WP_REST_Request( "GET", "/yayloyalty/v1/campaigns/" . $d["id"] ) )->get_data(); rest_do_request( new WP_REST_Request( "DELETE", "/yayloyalty/v1/campaigns/" . $d["id"] ) ); echo wp_json_encode( $g["conditions"] );'` → "match":"any"
+- ✅ `yayh e2e cli wp eval --user=admin '$q = new WP_REST_Request( "POST", "/yayloyalty/v1/campaigns" ); $q->set_body_params( [ "name" => "P-1 cap", "trigger" => "purchase", "status" => "draft", "config" => [ "points_per_unit" => 1 ], "conditions" => [ "match" => "any", "groups" => array_fill( 0, 11, [ "match" => "all", "conditions" => [ [ "type" => "order_count", "operator" => "gte", "value" => 1 ] ] ] ) ] ] ); echo rest_do_request( $q )->get_status();'` → 400
+- ✅ Earning, Pro (acceptance 1): create the UX-1 example campaign as the top purchase campaign. Complete an order for a US-billing customer with 5 earlier paid orders, and another for a US-billing customer with no history and lifetime spend under 500. The first order gets the campaign's points and the second falls through to the next campaign. Check with `yayh e2e cli wp eval 'echo wc_get_order( <id> )->get_meta( "_yayloyalty_campaign_id" );'` → the new campaign's id for the first order only. (unit covers the matrix)
+- ✅ Upgrade (acceptance 3): on a site with 1.0.0 campaigns that have flat conditions, update to this branch and open the campaigns list. Each shows the same Conditions label as before. `yayh e2e cli wp db query "SELECT conditions FROM wp_yayloyalty_campaigns WHERE conditions LIKE '%items%'" --skip-column-names` returns the same rows before and after the upgrade. Opening one shows the one-group layout with "Match [all]".
+- ✅ Reward, Pro (acceptance 2): make a fixed-coupon reward with "Who can redeem" = Specific customers [customer]. Signed in as `customer`, the classic and block redeem cards list it. Signed in as another shopper, it isn't listed. A shopper who applied it and then stopped qualifying is refused at checkout with "Your account cannot spend Points on this order." Check the stored row with `yayh e2e cli wp db query "SELECT conditions FROM wp_yayloyalty_rewards WHERE name='<name>'" --skip-column-names` → `"items"` (one all group).
+- ✅ UX-1 acceptance (manual, admin):
+  - ✅ With one group, "Match [all] of these conditions" shows and there's no group card.
+  - ✅ With 10 groups, "Add group" is disabled and "Up to 10 groups." shows.
+  - ✅ An empty group is gone after save and reload, with no error.
+  - ✅ "Points discount" has no "Who can redeem" step.
+  - ✅ A reward with conditions shows "Selected customers" in Availability.
+  - ✅ Campaigns table shows "Country AND (Lifetime spend OR Order count)". (e2e covers save and reload)
+- ✅ Lite (acceptance 4): build Lite (`./scripts/run.sh build lite`) and run it with the grouped campaign stored. The campaign awards everyone who meets its trigger (fails open), and `GET /yayloyalty/v1/campaigns/<id>` returns the tree unchanged.
 
 ## Risks
 - **Wrong customers earn or lose points** if the any/all fold is wrong. Unit-tested at the acceptance matrix, and `evaluate()` stays a fold over `explain()`. Rollback: revert T3. Stored rows stay valid, because flat ones never changed.

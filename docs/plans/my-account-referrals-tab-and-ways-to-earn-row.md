@@ -106,19 +106,19 @@ That completes R-4's "A customer copies their referral link from My Account → 
 **E2E:** referral-account: as a customer, My Account → Referrals shows the offer and link, Copy link shows "Copied" and the clipboard holds the link, and at 375px there's no horizontal scroll (new flow, tag `@P-6 @flow-referral-account`).
 
 ## Verify
-- `yayh test run integration --id=P-6` → OK (integration)
-- `yayh e2e run --grep @P-6` → passed (e2e)
-- `curl -s -o /dev/null -w "%{http_code}" "$(wp option get home)/my-account/referrals/"` → 200
-- `vendor/bin/phpcs includes/Pro/Storefront includes/Pro/Referrals/ReferralEarnRow.php includes/Repositories/CustomerRepository.php includes/Engine/Storefront/AccountMyPointsIcon.php` → exit 0
-- `./scripts/run.sh release lite 1.0.0 --no-prompt` → passed
-- `unzip -l release/yayloyalty-lite-1.0.0.zip | grep -i referral` → exit 1
-- As a customer with the program live (UX-2 Acceptance):
-  - My Account → Referrals shows "Give $10, get 1,000 points", a `?yl_ref=` link, and Copy link → "Copied" (e2e).
-  - `wp db query "SELECT referral_code FROM $(wp db prefix)yayloyalty_customers WHERE user_id=<id>"` shows the code in the link, unchanged after a reload (integration).
-- After P-4's walk-through, the customer's list shows "On the way · arrives {date}" for the held friend, "Completed" and "+1,000" once rewarded, and "Didn't qualify" for a rejected one. The counts match (integration).
-- Ways to earn in the launcher and My Points shows "Refer a friend · 1,000 points", linking to the tab.
-- With the program off: the tab is gone from the account menu, `/my-account/referrals/` shows the account dashboard or a 404, and the Ways to earn row is gone (integration).
-- At 375px (e2e for the scroll, manual for the look): the counts are two by two, the rows are stacked, Copy link is full width, and the link input stays LTR in an RTL locale.
+- ✅ `yayh test run integration --id=P-6` → OK (integration)
+- ✅ `yayh e2e run --grep @P-6` → passed (e2e)
+- ✅ `curl -s -o /dev/null -w "%{http_code}" "$(wp option get home)/my-account/referrals/"` → 200
+- ✅ `vendor/bin/phpcs includes/Pro/Storefront includes/Pro/Referrals/ReferralEarnRow.php includes/Repositories/CustomerRepository.php includes/Engine/Storefront/AccountMyPointsIcon.php` → exit 0
+- ✅ `./scripts/run.sh release lite 1.0.0 --no-prompt` → passed
+- ✅ `unzip -l release/yayloyalty-lite-1.0.0.zip | grep -i referral` → exit 1
+- ✅ As a customer with the program live (UX-2 Acceptance):
+  - ✅ My Account → Referrals shows "Give $10, get 1,000 points", a `?yl_ref=` link, and Copy link → "Copied" (e2e).
+  - ✅ `wp db query "SELECT referral_code FROM $(wp db prefix)yayloyalty_customers WHERE user_id=<id>"` shows the code in the link, unchanged after a reload (integration).
+- ✅ After P-4's walk-through, the customer's list shows "On the way · arrives {date}" for the held friend, "Completed" and "+1,000" once rewarded, and "Didn't qualify" for a rejected one. The counts match (integration).
+- ✅ Ways to earn in the launcher and My Points shows "Refer a friend · 1,000 points", linking to the tab.
+- ✅ With the program off: the tab is gone from the account menu, `/my-account/referrals/` shows the account dashboard or a 404, and the Ways to earn row is gone (integration).
+- ✅ At 375px (e2e for the scroll, manual for the look): the counts are two by two, the rows are stacked, Copy link is full width, and the link input stays LTR in an RTL locale.
 
 ## Risks
 - Decided (review round 2): `ReferralLifecycle::settle()` decides through the shared `decide()` without re-reading the referral or re-checking earlier orders (its query already found the first order); `minimum_subtotal()` moved to `ReferralQualifier`, keeping the lifecycle under 200 lines. The daily release checks `rejects_at()` before paying, so an advocate who can't be paid no longer costs a rolled-back payout each day. The rewrite rule is checked only in wp-admin once stamped. The offer sentence joins its two halves through a translatable `%1$s %2$s`. The referral tab reuses `AccountMyPoints::print_state()`, `LauncherCopy::from_base()` and core's `screen-reader-text`. Answered again: resuming the main program needs no recheck (`OrderListener` fires `yayloyalty_order_awarded` either way); there is no `YayLoyaltyPluginAdapter::is_licensed()` here. Parked: the grace start, express wallets on block sign-up, and the code assigner's re-entry (backlog notes from P-6).

@@ -70,17 +70,17 @@ Model on: `includes/Engine/Redemption/CouponProvider.php:345-371` (resolve_rewar
 **E2E:** Rewards → Add a reward → Free product: pick a product, save, reload, and the reward is in the list with its product
 
 ## Verify
-- `yayh test run unit` → exit 0
-- `yayh test run integration` → exit 0
-- `yayh e2e run --grep @P-11` → exit 0
-- `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` → exit 0
-- `vendor/bin/phpcs -q includes/Models/Reward.php includes/Pro/Services/FreeProductRewardHandler.php includes/Engine/Redemption/RewardCoupons.php includes/Engine/Redemption/RedemptionService.php includes/Engine/Redemption/CouponProvider.php includes/Pro/Storefront/RewardsPanel.php includes/Engine/Redemption/Reversal.php` → exit 0
-- `yayh code unused feat/p-10-free-shipping-and-free-product-rewards-that-r` → exit 0
-- Admin (Pro build): Rewards → Add a reward shows Free shipping and Free product; a free product reward saved with a simple product appears in the list after a reload; with a variable product the save is refused with a toast naming the reason.
-- Cart: a disabled row (e.g. a coupon under its minimum) reads its reason under the name.
-- Cart with the shopper's own copy of a product whose stock is 1: the free product reward is disabled and reads "Not enough in stock"; same for a sold-individually product.
-- Checkout with a free-shipping reward applied: switch to a 0-cost method → on that same refresh the reward is unticked and "… was removed: …" shows; no points are debited.
-- wp-admin refund of only the paid item of an order with a free product and free shipping → no points come back; refund including the free line (qty 1) → the free product's points come back; full refund → all.
+- ✅ `yayh test run unit` → exit 0
+- ✅ `yayh test run integration` → exit 0
+- ✅ `yayh e2e run --grep @P-11` → exit 0
+- ✅ `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` → exit 0
+- ✅ `vendor/bin/phpcs -q includes/Models/Reward.php includes/Pro/Services/FreeProductRewardHandler.php includes/Engine/Redemption/RewardCoupons.php includes/Engine/Redemption/RedemptionService.php includes/Engine/Redemption/CouponProvider.php includes/Pro/Storefront/RewardsPanel.php includes/Engine/Redemption/Reversal.php` → exit 0
+- ✅ `yayh code unused feat/p-10-free-shipping-and-free-product-rewards-that-r` → exit 0
+- ✅ Admin (Pro build): Rewards → Add a reward shows Free shipping and Free product; a free product reward saved with a simple product appears in the list after a reload; with a variable product the save is refused with a toast naming the reason.
+- ✅ Cart: a disabled row (e.g. a coupon under its minimum) reads its reason under the name.
+- ✅ Cart with the shopper's own copy of a product whose stock is 1: the free product reward is disabled and reads "Not enough in stock"; same for a sold-individually product.
+- ✅ Checkout with a free-shipping reward applied: switch to a 0-cost method → on that same refresh the reward is unticked and "… was removed: …" shows; no points are debited.
+- ✅ wp-admin refund of only the paid item of an order with a free product and free shipping → no points come back; refund including the free line (qty 1) → the free product's points come back; full refund → all.
 
 ## Risks
 - T4 runs on every totals run with a picked reward: one extra quote of the picked rewards per run. Mitigated by quoting only when the intent has rewards.
