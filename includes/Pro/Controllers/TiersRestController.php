@@ -443,10 +443,11 @@ final class TiersRestController extends AbstractRestController {
 
             case 'multiplier':
                 $message = sprintf(
-                    /* translators: 1: the lowest multiplier, 2: the highest multiplier. */
-                    __( 'The multiplier must be from %1$s to %2$s, in steps of 0.05.', 'yayloyalty' ),
+                    /* translators: 1: the lowest multiplier, 2: the highest multiplier, 3: the step between multipliers. */
+                    __( 'The multiplier must be from %1$s to %2$s, in steps of %3$s.', 'yayloyalty' ),
                     SettingsHelper::format_number( (float) Tier::MULTIPLIER_MIN, 2 ),
-                    SettingsHelper::format_number( (float) Tier::MULTIPLIER_MAX, 2 )
+                    SettingsHelper::format_number( (float) Tier::MULTIPLIER_MAX, 2 ),
+                    SettingsHelper::format_number( 0.05, 2 )
                 );
                 break;
 
