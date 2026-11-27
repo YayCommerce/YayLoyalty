@@ -135,7 +135,6 @@ export function BatchExpirySection() {
             name="expiry.spend_order"
             render={({ field }) => (
               <Segmented
-                shape="square"
                 size="sm"
                 aria-label={__('Spend order', 'yayloyalty')}
                 className="w-max"

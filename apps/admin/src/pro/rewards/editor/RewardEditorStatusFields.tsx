@@ -28,7 +28,6 @@ export function RewardEditorStatusFields({ isBuiltin }: { isBuiltin: boolean }) 
             render={({ field }) => (
               // Re-clicking the active item yields an empty string; never write that back.
               <Segmented
-                shape="square"
                 value={field.value}
                 onValueChange={(value) => value && field.onChange(value)}
                 className="w-full sm:w-1/2"

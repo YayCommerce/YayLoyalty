@@ -25,7 +25,6 @@ export function DashboardActivityToolbar({
     <div className="flex flex-wrap items-center gap-2">
       <div className="overflow-x-auto">
         <Segmented
-          shape="square"
           size="sm"
           aria-label={__('Activity type', 'yayloyalty')}
           value={filter}

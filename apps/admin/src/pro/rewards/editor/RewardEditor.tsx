@@ -268,7 +268,6 @@ function RewardCreatorForm({ type, duplicateFrom }: { type: CatalogRewardType; d
             </Badge>
           ) : (
             <Segmented
-              shape="square"
               value={type}
               onValueChange={(next) => {
                 if (!next) {

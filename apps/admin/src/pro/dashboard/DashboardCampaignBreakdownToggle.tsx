@@ -9,7 +9,6 @@ export function DashboardCampaignBreakdownToggle({ on, onChange }: { on: boolean
     <div className="flex items-center gap-2">
       <Segmented
         size="sm"
-        shape="square"
         value={on ? 'campaigns' : 'totals'}
         onValueChange={(v) => v && onChange(v === 'campaigns')}
       >
