@@ -19,7 +19,6 @@ export function AdjustPointsReasonField({ reason, onChange }: { reason: string; 
       </FieldLabel>
       <FieldContent>
         <Segmented
-          shape="square"
           value={picked}
           onValueChange={(label) => {
             const preset = presets.find((item) => item.label === label);

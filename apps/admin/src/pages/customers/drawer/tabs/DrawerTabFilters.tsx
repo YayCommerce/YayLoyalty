@@ -45,7 +45,6 @@ export function DrawerTabFilters<F extends string>({
           segments. `w-max` keeps the group hugging its segments. */}
       <div className="overflow-x-auto">
         <Segmented
-          shape="square"
           size="sm"
           aria-label={ariaLabel}
           value={value}

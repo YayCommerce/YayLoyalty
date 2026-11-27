@@ -15,7 +15,6 @@ export function DashboardRangeControl({
   return (
     <Segmented
       size="sm"
-      shape="square"
       value={String(range)}
       // Radix emits '' on re-clicking the active item; ignore it so a range is always active.
       onValueChange={(value) => value && onRangeChange(Number(value) as DashboardRange)}

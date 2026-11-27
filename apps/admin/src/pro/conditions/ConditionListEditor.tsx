@@ -115,7 +115,6 @@ function MatchToggle() {
 
   return (
     <Segmented
-      shape="square"
       size="sm"
       value={field.value}
       onValueChange={(value) => value && field.onChange(value)}
