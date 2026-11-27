@@ -71,7 +71,7 @@ export function RoundingSegmented({
   onValueChange: (value: RoundingMode) => void;
 }) {
   return (
-    <Segmented value={value} onValueChange={(next) => next && onValueChange(next as RoundingMode)}>
+    <Segmented className="w-max" value={value} onValueChange={(next) => next && onValueChange(next as RoundingMode)}>
       <SegmentedItem value={ROUNDING.DOWN}>{__('Down', 'yayloyalty')}</SegmentedItem>
       <SegmentedItem value={ROUNDING.NEAREST}>{__('Nearest', 'yayloyalty')}</SegmentedItem>
       <SegmentedItem value={ROUNDING.UP}>{__('Up', 'yayloyalty')}</SegmentedItem>

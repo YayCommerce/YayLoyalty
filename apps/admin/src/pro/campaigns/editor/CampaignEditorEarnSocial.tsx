@@ -55,13 +55,16 @@ export function CampaignEditorEarnSocial() {
 
       <Field>
         <FieldLabel>{__('Action', 'yayloyalty')}</FieldLabel>
-        <Segmented
-          value={config.action ?? 'follow'}
-          onValueChange={(next) => next && patchConfig({ action: next as SocialAction })}
-        >
-          <SegmentedItem value="follow">{__('Follow', 'yayloyalty')}</SegmentedItem>
-          <SegmentedItem value="share">{__('Share', 'yayloyalty')}</SegmentedItem>
-        </Segmented>
+        <FieldContent>
+          <Segmented
+            className="w-max"
+            value={config.action ?? 'follow'}
+            onValueChange={(next) => next && patchConfig({ action: next as SocialAction })}
+          >
+            <SegmentedItem value="follow">{__('Follow', 'yayloyalty')}</SegmentedItem>
+            <SegmentedItem value="share">{__('Share', 'yayloyalty')}</SegmentedItem>
+          </Segmented>
+        </FieldContent>
       </Field>
 
       <Field>

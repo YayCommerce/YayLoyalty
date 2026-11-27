@@ -109,7 +109,7 @@ function CampaignEditorStatus() {
           name="status"
           render={({ field }) => (
             // Re-clicking the active item yields an empty string; never write that back.
-            <Segmented value={field.value} onValueChange={(value) => value && field.onChange(value)}>
+            <Segmented className="w-max" value={field.value} onValueChange={(value) => value && field.onChange(value)}>
               {CAMPAIGN_STATUS_OPTIONS.map((status) => (
                 <SegmentedItem key={status} value={status}>
                   {statusLabel(status)}
