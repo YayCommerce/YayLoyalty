@@ -70,7 +70,7 @@ export function DashboardPointsChart({
               { key: 'redeemed' },
               ...extraSeries.map((s) => ({ key: s.key, strokeWidth: 1 })),
             ]}
-            legend
+            legend="top"
             grid
             empty={empty}
             minTickGap={32}

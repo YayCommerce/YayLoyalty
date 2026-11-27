@@ -11,13 +11,6 @@ export function bulkHeaderTitle(count: number): string {
 }
 export const BULK_HEADER_SUBTITLE = () => __('Bulk action · one adjustment written per customer', 'yayloyalty');
 
-export function bulkSelectionCount(count: number): string {
-  return sprintf(
-    /* translators: %d: number of customers selected. */
-    _n('%d customer selected', '%d customers selected', count, 'yayloyalty'),
-    count,
-  );
-}
 export function bulkFilterLine(summary: string): string {
   return sprintf(
     /* translators: %s: the active filters, joined with " · ". */
@@ -38,32 +31,65 @@ export function bulkNotShownOnPage(count: number): string {
   );
 }
 
-export const AMOUNT_EACH_LABEL = () => __('Amount, each', 'yayloyalty');
+/** "Add points to 3 customers" / "Remove points from 3 customers" */
+export function bulkSummaryTitle(direction: 'add' | 'remove', count: number): string {
+  return direction === 'remove'
+    ? sprintf(
+        /* translators: %d: number of customers. */
+        _n('Remove points from %d customer', 'Remove points from %d customers', count, 'yayloyalty'),
+        count,
+      )
+    : sprintf(
+        /* translators: %d: number of customers. */
+        _n('Add points to %d customer', 'Add points to %d customers', count, 'yayloyalty'),
+        count,
+      );
+}
 
-/** "340 customers × 500 points" */
-export function bulkTotalsLine(count: number, amount: string): string {
+/** "2 points per customer" */
+export function perCustomerLine(amount: string): string {
   return sprintf(
-    /* translators: 1: number of customers; 2: points per customer, formatted. */
-    __('%1$d customers × %2$s points', 'yayloyalty'),
-    count,
+    /* translators: %s: points per customer, formatted. */
+    __('%s points per customer', 'yayloyalty'),
     amount,
   );
 }
-export function bulkTotalPointsLine(points: string): string {
+
+/** "+6 points total" / "-6 points total" */
+export function pointsTotalBadge(signedTotal: string): string {
   return sprintf(
-    /* translators: %s: total points, formatted. */
-    __('%s points', 'yayloyalty'),
+    /* translators: %s: the signed total in points, e.g. "+6". */
+    __('%s points total', 'yayloyalty'),
+    signedTotal,
+  );
+}
+
+export const OUTSTANDING_POINTS_LABEL = () => __('Outstanding points of these customers', 'yayloyalty');
+
+/** "To reverse this, remove 2 points from each customer." */
+export function reverseHint(direction: 'add' | 'remove', amount: string): string {
+  return direction === 'remove'
+    ? sprintf(
+        /* translators: %s: points per customer, formatted. */
+        __('To reverse this, add %s points to each customer.', 'yayloyalty'),
+        amount,
+      )
+    : sprintf(
+        /* translators: %s: points per customer, formatted. */
+        __('To reverse this, remove %s points from each customer.', 'yayloyalty'),
+        amount,
+      );
+}
+
+/** Add is an upper bound while a selected balance is below zero: points count only once it passes 0. */
+export function bulkLiabilityAddsUpTo(points: string): string {
+  return sprintf(
+    /* translators: %s: number of points, formatted. */
+    __('Adds up to %s points to your outstanding liability.', 'yayloyalty'),
     points,
   );
 }
-export function bulkLiabilityRange(fromPoints: string, toPoints: string): string {
-  return sprintf(
-    /* translators: 1: liability before the adjustment, in points; 2: liability after it, in points. */
-    __('Raises your outstanding liability from %1$s to %2$s points.', 'yayloyalty'),
-    fromPoints,
-    toPoints,
-  );
-}
+
 /** Remove is always an upper bound: a balance that crosses zero stops counting as liability. */
 export function bulkLiabilityReducesUpTo(points: string): string {
   return sprintf(
@@ -81,24 +107,6 @@ export function bulkNotifyByEmailCount(count: number): string {
   );
 }
 
-export const NO_UNDO_TITLE = () => __("This can't be undone in one step", 'yayloyalty');
-export function noUndoBody(count: number): string {
-  return sprintf(
-    /* translators: %d: number of customers. */
-    __(
-      '%d separate adjustments are written, one per customer. Reversing them means running a second bulk adjustment in the opposite direction, which leaves both sets of rows in every customer’s history.',
-      'yayloyalty',
-    ),
-    count,
-  );
-}
-export function writtenToLedgers(count: number): string {
-  return sprintf(
-    /* translators: %d: number of customers. */
-    __('Written to all %d ledgers against your account. Only staff can see it.', 'yayloyalty'),
-    count,
-  );
-}
 export function acknowledgeLiability(direction: 'add' | 'remove', points: string, count: number): string {
   return direction === 'remove'
     ? sprintf(
@@ -135,7 +143,10 @@ export function bulkSubmitLabel(direction: 'add' | 'remove', amount: string, cou
 export function bulkTooLargeSelection(limit: number): string {
   return sprintf(
     /* translators: %d: the most customers one bulk action can process. */
-    __('This selection matches too many customers to process in the browser (over %d). Narrow the filters and try again.', 'yayloyalty'),
+    __(
+      'This selection matches too many customers to process in the browser (over %d). Narrow the filters and try again.',
+      'yayloyalty',
+    ),
     limit,
   );
 }
@@ -144,7 +155,10 @@ export function bulkTooLargeSelection(limit: number): string {
 export function bulkSelectionChanged(latestCount: number, acknowledgedCount: number): string {
   return sprintf(
     /* translators: 1: number of customers matching now; 2: the number the admin acknowledged. */
-    __('The selection changed while you were filling this in: %1$d customers now match, not %2$d. Review and confirm again.', 'yayloyalty'),
+    __(
+      'The selection changed while you were filling this in: %1$d customers now match, not %2$d. Review and confirm again.',
+      'yayloyalty',
+    ),
     latestCount,
     acknowledgedCount,
   );

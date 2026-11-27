@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
@@ -12,14 +12,16 @@ import { DashboardProPanels } from '@/pro';
 import { DashboardAnomalyPanel } from './components/DashboardAnomalyPanel';
 import { DashboardCacheStrip } from './components/DashboardCacheStrip';
 import { DashboardNoticeStrip } from './components/DashboardNoticeStrip';
+import { DASHBOARD_ROW } from './components/DashboardPanel';
 import { DashboardPointsChart } from './components/DashboardPointsChart';
 import { DashboardProTeasers } from './components/DashboardProTeasers';
 import { DashboardRangeControl } from './components/DashboardRangeControl';
 import { DashboardRecentActivity } from './components/DashboardRecentActivity';
 import { DashboardSkeleton } from './components/DashboardSkeleton';
 import { DashboardStatsGrid } from './components/DashboardStatsGrid';
+import type { DashboardTileNote } from './components/DashboardStatTile';
 import { DashboardTopBalances } from './components/DashboardTopBalances';
-import { noticeTileOverrides, rangeSubline } from './dashboard-page.copy';
+import { noticeTileOverrides, rangeSubline, seriesSpan } from './dashboard-page.copy';
 import type { DashboardProSlots } from './dashboard-page.pro-slots';
 
 /** The landing page: composition only, with a single Pro/Lite branch. */
@@ -40,11 +42,13 @@ export default function DashboardPage() {
       )
     : {};
   const isDimmed = query.isPlaceholderData || (query.isFetching && !query.isPending);
+  const body = (slots: DashboardProSlots) =>
+    data && <DashboardBody data={data} tileOverrides={tileOverrides} slots={slots} pointsJump={pointsJump} />;
 
   return (
     <PageLayout
       actions={<DashboardRangeControl range={range} onRangeChange={setRange} />}
-      title={__('Dashboard', 'yayloyalty')}
+      title={__('Overview', 'yayloyalty')}
       description={
         query.isPending
           ? sprintf(
@@ -52,7 +56,9 @@ export default function DashboardPage() {
               __('Loading the %s…', 'yayloyalty'),
               rangeSubline(range),
             )
-          : rangeSubline(range)
+          : data
+            ? seriesSpan(data.series)
+            : rangeSubline(range)
       }
     >
       {/* The thin bar under the header is the only page-level loading indicator. */}
@@ -85,45 +91,45 @@ export default function DashboardPage() {
           {/* Both sides hand the same slots to the same layout; Lite never imports from @/pro. */}
           {IS_PRO_BUILD ? (
             <DashboardProPanels range={range} stats={data.stats}>
-              {(slots) => <DashboardBody data={data} tileOverrides={tileOverrides} slots={slots} />}
+              {body}
             </DashboardProPanels>
           ) : (
-            <DashboardProTeasers>
-              {(slots) => <DashboardBody data={data} tileOverrides={tileOverrides} slots={slots} />}
-            </DashboardProTeasers>
+            <DashboardProTeasers>{body}</DashboardProTeasers>
           )}
-
-          {pointsJump && <DashboardAnomalyPanel data={pointsJump.data} />}
-
-          <DashboardRecentActivity activity={data.recent_activity} />
         </div>
       )}
     </PageLayout>
   );
 }
 
-/** Tiles, chart and side column; where the Pro slots plug in. */
+/** Tiles, then two rows of main column + side column; where the Pro slots plug in. */
 function DashboardBody({
   data,
   tileOverrides,
   slots,
+  pointsJump,
 }: {
   data: DashboardResponse;
-  tileOverrides: Partial<Record<keyof DashboardStats, ReactNode>>;
+  tileOverrides: Partial<Record<keyof DashboardStats, DashboardTileNote>>;
   slots: DashboardProSlots;
+  pointsJump: ReturnType<typeof findPointsJump>;
 }) {
   return (
     <>
-      <DashboardStatsGrid stats={data.stats} range={data.range} deltaOverrides={tileOverrides} />
+      <DashboardStatsGrid stats={data.stats} series={data.series} range={data.range} notes={tileOverrides} />
 
-      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+      <div className={DASHBOARD_ROW}>
         <DashboardPointsChart series={data.series} extraSeries={slots.extraSeries}>
           {slots.chartControls}
         </DashboardPointsChart>
-        <div className="flex flex-col gap-4">
-          <DashboardTopBalances balances={data.top_balances} />
-          {slots.sidePanels}
-        </div>
+        <DashboardTopBalances balances={data.top_balances} />
+      </div>
+
+      {pointsJump && <DashboardAnomalyPanel data={pointsJump.data} />}
+
+      <div className={DASHBOARD_ROW}>
+        <DashboardRecentActivity activity={data.recent_activity} />
+        {slots.sidePanels}
       </div>
     </>
   );

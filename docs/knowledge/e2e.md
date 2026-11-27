@@ -70,7 +70,7 @@ The site runs this checkout with `YAYLOYALTY_IS_DEVELOPMENT` false, so it serves
 | Earn on a completed order, seen in My Points | customer | critical | `specs/earn-on-completed-order.spec.ts` @flow-earn-on-completed-order | `includes/Engine/Earning/Listeners/OrderListener.php` |
 | Launcher opens, closes, hides for excluded roles | customer | important | `specs/launcher.spec.ts` @flow-launcher | `includes/Engine/Storefront/Launcher.php` |
 | Free shipping and free product rewards at block checkout, and removing the free line | customer | critical | `specs/redeem-block-checkout.spec.ts` @P-10 @flow-redeem-block-checkout | `includes/Engine/Redemption/RewardCartLines.php`, `RewardShipping.php` |
-| Add a free product reward from the catalog | admin | important | `specs/reward-editor.spec.ts` @P-11 @flow-reward-editor | `apps/admin/src/pro/rewards/add/RewardTemplatePicker.tsx` |
+| Add a free product reward from the catalog | admin | important | `specs/reward-editor.spec.ts` @P-11 @flow-reward-editor | `apps/admin/src/pro/rewards/editor/RewardEditor.tsx` |
 | Redeem card below the minimum | customer | important | `specs/redeem-block-checkout.spec.ts` @flow-redeem-block-checkout | `includes/Engine/Storefront/RedeemCard.php` |
 | Redeem card for a guest | guest | minor | candidate | `includes/Engine/Storefront/templates/redeem-card.php` |
 | Setup wizard completes and goes live | admin | important | candidate | `apps/admin/src/components/setup-wizard/SetupWizardModal.tsx` |

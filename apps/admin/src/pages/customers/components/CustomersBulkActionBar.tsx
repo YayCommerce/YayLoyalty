@@ -1,11 +1,8 @@
+import { CheckCheck, XIcon } from 'lucide-react';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { Can, CAP } from '@/lib/access';
-import { BulkActionBox } from '@/components/ui/bulk-actions';
 import { Button } from '@/components/ui/button';
-import { BulkActionsMenu } from '@/components/ui/custom/bulk-actions-menu';
-import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
-import { Separator } from '@/components/ui/separator';
 import { EXPORTING_LABEL } from '../customers-page.export.copy';
 
 /** "Reset expiry" is left out until it has an endpoint: a dead control is worse than none. */
@@ -27,30 +24,44 @@ export function CustomersBulkActionBar({
   onExport: () => void;
   isExporting: boolean;
 }) {
+  if (count === 0) return null;
+
   return (
-    <BulkActionBox selected={count} onClose={onClear}>
-      <BulkActionsMenu count={count} contentClassName="min-w-40">
-        <Can cap={CAP.MANAGE_POINTS} disable>
-          <DropdownMenuItem onSelect={onAdjustPoints}>{__('Adjust points', 'yayloyalty')}</DropdownMenuItem>
-        </Can>
-        <Can cap={CAP.VIEW} disable>
-          <DropdownMenuItem disabled={isExporting} onSelect={onExport}>
-            {isExporting ? EXPORTING_LABEL() : __('Export', 'yayloyalty')}
-          </DropdownMenuItem>
-        </Can>
-      </BulkActionsMenu>
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="flex items-center gap-1.5 text-sm">
+        <CheckCheck className="text-muted-foreground size-4" />
+        {sprintf(
+          /* translators: %d: number of selected customers. */
+          __('%d selected', 'yayloyalty'),
+          count,
+        )}
+      </span>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className="text-muted-foreground size-7"
+        aria-label={__('Clear selection', 'yayloyalty')}
+        onClick={onClear}
+      >
+        <XIcon />
+      </Button>
+      <Can cap={CAP.MANAGE_POINTS} disable>
+        <Button onClick={onAdjustPoints}>{__('Adjust points', 'yayloyalty')}</Button>
+      </Can>
+      <Can cap={CAP.VIEW} disable>
+        <Button variant="outline" disabled={isExporting} onClick={onExport}>
+          {isExporting ? EXPORTING_LABEL() : __('Export CSV', 'yayloyalty')}
+        </Button>
+      </Can>
       {selectAllCount !== undefined && (
-        <>
-          <Separator orientation="vertical" className="h-5!" />
-          <Button variant="link" size="sm" className="font-normal" onClick={onSelectAllMatching}>
-            {sprintf(
-              /* translators: %d: number of customers matching the current filters. */
-              __('Select all %d matching these filters', 'yayloyalty'),
-              selectAllCount,
-            )}
-          </Button>
-        </>
+        <Button variant="link" size="sm" className="font-normal" onClick={onSelectAllMatching}>
+          {sprintf(
+            /* translators: %d: number of customers matching the current filters. */
+            __('Select all %d matching these filters', 'yayloyalty'),
+            selectAllCount,
+          )}
+        </Button>
       )}
-    </BulkActionBox>
+    </div>
   );
 }

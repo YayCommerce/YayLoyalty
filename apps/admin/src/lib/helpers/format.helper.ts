@@ -4,11 +4,11 @@ import { dateI18n, getSettings, humanTimeDiff } from '@wordpress/date';
  * A stored UTC datetime, or a Date, in the site's date format. A string is
  * parsed as UTC here rather than handed to dateI18n, which reads a bare
  * string as browser-local and so shifts a midnight instant to the previous
- * day for any viewer east of the site zone.
+ * day for any viewer east of the site zone. `format` overrides the site's date format.
  */
-export function formatWPDate(date: Date | string | undefined) {
+export function formatWPDate(date: Date | string | undefined, format?: string) {
   const { formats } = getSettings();
-  return dateI18n(formats.date, typeof date === 'string' ? utcToDate(date) : date);
+  return dateI18n(format ?? formats.date, typeof date === 'string' ? utcToDate(date) : date);
 }
 
 /** The date `days` days from now, in the site's date format. */

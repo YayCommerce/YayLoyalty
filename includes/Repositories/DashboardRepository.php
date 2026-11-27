@@ -153,16 +153,16 @@ class DashboardRepository {
     }
 
     /**
-     * Newest ledger rows with the actor's display name.
+     * Newest ledger rows with the customer's display name and email.
      *
-     * @return array<int, array<string, mixed>> LedgerEntry::to_array() + `name`.
+     * @return array<int, array<string, mixed>> LedgerEntry::to_array() + `name`, `email`.
      */
     public function latest_activity( int $limit ): array {
         global $wpdb;
 
         $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
-                'SELECT l.*, u.display_name AS name
+                'SELECT l.*, u.display_name AS name, u.user_email AS email
                  FROM `' . esc_sql( Table::name( 'ledger' ) ) . '` l INNER JOIN `' . esc_sql( $wpdb->users ) . '` u ON u.ID = l.user_id
                  ORDER BY l.id DESC LIMIT %d',
                 $limit
@@ -171,7 +171,10 @@ class DashboardRepository {
         );
 
         return array_map(
-            static fn( array $row ): array => LedgerEntry::from_row( $row )->to_array() + [ 'name' => (string) $row['name'] ],
+            static fn( array $row ): array => LedgerEntry::from_row( $row )->to_array() + [
+                'name'  => (string) $row['name'],
+                'email' => (string) $row['email'],
+            ],
             is_array( $rows ) ? $rows : []
         );
     }

@@ -3,7 +3,8 @@ import { monotonePath } from './chart.scale';
 
 type LineChartProps<T extends object> = Omit<CartesianChartProps<T>, 'layout' | 'keys' | 'children'> & {
   series: { key: string; strokeWidth?: number }[];
-  legend?: boolean;
+  /** `'top'` puts the legend above the plot, right-aligned. */
+  legend?: boolean | 'top';
 };
 
 /** Smooth lines over a category x axis; a row missing a series' value breaks that line. Place inside `ChartContainer`. */
@@ -12,6 +13,7 @@ export function LineChart<T extends object>({ series, legend = false, data, ...p
 
   return (
     <>
+      {legend === 'top' && <ChartLegend keys={keys} className="flex-wrap justify-end pt-0 pb-3" />}
       <CartesianChart {...props} data={data} keys={keys} layout="point">
         {({ x, y }) =>
           series.map(({ key, strokeWidth = 2 }) => {
@@ -33,7 +35,7 @@ export function LineChart<T extends object>({ series, legend = false, data, ...p
           })
         }
       </CartesianChart>
-      {legend && <ChartLegend keys={keys} />}
+      {legend === true && <ChartLegend keys={keys} />}
     </>
   );
 }

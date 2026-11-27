@@ -11,14 +11,22 @@ export const AMOUNT_INPUT_WIDTH = 'w-44';
 export function PointsInput({
   value,
   min,
+  className,
   onValueChange,
 }: {
   value: number;
   min: number;
+  className?: string;
   onValueChange: (value: number) => void;
 }) {
   return (
-    <NumberInputRoot size="small" className={AMOUNT_INPUT_WIDTH} min={min} value={value} onValueChange={onValueChange}>
+    <NumberInputRoot
+      size="small"
+      className={cn(AMOUNT_INPUT_WIDTH, className)}
+      min={min}
+      value={value}
+      onValueChange={onValueChange}
+    >
       <NumberInputInput />
       <NumberInputUnit unit={_n('point', 'points', value, 'yayloyalty')} />
     </NumberInputRoot>
@@ -31,16 +39,18 @@ export function MoneyInput({
   value,
   currency,
   onValueChange,
+  className,
 }: {
   id?: string;
   value: number;
   currency: string;
   onValueChange: (value: number) => void;
+  className?: string;
 }) {
   return (
     <NumberInputRoot
       size="small"
-      className={AMOUNT_INPUT_WIDTH}
+      className={cn(AMOUNT_INPUT_WIDTH, className)}
       min={0}
       decimalScale={decimalsFor(currency)}
       value={value}
@@ -61,16 +71,18 @@ export function OptionalMoneyInput({
   currency,
   placeholder,
   onValueChange,
+  className,
 }: {
   value: number | null;
   currency: string;
   placeholder?: string;
   onValueChange: (value: number | null) => void;
+  className?: string;
 }) {
   return (
     <NumberInputRoot
       size="small"
-      className={AMOUNT_INPUT_WIDTH}
+      className={cn(AMOUNT_INPUT_WIDTH, className)}
       nullable
       min={0.01}
       decimalScale={decimalsFor(currency)}

@@ -16,9 +16,7 @@ export function RedemptionsTab({ userId, customerFirstName }: { userId: number; 
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="overflow-x-auto rounded-md border">
-        <RedemptionsTabRows rows={rows} isLoading={query.isPending} customerFirstName={customerFirstName} />
-      </div>
+      <RedemptionsTabRows rows={rows} isLoading={query.isPending} customerFirstName={customerFirstName} />
       <DrawerTabPager
         page={page}
         perPage={DRAWER_PAGE_SIZE}

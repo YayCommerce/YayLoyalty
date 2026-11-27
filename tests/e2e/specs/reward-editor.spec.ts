@@ -23,8 +23,8 @@ test.describe( 'Reward editor', { tag: [ '@P-11', '@flow-reward-editor' ] }, () 
 	test( 'a free product reward is added from the catalog and kept after a reload', async ( { page } ) => {
 		await page.goto( '/wp-admin/admin.php?page=yayloyalty#/rewards/new' );
 
-		await page.getByRole( 'button', { name: /Free product/ } ).click();
-		await page.getByLabel( 'Name' ).fill( rewardName );
+		await page.getByRole( 'radio', { name: 'Free product' } ).click();
+		await page.getByLabel( 'Reward name' ).fill( rewardName );
 		await page.getByText( 'Search products' ).click();
 		await page.getByPlaceholder( 'Type to search…' ).fill( `E2E P11 gift ${ run }` );
 		await page.getByRole( 'option', { name: new RegExp( `E2E P11 gift ${ run }` ) } ).click();

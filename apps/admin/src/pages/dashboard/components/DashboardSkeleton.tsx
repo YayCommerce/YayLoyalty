@@ -1,3 +1,4 @@
+import { DASHBOARD_ROW } from './DashboardPanel';
 import { DashboardPointsChartSkeleton } from './DashboardPointsChartFrame';
 import { DashboardRecentActivitySkeleton } from './DashboardRecentActivity';
 import { DashboardStatsGridSkeleton } from './DashboardStatsGrid';
@@ -8,11 +9,13 @@ export function DashboardSkeleton() {
   return (
     <>
       <DashboardStatsGridSkeleton />
-      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+      <div className={DASHBOARD_ROW}>
         <DashboardPointsChartSkeleton />
         <DashboardTopBalancesSkeleton />
       </div>
-      <DashboardRecentActivitySkeleton />
+      <div className={DASHBOARD_ROW}>
+        <DashboardRecentActivitySkeleton />
+      </div>
     </>
   );
 }

@@ -69,9 +69,7 @@
 /* The points card on the cart and checkout. Its accent is its own, not the My Points tab's. */
 .yayloyalty-redeem {
   --yayloyalty-redeem-accent: #4353ff;
-  --yayloyalty-redeem-accent-hover: #3442d6;
   --yayloyalty-redeem-accent-soft: #f0f1ff;
-  --yayloyalty-redeem-accent-text: var(--yayloyalty-accent-text);
   --yayloyalty-redeem-text: var(--yayloyalty-text);
   --yayloyalty-redeem-muted: var(--yayloyalty-muted);
   --yayloyalty-redeem-border: var(--yayloyalty-border);
@@ -79,7 +77,13 @@
   --yayloyalty-redeem-selected: var(--yayloyalty-subtle);
   --yayloyalty-redeem-chip: var(--yayloyalty-fill);
   --yayloyalty-redeem-check-border: #d4d4d8;
+  --yayloyalty-redeem-check: var(--yayloyalty-text);
+  --yayloyalty-redeem-track: var(--yayloyalty-border);
+  --yayloyalty-redeem-button: var(--yayloyalty-text);
+  --yayloyalty-redeem-button-hover: #000000;
+  --yayloyalty-redeem-button-text: var(--yayloyalty-accent-text);
   --yayloyalty-redeem-success: var(--yayloyalty-positive);
+  --yayloyalty-redeem-success-bg: var(--yayloyalty-positive-bg);
   --yayloyalty-redeem-error: var(--yayloyalty-error);
   --yayloyalty-redeem-error-bg: var(--yayloyalty-error-bg);
   --yayloyalty-redeem-field: var(--yayloyalty-surface);

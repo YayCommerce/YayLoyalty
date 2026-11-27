@@ -18,9 +18,10 @@ export const ACCOUNT_DELETED_LABEL = () => __('ACCOUNT DELETED', 'yayloyalty');
 
 // Stats
 
-export const STAT_BALANCE = () => __('Balance', 'yayloyalty');
-export const STAT_PENDING = () => __('Pending', 'yayloyalty');
-export const STAT_EXPIRES = () => __('Expires', 'yayloyalty');
+export const STATS_TITLE = () => __('Loyalty overview', 'yayloyalty');
+export const STAT_BALANCE = () => __('Points balance', 'yayloyalty');
+export const STAT_PENDING = () => __('Pending points', 'yayloyalty');
+export const STAT_NEXT_EXPIRY = () => __('Next expiry', 'yayloyalty');
 export const STAT_LIFETIME_EARNED = () => __('Lifetime earned', 'yayloyalty');
 export const STAT_LIFETIME_REDEEMED = () => __('Lifetime redeemed', 'yayloyalty');
 
@@ -32,17 +33,9 @@ export const BALANCE_AT_DELETION_SUBLINE = () => __('no longer spendable', 'yayl
 /** No deadline once expiry has stopped. */
 export const EXPIRY_STOPPED_SUBLINE = () => __('expiry stopped', 'yayloyalty');
 
-/** Countdown under the expiry date. */
-export function expiresInDays(days: number): string {
-  if (days === 0) {
-    return __('today', 'yayloyalty');
-  }
-  return sprintf(
-    /* translators: %d: days until the points expire. */
-    _n('in %d day', 'in %d days', days, 'yayloyalty'),
-    days,
-  );
-}
+// History
+
+export const HISTORY_TITLE = () => __('Customer history', 'yayloyalty');
 
 // Actions
 
@@ -87,15 +80,14 @@ export const TAB_REFERRALS = () => __('Referrals', 'yayloyalty');
 // Ledger columns, filters and pager
 
 export const COLUMN_DATE = () => __('Date', 'yayloyalty');
-export const COLUMN_DESCRIPTION = () => __('Description', 'yayloyalty');
 export const COLUMN_POINTS = () => __('Points', 'yayloyalty');
-export const COLUMN_BALANCE = () => __('Balance', 'yayloyalty');
 
 export const FILTER_TYPE_LABEL = () => __('Type', 'yayloyalty');
 export const FILTER_TYPE_ALL = () => __('All', 'yayloyalty');
 
 export const SEARCH_PLACEHOLDER = () => __('Search description or order number', 'yayloyalty');
 export const DATE_RANGE_LABEL = () => __('Date range', 'yayloyalty');
+export const DATE_RANGE_RESET = () => __('Reset', 'yayloyalty');
 
 /** "1–10 of 4,812 entries · newest first" */
 export function pagerSummary(from: number, to: number, total: number): string {
@@ -140,10 +132,46 @@ export function emptyRedemptionsBody(firstName: string): string {
 }
 
 // Redemptions
-export const COLUMN_REWARD = () => __('Reward', 'yayloyalty');
-export const COLUMN_VALUE = () => __('Value', 'yayloyalty');
-export const COLUMN_ORDER = () => __('Order', 'yayloyalty');
-export const COLUMN_STATUS = () => __('Status', 'yayloyalty');
+export function balanceAfter(balance: string): string {
+  return sprintf(
+    /* translators: %s: the customer's points balance after this entry. */
+    __('Balance after: %s', 'yayloyalty'),
+    balance,
+  );
+}
+
+/** The ledger's points badge: "+175 points" or "-45 points". */
+export function ledgerPointsBadge(points: number): string {
+  const amount = formatStoreNumber(Math.abs(points), 0);
+
+  return points < 0
+    ? sprintf(
+        /* translators: %s: points taken from the customer. */
+        _n('-%s point', '-%s points', Math.abs(points), 'yayloyalty'),
+        amount,
+      )
+    : sprintf(
+        /* translators: %s: points given to the customer. */
+        _n('+%s point', '+%s points', points, 'yayloyalty'),
+        amount,
+      );
+}
+
+/** A redemption's sub-line: its value, and its order when it has one. */
+export function redemptionDetails(value: string, order: string): string {
+  return order === '—'
+    ? sprintf(
+        /* translators: %s: the reward's value, formatted as money. */
+        __('Worth %s', 'yayloyalty'),
+        value,
+      )
+    : sprintf(
+        /* translators: 1: the reward's value, formatted as money; 2: the order number, such as #700. */
+        __('Worth %1$s · Order %2$s', 'yayloyalty'),
+        value,
+        order,
+      );
+}
 
 export const REDEMPTION_STATUS_APPLIED = () => __('Applied', 'yayloyalty');
 export const REDEMPTION_STATUS_REFUNDED = () => __('Points returned', 'yayloyalty'); // status `refunded`

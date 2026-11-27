@@ -21,7 +21,7 @@ test.describe( 'Adjust a customer’s points', { tag: '@flow-customer-adjust-poi
 		await page.getByRole( 'button', { name: 'Adjust points' } ).click();
 
 		const dialog = page.getByRole( 'dialog', { name: 'Adjust points' } );
-		await dialog.getByRole( 'textbox', { name: 'Amount' } ).fill( '25' );
+		await dialog.getByLabel( 'Change points' ).fill( '25' );
 		await dialog.getByLabel( 'Reason (internal)' ).fill( 'Goodwill for a late parcel' );
 		await dialog.getByRole( 'button', { name: 'Add 25 points' } ).click();
 

@@ -14,9 +14,7 @@ import {
 } from '@/lib/schema/tier.schema';
 import { cn } from '@/lib/utils';
 import { LoadingButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
-import { Field, FieldContent, FieldLabel } from '@/components/ui/field';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -85,7 +83,7 @@ const MODES: { value: TierMode; label: () => string; description: () => string }
 ];
 
 /**
- * The Tiers page "Qualification" card: how customers qualify (Lifetime, Rolling or Calendar), with Rolling's window
+ * The Tiers page "Qualification" section: how customers qualify (Lifetime, Rolling or Calendar), with Rolling's window
  * length and Calendar's period.
  */
 export function TierModeCard() {
@@ -93,7 +91,11 @@ export function TierModeCard() {
 
   // TierSwitchCard shows the load error for the shared settings query.
   if (!settings) {
-    return <Skeleton className="h-56 w-full rounded-xl" />;
+    return (
+      <div className="p-4">
+        <Skeleton className="h-72 w-full rounded-md" />
+      </div>
+    );
   }
 
   return <TierModeForm settings={settings} />;
@@ -184,103 +186,104 @@ function TierModeForm({ settings }: { settings: TierSettings }) {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle>{__('Qualification', 'yayloyalty')}</CardTitle>
-          <CardDescription>{__('How customers qualify for a tier.', 'yayloyalty')}</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <RadioGroup
-            className="grid gap-3 sm:grid-cols-3"
-            value={mode}
-            onValueChange={(next) => setMode(next as TierMode)}
-            aria-label={__('Qualification', 'yayloyalty')}
-          >
-            {MODES.map((choice) => (
-              <label
-                key={choice.value}
-                className={cn(
-                  'flex cursor-pointer items-start gap-3 rounded-md border p-3',
-                  mode === choice.value && 'border-primary',
-                )}
-              >
-                <RadioGroupItem value={choice.value} className="mt-0.5" />
-                <span className="flex flex-col gap-1">
-                  <span className="text-sm font-medium">{choice.label()}</span>
-                  <span className="text-muted-foreground text-xs">{choice.description()}</span>
-                </span>
-              </label>
-            ))}
-          </RadioGroup>
+      <div className="flex flex-col gap-4 p-4">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="m-0 text-sm font-semibold">{__('Qualification', 'yayloyalty')}</h2>
+          <p className="text-muted-foreground text-xs">{__('How customers qualify for a tier.', 'yayloyalty')}</p>
+        </div>
 
-          {mode === 'rolling' && (
-            <Field>
-              <FieldLabel htmlFor="yayloyalty-tiers-rolling-months">{__('Window', 'yayloyalty')}</FieldLabel>
-              <FieldContent>
-                <Select
-                  value={String(months)}
-                  onValueChange={(next) => setMonths(tiersRollingMonthsSchema.parse(Number(next)))}
-                >
-                  <SelectTrigger id="yayloyalty-tiers-rolling-months" className="w-48">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TIERS_ROLLING_MONTHS.map((value) => (
-                      <SelectItem key={value} value={String(value)}>
-                        {sprintf(
-                          /* translators: %s: a number of months. */
-                          __('%s months', 'yayloyalty'),
-                          String(value),
-                        )}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FieldContent>
-            </Field>
-          )}
-
-          {mode === 'calendar' && (
-            <Field>
-              <FieldLabel htmlFor="yayloyalty-tiers-calendar-period">{__('Period', 'yayloyalty')}</FieldLabel>
-              <FieldContent>
-                <Select value={period} onValueChange={(next) => setPeriod(tiersCalendarPeriodSchema.parse(next))}>
-                  <SelectTrigger id="yayloyalty-tiers-calendar-period" className="w-48">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TIERS_CALENDAR_PERIODS.map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {PERIOD_LABELS[value]()}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FieldContent>
-            </Field>
-          )}
-        </CardContent>
-        <CardFooter className="flex flex-wrap items-center gap-3">
-          <LoadingButton
-            loading={updateSettings.isPending}
-            disabled={!isDirty || isSweeping || updateSettings.isPending}
-            onClick={onSave}
-          >
-            {__('Save', 'yayloyalty')}
-          </LoadingButton>
-          {isSweeping ? (
-            <span className="text-muted-foreground text-xs">
-              {__('Wait for the current tier update to finish.', 'yayloyalty')}
-            </span>
-          ) : (
-            !settings.tiers_enabled && (
-              <span className="text-muted-foreground text-xs">
-                {__('Applies when you turn tiers on.', 'yayloyalty')}
+        <RadioGroup
+          className="flex flex-col gap-2"
+          value={mode}
+          onValueChange={(next) => setMode(next as TierMode)}
+          aria-label={__('Qualification', 'yayloyalty')}
+        >
+          {MODES.map((choice) => (
+            <label
+              key={choice.value}
+              className={cn(
+                'flex cursor-pointer flex-col gap-1 rounded-md border p-3',
+                mode === choice.value && 'border-foreground',
+              )}
+            >
+              <span className="flex items-center justify-between gap-3">
+                <span className="text-sm font-medium">{choice.label()}</span>
+                <RadioGroupItem value={choice.value} />
               </span>
-            )
-          )}
-        </CardFooter>
-      </Card>
+              <span className="text-muted-foreground text-xs">{choice.description()}</span>
+            </label>
+          ))}
+        </RadioGroup>
+
+        {mode === 'rolling' && (
+          <div className="flex items-center justify-between gap-3">
+            <label htmlFor="yayloyalty-tiers-rolling-months" className="text-sm font-medium">
+              {__('Window', 'yayloyalty')}
+            </label>
+            <Select
+              value={String(months)}
+              onValueChange={(next) => setMonths(tiersRollingMonthsSchema.parse(Number(next)))}
+            >
+              <SelectTrigger id="yayloyalty-tiers-rolling-months" className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TIERS_ROLLING_MONTHS.map((value) => (
+                  <SelectItem key={value} value={String(value)}>
+                    {sprintf(
+                      /* translators: %s: a number of months. */
+                      __('%s months', 'yayloyalty'),
+                      String(value),
+                    )}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {mode === 'calendar' && (
+          <div className="flex items-center justify-between gap-3">
+            <label htmlFor="yayloyalty-tiers-calendar-period" className="text-sm font-medium">
+              {__('Period', 'yayloyalty')}
+            </label>
+            <Select value={period} onValueChange={(next) => setPeriod(tiersCalendarPeriodSchema.parse(next))}>
+              <SelectTrigger id="yayloyalty-tiers-calendar-period" className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TIERS_CALENDAR_PERIODS.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {PERIOD_LABELS[value]()}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-end gap-3 border-t p-4">
+        {isSweeping ? (
+          <span className="text-muted-foreground mr-auto text-xs">
+            {__('Wait for the current tier update to finish.', 'yayloyalty')}
+          </span>
+        ) : (
+          !settings.tiers_enabled && (
+            <span className="text-muted-foreground mr-auto text-xs">
+              {__('Applies when you turn tiers on.', 'yayloyalty')}
+            </span>
+          )
+        )}
+        <LoadingButton
+          size="sm"
+          loading={updateSettings.isPending}
+          disabled={!isDirty || isSweeping || updateSettings.isPending}
+          onClick={onSave}
+        >
+          {__('Save', 'yayloyalty')}
+        </LoadingButton>
+      </div>
 
       {confirming && (
         <ConfirmDialog

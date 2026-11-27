@@ -2,11 +2,10 @@ import { useParams, useSearchParams } from 'react-router';
 
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { RewardCreator } from '@/pro';
-import NotFoundPage from '../404';
 
 /**
- * Lite-safe entry for rewards/new/:type. Lite has no catalog, so the route
- * 404s there. `?from=<id>` is RewardTable's Duplicate action; a missing or
+ * Lite-safe entry for rewards/new/:type. Lite has no catalog, so RewardsPage
+ * never renders this child route there. `?from=<id>` is RewardTable's Duplicate action; a missing or
  * non-positive value is treated as absent, same as CampaignCreatePage.
  */
 export default function RewardCreatePage() {
@@ -20,7 +19,5 @@ export default function RewardCreatePage() {
       type={type ?? ''}
       duplicateFromId={duplicateFromId && duplicateFromId > 0 ? duplicateFromId : undefined}
     />
-  ) : (
-    <NotFoundPage />
-  );
+  ) : null;
 }

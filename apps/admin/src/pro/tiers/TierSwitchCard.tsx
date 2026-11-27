@@ -7,7 +7,6 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 import { toastApiError } from '@/lib/api/api';
 import { formatCount } from '@/lib/helpers/points.helper';
 import { Alert, AlertTitle } from '@/components/ui/alert';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,7 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { TIER_KEY, useTierSettingsQuery, useUpdateTierSettingsMutation } from './tiers.queries';
 
 /**
- * The tiers on/off switch, laid out like the program's own status card, and the banner that follows a
+ * The tiers on/off switch, at the top of the Tiers settings panel, and the banner that follows a
  * placement or re-evaluation while it runs. The switch flips only once the merchant confirms.
  */
 export function TierSwitchCard() {
@@ -38,7 +37,11 @@ export function TierSwitchCard() {
   }, [sweep, queryClient]);
 
   if (isError) {
-    return <ErrorState message={__('Could not load the tier settings.', 'yayloyalty')} onRetry={() => refetch()} />;
+    return (
+      <div className="border-b p-4">
+        <ErrorState message={__('Could not load the tier settings.', 'yayloyalty')} onRetry={() => refetch()} />
+      </div>
+    );
   }
 
   function save(enabled: boolean) {
@@ -53,15 +56,15 @@ export function TierSwitchCard() {
 
   return (
     <>
-      <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
-          <div className="flex flex-col gap-1.5">
-            <CardTitle>
-              <label htmlFor="yayloyalty-tiers-enabled">{__('Enable tiers', 'yayloyalty')}</label>
-            </CardTitle>
-            <CardDescription>
+      <div className="flex flex-col gap-3 border-b p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-0.5">
+            <label htmlFor="yayloyalty-tiers-enabled" className="text-sm font-semibold">
+              {__('Enable tiers', 'yayloyalty')}
+            </label>
+            <p className="text-muted-foreground text-xs">
               {__("Place customers into tiers by the points they've earned.", 'yayloyalty')}
-            </CardDescription>
+            </p>
           </div>
           {isPending ? (
             <Skeleton className="h-6 w-11 rounded-full" />
@@ -74,22 +77,22 @@ export function TierSwitchCard() {
               onCheckedChange={(checked) => setConfirming(checked ? 'on' : 'off')}
             />
           )}
-        </CardHeader>
-      </Card>
+        </div>
 
-      {sweep && (
-        <Alert variant="outline">
-          <InfoIcon />
-          <AlertTitle className="line-clamp-none">
-            {sprintf(
-              /* translators: 1: customers evaluated so far, 2: customers to evaluate. */
-              __('Updating customer tiers… %1$s of %2$s', 'yayloyalty'),
-              formatCount(sweep.done),
-              formatCount(sweep.total),
-            )}
-          </AlertTitle>
-        </Alert>
-      )}
+        {sweep && (
+          <Alert variant="outline">
+            <InfoIcon />
+            <AlertTitle className="line-clamp-none">
+              {sprintf(
+                /* translators: 1: customers evaluated so far, 2: customers to evaluate. */
+                __('Updating customer tiers… %1$s of %2$s', 'yayloyalty'),
+                formatCount(sweep.done),
+                formatCount(sweep.total),
+              )}
+            </AlertTitle>
+          </Alert>
+        )}
+      </div>
 
       {settings && (
         <>
