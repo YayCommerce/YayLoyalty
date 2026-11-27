@@ -73,7 +73,6 @@ export function RewardEditorTier() {
         <FieldContent>
           <Segmented
             id="reward-tier-rule"
-            shape="square"
             value={tierRule}
             // Re-clicking the active item yields an empty string; never write that back.
             onValueChange={(next) => next && changeRule(next as TierRule)}

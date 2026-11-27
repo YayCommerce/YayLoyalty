@@ -1,13 +1,16 @@
 import { useEffect } from 'react';
+import { Search } from 'lucide-react';
 import { Outlet } from 'react-router';
 
+import { formatCount } from '@/lib/helpers/points.helper';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { ErrorState } from '@/components/ui/custom/error-state';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Pagination } from '@/components/ui/pagination';
+import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDrawerTabQueryState } from '@/pages/customers/drawer/customer-drawer.tab-query-state';
-import { DrawerTabFilters } from '@/pages/customers/drawer/tabs/DrawerTabFilters';
 import { useReferralListQuery } from '../referral.queries';
 import { REFERRAL_STATUS_LABEL, REFERRALS_COPY } from '../referrals.copy';
 import { REFERRAL_STATUSES, type ReferralStatus } from '../referrals.schema';
@@ -30,6 +33,14 @@ export function ReferralsTab() {
   const total = counts ? Object.values(counts).reduce((sum, count) => sum + count, 0) : undefined;
   const totalPages = Math.max(1, query.data?.totalPages ?? 1);
   const { setPage } = state;
+  const statusOptions: { value: StatusFilter; label: string; count?: number }[] = [
+    { value: 'all', label: REFERRALS_COPY.all(), count: total },
+    ...REFERRAL_STATUSES.map((status) => ({
+      value: status,
+      label: REFERRAL_STATUS_LABEL[status](),
+      count: counts ? (counts[status] ?? 0) : undefined,
+    })),
+  ];
 
   // Rows can vanish between requests; a page past the end would show an empty table with no way back.
   useEffect(() => {
@@ -47,22 +58,38 @@ export function ReferralsTab() {
               <Skeleton className="h-4 w-48" />
             )}
           </div>
-          <DrawerTabFilters<StatusFilter>
-            options={[
-              { value: 'all', label: REFERRALS_COPY.all(), count: total },
-              ...REFERRAL_STATUSES.map((status) => ({
-                value: status,
-                label: REFERRAL_STATUS_LABEL[status](),
-                count: counts ? (counts[status] ?? 0) : undefined,
-              })),
-            ]}
-            value={state.filter}
-            onChange={state.setFilter}
-            ariaLabel={REFERRALS_COPY.filterLabel()}
-            search={state.search}
-            onSearchChange={state.setSearch}
-            searchPlaceholder={REFERRALS_COPY.search()}
-          />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="max-w-full overflow-x-auto">
+              <Segmented
+                size="sm"
+                aria-label={REFERRALS_COPY.filterLabel()}
+                value={state.filter}
+                // Radix reports '' when the active segment is clicked again; there is no "no filter" state.
+                onValueChange={(next) => next && state.setFilter(next as StatusFilter)}
+                className="w-max"
+              >
+                {statusOptions.map((option) => (
+                  <SegmentedItem key={option.value} value={option.value} className="px-2.5">
+                    {option.label}
+                    {option.count !== undefined && (
+                      <span className="text-muted-foreground text-xs tabular-nums">{formatCount(option.count)}</span>
+                    )}
+                  </SegmentedItem>
+                ))}
+              </Segmented>
+            </div>
+            <InputGroup className="w-full sm:w-72">
+              <InputGroupInput
+                placeholder={REFERRALS_COPY.search()}
+                aria-label={REFERRALS_COPY.search()}
+                value={state.search}
+                onChange={(event) => state.setSearch(event.target.value)}
+              />
+              <InputGroupAddon align="inline-end">
+                <Search className="size-4" />
+              </InputGroupAddon>
+            </InputGroup>
+          </div>
 
           {query.isError ? (
             <ErrorState message={REFERRALS_COPY.loadError()} onRetry={() => query.refetch()} />

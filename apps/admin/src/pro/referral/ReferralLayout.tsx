@@ -1,7 +1,7 @@
 import { NavLink, Outlet } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
-import { SideNavMenuItem, SideNavMenuList } from '@/components/ui/navmenu-side';
+import { cn } from '@/lib/utils';
 import PageLayout from '@/components/layout/PageLayout';
 import { APPROVALS_COPY } from './approvals/approvals.copy';
 import { ReferralApprovalsBadge } from './approvals/ReferralApprovalsBadge';
@@ -19,16 +19,25 @@ export function ReferralLayout() {
   return (
     <PageLayout title={__('Referral', 'yayloyalty')}>
       <div className="flex flex-col gap-4">
-        <SideNavMenuList className="w-fit justify-start sm:flex-row">
-          {REFERRAL_TABS.map((tab) => (
-            <SideNavMenuItem asChild key={tab.to} className="w-auto px-3">
-              <NavLink to={tab.to} className="inline-flex items-center gap-1.5">
+        <div className="max-w-full overflow-x-auto">
+          <nav className="bg-muted text-muted-foreground inline-flex h-9 w-max items-center gap-1 rounded-full p-1">
+            {REFERRAL_TABS.map((tab) => (
+              <NavLink
+                key={tab.to}
+                to={tab.to}
+                className={({ isActive }) =>
+                  cn(
+                    'hover:text-foreground focus-visible:ring-ring/50 inline-flex h-full items-center gap-1.5 rounded-full px-3 text-sm font-medium whitespace-nowrap outline-none transition focus:shadow-none focus-visible:ring-[3px]',
+                    isActive && 'bg-background text-foreground shadow-sm focus:shadow-sm',
+                  )
+                }
+              >
                 {tab.label()}
                 {tab.badge && <ReferralApprovalsBadge />}
               </NavLink>
-            </SideNavMenuItem>
-          ))}
-        </SideNavMenuList>
+            ))}
+          </nav>
+        </div>
         <Outlet />
       </div>
     </PageLayout>

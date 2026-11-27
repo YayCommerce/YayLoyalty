@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/field';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { REFERRAL_LIMITS, ReferralSettings } from '../referral-settings.schema';
 import { useReferralSettingsQuery, useSaveReferralSettingsMutation } from '../referral.queries';
@@ -36,6 +35,7 @@ import {
   ReferralSettingsFormValues,
 } from './referral-settings.form';
 import { ReferralOfferPreview } from './ReferralOfferPreview';
+import { ReferralSettingsSkeleton } from './ReferralSettingsSkeleton';
 
 type Form = UseFormReturn<ReferralSettingsFormValues>;
 
@@ -294,7 +294,7 @@ export function ReferralSettingsPage() {
   const query = useReferralSettingsQuery();
 
   if (query.isPending) {
-    return <Skeleton className="h-96 w-full" />;
+    return <ReferralSettingsSkeleton />;
   }
 
   if (query.isError) {
