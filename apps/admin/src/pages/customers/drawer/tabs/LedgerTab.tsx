@@ -1,12 +1,14 @@
 import { ledgerTypeLabel } from '@/lib/helpers/ledger.helper';
 import { useCustomerLedgerQuery } from '@/lib/queries/customer.queries';
+import type { Customer } from '@/lib/schema/customer.schema';
 import { LEDGER_FILTER_TYPES, type LedgerFilterType } from '@/lib/schema/ledger.schema';
 import { useLedgerCampaignNames } from '../customer-drawer.campaign-names';
 import { FILTER_TYPE_ALL, FILTER_TYPE_LABEL, SEARCH_PLACEHOLDER } from '../customer-drawer.copy';
 import { toLedgerRow } from '../customer-drawer.ledger-rows';
 import { useDrawerTabQueryState } from '../customer-drawer.tab-query-state';
-import { DrawerTabFilters } from './DrawerTabFilters';
+import { CustomerDrawerActions } from '../CustomerDrawerActions';
 import { DRAWER_PAGE_SIZE, DrawerTabPager } from './DrawerTabPager';
+import { DrawerTabToolbar } from './DrawerTabToolbar';
 import { LedgerTabRows } from './LedgerTabRows';
 
 const TYPE_LABELS: Record<LedgerFilterType, () => string> = {
@@ -17,17 +19,13 @@ const TYPE_LABELS: Record<LedgerFilterType, () => string> = {
   expire: () => ledgerTypeLabel('expire'),
 };
 
-/** Filters, rows and pager. Each type segment shows its count, so the admin sees where to look before clicking. */
-export function LedgerTab({
-  userId,
-  customerFirstName,
-  causeLedgerId,
-}: {
-  userId: number;
-  customerFirstName: string;
-  /** The row that caused a negative balance, to mark, or null. */
-  causeLedgerId: number | null;
-}) {
+/**
+ * Toolbar, table and pager. Each type option shows its count, so the admin sees where to look before picking.
+ * The row that caused a negative balance is marked.
+ */
+export function LedgerTab({ customer, customerFirstName }: { customer: Customer; customerFirstName: string }) {
+  const userId = customer.user_id;
+  const causeLedgerId = customer.negative_balance?.cause_ledger_id ?? null;
   const state = useDrawerTabQueryState<LedgerFilterType>('all');
   const query = useCustomerLedgerQuery(userId, { ...state.pageParams, type: state.filter });
 
@@ -39,7 +37,7 @@ export function LedgerTab({
 
   return (
     <div className="flex flex-col gap-3">
-      <DrawerTabFilters
+      <DrawerTabToolbar
         options={LEDGER_FILTER_TYPES.map((type) => ({
           value: type,
           label: TYPE_LABELS[type](),
@@ -53,15 +51,14 @@ export function LedgerTab({
         search={state.search}
         onSearchChange={state.setSearch}
         searchPlaceholder={SEARCH_PLACEHOLDER()}
+        extra={<CustomerDrawerActions customer={customer} />}
       />
-      <div className="overflow-x-auto rounded-md border">
-        <LedgerTabRows
-          rows={rows}
-          isLoading={query.isPending}
-          isFiltered={state.isFiltered}
-          customerFirstName={customerFirstName}
-        />
-      </div>
+      <LedgerTabRows
+        rows={rows}
+        isLoading={query.isPending}
+        isFiltered={state.isFiltered}
+        customerFirstName={customerFirstName}
+      />
       <DrawerTabPager
         page={state.page}
         perPage={DRAWER_PAGE_SIZE}

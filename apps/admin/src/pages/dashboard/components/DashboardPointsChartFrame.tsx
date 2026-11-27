@@ -2,8 +2,8 @@ import type { ReactNode } from 'react';
 import { __ } from '@wordpress/i18n';
 
 import { cn } from '@/lib/utils';
-import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DashboardPanel } from './DashboardPanel';
 
 /** Fixed so the skeleton, the empty overlay and the loaded chart are the same height — no jump below it. */
 export const CHART_HEIGHT = 'h-[280px]';
@@ -11,14 +11,12 @@ export const CHART_HEIGHT = 'h-[280px]';
 /** Card + title + header controls shared by the loaded chart and its skeleton. */
 export function DashboardPointsChartFrame({ children, controls }: { children: ReactNode; controls?: ReactNode }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{__('Points issued vs redeemed', 'yayloyalty')}</CardTitle>
-        <CardDescription>{__('Daily totals', 'yayloyalty')}</CardDescription>
-        {controls && <CardAction className="flex flex-wrap items-center gap-2">{controls}</CardAction>}
-      </CardHeader>
-      {children}
-    </Card>
+    <DashboardPanel
+      title={__('Points issued vs. redeemed', 'yayloyalty')}
+      action={controls && <div className="flex flex-wrap items-center gap-2">{controls}</div>}
+    >
+      <div className="p-6">{children}</div>
+    </DashboardPanel>
   );
 }
 

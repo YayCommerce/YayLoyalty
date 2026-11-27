@@ -2,7 +2,7 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { formatStoredDate, formatWPCurrency } from '@/lib/helpers/format.helper';
 import { formatCount, formatPoints, shortPoints } from '@/lib/helpers/points.helper';
-import { flexibleDiscountSubtitle, numberConfig } from '@/lib/helpers/reward.helper';
+import { numberConfig } from '@/lib/helpers/reward.helper';
 import { hasConditions } from '@/lib/schema/condition-match.schema';
 import { CatalogRewardType, Reward } from '@/lib/schema/reward.schema';
 
@@ -11,12 +11,8 @@ import { CatalogRewardType, Reward } from '@/lib/schema/reward.schema';
 export interface RewardsScreen {
   /** Every non-archived row, built-in first, in display order. What the table renders. */
   rows: Reward[];
-  /** Non-builtin, non-archived rows — what "catalog" means throughout this screen. */
-  catalogRows: Reward[];
   /** Archived rows in display order: the Archived view, out of the catalog and never dragged. */
   archivedRows: Reward[];
-  /** No catalog reward exists yet (2a). */
-  hasNoCatalogRewards: boolean;
 }
 
 /** The one place a case is detected, from the plain list the API returns. */
@@ -28,9 +24,7 @@ export function resolveRewardsScreen(rewards: Reward[]): RewardsScreen {
 
   return {
     rows,
-    catalogRows,
     archivedRows: rewards.filter((reward) => reward.status === 'archived'),
-    hasNoCatalogRewards: catalogRows.length === 0,
   };
 }
 
@@ -111,29 +105,6 @@ export function isCreatableRewardType(type: string): type is CatalogRewardType {
   return (CREATABLE_REWARD_TYPES as readonly string[]).includes(type);
 }
 
-/** What a catalog type gives the customer, for the "Add a reward" cards. */
-export function templateDescription(type: CatalogRewardType): string {
-  switch (type) {
-    case 'fixed_coupon':
-      return __('A set amount off an order, applied as a coupon at checkout.', 'yayloyalty');
-    case 'percent_coupon':
-      return __('A percentage off an order, with an optional cap so a large order cannot drain it.', 'yayloyalty');
-    case 'free_shipping':
-      return __('Free shipping on an order, applied as a coupon at checkout.', 'yayloyalty');
-    case 'free_product':
-      return __('A product of your choice for free, added to an order with a coupon at checkout.', 'yayloyalty');
-  }
-}
-
-/** The line under a reward's name: what redeeming it does, derived from type and config — there is no stored description column. */
-export function rewardSubtitle(reward: Reward): string {
-  if (reward.type === 'flexible_discount') {
-    return flexibleDiscountSubtitle(reward.config);
-  }
-
-  return __('Applied as a coupon at checkout', 'yayloyalty');
-}
-
 /** "any" for the flexible discount — the customer picks the amount — otherwise the fixed point cost. */
 export function costLabel(reward: Reward): string {
   if (reward.type === 'flexible_discount' || null === reward.cost_points) {
@@ -212,29 +183,4 @@ function scheduleWindowLabel(startsAt: string | null, endsAt: string | null): st
 
   /* translators: %s: the date the reward stops being available. */
   return sprintf(__('until %s', 'yayloyalty'), formatStoredDate(endsAt as string));
-}
-
-/**
- * The line under "Rewards", in two parts so the table can put its
- * "{n} archived" link between them: the row count, then the sentence after
- * it. On the init case the sentence says nothing has been redeemed yet —
- * Redeemed stays "—" until redemption ships and defines it; its source is then
- * `redemption_summary`.
- */
-export function headerSubtitle(screen: RewardsScreen): { count: string; detail: string } {
-  if (screen.hasNoCatalogRewards) {
-    return {
-      count: __('One reward', 'yayloyalty'),
-      detail: __('Nothing has been redeemed yet.', 'yayloyalty'),
-    };
-  }
-
-  return {
-    count: sprintf(
-      /* translators: %d: number of rewards, built-in included. */
-      _n('%d reward', '%d rewards', screen.rows.length, 'yayloyalty'),
-      screen.rows.length,
-    ),
-    detail: __('Drag to reorder — this is the order customers see.', 'yayloyalty'),
-  };
 }

@@ -14,8 +14,8 @@ import {
 } from '../customer-drawer.activity.copy';
 import { useDrawerTabQueryState } from '../customer-drawer.tab-query-state';
 import { ActivityLogTabRows } from './ActivityLogTabRows';
-import { DrawerTabFilters } from './DrawerTabFilters';
 import { DRAWER_PAGE_SIZE, DrawerTabPager } from './DrawerTabPager';
+import { DrawerTabToolbar } from './DrawerTabToolbar';
 
 const GROUP_LABELS: Record<ActivityGroup, () => string> = {
   all: ACTIVITY_GROUP_ALL,
@@ -38,7 +38,7 @@ export function ActivityLogTab({ userId }: { userId: number }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <DrawerTabFilters
+      <DrawerTabToolbar
         options={SHOWN_GROUPS.map((group) => ({ value: group, label: GROUP_LABELS[group]() }))}
         value={state.filter}
         onChange={state.setFilter}
@@ -49,9 +49,7 @@ export function ActivityLogTab({ userId }: { userId: number }) {
         onSearchChange={state.setSearch}
         searchPlaceholder={ACTIVITY_SEARCH_PLACEHOLDER()}
       />
-      <div className="overflow-x-auto rounded-md border">
-        <ActivityLogTabRows rows={rows} isLoading={query.isPending} isFiltered={state.isFiltered} />
-      </div>
+      <ActivityLogTabRows rows={rows} isLoading={query.isPending} isFiltered={state.isFiltered} />
       <DrawerTabPager
         page={state.page}
         perPage={DRAWER_PAGE_SIZE}

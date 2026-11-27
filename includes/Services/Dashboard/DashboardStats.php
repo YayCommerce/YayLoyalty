@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class DashboardStats {
 
-    public const TOP_BALANCES  = 3;
+    public const TOP_BALANCES  = 5;
     public const ACTIVITY_ROWS = 6;
 
     /** @var DashboardRepository */

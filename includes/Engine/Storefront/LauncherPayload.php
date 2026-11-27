@@ -287,6 +287,7 @@ final class LauncherPayload {
              * - period:        ?string, the calendar period whose points count ('month', 'quarter' or 'year'); null
              *                  outside Calendar.
              * - held_until:    ?string, UTC MySQL datetime the tier is kept until; null when not held.
+             * - achieved_at:   ?string, UTC MySQL datetime the tier was reached; null when they have none.
              *
              * @param array|null $tier    Null.
              * @param int|null   $user_id The member; null for the Design preview.
@@ -321,6 +322,7 @@ final class LauncherPayload {
             'window_months' => $tier['window_months'],
             'period'        => $tier['period'],
             'held_until'    => $tier['held_until'],
+            'achieved_at'   => $tier['achieved_at'],
         ];
     }
 
@@ -330,7 +332,7 @@ final class LauncherPayload {
             return false;
         }
 
-        foreach ( [ 'name', 'color', 'next', 'progress', 'needed', 'window_months', 'period', 'held_until' ] as $key ) {
+        foreach ( [ 'name', 'color', 'next', 'progress', 'needed', 'window_months', 'period', 'held_until', 'achieved_at' ] as $key ) {
             if ( ! array_key_exists( $key, $tier ) ) {
                 return false;
             }
@@ -345,7 +347,8 @@ final class LauncherPayload {
             && is_int( $tier['needed'] ) && $tier['needed'] >= 0
             && ( null === $tier['window_months'] || ( is_int( $tier['window_months'] ) && $tier['window_months'] >= 1 ) )
             && ( null === $tier['period'] || TierMode::is_calendar_period( $tier['period'] ) )
-            && ( null === $tier['held_until'] || ( is_string( $tier['held_until'] ) && Dates::is_valid( $tier['held_until'] ) ) );
+            && ( null === $tier['held_until'] || ( is_string( $tier['held_until'] ) && Dates::is_valid( $tier['held_until'] ) ) )
+            && ( null === $tier['achieved_at'] || ( is_string( $tier['achieved_at'] ) && Dates::is_valid( $tier['achieved_at'] ) ) );
     }
 
     /**

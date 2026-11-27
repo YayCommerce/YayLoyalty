@@ -93,11 +93,11 @@ function ChartSwatch({ dataKey, className }: { dataKey: string; className?: stri
   );
 }
 
-function ChartLegend({ keys }: { keys: string[] }) {
+function ChartLegend({ keys, className }: { keys: string[]; className?: string }) {
   const config = useChartConfig();
 
   return (
-    <div className="flex items-center justify-center gap-4 pt-3">
+    <div className={cn('flex items-center justify-center gap-4 pt-3', className)}>
       {keys.map((key) => (
         <div key={key} className="flex items-center gap-1.5">
           <ChartSwatch dataKey={key} className="size-2" />

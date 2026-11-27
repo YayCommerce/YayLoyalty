@@ -70,9 +70,10 @@ export const dashboardTopBalanceSchema = z.object({
 
 export type DashboardTopBalance = z.infer<typeof dashboardTopBalanceSchema>;
 
-/** A ledger row joined to the user's display name. */
+/** A ledger row joined to the user's display name and email. */
 export const dashboardActivityRowSchema = ledgerEntrySchema.extend({
   name: z.string(),
+  email: z.string().default(''),
 });
 
 export type DashboardActivityRow = z.infer<typeof dashboardActivityRowSchema>;

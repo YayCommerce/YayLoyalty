@@ -105,11 +105,14 @@ export function bulkTotalPoints(state: Pick<AdjustFormState, 'amount'>, effectiv
 
 export type BulkLiabilityProjection =
   | { kind: 'none' }
-  /** Add, with a known store liability: a "to" figure is safe, since no row leaves the positive set. */
+  /**
+   * Add, with a known liability and no balance below zero: a "to" figure is safe, since every added point
+   * counts and no row leaves the positive set.
+   */
   | { kind: 'range'; from: number; to: number }
   /**
-   * Remove, or liability unknown. Only positive balances count, so a "to" figure would overstate
-   * the reduction whenever a balance is smaller than the per-customer amount.
+   * Otherwise an upper bound. Only positive balances count, so a "to" figure would overstate the change
+   * whenever a removal takes a balance past 0, or an addition first has to lift a negative balance to 0.
    */
   | { kind: 'delta'; delta: number };
 
@@ -117,9 +120,10 @@ export function bulkLiabilityProjection(
   direction: AdjustDirection,
   totalPoints: number,
   liabilityPoints: number | null,
+  hasNegative: boolean,
 ): BulkLiabilityProjection {
   if (totalPoints === 0) return { kind: 'none' };
-  if (direction === 'add' && liabilityPoints !== null) {
+  if (direction === 'add' && liabilityPoints !== null && !hasNegative) {
     return { kind: 'range', from: liabilityPoints, to: liabilityPoints + totalPoints };
   }
   return { kind: 'delta', delta: totalPoints };

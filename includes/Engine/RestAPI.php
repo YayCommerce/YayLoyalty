@@ -78,7 +78,7 @@ class RestAPI {
             // $ledger and $redemptions are read-only here.
             new CustomerRestController( $customers, $ledger_service, $ledger, $customer_meta, $redemptions ),
             // $customers is read-only here too.
-            new CustomerAdjustPreviewRestController( $customers, $dashboard ),
+            new CustomerAdjustPreviewRestController( $customers ),
             new LedgerRestController( $ledger ),
             // Writes import rows through $ledger_service only; $customers and $ledger are read-only here.
             new ToolsImportRestController( $customers, $ledger_service, $ledger ),

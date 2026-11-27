@@ -58,7 +58,12 @@ export function AdjustPointsFooter({
         <Button variant="outline" onClick={onCancel} disabled={isBusy}>
           {__('Cancel', 'yayloyalty')}
         </Button>
-        <LoadingButton loading={isBusy} onClick={onSubmit} disabled={isBusy || isPreviewLoading || blockers.length > 0}>
+        <LoadingButton
+          loading={isBusy}
+          onClick={onSubmit}
+          disabled={isBusy || isPreviewLoading || blockers.length > 0}
+          variant="inverse"
+        >
           {isSingle
             ? submitLabel(state.direction, formatPoints(state.amount), state.amount === 0)
             : bulkSubmitLabel(state.direction, formatPoints(state.amount), effectiveCount)}

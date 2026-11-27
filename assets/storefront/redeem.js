@@ -1,15 +1,11 @@
 /**
- * The points card's behaviour: one checkbox list, in one of two modes the page decides (`data-mode`).
+ * The points card's behaviour: one checkbox list that holds every change as a draft, on the cart and the checkout
+ * alike. The card opens collapsed to its summary while something is applied, the chevron opens the list, and the
+ * list's button (Add rewards / Update rewards) sends the points and the reward ids in one request, or just
+ * collapses when nothing changed.
  *
- * - Cart mode applies as it changes. Ticking the Points discount row opens it and applies the most it can take
- *   (`data-max`); unticking sends 0. A changed field or Enter applies the points once, DEBOUNCE_MS after the last
- *   of them. Ticking a reward row sends every ticked reward id.
- * - Checkout mode (inside the classic checkout form or the Checkout block) holds every change as a draft: the
- *   card opens collapsed to its summary while something is applied, Change opens the list, and Update sends the
- *   points and the reward ids in one request, or just collapses when nothing changed.
- *
- * In both, the discount beside the points field is previewed as it changes, and the unaffordable reward rows follow
- * the ticks. The preview is arithmetic only; the server's answer replaces the card. The field takes whole points
+ * The slider and the points field move together, the discount beside the field is previewed as it changes, and the
+ * unaffordable reward rows follow the ticks. The preview is arithmetic only; the server's answer replaces the card. The field takes whole points
  * only. Leaving it (or Enter) rounds an amount down to the step or the max and says so; an amount below the
  * minimum stays as typed, shows an error and is never sent. An auto-max row has no field: a tick asks for
  * everything and the server applies the most the cart allows.
@@ -20,15 +16,6 @@
  */
 (function () {
   "use strict";
-
-  /** How long the points field waits after the last change before it applies. */
-  var DEBOUNCE_MS = 200;
-
-  /** Where the card holds a draft instead of applying at once: the classic checkout form and the Checkout block. */
-  var CHECKOUT_SELECTOR = "form.checkout, .wp-block-woocommerce-checkout";
-
-  /** Each card's pending points request, so a field that fires both `change` and Enter sends once. */
-  var pending = new WeakMap();
 
   /** Keys a whole number of points never needs; type="number" would take them. */
   var NON_DIGIT_KEYS = [".", ",", "e", "E", "+", "-"];
@@ -63,24 +50,15 @@
     }
   }
 
-  /**
-   * Gives every card not yet marked its mode, and its notice back. The server prints one markup for every page
-   * (the blocks' card is shared by Cart and Checkout), so only the page can tell the mode.
-   */
-  function markModes() {
+  /** Gives every card not yet seen its notice back and its slider's fill. */
+  function markCards() {
     document
-      .querySelectorAll("[data-yl-redeem]:not([data-mode])")
+      .querySelectorAll("[data-yl-redeem]:not([data-yl-ready])")
       .forEach(function (root) {
-        root.setAttribute(
-          "data-mode",
-          root.closest(CHECKOUT_SELECTOR) ? "checkout" : "cart",
-        );
+        root.setAttribute("data-yl-ready", "");
         keepAlert(root);
+        showRange(root, null);
       });
-  }
-
-  function isCheckout(root) {
-    return root.getAttribute("data-mode") === "checkout";
   }
 
   function numberAttr(element, name) {
@@ -173,6 +151,27 @@
       "%s",
       money(root, value),
     );
+  }
+
+  /**
+   * Moves the slider to the points (or leaves it where it is for null) and paints the track up to it, through the
+   * `--yl-range-fill` the stylesheet reads.
+   */
+  function showRange(root, points) {
+    var range = root.querySelector("[data-yl-range]");
+
+    if (!range) {
+      return;
+    }
+    if (points !== null) {
+      range.value = String(points);
+    }
+
+    var min = numberAttr(range, "min");
+    var span = numberAttr(range, "max") - min;
+    var fill = span > 0 ? ((Number(range.value) - min) / span) * 100 : 0;
+
+    range.style.setProperty("--yl-range-fill", fill + "%");
   }
 
   /** Disables every control and returns the function that puts them back as they were. */
@@ -299,40 +298,9 @@
     }
     showNote(root, field, isCommit ? read.issue : "");
     showOff(root, read.points || 0);
+    showRange(root, read.points);
 
     return read.points;
-  }
-
-  /** Applies the points once, DEBOUNCE_MS after the last call for this card. */
-  function schedule(root, points) {
-    window.clearTimeout(pending.get(root));
-    pending.set(
-      root,
-      window.setTimeout(function () {
-        pending.delete(root);
-        // A card replaced meanwhile (a totals refresh) has nothing left to send for.
-        if (root.isConnected) {
-          send(root, { points: points });
-        }
-      }, DEBOUNCE_MS),
-    );
-  }
-
-  /**
-   * The typed points, written back as the field takes them, then applied once; nothing for a disabled field or
-   * below the minimum. It sends the whole number typed, not the one written back: the server clamps it the same
-   * way, and its card keeps the note naming the limit that bit, where the field's own note goes with the old card.
-   */
-  function schedulePoints(root) {
-    var field = root.querySelector("[data-yl-points]");
-    var typed = field ? Math.floor(Number(field.value)) : 0;
-    var points = field && !field.disabled ? sync(root, true) : null;
-
-    if (points !== null) {
-      schedule(root, Math.max(points, typed));
-    } else {
-      window.clearTimeout(pending.get(root));
-    }
   }
 
   /** The list's ticked reward boxes. */
@@ -377,7 +345,7 @@
     return field && !field.disabled ? readField(field).points : null;
   }
 
-  /** Whether the ticked row's field holds less than the minimum: checkout's Update waits until it is fixed. */
+  /** Whether the ticked row's field holds less than the minimum: the button waits until it is fixed. */
   function isBelowMin(root) {
     var toggle = root.querySelector("[data-yl-flexible-toggle]");
     var field = root.querySelector("[data-yl-points]");
@@ -482,14 +450,9 @@
 
     var root = rootOf(target);
 
-    if (!root) {
-      return;
-    }
-    if (isCheckout(root)) {
+    if (root) {
       sync(root, true);
       refreshUpdate(root);
-    } else {
-      schedulePoints(root);
     }
   });
 
@@ -501,15 +464,18 @@
       return;
     }
 
-    if (target.matches("[data-yl-points]")) {
-      // The field keeps what was typed until it is left; the preview follows what it would take.
-      sync(root, false);
-    } else {
+    if (target.matches("[data-yl-range]")) {
+      var field = root.querySelector("[data-yl-points]");
+
+      if (field) {
+        field.value = target.value;
+      }
+    } else if (!target.matches("[data-yl-points]")) {
       return;
     }
-    if (isCheckout(root)) {
-      refreshUpdate(root);
-    }
+    // The field keeps what was typed until it is left; the preview follows what it would take.
+    sync(root, false);
+    refreshUpdate(root);
   });
 
   document.addEventListener("change", function (event) {
@@ -520,40 +486,23 @@
       return;
     }
 
-    var isDraft = isCheckout(root);
-
     if (target.matches("[data-yl-flexible-toggle]")) {
       var body = root.querySelector("[data-yl-flexible-body]");
 
       if (body) {
         body.hidden = !target.checked;
       }
-      if (isDraft) {
-        if (target.checked) {
-          sync(root, true);
-        }
-        refreshUpdate(root);
-        return;
-      }
-      window.clearTimeout(pending.get(root));
-      send(root, {
-        points: target.checked ? numberAttr(target, "data-max") : 0,
-      });
-    } else if (target.matches("[data-yl-points]")) {
-      if (isDraft) {
+      if (target.checked) {
         sync(root, true);
-        refreshUpdate(root);
-      } else {
-        schedulePoints(root);
       }
+    } else if (target.matches("[data-yl-points], [data-yl-range]")) {
+      sync(root, true);
     } else if (target.matches("[data-yl-reward]")) {
       refreshShort(target.closest("[data-yl-list]"));
-      if (isDraft) {
-        refreshUpdate(root);
-      } else {
-        send(root, { rewards: tickedIds(root) });
-      }
+    } else {
+      return;
     }
+    refreshUpdate(root);
   });
 
   // The field's chevrons step it as the browser's spin buttons did, firing the same events so the handlers above run.
@@ -577,7 +526,7 @@
     field.dispatchEvent(new Event("change", { bubbles: true }));
   });
 
-  // Change opens the checkout list; Update sends the draft, or only collapses the card when nothing changed.
+  // The chevron opens the list; the list's button sends the draft, or only collapses the card when nothing changed.
   document.addEventListener("click", function (event) {
     var target = event.target instanceof Element ? event.target : null;
     var button = target && target.closest("[data-yl-change], [data-yl-update]");
@@ -599,9 +548,9 @@
     }
   });
 
-  markModes();
+  markCards();
   // The classic checkout's order-review refresh, replaceCard() and the blocks' redraw all bring a card unmarked.
-  new MutationObserver(markModes).observe(document.body, {
+  new MutationObserver(markCards).observe(document.body, {
     childList: true,
     subtree: true,
   });

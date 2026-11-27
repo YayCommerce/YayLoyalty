@@ -33,7 +33,7 @@ export function CustomersTierFilter({
   if (!enabled) return null;
 
   return (
-    <div className="w-75">
+    <div className="w-full">
       <MultiSelectCombobox
         value={value}
         onChange={onChange}

@@ -298,33 +298,33 @@ final class RedeemCard {
     }
 
     /**
-     * The heading's inner HTML, escaped: "Your rewards", then for a customer the checkout's title "Points &
-     * rewards" (redeem.css shows one of the two by mode), the balance as "9,850 Points" and, when $worth is
-     * non-null, "⇄ $98.50". The worth is the only money the heading prints, and only while `cart-discount` is
-     * live. A guest (null) gets "Your rewards" alone.
+     * The heading's inner HTML, escaped. A customer gets the title "Points & rewards" and a pill with the balance
+     * as "9,850 Points" and, when $worth is non-null, "⇄ $98.50". The worth is the only money the heading prints,
+     * and only while `cart-discount` is live. A guest (null) gets "Your rewards" alone.
      */
     public static function heading( ?int $balance, ?float $worth ): string {
-        $html = '<span class="yayloyalty-redeem__title">' . esc_html__( 'Your rewards', 'yayloyalty' ) . '</span>';
-
-        if ( null !== $balance ) {
-            // Both titles are printed because the blocks' card is shared by Cart and Checkout.
-            $html .= '<span class="yayloyalty-redeem__title-checkout">' . esc_html(
-                /* translators: %s: the store's points label, as "Points". */
-                sprintf( __( '%s & rewards', 'yayloyalty' ), SettingsHelper::points_label_plural() )
-            ) . '</span>';
-
-            // points_text()'s format, with the number and the label wrapped apart so the label can sit smaller.
-            $html .= '<span class="yayloyalty-redeem__balance">' . sprintf(
-                /* translators: 1: number of points, 2: the store's points label, e.g. "Points". */
-                esc_html( _x( '%1$s %2$s', 'points amount', 'yayloyalty' ) ),
-                esc_html( SettingsHelper::format_number( $balance ) ),
-                '<span class="yayloyalty-redeem__unit">' . esc_html( SettingsHelper::points_label( $balance ) ) . '</span>'
-            ) . '</span>';
-
-            if ( null !== $worth ) {
-                $html .= '<span class="yayloyalty-redeem__worth"><span aria-hidden="true">⇄</span> ' . esc_html( LauncherCopy::money( $worth ) ) . '</span>';
-            }
+        if ( null === $balance ) {
+            return '<span class="yayloyalty-redeem__title">' . esc_html__( 'Your rewards', 'yayloyalty' ) . '</span>';
         }
+
+        $html = '<span class="yayloyalty-redeem__title">' . esc_html(
+            /* translators: %s: the store's points label, as "Points". */
+            sprintf( __( '%s & rewards', 'yayloyalty' ), SettingsHelper::points_label_plural() )
+        ) . '</span><span class="yayloyalty-redeem__pill">';
+
+        // points_text()'s format, with the number and the label wrapped apart so the label can sit smaller.
+        $html .= '<span class="yayloyalty-redeem__balance">' . sprintf(
+            /* translators: 1: number of points, 2: the store's points label, e.g. "Points". */
+            esc_html( _x( '%1$s %2$s', 'points amount', 'yayloyalty' ) ),
+            esc_html( SettingsHelper::format_number( $balance ) ),
+            '<span class="yayloyalty-redeem__unit">' . esc_html( SettingsHelper::points_label( $balance ) ) . '</span>'
+        ) . '</span>';
+
+        if ( null !== $worth ) {
+            $html .= '<span class="yayloyalty-redeem__worth"><span aria-hidden="true">⇄</span> ' . esc_html( LauncherCopy::money( $worth ) ) . '</span>';
+        }
+
+        $html .= '</span>';
 
         return $html;
     }

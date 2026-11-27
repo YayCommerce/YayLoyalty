@@ -35,7 +35,7 @@ final class TierProgress {
      * @param array|null $value   The filter's value so far.
      * @param int|null   $user_id The member; null for the Design preview.
      * @param int        $balance The member's balance, or the preview's sample.
-     * @return array{name: ?string, color: ?string, next: ?array{name: string, threshold: int}, progress: int, needed: int, window_months: ?int, period: ?string, held_until: ?string}|null
+     * @return array{name: ?string, color: ?string, next: ?array{name: string, threshold: int}, progress: int, needed: int, window_months: ?int, period: ?string, held_until: ?string, achieved_at: ?string}|null
      */
     public function member_tier( $value, ?int $user_id, int $balance ): ?array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the filter passes $value and $balance.
         if ( ! TierEvaluator::is_enabled() ) {
@@ -56,16 +56,16 @@ final class TierProgress {
         $standing = ( new TierStanding( new LedgerRepository() ) )->of( $customer, $live, Dates::now() );
         $tier     = $standing['tier'];
 
-        return self::line( $tier, $standing['next'], $standing['progress'], $standing['window_months'], $standing['period'], null === $tier ? null : $standing['held_until'] );
+        return self::line( $tier, $standing['next'], $standing['progress'], $standing['window_months'], $standing['period'], null === $tier ? null : $standing['held_until'], null === $tier ? null : $customer->get_tier_achieved_at() );
     }
 
     /**
      * The preview's line: the lowest live tier, progress at the midpoint of its threshold and the next one's
      * (its own threshold when it is the only tier) and, in Rolling, a hold that ends one window from now; in Calendar,
-     * the hold a tier reached today would get.
+     * the hold a tier reached today would get. The tier reads as reached today.
      *
      * @param Tier[] $live TierRepository::live(), in rank order; not empty.
-     * @return array{name: ?string, color: ?string, next: ?array{name: string, threshold: int}, progress: int, needed: int, window_months: ?int, period: ?string, held_until: ?string}
+     * @return array{name: ?string, color: ?string, next: ?array{name: string, threshold: int}, progress: int, needed: int, window_months: ?int, period: ?string, held_until: ?string, achieved_at: ?string}
      */
     private static function sample( array $live ): array {
         $tier     = $live[0];
@@ -82,15 +82,15 @@ final class TierProgress {
             $held_until = null === $months ? null : Dates::add_months( Dates::now(), $months );
         }
 
-        return self::line( $tier, $next, $progress, $months, $period, $held_until );
+        return self::line( $tier, $next, $progress, $months, $period, $held_until, Dates::now() );
     }
 
     /**
      * The line's fields from a standing. AccountTier builds My Points' tier section on it, so the two agree.
      *
-     * @return array{name: ?string, color: ?string, next: ?array{name: string, threshold: int}, progress: int, needed: int, window_months: ?int, period: ?string, held_until: ?string}
+     * @return array{name: ?string, color: ?string, next: ?array{name: string, threshold: int}, progress: int, needed: int, window_months: ?int, period: ?string, held_until: ?string, achieved_at: ?string}
      */
-    public static function line( ?Tier $tier, ?Tier $next, int $progress, ?int $window_months, ?string $period, ?string $held_until ): array {
+    public static function line( ?Tier $tier, ?Tier $next, int $progress, ?int $window_months, ?string $period, ?string $held_until, ?string $achieved_at ): array {
         return [
             'name'          => null === $tier ? null : $tier->get_name(),
             'color'         => null === $tier ? null : $tier->get_color(),
@@ -103,6 +103,7 @@ final class TierProgress {
             'window_months' => $window_months,
             'period'        => $period,
             'held_until'    => $held_until,
+            'achieved_at'   => $achieved_at,
         ];
     }
 }

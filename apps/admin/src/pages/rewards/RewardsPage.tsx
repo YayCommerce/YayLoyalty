@@ -1,3 +1,4 @@
+import { Outlet } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
@@ -10,12 +11,19 @@ export default function RewardsPage() {
   return (
     <PageLayout
       title={__('Rewards', 'yayloyalty')}
-      description={IS_PRO_BUILD ? undefined : __('How customers spend their points.', 'yayloyalty')}
+      description={
+        IS_PRO_BUILD
+          ? __('Manage what customers can redeem with their loyalty points.', 'yayloyalty')
+          : __('How customers spend their points.', 'yayloyalty')
+      }
     >
       {/* IS_PRO_BUILD, not ProGate, so the @/pro import is tree-shaken. */}
       {IS_PRO_BUILD && <RewardTable />}
 
       {!IS_PRO_BUILD && <BuiltInRewardEditor />}
+
+      {/* Pro's add and edit modals render over the list. Lite has no catalog, so its child routes show nothing. */}
+      {IS_PRO_BUILD && <Outlet />}
     </PageLayout>
   );
 }

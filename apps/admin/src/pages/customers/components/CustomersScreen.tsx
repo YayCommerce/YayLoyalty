@@ -4,6 +4,7 @@ import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useAdjustPointsPreviewQuery, useCustomerQuery } from '@/lib/queries/customer.queries';
 import type { AdjustPointsPreviewInput, CustomerListRow } from '@/lib/schema/customer.schema';
 import { Card, CardContent } from '@/components/ui/card';
+import { NumberedPagination } from '@/components/ui/custom/numbered-pagination';
 import { useCustomersBulkActions } from '../customers-page.bulk-actions';
 import {
   countActiveFilters,
@@ -17,7 +18,6 @@ import { CustomersAdjustPointsDialog } from './CustomersAdjustPointsDialog';
 import { CustomersBulkActionBar } from './CustomersBulkActionBar';
 import { CustomersFilterBar } from './CustomersFilterBar';
 import { CustomersNoMatchState } from './CustomersNoMatchState';
-import { CustomersPagination } from './CustomersPagination';
 import { CustomersTable } from './CustomersTable';
 
 /**
@@ -107,10 +107,13 @@ export function CustomersScreen({
   const customerQuery = useCustomerQuery(singleId);
 
   // 'all' mode asks the server to COUNT the filter; a tick list knows its own
-  // count, so it sends no filters and reads only liability and rate.
+  // count, so it sends only its ids. Both get back the points their selection holds.
   const previewInput = useMemo<AdjustPointsPreviewInput>(
-    () => (selection.mode === 'all' ? { filters: queryFilters } : {}),
-    [selection.mode, queryFilters],
+    () =>
+      selection.mode === 'all'
+        ? { filters: queryFilters, excludeIds: [...selection.excludedIds] }
+        : { userIds: [...selection.ids] },
+    [selection, queryFilters],
   );
   const preview = useAdjustPointsPreviewQuery(previewInput, isAdjustDialogOpen && singleId === 0);
 
@@ -129,6 +132,7 @@ export function CustomersScreen({
             onFiltersChange={onFiltersChange}
             queryFilters={queryFilters}
             sort={sort}
+            showTiers={showTiers}
           />
 
           <CustomersTable
@@ -169,12 +173,10 @@ export function CustomersScreen({
                 isExporting={isBulkExporting}
               />
             )}
-            <CustomersPagination
+            <NumberedPagination
               page={page}
               pageCount={pageCount}
               isLoading={isLoading}
-              onPrevious={() => onPageChange(Math.max(1, page - 1))}
-              onNext={() => onPageChange(Math.min(pageCount, page + 1))}
               onPageChange={onPageChange}
               className="sm:ms-auto"
             />

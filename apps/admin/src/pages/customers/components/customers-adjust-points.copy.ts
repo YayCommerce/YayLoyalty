@@ -23,10 +23,9 @@ export const RETRY_LABEL = () => __('Retry', 'yayloyalty');
 
 // Direction and amount
 
-export const DIRECTION_ADD_LABEL = () => __('Add', 'yayloyalty');
-export const DIRECTION_REMOVE_LABEL = () => __('Remove', 'yayloyalty');
-export const AMOUNT_LABEL = () => __('Amount', 'yayloyalty');
-export const POINTS_UNIT = () => __('points', 'yayloyalty');
+export const CHANGE_POINTS_LABEL = () => __('Change points', 'yayloyalty');
+export const DECREASE_LABEL = () => __('Decrease', 'yayloyalty');
+export const INCREASE_LABEL = () => __('Increase', 'yayloyalty');
 
 /** "Add 500 points" / "Remove 500 points" / plain "Adjust points" while amount is 0. */
 export function submitLabel(direction: 'add' | 'remove', amount: string, isZero: boolean): string {
@@ -44,18 +43,29 @@ export function submitLabel(direction: 'add' | 'remove', amount: string, isZero:
       );
 }
 
+// Summary card
+export const BEFORE_LABEL = () => __('Before', 'yayloyalty');
+export const AFTER_LABEL = () => __('After', 'yayloyalty');
+export const BALANCE_LABEL = () => __('Balance', 'yayloyalty');
+
+/** "Add points to Daniel" / "Remove points from Daniel" */
+export function singleSummaryTitle(direction: 'add' | 'remove', name: string): string {
+  return direction === 'remove'
+    ? sprintf(
+        /* translators: %s: the customer's name. */
+        __('Remove points from %s', 'yayloyalty'),
+        name,
+      )
+    : sprintf(
+        /* translators: %s: the customer's name. */
+        __('Add points to %s', 'yayloyalty'),
+        name,
+      );
+}
+
 // Result panel
 
 export const NEW_BALANCE_EMPTY = () => __('New balance: —', 'yayloyalty');
-
-/** "New balance: 10,350 points" */
-export function newBalanceLine(points: string): string {
-  return sprintf(
-    /* translators: %s: the new balance in points, formatted. */
-    __('New balance: %s points', 'yayloyalty'),
-    points,
-  );
-}
 
 export function addsToLiability(points: string): string {
   return sprintf(

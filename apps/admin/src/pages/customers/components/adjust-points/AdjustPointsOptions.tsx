@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -7,6 +9,7 @@ import {
   ADJUST_TIER_LABEL,
   ADJUST_TIER_SUBTEXT,
   CUSTOMER_NOTE_PLACEHOLDER,
+  FOOTER_NOTICE,
   NOTIFY_BY_EMAIL_LABEL,
   SHOW_CUSTOMER_NOTE_HELPER,
   SHOW_CUSTOMER_NOTE_LABEL,
@@ -28,62 +31,81 @@ export function AdjustPointsOptions({
   notifyCountLabel?: string;
 }) {
   return (
-    <div className="flex flex-col gap-3">
-      <label className="flex items-start gap-2.5">
-        <Checkbox
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col divide-y border-t">
+        <CheckOption
           checked={state.adjustLifetime}
-          onCheckedChange={(checked) => onChange(withAdjustLifetime(checked === true))}
+          onChange={(checked) => onChange(withAdjustLifetime(checked))}
+          label={ADJUST_LIFETIME_LABEL()}
+          subtext={ADJUST_LIFETIME_SUBTEXT()}
         />
-        <span className="flex flex-col gap-0.5">
-          <span className="text-sm font-medium">{ADJUST_LIFETIME_LABEL()}</span>
-          <span className="text-muted-foreground text-xs">{ADJUST_LIFETIME_SUBTEXT()}</span>
-        </span>
-      </label>
-
-      {showTier && (
-        <label className="flex items-start gap-2.5">
-          <Checkbox
+        {showTier && (
+          <CheckOption
             checked={state.adjustTier}
-            onCheckedChange={(checked) => onChange({ adjustTier: checked === true })}
+            onChange={(checked) => onChange({ adjustTier: checked })}
+            label={ADJUST_TIER_LABEL()}
+            subtext={ADJUST_TIER_SUBTEXT()}
           />
-          <span className="flex flex-col gap-0.5">
-            <span className="text-sm font-medium">{ADJUST_TIER_LABEL()}</span>
-            <span className="text-muted-foreground text-xs">{ADJUST_TIER_SUBTEXT()}</span>
-          </span>
-        </label>
-      )}
+        )}
+        <CheckOption
+          checked={state.notifyByEmail}
+          onChange={(checked) => onChange({ notifyByEmail: checked })}
+          label={
+            <>
+              {NOTIFY_BY_EMAIL_LABEL()}
+              {notifyCountLabel && (
+                <span className="bg-foreground text-background rounded-full px-2 py-0.5 text-xs font-medium">
+                  {notifyCountLabel}
+                </span>
+              )}
+            </>
+          }
+          subtext={FOOTER_NOTICE()}
+        />
+      </div>
 
-      <div className="flex flex-col gap-2">
-        <label className="flex items-start justify-between gap-2.5">
-          <span className="flex flex-col gap-0.5">
+      <div className="flex items-start gap-3 rounded-lg border p-4">
+        <Switch
+          id="adjust-points-customer-note"
+          checked={state.showCustomerNote}
+          onCheckedChange={(checked) => onChange({ showCustomerNote: checked })}
+        />
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <label htmlFor="adjust-points-customer-note" className="flex flex-col gap-0.5">
             <span className="text-sm font-medium">{SHOW_CUSTOMER_NOTE_LABEL()}</span>
             <span className="text-muted-foreground text-xs">{SHOW_CUSTOMER_NOTE_HELPER()}</span>
-          </span>
-          <Switch
-            checked={state.showCustomerNote}
-            onCheckedChange={(checked) => onChange({ showCustomerNote: checked })}
-          />
-        </label>
-        {state.showCustomerNote && (
+          </label>
           <Input
             value={state.customerNote}
             onChange={(event) => onChange({ customerNote: event.target.value })}
             placeholder={CUSTOMER_NOTE_PLACEHOLDER()}
             maxLength={120}
+            disabled={!state.showCustomerNote}
           />
-        )}
+        </div>
       </div>
-
-      <label className="flex items-center justify-between gap-2.5">
-        <span className="flex items-center gap-2.5">
-          <Checkbox
-            checked={state.notifyByEmail}
-            onCheckedChange={(checked) => onChange({ notifyByEmail: checked === true })}
-          />
-          <span className="text-sm font-medium">{NOTIFY_BY_EMAIL_LABEL()}</span>
-        </span>
-        {notifyCountLabel && <span className="text-muted-foreground text-xs">{notifyCountLabel}</span>}
-      </label>
     </div>
+  );
+}
+
+function CheckOption({
+  checked,
+  onChange,
+  label,
+  subtext,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: ReactNode;
+  subtext: string;
+}) {
+  return (
+    <label className="flex items-start gap-2.5 py-3">
+      <Checkbox checked={checked} onCheckedChange={(value) => onChange(value === true)} />
+      <span className="flex flex-col gap-0.5">
+        <span className="flex items-center gap-2 text-sm font-medium">{label}</span>
+        <span className="text-muted-foreground text-xs">{subtext}</span>
+      </span>
+    </label>
   );
 }

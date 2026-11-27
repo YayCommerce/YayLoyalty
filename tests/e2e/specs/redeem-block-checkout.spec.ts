@@ -28,6 +28,7 @@ test.describe( 'Redeem points at the block checkout', { tag: '@flow-redeem-block
 		await card.getByRole( 'checkbox', { name: /Points discount/ } ).check();
 
 		await expect( card.getByText( '500 points = $5 off' ) ).toBeVisible();
+		await card.getByRole( 'button', { name: 'Add rewards' } ).click();
 		await expect( page.locator( '.wc-block-components-totals-footer-item' ) ).toContainText( '$5.00' );
 
 		await page.goto( '/checkout/' );
@@ -120,9 +121,13 @@ test.describe( 'Free shipping and free product rewards at the block checkout', {
 		await expect( total ).toContainText( '$22.00' );
 
 		await card.getByRole( 'checkbox', { name: new RegExp( shippingName ) } ).check();
+		await card.getByRole( 'button', { name: 'Add rewards' } ).click();
 		await expect( total ).toContainText( '$15.00' );
 
+		// Applied, the card collapses to its summary; the chevron opens it again.
+		await card.getByRole( 'button', { name: 'Change' } ).click();
 		await card.getByRole( 'checkbox', { name: new RegExp( shirtName ) } ).check();
+		await card.getByRole( 'button', { name: 'Update rewards' } ).click();
 		await expect( page.locator( '.wc-block-cart-items__row' ) ).toHaveCount( 2 );
 		await expect( page.getByText( shirtName, { exact: true } ).first() ).toBeVisible();
 		await expect( total ).toContainText( '$15.00' );
@@ -145,6 +150,7 @@ test.describe( 'Free shipping and free product rewards at the block checkout', {
 		const rows = page.locator( '.wc-block-cart-items__row' );
 
 		await reward.check();
+		await card.getByRole( 'button', { name: 'Add rewards' } ).click();
 		await expect( rows ).toHaveCount( 2 );
 
 		await rows.filter( { hasText: `Reward: ${ shirtName }` } ).getByRole( 'button', { name: /Remove .* from cart/ } ).click();

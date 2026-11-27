@@ -53,23 +53,27 @@ export async function adjustCustomerPoints(userId: number, input: AdjustPointsIn
 }
 
 /**
- * `POST /customers/adjust/preview`: the bulk adjust dialog's count and liability.
+ * `POST /customers/adjust/preview`: the bulk adjust dialog's count and the selection's liability.
  * This only respells camelCase as snake_case.
  */
 export async function previewAdjustPoints(
   input: AdjustPointsPreviewInput,
   signal?: AbortSignal,
 ): Promise<AdjustPointsPreview> {
-  const json = input.filters
-    ? {
-        filters: {
-          search: input.filters.search,
-          balance_range: input.filters.balanceRange,
-          expiring_soon: input.filters.expiringSoon,
-          tier: input.filters.tier,
-        },
-      }
-    : {};
+  const json = {
+    ...(input.filters
+      ? {
+          filters: {
+            search: input.filters.search,
+            balance_range: input.filters.balanceRange,
+            expiring_soon: input.filters.expiringSoon,
+            tier: input.filters.tier,
+          },
+        }
+      : {}),
+    user_ids: input.userIds ?? [],
+    exclude_ids: input.excludeIds ?? [],
+  };
 
   return adjustPointsPreviewSchema.parse(await api.post('customers/adjust/preview', { json, signal }).json());
 }

@@ -1,17 +1,15 @@
 import { useState } from 'react';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Controller, useForm } from 'react-hook-form';
+import { EllipsisVertical, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
-import { formatStoreNumber } from '@/lib/helpers/format.helper';
-import { formatCount, formatPoints } from '@/lib/helpers/points.helper';
+import { formatStoreDecimal } from '@/lib/helpers/format.helper';
+import { formatCount, formatPoints, shortPoints } from '@/lib/helpers/points.helper';
 import { Tier, TIER_LIMITS, TierInUse } from '@/lib/schema/tier.schema';
+import { Badge } from '@/components/ui/badge';
 import { Button, LoadingButton } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { ColorPicker } from '@/components/ui/color-picker';
-import { PointsInput } from '@/components/ui/custom/amount-inputs';
+import { Card } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -28,25 +26,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Field, FieldContent, FieldError, FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
-import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import EllipsisIcon from '@/components/icons/EllipsisIcon';
-import { newTierValues, tierFormSchema, TierFormValues, tierFormValues, toTierInput } from './tier-catalog.form';
-import { TierBadge } from './TierBadge';
+import { TierFormDialog, TierFormTarget } from './TierFormDialog';
+import { TierIconChip } from './TierIconChip';
 import { readTierInUse } from './tiers.api';
-import {
-  useCreateTierMutation,
-  useDeleteTierMutation,
-  useTiersEnabled,
-  useTiersQuery,
-  useUpdateTierMutation,
-} from './tiers.queries';
-
-/** Which dialog is open: a new tier, or a snapshot of the row being edited, so a refetch can't swap it. */
-type FormTarget = { mode: 'create' } | { mode: 'edit'; tier: Tier };
+import { useDeleteTierMutation, useTiersEnabled, useTiersQuery } from './tiers.queries';
 
 /** Mirrors TiersRestController::create_item()'s limit message: the tooltip shows before any request. */
 const tierLimitMessage = () =>
@@ -62,28 +48,37 @@ const tierLimitMessage = () =>
  */
 export function TierCatalog() {
   const { data: tiers, isPending, isError, refetch } = useTiersQuery();
-  const [formTarget, setFormTarget] = useState<FormTarget>();
+  const [formTarget, setFormTarget] = useState<TierFormTarget>();
   const [deleteTarget, setDeleteTarget] = useState<Tier>();
+  const [search, setSearch] = useState('');
   // While tiers are off the stored counts are frozen, so they would read as live.
   const showMembers = useTiersEnabled();
 
   const atLimit = (tiers?.length ?? 0) >= TIER_LIMITS.maxLive;
+  const query = search.trim().toLowerCase();
+  const shown = tiers?.filter((tier) => tier.name.toLowerCase().includes(query)) ?? [];
   const addButton = (
-    <Button disabled={isPending || isError || atLimit} onClick={() => setFormTarget({ mode: 'create' })}>
-      {__('Add tier', 'yayloyalty')}
+    <Button size="sm" disabled={isPending || isError || atLimit} onClick={() => setFormTarget({ mode: 'create' })}>
+      {__('Add new tier', 'yayloyalty')}
     </Button>
   );
 
   return (
-    <Card>
-      <CardContent className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-muted-foreground flex-1 text-sm">
-            {__(
-              'Customers move up a tier as they earn points. Each tier multiplies the points they earn.',
-              'yayloyalty',
-            )}
-          </p>
+    <Card className="gap-4 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="m-0 text-base font-semibold">{__('Tier multipliers', 'yayloyalty')}</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <InputGroup size="small" className="w-44">
+            <InputGroupAddon>
+              <Search className="size-4" />
+            </InputGroupAddon>
+            <InputGroupInput
+              placeholder={__('Search', 'yayloyalty')}
+              aria-label={__('Search tiers', 'yayloyalty')}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </InputGroup>
           {atLimit ? (
             <YayLoyaltyToolTip
               content={tierLimitMessage()}
@@ -93,41 +88,49 @@ export function TierCatalog() {
             addButton
           )}
         </div>
+      </div>
 
-        {isError && <ErrorState message={__('Could not load tiers.', 'yayloyalty')} onRetry={() => refetch()} />}
+      {isError && <ErrorState message={__('Could not load tiers.', 'yayloyalty')} onRetry={() => refetch()} />}
 
-        {!isError && (
-          <div className="overflow-hidden rounded-lg border">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{__('Tier', 'yayloyalty')}</TableHead>
-                    <TableHead className="text-right">{__('Points to reach', 'yayloyalty')}</TableHead>
-                    <TableHead className="text-right">{__('Multiplier', 'yayloyalty')}</TableHead>
-                    <TableHead className="text-right">{__('Entry bonus', 'yayloyalty')}</TableHead>
-                    <TableHead className="text-right">{__('Members', 'yayloyalty')}</TableHead>
-                    <TableHead className="w-12" />
+      {!isError && (
+        <div className="overflow-hidden rounded-lg border">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-muted/50">
+                <TableRow>
+                  <TableHead>{__('Tier', 'yayloyalty')}</TableHead>
+                  <TableHead className="text-center">{__('Points to reach', 'yayloyalty')}</TableHead>
+                  <TableHead className="text-center">{__('Multiplier', 'yayloyalty')}</TableHead>
+                  <TableHead className="text-center">{__('Entry bonus', 'yayloyalty')}</TableHead>
+                  <TableHead className="text-center">{__('Members', 'yayloyalty')}</TableHead>
+                  <TableHead className="w-12" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isPending ? (
+                  [0, 1, 2].map((key) => <TierRowSkeleton key={key} />)
+                ) : shown.length === 0 ? (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={6} className="text-muted-foreground py-8 text-center">
+                      {query ? __('No tiers match your search.', 'yayloyalty') : __('No tiers yet.', 'yayloyalty')}
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isPending
-                    ? [0, 1, 2].map((key) => <TierRowSkeleton key={key} />)
-                    : tiers.map((tier) => (
-                        <TierRow
-                          key={tier.id}
-                          tier={tier}
-                          showMembers={showMembers}
-                          onEdit={() => setFormTarget({ mode: 'edit', tier })}
-                          onDelete={() => setDeleteTarget(tier)}
-                        />
-                      ))}
-                </TableBody>
-              </Table>
-            </div>
+                ) : (
+                  shown.map((tier) => (
+                    <TierRow
+                      key={tier.id}
+                      tier={tier}
+                      showMembers={showMembers}
+                      onEdit={() => setFormTarget({ mode: 'edit', tier })}
+                      onDelete={() => setDeleteTarget(tier)}
+                    />
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
-        )}
-      </CardContent>
+        </div>
+      )}
 
       {formTarget && tiers && (
         <TierFormDialog target={formTarget} tiers={tiers} onClose={() => setFormTarget(undefined)} />
@@ -152,20 +155,25 @@ function TierRow({
   return (
     <TableRow>
       <TableCell>
-        <Button variant="link" size="sm" className="h-auto p-0 font-semibold" onClick={onEdit}>
-          <TierBadge name={tier.name} color={tier.color} />
-        </Button>
+        <button type="button" className="flex items-center gap-3 font-medium hover:underline" onClick={onEdit}>
+          <TierIconChip color={tier.color} />
+          {tier.name}
+        </button>
       </TableCell>
-      <TableCell className="text-right tabular-nums">{formatPoints(tier.threshold)}</TableCell>
-      <TableCell className="text-right tabular-nums">
-        {sprintf(
-          /* translators: %s: the tier's points multiplier, such as 1.25. */
-          __('×%s', 'yayloyalty'),
-          formatStoreNumber(Number(tier.multiplier), 2),
-        )}
+      <TableCell className="text-center tabular-nums">{formatPoints(tier.threshold)}</TableCell>
+      <TableCell className="text-center">
+        <Badge variant="secondary" className="tabular-nums">
+          {sprintf(
+            /* translators: %s: the tier's points multiplier, such as 1.25. */
+            __('×%s', 'yayloyalty'),
+            formatStoreDecimal(Number(tier.multiplier), 2),
+          )}
+        </Badge>
       </TableCell>
-      <TableCell className="text-right tabular-nums">{formatPoints(tier.entry_bonus)}</TableCell>
-      <TableCell className="text-right tabular-nums">{showMembers ? formatCount(tier.member_count) : '—'}</TableCell>
+      <TableCell className="text-center tabular-nums">
+        {(tier.entry_bonus > 0 ? '+' : '') + shortPoints(tier.entry_bonus)}
+      </TableCell>
+      <TableCell className="text-center tabular-nums">{showMembers ? formatCount(tier.member_count) : '—'}</TableCell>
       <TableCell>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -178,10 +186,11 @@ function TierRow({
                 tier.name,
               )}
             >
-              <EllipsisIcon />
+              <EllipsisVertical className="size-4" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={onEdit}>{__('Edit', 'yayloyalty')}</DropdownMenuItem>
             <DropdownMenuItem variant="destructive" onSelect={onDelete}>
               {__('Delete', 'yayloyalty')}
             </DropdownMenuItem>
@@ -200,146 +209,11 @@ function TierRowSkeleton() {
       </TableCell>
       {[0, 1, 2, 3].map((key) => (
         <TableCell key={key}>
-          <Skeleton className="ml-auto h-4 w-12" />
+          <Skeleton className="mx-auto h-4 w-12" />
         </TableCell>
       ))}
       <TableCell />
     </TableRow>
-  );
-}
-
-/** Create or edit one tier. The dialog stays open with the typed values when the server refuses the save. */
-function TierFormDialog({ target, tiers, onClose }: { target: FormTarget; tiers: Tier[]; onClose: () => void }) {
-  const isEdit = target.mode === 'edit';
-  const form = useForm<TierFormValues>({
-    resolver: zodResolver(tierFormSchema()),
-    defaultValues: isEdit ? tierFormValues(target.tier) : newTierValues(tiers),
-  });
-  const createTier = useCreateTierMutation();
-  const updateTier = useUpdateTierMutation();
-  const pending = createTier.isPending || updateTier.isPending;
-  const errors = form.formState.errors;
-
-  const onSubmit = form.handleSubmit(async (values) => {
-    const input = toTierInput(values);
-
-    try {
-      if (isEdit) {
-        await updateTier.mutateAsync({ id: target.tier.id, input });
-      } else {
-        await createTier.mutateAsync(input);
-      }
-
-      toast.success(
-        sprintf(
-          /* translators: %s: the tier's name. */
-          isEdit ? __('“%s” saved.', 'yayloyalty') : __('“%s” added.', 'yayloyalty'),
-          input.name,
-        ),
-      );
-      onClose();
-    } catch (error) {
-      await toastApiError(error, __('Could not save the tier.', 'yayloyalty'));
-    }
-  });
-
-  return (
-    <Dialog open onOpenChange={(open) => !open && !pending && onClose()}>
-      <DialogContent showCloseButton={!pending}>
-        <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-          <DialogHeader>
-            <DialogTitle>{isEdit ? __('Edit tier', 'yayloyalty') : __('Add tier', 'yayloyalty')}</DialogTitle>
-            <DialogDescription>
-              {__('Customers reach this tier once the points they have earned reach its threshold.', 'yayloyalty')}
-            </DialogDescription>
-          </DialogHeader>
-
-          <Field data-invalid={!!errors.name}>
-            <FieldLabel htmlFor="yayloyalty-tier-name">{__('Name', 'yayloyalty')}</FieldLabel>
-            <FieldContent>
-              <Input
-                id="yayloyalty-tier-name"
-                maxLength={TIER_LIMITS.nameMax}
-                aria-invalid={!!errors.name}
-                {...form.register('name')}
-              />
-              {errors.name && <FieldError>{errors.name.message}</FieldError>}
-            </FieldContent>
-          </Field>
-
-          <Field data-invalid={!!errors.threshold}>
-            <FieldLabel>{__('Points to reach', 'yayloyalty')}</FieldLabel>
-            <FieldContent>
-              <Controller
-                control={form.control}
-                name="threshold"
-                render={({ field }) => <PointsInput value={field.value} min={0} onValueChange={field.onChange} />}
-              />
-              {errors.threshold && <FieldError>{errors.threshold.message}</FieldError>}
-            </FieldContent>
-          </Field>
-
-          <Field data-invalid={!!errors.multiplier}>
-            <FieldLabel>{__('Points multiplier', 'yayloyalty')}</FieldLabel>
-            <FieldContent>
-              <Controller
-                control={form.control}
-                name="multiplier"
-                render={({ field }) => (
-                  <NumberInputRoot
-                    size="small"
-                    className="w-32"
-                    min={TIER_LIMITS.multiplierMin}
-                    max={TIER_LIMITS.multiplierMax}
-                    step={TIER_LIMITS.multiplierStep}
-                    decimalScale={2}
-                    fixedDecimalScale
-                    value={field.value}
-                    onValueChange={field.onChange}
-                  >
-                    <NumberInputInput />
-                    <NumberInputUnit unit="×" />
-                  </NumberInputRoot>
-                )}
-              />
-              {errors.multiplier && <FieldError>{errors.multiplier.message}</FieldError>}
-            </FieldContent>
-          </Field>
-
-          <Field data-invalid={!!errors.entry_bonus}>
-            <FieldLabel>{__('Entry bonus', 'yayloyalty')}</FieldLabel>
-            <FieldContent>
-              <Controller
-                control={form.control}
-                name="entry_bonus"
-                render={({ field }) => <PointsInput value={field.value} min={0} onValueChange={field.onChange} />}
-              />
-              {errors.entry_bonus && <FieldError>{errors.entry_bonus.message}</FieldError>}
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel>{__('Badge colour', 'yayloyalty')}</FieldLabel>
-            <FieldContent>
-              <Controller
-                control={form.control}
-                name="color"
-                render={({ field }) => <ColorPicker value={field.value} onValueChange={field.onChange} />}
-              />
-            </FieldContent>
-          </Field>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" disabled={pending} onClick={onClose}>
-              {__('Cancel', 'yayloyalty')}
-            </Button>
-            <LoadingButton type="submit" loading={pending}>
-              {isEdit ? __('Save', 'yayloyalty') : __('Add tier', 'yayloyalty')}
-            </LoadingButton>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
   );
 }
 
