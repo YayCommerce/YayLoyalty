@@ -2,7 +2,6 @@
 namespace YayLoyalty\Pro\Storefront;
 
 use YayLoyalty\Engine\Storefront\AccountMyPoints;
-use YayLoyalty\Models\Customer;
 use YayLoyalty\Pro\Services\TierEvaluator;
 use YayLoyalty\Pro\Services\TierStanding;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -24,7 +23,7 @@ final class AccountTier {
     }
 
     /**
-     * Null when tiers are off or no tier is live.
+     * Null when tiers are off, no tier is live, or the user is not a loyalty customer.
      *
      * @param array|null $value   The filter's value so far.
      * @param int        $user_id The member.
@@ -41,7 +40,12 @@ final class AccountTier {
             return null;
         }
 
-        $customer = ( new CustomerRepository() )->find_by_user_id( $user_id ) ?? new Customer( $user_id );
+        $customer = ( new CustomerRepository() )->find_by_user_id( $user_id );
+
+        if ( null === $customer ) {
+            return null;
+        }
+
         $standing = ( new TierStanding( new LedgerRepository() ) )->of( $customer, $live, Dates::now() );
         $tier     = $standing['tier'];
         $tiers    = [];
