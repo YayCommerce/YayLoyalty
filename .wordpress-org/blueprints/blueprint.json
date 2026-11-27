@@ -1,0 +1,73 @@
+{
+  "$schema": "https://playground.wordpress.net/blueprint-schema.json",
+  "landingPage": "/wp-admin/admin.php?page=yayloyalty",
+  "preferredVersions": {
+    "php": "8.2",
+    "wp": "latest"
+  },
+  "phpExtensionBundles": [
+    "kitchen-sink"
+  ],
+  "features": {
+    "networking": true
+  },
+  "steps": [
+    {
+      "step": "login",
+      "username": "admin",
+      "password": "password"
+    },
+    {
+      "step": "installPlugin",
+      "pluginData": {
+        "resource": "wordpress.org/plugins",
+        "slug": "woocommerce"
+      },
+      "options": {
+        "activate": true
+      }
+    },
+    {
+      "step": "installPlugin",
+      "pluginData": {
+        "resource": "wordpress.org/plugins",
+        "slug": "yayloyalty"
+      },
+      "options": {
+        "activate": true
+      }
+    },
+    {
+      "step": "setSiteOptions",
+      "options": {
+        "blogname": "YayLoyalty Demo Store",
+        "woocommerce_coming_soon": "no",
+        "woocommerce_onboarding_profile": {
+          "skipped": true,
+          "completed": true
+        },
+        "woocommerce_show_marketplace_suggestions": "no",
+        "woocommerce_currency": "USD",
+        "woocommerce_default_country": "US:CA",
+        "woocommerce_store_address": "123 Demo Street",
+        "woocommerce_store_city": "San Francisco",
+        "woocommerce_store_postcode": "94103",
+        "woocommerce_cod_settings": {
+          "enabled": "yes",
+          "title": "Cash on delivery"
+        }
+      }
+    },
+    {
+      "step": "importWxr",
+      "file": {
+        "resource": "vfs",
+        "path": "/wordpress/wp-content/plugins/woocommerce/sample-data/sample_products.xml"
+      }
+    },
+    {
+      "step": "runPHP",
+      "code": "__SEED_SAMPLE_DATA__"
+    }
+  ]
+}
