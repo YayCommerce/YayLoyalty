@@ -272,6 +272,36 @@ cmd_release() {
     fi
 
     build_package "$build_type" "$version"
+    [ "$build_type" = "lite" ] && write_blueprint "$version"
+    return 0
+}
+
+# Write the WordPress.org Live Preview blueprint beside the Lite zip, with seed-sample-data.php inlined
+# into its runPHP step: Playground can't fetch a second file from the plugin's SVN assets.
+write_blueprint() {
+    local version=$1
+    local source_dir="$PLUGIN_DIR/.wordpress-org/blueprints"
+    local output="$RELEASE_DIR/${PLUGIN_SLUG}-lite-${version}-blueprint.json"
+
+    print_step "Writing the Playground blueprint..."
+    php -r '
+        $blueprint = json_decode( file_get_contents( $argv[1] ), true );
+        $seeded    = false;
+        foreach ( $blueprint["steps"] as &$step ) {
+            if ( "runPHP" === $step["step"] && "__SEED_SAMPLE_DATA__" === $step["code"] ) {
+                $step["code"] = file_get_contents( $argv[2] );
+                $seeded       = true;
+            }
+        }
+        if ( ! $seeded ) {
+            fwrite( STDERR, "blueprint.json has no runPHP step with __SEED_SAMPLE_DATA__\n" );
+            exit( 1 );
+        }
+        file_put_contents( $argv[3], json_encode( $blueprint, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) . "\n" );
+    ' "$source_dir/blueprint.json" "$source_dir/seed-sample-data.php" "$output"
+
+    print_success "Blueprint: $output"
+    print_info "Upload it to SVN as assets/blueprints/blueprint.json"
 }
 
 # Assemble, package and validate one build type. Pro and Lite share every step, so the two packages
