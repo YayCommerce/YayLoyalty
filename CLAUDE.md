@@ -1,7 +1,7 @@
 # YayLoyalty — Points,  Rewards,  Referral & VIP for WooCommerce
 
-<!-- yay:managed:start v=0.21.0 -->
-<!-- Kit-managed by the yay plugin 0.21.0. Don't edit this block; run /yay:harness-update. Project knowledge goes in the yay:project block below. -->
+<!-- yay:managed:start v=0.22.0 -->
+<!-- Kit-managed by the yay plugin 0.22.0. Don't edit this block; run /yay:harness-update. Project knowledge goes in the yay:project block below. -->
 ## How we work here
 
 This repo uses the **yay** harness. Work through its skills so every developer and every Claude session follows the same flow:
@@ -15,7 +15,6 @@ This repo uses the **yay** harness. Work through its skills so every developer a
 | Design a UI | `/yay:design` | `docs/designs/` (`UX-<n>`) |
 | Decide the work | `/yay:plan` | `docs/plans/` (`P-<n>`) |
 | Build it | `/yay:implement` | worktree, branch, commits, PR |
-| Run a whole queue | `/yay:autopilot` | all of the above per item, one decision sheet, `.yay/runs/` |
 | Find a bug's cause | `/yay:debug` | `docs/bugs/` (`B-<n>`) |
 | Fix a bug | `/yay:fix` | worktree, branch, commits, PR |
 | Test build for QA | `/yay:release --bundle` | `release/bundles/<slug>-<x.y.z>-rc.<n>/` |
