@@ -1,4 +1,4 @@
-<!-- Kit-managed by the yay plugin 0.21.0. Run /yay:harness-update instead of editing; put repo-specific notes in another docs/ file. -->
+<!-- Kit-managed by the yay plugin 0.22.0. Run /yay:harness-update instead of editing; put repo-specific notes in another docs/ file. -->
 # From roadmap to release
 
 A worked example: shipping **v1.0.0** of this plugin with three features, from the roadmap to the release tag. Lines starting with `/yay:` are typed into Claude Code; lines starting with `yayh` are run in the terminal.
@@ -6,7 +6,7 @@ A worked example: shipping **v1.0.0** of this plugin with three features, from t
 The skill table and the git rules are in the "How we work here" block of [`CLAUDE.md`](../CLAUDE.md) and in `.claude/rules/yay-git.md`. Every skill shows its options as you type it.
 
 ```
-/yay:roadmap --add="X; Y; Z" --target=1.0.0  →  /yay:roadmap --target=1.0.0  →  /yay:autopilot --target=1.0.0
+/yay:roadmap --add="X; Y; Z" --target=1.0.0  →  /yay:roadmap --target=1.0.0  →  /yay:implement R-1 (each item)
 → merge the PRs  →  /yay:release --bundle  →  /yay:release 1.0.0  →  merge  →  /yay:release --tag-only  →  /yay:archive
 ```
 
@@ -40,10 +40,6 @@ Don't remember a command? Type `/yay:go` followed by what you want in plain word
 
 ## 2. Build each item
 
-Two ways. Pick one.
-
-**A. Step by step, when you want control over each decision**
-
 ```
 /yay:brainstorm --from=R-1       # 2-4 approaches and a recommendation → BS-1 (you choose)
 /yay:design --from=BS-1          # only when users will see new UI → UX-1
@@ -52,20 +48,6 @@ Two ways. Pick one.
 ```
 
 Do the same for R-2 and R-3. A small item can go straight to `/yay:implement R-2`; it picks the lane (tiny, small or standard) and says which.
-
-**B. The whole sprint in one run**
-
-```
-/yay:autopilot --target=1.0.0    # (or --sprint=1) brainstorms and plans every item, asks ONE decision sheet, then builds each on its own branch with a PR
-```
-
-If it stops, run the same command again: it resumes from each item's brainstorm and plan. Variants:
-
-```
-/yay:autopilot --sprint=1 --plan-only   # plans only; answer the sheet now, build later
-/yay:autopilot --ready                  # build every plan that's ready
-/yay:autopilot R-1 R-3 --parallel=2     # independent items two at a time
-```
 
 ## 3. The developer's part
 
